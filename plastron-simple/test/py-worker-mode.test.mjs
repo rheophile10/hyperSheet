@@ -1,7 +1,7 @@
 import { test, afterAll } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, resolveFn } from "../dist/index.js";
-import { _resetPyWorker } from "../dist/甲骨坑/py-compiler.js";
+import { _resetPyWorker } from "../dist/甲骨坑/library/py-compiler/index.js";
 
 const baseManifest = { name: "user", version: "0.0.1", description: "test", dependencies: [] };
 
@@ -34,7 +34,7 @@ test("flipping py.worker-mode true routes compile through the worker; py.ready t
   // Sanity: py.ready is true at boot (declared optimistic). When the
   // first worker-mode compile fires, the worker is spawned and py.ready
   // gets flipped to false until "ready" message arrives.
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const compilePromise = register(state, {
     key: "wpy-double",
     kind: "py",
@@ -58,7 +58,7 @@ test("flipping py.worker-mode true routes compile through the worker; py.ready t
 test("multiple worker-mode compiles share the singleton worker", { timeout: 60000 }, async () => {
   const state = createInitialState();
   state.cels.get("py.worker-mode").v = true;
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
 
   await register(state, {
     key: "wpy-incr",
@@ -113,7 +113,7 @@ test("a Python exception in worker mode is transported as a CelError", { timeout
   const state = createInitialState();
   state.cels.get("py.worker-mode").v = true;
 
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, {
     key: "wpy-throws",
     kind: "py",

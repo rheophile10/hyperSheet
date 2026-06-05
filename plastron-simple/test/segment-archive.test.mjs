@@ -1,7 +1,7 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, resolveFn } from "../dist/index.js";
-import { unzipBytes } from "../dist/甲骨坑/archive/zip.js";
+import { unzipBytes } from "../dist/甲骨坑/library/segment-archive/utils/zip.js";
 
 // segment-archive — tiered + whole-workspace export/import as a role-foldered
 // .zip (the .甲 archive), over dehydrate/hydrate + the zero-dep zip core. The
@@ -46,9 +46,13 @@ test("export-all packs every non-kernel segment into role folders; kernel exclud
   assert.ok(p.includes("applications/calc@1.0.0/segment.json"));
   assert.ok(p.includes("user/doc1@1.0.0/segment.json"));
   assert.ok(p.includes("user/doc2@1.0.0/segment.json"));
-  // Boot segments (kernel closure: builtins, sheet, plastron-dom, …) are NOT packed.
-  assert.ok(!p.some((x) => x.includes("builtins")), "builtins (bundled) excluded");
-  assert.ok(!p.some((x) => x.includes("plastron-dom")), "kernel-closure libs excluded");
+  // Honest closure (roadmap 02): only the kernel segment is excluded.
+  // Bundled libraries are no longer kernel-closure members, so those
+  // carrying dehydratable cels (e.g. plastron-dom's ValueCels) now pack
+  // too. Libraries whose cels are all native husks (builtins, sheet, …)
+  // still produce no segment.json — the husk-skip drops every cel.
+  assert.ok(!p.some((x) => x.includes("/kernel@")), "the kernel segment is excluded");
+  assert.ok(p.some((x) => x.includes("plastron-dom")), "bundled library plastron-dom now packs (left the kernel closure)");
 });
 
 test("export-all → import into a fresh kernel restores segments + cel values", async () => {

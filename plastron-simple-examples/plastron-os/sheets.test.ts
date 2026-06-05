@@ -44,7 +44,7 @@ test("Sheets renders the grid, selects into the formula bar, commits a formula",
 
   await buildSheetsApp(state, { rows: 3, cols: 3, cells: { A1: "10", B1: "=A1*2" } });
   await precomputeOptional(state);
-  await resolveFn(state, "set")(state, "os.active", "sheets"); // gate the sheet view onto #app
+  await resolveFn(state, "setValue")(state, "os.active", "sheets"); // gate the sheet view onto #app
   await resolveFn(state, "runCycle")(state);
   await resolveFn(state, "drain")(state, "plastron-dom.paint");
   m.run();
@@ -56,7 +56,7 @@ test("Sheets renders the grid, selects into the formula bar, commits a formula",
   // Click B1 → selection + formula bar shows its source.
   cell(root, "B1").fire("click");
   await tick(); m.run();
-  assert.equal(resolveFn(state, "get")(state, "sheet.selection").col, 1);
+  assert.equal(resolveFn(state, "getCel")(state, "sheet.selection")?.v.col, 1);
   assert.match(txt(root), /B1/, "formula bar reference updated");
   assert.equal(fx(root).value, "=A1*2", "formula bar loaded the cell's source");
 
@@ -91,7 +91,7 @@ test("Pictograph emoji sequence — define a person, create two, wave at each ot
     },
   });
   await precomputeOptional(state);
-  await resolveFn(state, "set")(state, "os.active", "sheets");
+  await resolveFn(state, "setValue")(state, "os.active", "sheets");
   await resolveFn(state, "runCycle")(state);
   await resolveFn(state, "drain")(state, "plastron-dom.paint");
   m.run();

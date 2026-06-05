@@ -64,14 +64,14 @@ test("desktop boots to a home screen, launches an app on click, and exits home",
   // Click the Alpha icon → os.switch → repaint shows the Alpha app.
   button(root, "Alpha").fire("click");
   await tick(); m.run();
-  assert.equal(resolveFn(state, "get")(state, "os.active"), "alpha");
+  assert.equal(resolveFn(state, "getCel")(state, "os.active")?.v, "alpha");
   assert.match(txt(root), /Alpha App/);
   assert.ok(!txt(root).includes("plastron OS"), "home grid replaced by the app");
 
   // Click the app's ⌂ Home (os.exit) → back to the launcher.
   button(root, "Home").fire("click");
   await tick(); m.run();
-  assert.equal(resolveFn(state, "get")(state, "os.active"), "home");
+  assert.equal(resolveFn(state, "getCel")(state, "os.active")?.v, "home");
   assert.match(txt(root), /plastron OS/);
   assert.ok(button(root, "Beta"), "icons back");
 });

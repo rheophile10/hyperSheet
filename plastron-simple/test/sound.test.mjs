@@ -1,7 +1,7 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, resolveFn } from "../dist/index.js";
-import { _resetSoundForTests } from "../dist/甲骨坑/sound.js";
+import { _resetSoundForTests } from "../dist/甲骨坑/library/sound/index.js";
 
 // The sound segment is browser-only at runtime — Bun has no AudioContext,
 // so every play call is a silent no-op. These tests assert the *shape*
@@ -75,11 +75,11 @@ test("sound.stop-all is callable off-browser (no throw, no effect)", () => {
 
 // ── master-gain is a writable ValueCel ──────────────────────────────────────
 
-test("sound.master-gain can be mutated via setCel and is read at each play call", async () => {
+test("sound.master-gain can be mutated via setValue and is read at each play call", async () => {
   _resetSoundForTests();
   const state = createInitialState();
-  const setCel = resolveFn(state, "setCel");
-  await setCel(state, "sound.master-gain", { v: 0.25 });
+  const setValue = resolveFn(state, "setValue");
+  await setValue(state, "sound.master-gain", 0.25);
   assert.equal(state.cels.get("sound.master-gain").v, 0.25);
   // Calling play-tone reads the current master each time. (Off-browser
   // there's no audible effect, but the read happens — proof is that

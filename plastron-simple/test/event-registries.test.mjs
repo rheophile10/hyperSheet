@@ -4,7 +4,7 @@ import { createInitialState, precomputeOptional, resolveFn } from "../dist/index
 import {
   makeListener, attachEvents, applyEventDelta, detachAllListeners,
   applyListenerDelta, diffListenerSpecs, parseSpec,
-} from "../dist/甲骨坑/dom/events.js";
+} from "../dist/甲骨坑/library/plastron-dom/utils/events.js";
 
 // event-registries — per-element + global listener registries and the
 // makeListener closure that turns declarative bindings (incl. the new
@@ -62,7 +62,7 @@ test("applyEventDelta upserts (swap fn) and removes per-element listeners", asyn
     { key: "calls", celType: "ValueCel", metadata: { key: "calls", segment: "user" }, v: 0 },
   ] }], [userManifest]);
   await precomputeOptional(state);
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   let aCount = 0, bCount = 0;
   await register(state, { key: "a", fn: () => { aCount++; }, kind: "custom" });
   await register(state, { key: "b", fn: () => { bCount++; }, kind: "custom" });
@@ -92,7 +92,7 @@ test("an { f } binding compiles lazily and reuses the cached handler", async () 
   const hydrate = resolveFn(state, "hydrate");
   await hydrate(state, [{ name: "user", cels: [] }], [userManifest]);
   await precomputeOptional(state);
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const seen = [];
   await register(state, { key: "rec", fn: (_s, arg) => { seen.push(arg); }, kind: "custom" });
 
@@ -158,7 +158,7 @@ test("diffListenerSpecs / parseSpec helpers", () => {
 test("string-list schema suppresses a recompute that yields equal contents", async () => {
   const state = createInitialState();
   const hydrate = resolveFn(state, "hydrate");
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, { key: "mkspecs", fn: () => ["document|keydown|(set \"x\" true)"], kind: "custom" });
   await hydrate(state, [{ name: "user", cels: [
     { key: "trigger", celType: "ValueCel", metadata: { key: "trigger", segment: "user" }, v: 0 },
@@ -171,7 +171,7 @@ test("string-list schema suppresses a recompute that yields equal contents", asy
   await precomputeOptional(state);
 
   const runCycle = resolveFn(state, "runCycle");
-  const set = resolveFn(state, "set");
+  const set = resolveFn(state, "setValue");
   await runCycle(state);
   const ref1 = state.cels.get("specs").v;
   assert.deepEqual(ref1, ["document|keydown|(set \"x\" true)"]);

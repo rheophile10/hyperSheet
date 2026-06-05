@@ -20,21 +20,23 @@ Public surface from `plastron-simple/src/index.ts`:
 
 ```ts
 import { createInitialState, precompute, precomputeOptional, resolveFn } from "plastron";
-const state = createInitialState();
+const state = createInitialState();          // or { lazy: ["sheet", …] }
 const hydrate  = resolveFn(state, "hydrate")  as Fn;   // async
 const runCycle = resolveFn(state, "runCycle") as Fn;
-const set      = resolveFn(state, "set")      as Fn;
-const batch    = resolveFn(state, "batch")    as Fn;
-const setCel   = resolveFn(state, "setCel")   as Fn;
-const register = resolveFn(state, "registerLambda") as Fn;
+const getCel   = resolveFn(state, "getCel")   as Fn;   // the ONE read — returns the live Cel, take .v
+const setValue = resolveFn(state, "setValue") as Fn;   // data plane: ValueCel.v | FormulaCel.f (recalc tier)
+const setCel   = resolveFn(state, "setCel")   as Fn;   // cel plane: whole-cel create/replace or metadata edit (recompile tier)
+// batch forms: setValueBatch ([key, value][]), setCelBatch (Record<key, CelSpec>)
 ```
 
 Notes:
 
 - **The cel registry is the dispatch surface.** Every fn — including core ones — lives as a cel in `state.cels`; `resolveFn(state, key)` returns `cel._fn`. There's no `state.fns` map.
-- **`hydrate` is async.** Compilers may return `Promise<CompiledLambda>` so they can lazy-load runtimes (Javy, wabt.js, Pyodide). Within each topo layer, `compileFireable` parallelizes via `Promise.all`. See `plastron-simple/docs/ASYNC-COMPILE.md`.
-- **Compilers are cels.** Register one with `registerLambda({ key: "myKind", fn: (source) => ..., kind: "custom" })`, then any `EditableLambdaCel` with `metadata.kind: "myKind"` will use it.
-- **Formula syntax is S-expression.** `(* price qty)`, `(+ a b c)`. The default parser is at key `"f"`; arithmetic builtins (`+ - * /`) live in the `builtins` segment.
+- **Two mutually exclusive write tiers.** `setValue` writes DATA (ValueCel.v, or a FormulaCel's f — its source is its content) and only ever triggers recalculation. `setCel` manages cels as STRUCTURE: with `celType` it creates/replaces the whole cel (this subsumes the old `registerLambda` — `{ celType: "LockedLambdaCel", fn }` or `{ celType: "EditableLambdaCel", f, metadata: { kind } }`); without `celType` it edits metadata only and refuses v/f. Replacing a DEFINITION cel (lambda/schema/compiler/channel/range) bumps `state.defGeneration`; consumers compiled against the old definition recompile at their next fire. `get`/`set`/`update`/`batch`/`registerLambda` no longer exist.
+- **`hydrate` is async.** Compilers may return `Promise<CompiledLambda>` so they can lazy-load runtimes (Javy, wabt.js, Pyodide). Within each topo layer, `compileFireable` parallelizes via `Promise.all`.
+- **Compilers are cels.** Install one with `setCel(state, "myKind", { celType: "LockedLambdaCel", fn: (source) => …, metadata: { kind: "native" } })`, then any `EditableLambdaCel` with `metadata.kind: "myKind"` uses it.
+- **Formula syntax is S-expression.** `(* price qty)`, `(+ a b c)`. The default parser is at key `"f"`; arithmetic builtins (`+ - * /`) plus `parseRange`/`rangeToKeys` live in the `builtins` segment. Range notation (`grid!A1:B3`, `1,1:2,2`) is a formula literal evaluating to nested member values; RangeCels are named ranges.
+- **Only Value/Formula cels carry coordinates** (`Coordinate = number`, n-dim, auto-derived from comma-integer keys). Definition cels are named, never positioned.
 
 ## Documentation flow — how docs and code move together
 
@@ -55,6 +57,8 @@ The pipeline:
 ```
 
 A feature moves: idea (`1-design/1-under-consideration/` — flat) → vetted (`1-design/2-in-evaluation/` — flat) → committed (`1-design/3-accepted/<area>/` + roadmap entry in `2-roadmap/`) → tested (`3-test-design/<area>/`) → shipped (`4-current/<area>/`). The `<area>` path component is added on acceptance; before that the area lives in frontmatter. Rejected ideas stay in place with `status: rejected`.
+
+**Plan-mode plans are design docs.** `plansDirectory` points at `1-design/1-under-consideration/`, so a plan-mode plan file is born in the pipeline's intake. Author it with the standard frontmatter (`title`, `status: under-consideration`, `area`); plan approval = acceptance — move it to `3-accepted/<area>/`, set `status: accepted`, and add the `2-roadmap/` entry (numbered critical-path file, or `parallel/` when unordered).
 
 **Agents contributing docs follow these conventions.** New design doc → land flat in `1-design/1-under-consideration/`. Promoting an idea → move into the next state folder + update frontmatter (acceptance adds the `<area>/` subfolder). Shipping a feature → write the `4-current/<area>/` doc, anchored in passing tests. If you're unsure which stage a doc belongs in, read the relevant meta-doc in `4-current/documentation/` first.
 

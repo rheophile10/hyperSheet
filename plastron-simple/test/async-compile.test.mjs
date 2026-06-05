@@ -14,7 +14,7 @@ const userManifest = {
 
 test("hydrate awaits a compiler that returns a Promise<CompiledLambda>", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const hydrate  = resolveFn(state, "hydrate");
 
   // Async compiler — yields once, then returns a bare Fn.
@@ -48,7 +48,7 @@ test("hydrate awaits a compiler that returns a Promise<CompiledLambda>", async (
 
 test("compileFireable parallelizes sync + async compilers within one topo layer", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const hydrate  = resolveFn(state, "hydrate");
 
   let asyncDelivered = 0;

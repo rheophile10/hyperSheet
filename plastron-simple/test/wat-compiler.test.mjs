@@ -23,7 +23,7 @@ const SIMPLE_ADD_WAT = `
 
 test("WAT source compiles into a callable Fn (i32 + i32)", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, { key: "adder", source: SIMPLE_ADD_WAT, kind: "wat" });
 
   const adder = resolveFn(state, "adder");
@@ -37,7 +37,7 @@ test("WAT source compiles into a callable Fn (i32 + i32)", async () => {
 
 test("WAT module with one non-main export uses it as the entry", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const src = `
     (module
       (func (export "negate") (param $x i32) (result i32)
@@ -53,7 +53,7 @@ test("WAT module with one non-main export uses it as the entry", async () => {
 
 test("WAT module with multiple exports and no 'main' throws a clear error", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const src = `
     (module
       (func (export "a") (result i32) i32.const 1)
@@ -69,7 +69,7 @@ test("WAT module with multiple exports and no 'main' throws a clear error", asyn
 
 test("when 'main' exists alongside other exports, it is selected", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const src = `
     (module
       (func (export "helper") (result i32) i32.const 99)
@@ -84,7 +84,7 @@ test("when 'main' exists alongside other exports, it is selected", async () => {
 
 test("WAT module with f64 args returns JS numbers transparently", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const src = `
     (module
       (func (export "main") (param $x f64) (param $y f64) (result f64)
@@ -103,7 +103,7 @@ test("forcing csp.wasm-available = false makes the WAT compiler throw a CSP-awar
   state.cels.set("csp.wasm-available", {
     ...state.cels.get("csp.wasm-available"), v: false,
   });
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await assert.rejects(
     () => register(state, { key: "should-fail", source: SIMPLE_ADD_WAT, kind: "wat" }),
     /csp\.wasm-available = false|WebAssembly is unavailable/i,
@@ -114,7 +114,7 @@ test("forcing csp.wasm-available = false makes the WAT compiler throw a CSP-awar
 
 test("syntactically invalid WAT throws from wabt with a usable error", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await assert.rejects(
     () => register(state, {
       key: "broken",

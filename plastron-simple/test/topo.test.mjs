@@ -1,11 +1,12 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
-import { topoLevels, dependentOrderFrom, transitiveClosure } from "../dist/kernel/topo.js";
+import { topoLevels, dependentOrderFrom, transitiveClosure } from "../dist/kernel/卜/topo.js";
 
 // ============================================================================
-// Direct coverage of the shared topo helper extracted from precompute.ts
-// and segments.ts. See docs/1-design/3-accepted/00-ontology/
-// segment-classification.md "Shared topo helper".
+// Direct coverage of the shared topo helper (kernel/卜/topo.ts) extracted
+// from precompute.ts and the segment graph — topoLevels / dependentOrderFrom
+// / transitiveClosure, the ordering primitives precompute and the segment
+// adjacency / wake-sleep walks build on.
 // ============================================================================
 
 test("topoLevels: linear chain a → b → c yields three levels", () => {

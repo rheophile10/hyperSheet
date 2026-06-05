@@ -97,7 +97,7 @@ test("forcing csp.eval-available = false makes the JS lambda compiler throw with
   state.cels.set("csp.eval-available", {
     ...state.cels.get("csp.eval-available"), v: false,
   });
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   // registerLambda is async (compilers can return Promises for lazy-
   // loaded runtimes); the throw fires inside the awaited compiler call,
   // so this is a rejected Promise rather than a sync throw.
@@ -109,7 +109,7 @@ test("forcing csp.eval-available = false makes the JS lambda compiler throw with
 
 test("with csp.eval-available = true, the JS lambda compiler runs and produces a working fn", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, { key: "doubler", source: "(x) => x * 2", kind: "js" });
   const doubler = resolveFn(state, "doubler");
   assert.equal(typeof doubler, "function");

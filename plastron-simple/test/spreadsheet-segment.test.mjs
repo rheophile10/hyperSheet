@@ -30,7 +30,7 @@ test("5×5 sheet: B1 = =A1*2 computes and updates when A1 is set", async () => {
   await runCycle(state);
   assert.equal(v(state, "sheet.B1"), 20, "=A1*2 with A1=10");
 
-  const set = resolveFn(state, "set");
+  const set = resolveFn(state, "setValue");
   await set(state, "sheet.A1", 5);
   assert.equal(v(state, "sheet.B1"), 10, "downstream formula recomputed on edit");
 });
@@ -122,7 +122,7 @@ test("50×50 hydrates < 1s; setting a cell read by 100 formulas fires in ~one fr
   assert.equal(v(state, "sheet.B1"), 1, "=A1+0");
   assert.equal(v(state, "sheet.C50"), 100, "=A1+99");
 
-  const set = resolveFn(state, "set");
+  const set = resolveFn(state, "setValue");
   await set(state, "sheet.A1", 2); // warm up the path (JIT, downstream cache)
   // Best-of-3 to take measurement noise out of the one-frame claim.
   let best = Infinity;

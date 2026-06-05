@@ -78,7 +78,7 @@ test("distinct sources produce distinct compiled envelopes", async () => {
 
 test("same source under different compiler kinds caches separately", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
 
   // A JS function source and an identical (but textually distinct)
   // WAT source — registered under their respective kinds. Verify the
@@ -152,13 +152,13 @@ test("setCel({ f: newSource }) hot-reloads the lambda; cascade re-fires", async 
   const replaced =
     "(module (func (export \"main\") (param $a i32) (param $b i32) (result i32) " +
     "local.get $a local.get $b i32.mul))";
-  await setCel(state, "op", { f: replaced });
+  await setCel(state, "op", { celType: "EditableLambdaCel", f: replaced, metadata: { segment: "user", kind: "wat" } });
   assert.equal(state.cels.get("out").v, 24);
 
   // Reverting to the original is a cache hit — no compile work, same
   // result.
   const cacheBefore = state.cels.get("compile.cache").v.size;
-  await setCel(state, "op", { f: initial });
+  await setCel(state, "op", { celType: "EditableLambdaCel", f: initial, metadata: { segment: "user", kind: "wat" } });
   const cacheAfter = state.cels.get("compile.cache").v.size;
   assert.equal(cacheAfter, cacheBefore, "reverting to a known source should hit the cache");
   assert.equal(state.cels.get("out").v, 10);
@@ -182,8 +182,9 @@ test("a compile error doesn't pollute the cache; fixing the source recompiles", 
   const cache = state.cels.get("compile.cache").v;
   assert.equal(cache.size, 0, "failed compile should not enter the cache");
 
-  // Fix the source — setCel triggers a fresh compile attempt.
+  // Fix the source — replacing the definition triggers a fresh compile.
   await setCel(state, "op", {
+    celType: "EditableLambdaCel", metadata: { segment: "user", kind: "wat" },
     f: "(module (func (export \"main\") (result i32) i32.const 42))",
   });
   assert.equal(typeof state.cels.get("op")._fn, "function", "valid source should compile");

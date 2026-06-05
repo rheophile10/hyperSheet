@@ -13,7 +13,7 @@ const userManifest = {
 
 const bootWithDynamic = async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const hydrate  = resolveFn(state, "hydrate");
 
   let counter = 0;
@@ -60,7 +60,7 @@ test("touch re-fires every cel with dynamic: true", async () => {
 
 test("touch does NOT fire non-dynamic cels", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const hydrate  = resolveFn(state, "hydrate");
 
   let nonDynFires = 0;

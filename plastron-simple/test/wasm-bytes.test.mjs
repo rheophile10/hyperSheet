@@ -79,7 +79,7 @@ test("wasm-bytes segment seeds the 'wasm' loader cel + status cels + bridges", (
 
 test("base64 wasm bytes load into a callable Fn via registerLambda (single export ladder)", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, { key: "adder", source: B64_ADD, kind: "wasm" });
 
   const adder = resolveFn(state, "adder");
@@ -91,7 +91,7 @@ test("base64 wasm bytes load into a callable Fn via registerLambda (single expor
 
 test("garbage (non-wasm) base64 fails with a friendly header message", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await assert.rejects(
     () => register(state, { key: "junk", source: toB64(new Uint8Array([1, 2, 3, 4])), kind: "wasm" }),
     /\\0asm|did not decode to a wasm module/i,
@@ -181,7 +181,7 @@ test("composite outputSchema yields a WasmHandle; wasm-to-js materializes it", a
 
 test("a metadata.imports provider supplies an 'env' namespace the module imports", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const hydrate  = resolveFn(state, "hydrate");
   const runCycle = resolveFn(state, "runCycle");
 
@@ -207,7 +207,7 @@ test("a metadata.imports provider supplies an 'env' namespace the module imports
 
 test("a module needing the same import with no provider traps (LinkError)", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   // No imports provider → only { host } is supplied; the module's
   // (import "env" "bump") is unsatisfied, so instantiate rejects.
   await assert.rejects(
@@ -231,7 +231,7 @@ test("wasm bytes load from a 'file-store:<path>' reference", async () => {
   // Stage the bytes in the file store, then load them through the kind.
   await resolveFn(state, "fs.write")(relPath, await watBytes(state, ADD_WAT));
 
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, { key: "fs-adder", source: `file-store:${relPath}`, kind: "wasm" });
 
   const adder = resolveFn(state, "fs-adder");
@@ -281,7 +281,7 @@ const state_get = (state, key) => state.cels.get(key).v;
 test("csp.wasm-available = false makes the wasm loader refuse with a CSP-aware message", async () => {
   const state = createInitialState();
   state.cels.set("csp.wasm-available", { ...state.cels.get("csp.wasm-available"), v: false });
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await assert.rejects(
     () => register(state, { key: "blocked", source: B64_ADD, kind: "wasm" }),
     /csp\.wasm-available = false|WebAssembly is unavailable/i,

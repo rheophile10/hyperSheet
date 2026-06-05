@@ -45,7 +45,7 @@ test("the packaged OS boots to a home screen, launches Sheets, and exits home", 
   // and the shared file toolbar's New/Save/Open buttons are part of the chrome.
   button(root, "Sheets").fire("click");
   await tick(); painter.drain();
-  assert.equal(resolveFn(state, "get")(state, "os.active"), "sheets");
+  assert.equal(resolveFn(state, "getCel")(state, "os.active")?.v, "sheets");
   assert.match(txt(root), /Item/, "Sheets grid rendered (seeded A1)");
   assert.match(txt(root), /Total/);
   for (const t of ["New", "Save", "Open"]) assert.ok(button(root, t), `shared file toolbar shows ${t} in Sheets`);
@@ -55,7 +55,7 @@ test("the packaged OS boots to a home screen, launches Sheets, and exits home", 
   await tick(); painter.drain();
   button(root, "Notepad").fire("click");
   await tick(); painter.drain();
-  assert.equal(resolveFn(state, "get")(state, "os.active"), "notepad");
+  assert.equal(resolveFn(state, "getCel")(state, "os.active")?.v, "notepad");
   for (const t of ["New", "Save", "Open"]) assert.ok(button(root, t), `shared file toolbar shows ${t} in Notepad`);
 
   // Exit → launch Files → File Explorer view paints.
@@ -63,13 +63,13 @@ test("the packaged OS boots to a home screen, launches Sheets, and exits home", 
   await tick(); painter.drain();
   button(root, "Files").fire("click");
   await tick(); painter.drain();
-  assert.equal(resolveFn(state, "get")(state, "os.active"), "file-explorer");
+  assert.equal(resolveFn(state, "getCel")(state, "os.active")?.v, "file-explorer");
   assert.match(txt(root), /File Explorer|Files|user-space|No user-spaces/, "file-explorer renders its chrome");
 
   // Final exit → back to the launcher.
   button(root, "×").fire("click");
   await tick(); painter.drain();
-  assert.equal(resolveFn(state, "get")(state, "os.active"), "home");
+  assert.equal(resolveFn(state, "getCel")(state, "os.active")?.v, "home");
   assert.ok(button(root, "Notepad"), "icons back after exit");
 });
 
@@ -82,7 +82,7 @@ test("Notepad doc round-trip — New A → type → Save → New B → type → 
   const { resolveFn, getPainter } = await import("../../plastron-simple/dist/index.js");
   const painter = getPainter(state);
   const r = (k) => resolveFn(state, k);
-  const get = (k) => r("get")(state, k);
+  const get = (k) => r("getCel")(state, k)?.v;
   // Unique suffixes so successive runs against the same node-fs root don't collide.
   const tag = `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const docA = `notepad-A-${tag}.txt`, docB = `notepad-B-${tag}.txt`;
@@ -147,7 +147,7 @@ test("File Explorer lists user-spaces created by Notepad and opens them", async 
   const { resolveFn, getPainter } = await import("../../plastron-simple/dist/index.js");
   const painter = getPainter(state);
   const r = (k) => resolveFn(state, k);
-  const get = (k) => r("get")(state, k);
+  const get = (k) => r("getCel")(state, k)?.v;
   const tag = `fe${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const docA = `fe-A-${tag}.txt`;
 
@@ -187,7 +187,7 @@ test("Sheets doc round-trip — New A → edits → Save → New B → edits →
   const { resolveFn, getPainter } = await import("../../plastron-simple/dist/index.js");
   const painter = getPainter(state);
   const r = (k) => resolveFn(state, k);
-  const get = (k) => r("get")(state, k);
+  const get = (k) => r("getCel")(state, k)?.v;
   const tag = `sh${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const docA = `sheets-A-${tag}.csv`, docB = `sheets-B-${tag}.csv`;
 
@@ -197,15 +197,15 @@ test("Sheets doc round-trip — New A → edits → Save → New B → edits →
   // New A → set some cells (use setCel directly since the click-into-bar-out
   // flow is exercised in sheets.test.ts) → Save.
   await r("file.new")(state, docA);
-  await r("set")(state, "sheet.A1", "doc-A-A1");
-  await r("set")(state, "sheet.B2", "42");
+  await r("setValue")(state, "sheet.A1", "doc-A-A1");
+  await r("setValue")(state, "sheet.B2", "42");
   await tick(); painter.drain();
   await r("file.save")(state);
 
   // New B → different cells → Save.
   await r("file.new")(state, docB);
   assert.equal(get("sheet.A1"), "", "New cleared the grid");
-  await r("set")(state, "sheet.A1", "doc-B-A1");
+  await r("setValue")(state, "sheet.A1", "doc-B-A1");
   await r("file.save")(state);
 
   // Open A → original cells restored.

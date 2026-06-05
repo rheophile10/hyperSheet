@@ -77,7 +77,7 @@ test("LambdaCels passed as args still resolve to their _fn (no regression)", asy
   // When referenced as an arg, args should still see the callable.
   const state = createInitialState();
   const hydrate = resolveFn(state, "hydrate");
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const runCycle = resolveFn(state, "runCycle");
 
   await register(state, { key: "double", source: "(x) => x * 2", kind: "js" });

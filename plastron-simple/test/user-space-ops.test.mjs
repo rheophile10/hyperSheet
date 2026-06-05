@@ -50,9 +50,14 @@ test("user-space-ops seeds its five lifecycle cels", () => {
   }
 });
 
-test("user-space-ops is in the kernel closure — flush refuses it", async () => {
+test("user-space-ops is NOT in the kernel closure — flush no longer refuses it", async () => {
   const state = createInitialState();
-  await assert.rejects(() => fn(state, "flush")(state, "user-space-ops"), /kernel closure/i);
+  // Honest closure (roadmap 02): kernel.dependencies is [], so the
+  // closure is {kernel} alone and user-space-ops is an ordinary library.
+  // Flush is no longer refused on kernel-closure grounds; with { force }
+  // (it has a dependent, app-host) it flushes cleanly.
+  await fn(state, "flush")(state, "user-space-ops", { force: true });
+  assert.equal(resolveFn(state, "newUserSpace"), undefined, "its cels are gone");
 });
 
 // ── newUserSpace ──────────────────────────────────────────────────────────

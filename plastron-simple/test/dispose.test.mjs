@@ -4,14 +4,14 @@ import { createInitialState, resolveFn } from "../dist/index.js";
 
 test("registered cel carries _dispose when args.dispose was provided", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, { key: "withDispose", fn: () => 1, dispose: () => {} });
   assert.equal(typeof state.cels.get("withDispose")._dispose, "function");
 });
 
 test("re-register fires the previous _dispose once", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   let fired = 0;
   await register(state, { key: "wd", fn: () => 1, dispose: () => { fired++; } });
   await register(state, { key: "wd", fn: () => 2 });
@@ -20,7 +20,7 @@ test("re-register fires the previous _dispose once", async () => {
 
 test("re-register without a new dispose clears cel._dispose", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, { key: "wd", fn: () => 1, dispose: () => {} });
   await register(state, { key: "wd", fn: () => 2 });
   assert.equal(state.cels.get("wd")._dispose, undefined);
@@ -28,7 +28,7 @@ test("re-register without a new dispose clears cel._dispose", async () => {
 
 test("re-register with a new dispose installs it on the cel", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, { key: "wd", fn: () => 1, dispose: () => {} });
   let secondFired = 0;
   await register(state, { key: "wd", fn: () => 2, dispose: () => { secondFired++; } });
@@ -40,7 +40,7 @@ test("re-register with a new dispose installs it on the cel", async () => {
 
 test("a dispose that throws does not halt registration", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, {
     key: "wd",
     fn: () => 1,

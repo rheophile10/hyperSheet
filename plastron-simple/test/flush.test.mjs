@@ -108,7 +108,7 @@ test("flush with { cascade: true } flushes dependents first, leaves-first", asyn
 
 test("flush fires _dispose on lambda cels before deletion", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const flush    = resolveFn(state, "flush");
   let disposed = 0;
   await register(state, {
@@ -125,11 +125,11 @@ test("flush fires _dispose on lambda cels before deletion", async () => {
 test("flush refuses to remove segments in the kernel closure", async () => {
   const state = createInitialState();
   const flush = resolveFn(state, "flush");
-  // Post-segment-classification: flushing any kernel-closure member
-  // (role:"kernel" or transitively depended on by one) throws
-  // outright. `force: true` doesn't bypass — the kernel set is
-  // unflushable. See 1-design/3-accepted/00-ontology/
-  // segment-classification.md "Multi-segment kernel".
+  // The kernel closure is exactly {kernel} now (honest-closure work,
+  // roadmap 02/03: kernel.dependencies is [] and cel-error folded in), so
+  // flushing "kernel" throws outright. `force: true` doesn't bypass — the
+  // kernel set is unflushable. See 1-design/3-accepted/00-ontology/
+  // derived-activity-working-set.md.
   let threw = false;
   try { await flush(state, "kernel", { force: true }); } catch (e) {
     threw = true;

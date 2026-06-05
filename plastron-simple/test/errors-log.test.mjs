@@ -1,7 +1,6 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
-import { createInitialState, resolveFn } from "../dist/index.js";
-import { isCelError } from "../dist/甲骨坑/cel-error.js";
+import { createInitialState, resolveFn, isCelError } from "../dist/index.js";
 
 // State-level error log. Every trap (compile, runtime, cycle,
 // missing-compiler, compiler-cycle) appends a CelError to the cel at

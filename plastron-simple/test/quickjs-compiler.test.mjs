@@ -35,7 +35,7 @@ test("a quickjs lambda compiles and runs", { timeout: 60000 }, async () => {
   console.log("loading QuickJS runtime; ~50-200ms first time");
 
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, {
     key: "qjs-double",
     kind: "quickjs",
@@ -51,7 +51,7 @@ test("a quickjs lambda compiles and runs", { timeout: 60000 }, async () => {
 
 test("quickjs lambda receives string args and returns string results", { timeout: 60000 }, async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, {
     key: "qjs-greet",
     kind: "quickjs",
@@ -63,7 +63,7 @@ test("quickjs lambda receives string args and returns string results", { timeout
 
 test("quickjs lambda handles multiple args", { timeout: 60000 }, async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, {
     key: "qjs-add",
     kind: "quickjs",
@@ -77,7 +77,7 @@ test("quickjs lambda handles multiple args", { timeout: 60000 }, async () => {
 
 test("quickjs source without a trailing callable throws a clear error", { timeout: 60000 }, async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await assert.rejects(
     () => register(state, {
       key: "not-callable",
@@ -98,7 +98,7 @@ test("a quickjs lambda can call host.log and host.now", { timeout: 60000 }, asyn
   state.cels.get("host.log")._fn = (msg) => { calls.push(msg); };
   state.cels.get("host.now")._fn = () => 1234;
 
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, {
     key: "qjs-with-host",
     kind: "quickjs",
@@ -144,7 +144,7 @@ test("csp.wasm-available = false rejects quickjs compile before runtime load", {
   state.cels.set("csp.wasm-available", {
     ...state.cels.get("csp.wasm-available"), v: false,
   });
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await assert.rejects(
     () => register(state, { key: "x", kind: "quickjs", source: "((x) => x)" }),
     /csp\.wasm-available = false|WebAssembly is unavailable/i,

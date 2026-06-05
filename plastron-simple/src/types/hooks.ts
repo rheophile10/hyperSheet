@@ -11,7 +11,7 @@ export interface MemoConfig {
 }
 
 /** L1 cache surface. Reference-keyed lookup over a tuple of input
- *  values. Implementations: kernel/memo-cache.ts:LruMemoCache. */
+ *  values. Implementations: kernel/卜/memo-cache.ts:LruMemoCache. */
 export interface MemoCache {
   get(keys: readonly unknown[]): { value: unknown } | undefined;
   set(keys: readonly unknown[], value: unknown): void;

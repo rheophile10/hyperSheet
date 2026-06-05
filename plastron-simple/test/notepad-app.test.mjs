@@ -14,7 +14,7 @@ const {
   createInitialState, precomputeOptional, resolveFn,
   buildNotepad, installNotepadActions, createPainter, setPainter,
 } = await import("../dist/index.js");
-const { makeListener } = await import("../dist/甲骨坑/dom/events.js");
+const { makeListener } = await import("../dist/甲骨坑/library/plastron-dom/utils/events.js");
 
 // ── file-store cleanup (node-fs backend, env-rooted) ────────────────────────
 const activeRoot = createInitialState().cels.get("file-store.root").v;
@@ -131,7 +131,7 @@ test("notepad.save persists the note and notepad.load restores it", async () => 
   await resolveFn(state, "notepad.save")(state);
   assert.equal(await resolveFn(state, "fs.exists")("notes/keep.txt"), true, "save wrote the note file");
 
-  await resolveFn(state, "set")(state, "notepad.text", "");
+  await resolveFn(state, "setValue")(state, "notepad.text", "");
   assert.equal(v(state, "notepad.text"), "", "note cleared");
 
   await resolveFn(state, "notepad.load")(state);

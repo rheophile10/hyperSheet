@@ -30,7 +30,15 @@ import { DOOM_WASM_GZ_B64, DOOM_WAD_GZ_B64 } from "./doom-assets-inline.js";
 // against a per-test globalThis.document (Bun caches modules; a top-level
 // `const state = createInitialState()` would be shared across tests).
 
-export const bootOS = async (): Promise<{ state: ReturnType<typeof createInitialState> }> => {
+export interface BootOpts {
+  /** Defer sheets/notepad/doom setup (hydrate + formula compile) until the
+   *  app's first os.switch / os.launch, then idle-prefetch the rest after
+   *  the home screen paints. The real page boots with this on; tests call
+   *  bootOS() bare and keep the eager order they were written against. */
+  deferApps?: boolean;
+}
+
+export const bootOS = async (opts: BootOpts = {}): Promise<{ state: ReturnType<typeof createInitialState> }> => {
 const state = createInitialState();
 const r = (k: string) => resolveFn(state, k) as (...a: unknown[]) => unknown;
 
@@ -38,10 +46,10 @@ const r = (k: string) => resolveFn(state, k) as (...a: unknown[]) => unknown;
 // (We bypass buildNotepad's view to fit the per-view mount-gating + shared
 // toolbar pattern; its data layer is small enough to re-author here.)
 const setupNotepad = async (): Promise<void> => {
-  await r("registerLambda")(state, {
-    key: "notepad.input", kind: "custom",
+  await r("setCel")(state, "notepad.input", {
+    celType: "EditableLambdaCel", metadata: { kind: "custom" },
     fn: async (st: unknown, _p: unknown, event: { target?: { value?: string } }) => {
-      await (resolveFn(st as never, "set") as (...a: unknown[]) => unknown)(st, "notepad.text", event?.target?.value ?? "");
+      await (resolveFn(st as never, "setValue") as (...a: unknown[]) => unknown)(st, "notepad.text", event?.target?.value ?? "");
     },
   });
   const seg = {
@@ -94,7 +102,7 @@ const setupDoom = async (): Promise<void> => {
   let booting = false;
 
   const setStatus = async (msg: string): Promise<void> => {
-    await (r("set") as (...a: unknown[]) => Promise<unknown>)(state, "doom.status", msg);
+    await (r("setValue") as (...a: unknown[]) => Promise<unknown>)(state, "doom.status", msg);
   };
 
   // OPFS-first asset loader (see doc block above setupDoom). One source-order
@@ -183,8 +191,8 @@ const setupDoom = async (): Promise<void> => {
   //   active → anything : stop the live engine (cancels its RAF tick loop)
   //                       and clear the reference so the next entry is fresh.
   // This is what makes the × close-button genuinely shut Doom down.
-  await r("registerLambda")(state, {
-    key: "doom.maybe-boot", kind: "custom",
+  await r("setCel")(state, "doom.maybe-boot", {
+    celType: "EditableLambdaCel", metadata: { kind: "custom" },
     fn: (active: unknown): null => {
       if (active === "doom") {
         if (!doomHarness && !booting && typeof requestAnimationFrame === "function") {
@@ -256,8 +264,8 @@ const setupDoom = async (): Promise<void> => {
     });
 
     await setStatus("hydrating wasm cel…");
-    await r("registerLambda")(state, {
-      key: "doom-provider", segment: "doom", kind: "custom",
+    await r("setCel")(state, "doom-provider", {
+      celType: "EditableLambdaCel", metadata: { segment: "doom", kind: "custom" },
       fn: () => doomHarness!.provider(),
     });
     const runtimeSeg = {
@@ -285,8 +293,8 @@ const setupDoom = async (): Promise<void> => {
   // ./freedoom1.wad (dev server proxy). No user picker — if every source
   // fails the status surfaces the missing-asset error and bundling needs
   // to be re-run with freedoom1.wad available at build time.
-  await r("registerLambda")(state, {
-    key: "doom.boot", segment: "doom", kind: "native", locked: true,
+  await r("setCel")(state, "doom.boot", {
+    celType: "LockedLambdaCel", locked: true, metadata: { segment: "doom", kind: "native" },
     fn: async (): Promise<unknown> => {
       if (doomHarness || booting) return state;
       booting = true;
@@ -339,6 +347,40 @@ const bytesToB64 = (b: Uint8Array): string => {
 };
 
 // ── boot ────────────────────────────────────────────────────────────────────
+// App setup thunks, consumed on first launch (deferApps) or in the original
+// eager order (default). Each setup hydrates the app's segment — formula/
+// template compiles plus a full precompute — which is exactly the work we
+// want off the first-paint path.
+const appSetups = new Map<string, () => Promise<void>>([
+  ["sheets", () => buildSheetsApp(state, {
+    rows: 8, cols: 5,
+    cells: { A1: "Item", B1: "Qty", C1: "Price", D1: "Total", A2: "Widget", B2: "3", C2: "4", D2: "=B2*C2", A3: "Gadget", B3: "5", C3: "2", D3: "=B3*C3", D4: "=D2+D3" },
+  })],
+  ["notepad", setupNotepad],
+  ["doom", setupDoom],
+]);
+const ensureApp = async (id: string): Promise<void> => {
+  const setup = appSetups.get(id);
+  if (!setup) return;
+  appSetups.delete(id);                     // consume before awaiting — no double setup
+  try { await setup(); } catch (e) { appSetups.set(id, setup); throw e; }
+  // Deferred setups land after boot's initial runCycle, so the new
+  // segment's formulas (e.g. sheets' per-cell views — not downstream of
+  // os.active) have never evaluated. Settle them with a full cycle;
+  // the eager path skips this — boot's own runCycle covers it.
+  if (opts.deferApps) await r("runCycle")(state);
+};
+
+// App-type literals (key/title/extension/icon) duplicated from each app's
+// *.app-type cel so file cards + the toolbar's Save extension resolve
+// before the owning app's first launch. Each app re-registers the same
+// record at setup — fe.register-app overwrites by key, so this is benign.
+const APP_TYPES = [
+  { key: "sheets",  title: "Sheets",  extension: "csv", icon: "📊" },
+  { key: "notepad", title: "Notepad", extension: "txt", icon: "📝" },
+  { key: "doom",    title: "Doom",    extension: "wad", icon: "🎮" },
+];
+
 await setupDesktop(state, [
   { id: "sheets", title: "Sheets", icon: "📊" },
   { id: "notepad", title: "Notepad", icon: "📝" },
@@ -352,12 +394,25 @@ await setupDesktop(state, [
 await setupFileExplorer(state);
 await setupFileToolbar(state);
 await setupFilePicker(state);   // shared Open modal — depends on fe cels at runtime
-await buildSheetsApp(state, {
-  rows: 8, cols: 5,
-  cells: { A1: "Item", B1: "Qty", C1: "Price", D1: "Total", A2: "Widget", B2: "3", C2: "4", D2: "=B2*C2", A3: "Gadget", B3: "5", C3: "2", D3: "=B3*C3", D4: "=D2+D3" },
-});
-await setupNotepad();
-await setupDoom();
+
+if (opts.deferApps) {
+  for (const t of APP_TYPES) await r("fe.register-app")(state, t);
+  // First-launch hook: wrap os.switch + os.launch so activating an app
+  // runs its deferred setup first. The app-host cels are module-level
+  // instances shared across createInitialState calls, so the wrapper
+  // guards on `st === state` and passes every other state straight through.
+  for (const key of ["os.switch", "os.launch"]) {
+    const cel = state.cels.get(key) as { _fn?: (...a: unknown[]) => unknown } | undefined;
+    const orig = cel?._fn;
+    if (!cel || !orig) continue;
+    cel._fn = async (st: unknown, appId: unknown, ...rest: unknown[]) => {
+      if (st === state && typeof appId === "string") await ensureApp(appId);
+      return orig(st, appId, ...rest);
+    };
+  }
+} else {
+  for (const id of ["sheets", "notepad", "doom"]) await ensureApp(id);
+}
 
 // ── seed the desktop on first boot ─────────────────────────────────────────
 // /Desktop is always present (file-explorer seeds it). The README is created
@@ -370,9 +425,13 @@ const seedDesktopReadme = async (): Promise<void> => {
   if (await storeHas(READ_ME)) return;                  // already exists in OPFS / node-fs
   if (state.segments.has(READ_ME)) return;              // or already loaded in this session
 
+  // First boot only: the README is a notepad doc, so notepad's segment
+  // (notepad.text + role:application manifest) must exist before
+  // newUserSpace validates against it. Subsequent boots return above.
+  await ensureApp("notepad");
   await (r("newUserSpace") as (...a: unknown[]) => Promise<unknown>)(state, READ_ME, "notepad", { autoSave: false });
   await (await import("./doc-binding.js")).rebindCelsToDoc(state, "notepad", READ_ME, { clear: true });
-  await r("set")(state, "notepad.text",
+  await r("setValue")(state, "notepad.text",
     [
       "🐢  Welcome to plastron-OS",
       "",
@@ -415,8 +474,8 @@ await precomputeOptional(state);
 // across createInitialState calls (module-level cel instances), so a prior
 // bootOS in the same process can leave os.active != "home". Resetting here
 // makes "boot to home" deterministic.
-await r("set")(state, "os.active", "home");
-await r("set")(state, "os.doc", null);
+await r("setValue")(state, "os.active", "home");
+await r("setValue")(state, "os.doc", null);
 
 if (typeof document !== "undefined") {
   setPainter(state, createPainter(state)); // host defaults: rAF + document
@@ -429,10 +488,28 @@ if (typeof window !== "undefined") {
   (window as unknown as { __plastron?: unknown }).__plastron = { state, resolveFn: (k: string) => resolveFn(state, k) };
 }
 
+// Idle prefetch — after the home screen is interactive, warm the deferred
+// apps so the first icon click is instant anyway. Failures are swallowed;
+// the first-launch hook retries (ensureApp re-parks the thunk on throw).
+if (opts.deferApps && typeof window !== "undefined") {
+  const w = window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void };
+  const idle = (cb: () => void): void => {
+    if (w.requestIdleCallback) w.requestIdleCallback(cb, { timeout: 5000 });
+    else setTimeout(cb, 1500);
+  };
+  idle(() => {
+    void (async () => {
+      for (const id of [...appSetups.keys()]) {
+        try { await ensureApp(id); } catch { /* retried on first launch */ }
+      }
+    })();
+  });
+}
+
 return { state };
 };
 
 // Auto-boot in the browser; tests skip this branch by setting no document
 // before importing, then explicitly call bootOS() after their mkEl setup.
 const isBrowser = typeof window !== "undefined" && typeof document !== "undefined" && (document as unknown as { documentElement?: unknown }).documentElement !== undefined;
-export const bootedState = isBrowser ? (await bootOS()).state : undefined;
+export const bootedState = isBrowser ? (await bootOS({ deferApps: true })).state : undefined;

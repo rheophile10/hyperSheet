@@ -47,9 +47,9 @@ export const DESKTOP_FOLDER = "/Desktop";
 
 type State = unknown;
 const get = (state: State, k: string): unknown =>
-  (resolveFn(state as never, "get") as (...a: unknown[]) => unknown)(state as never, k);
+  (resolveFn(state as never, "getCel") as (...a: unknown[]) => { v?: unknown } | undefined)(state as never, k)?.v;
 const set = async (state: State, k: string, v: unknown): Promise<void> => {
-  await (resolveFn(state as never, "set") as (...a: unknown[]) => Promise<unknown>)(state as never, k, v, { flush: "all" });
+  await (resolveFn(state as never, "setValue") as (...a: unknown[]) => Promise<unknown>)(state as never, k, v, { flush: "all" });
 };
 const callFn = async (state: State, k: string, ...args: unknown[]): Promise<unknown> =>
   await (resolveFn(state as never, k) as (...a: unknown[]) => Promise<unknown>)(state as never, ...args);
@@ -334,7 +334,9 @@ const knownApps = (state: State): string[] => {
 };
 
 export const setupFileExplorer = async (state: State): Promise<void> => {
-  const reg = resolveFn(state as never, "registerLambda") as (s: unknown, a: unknown) => Promise<unknown>;
+  const setCelFn_ = resolveFn(state as never, "setCel") as (s: unknown, k: string, spec: unknown) => Promise<unknown>;
+  const reg = (s: unknown, a: { key: string; fn?: unknown; kind?: string; locked?: boolean; segment?: string }) =>
+    setCelFn_(s, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, metadata: { segment: a.segment, kind: a.kind } });
   await reg(state, { key: "renderBreadcrumb",  fn: renderBreadcrumb,  kind: "custom" });
   await reg(state, { key: "renderExplorerBody", fn: renderExplorerBody, kind: "custom" });
   await reg(state, { key: "fe.refresh",   fn: refresh,   kind: "custom" });

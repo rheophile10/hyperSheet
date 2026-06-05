@@ -24,7 +24,7 @@ test("wasm-to-wat utility cel is seeded by wat-compiler", () => {
 
 test("a compiled wat lambda exposes its wasm bytes on cel._wasm", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, { key: "adder", source: SIMPLE_ADD_WAT, kind: "wat" });
 
   // registerLambda doesn't go through compileCelBody (it calls the

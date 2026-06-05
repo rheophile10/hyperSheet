@@ -38,7 +38,9 @@ export const renderIcons = (apps: DesktopApp[] | undefined): string =>
 
 /** Register the small view-stdlib the desktop templates use. */
 export const registerDesktopHelpers = async (state: unknown): Promise<void> => {
-  const reg = resolveFn(state as never, "registerLambda") as (s: unknown, a: unknown) => Promise<unknown>;
+  const setCelFn_ = resolveFn(state as never, "setCel") as (s: unknown, k: string, spec: unknown) => Promise<unknown>;
+  const reg = (s: unknown, a: { key: string; fn?: unknown; kind?: string; locked?: boolean; segment?: string }) =>
+    setCelFn_(s, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, metadata: { segment: a.segment, kind: a.kind } });
   await reg(state, { key: "if", fn: (c: unknown, a: unknown, b: unknown) => (c ? a : b), kind: "custom" });
   await reg(state, { key: "eq", fn: (a: unknown, b: unknown) => a === b, kind: "custom" });
   await reg(state, { key: "renderIcons", fn: renderIcons, kind: "custom" });

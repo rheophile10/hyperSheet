@@ -1,7 +1,7 @@
 import { test, afterAll } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, resolveFn, isWasmHandle } from "../dist/index.js";
-import { _resetPyWorker } from "../dist/甲骨坑/py-compiler.js";
+import { _resetPyWorker } from "../dist/甲骨坑/library/py-compiler/index.js";
 
 const baseManifest = { name: "user", version: "0.0.1", description: "test", dependencies: [] };
 

@@ -1,7 +1,7 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, resolveFn } from "../dist/index.js";
-import { computeKernelClosure } from "../dist/kernel/segments.js";
+import { computeKernelClosure } from "../dist/kernel/segments/graph.js";
 
 // ============================================================================
 // Segment classification — role + applications field, validation rules,
@@ -34,7 +34,10 @@ test("explicit role preserved through hydrate", async () => {
   assert.equal(state.segments.get("my-app")?.role, "application");
 });
 
-test("kernel manifest declares role:kernel in boot 冊.json", () => {
+test("kernel role is derived from folder placement (not declared in 冊.json)", () => {
+  // role left the seed JSON (roadmap 01/06): 冊.json carries no `role`
+  // field; createInitialState stamps each bundled manifest's role from its
+  // 甲骨坑/{kernel,library,application}/ folder (roleOf in src/index.ts).
   const state = createInitialState();
   assert.equal(state.segments.get("kernel")?.role, "kernel");
 });
@@ -125,23 +128,28 @@ test("computeKernelClosure returns role:kernel + transitive deps", () => {
   const state = createInitialState();
   const closure = computeKernelClosure(state.segments);
   assert.ok(closure.has("kernel"), "kernel itself in closure");
-  // kernel depends on csp, cel-error, host, wasm-types, lambda-source,
-  // js-compiler, builtins, wat-compiler, py-compiler, quickjs-compiler,
-  // file-store — all should be in closure.
-  for (const lib of ["csp", "cel-error", "host", "builtins", "js-compiler", "file-store"]) {
-    assert.ok(closure.has(lib), `library "${lib}" should be in kernel closure (transitive dep of kernel)`);
+  // Honest closure (roadmap 02): kernel.dependencies is [] and cel-error
+  // folded into the kernel segment, so the closure is {kernel} alone.
+  // Libraries are NO LONGER in the kernel closure — they dehydrate and
+  // flush like any other segment.
+  assert.equal(closure.size, 1, "closure is {kernel} alone");
+  for (const lib of ["csp", "host", "builtins", "js-compiler", "file-store"]) {
+    assert.ok(!closure.has(lib), `library "${lib}" must NOT be in kernel closure`);
   }
 });
 
-test("flush refuses any segment in the kernel closure", async () => {
+test("flush refuses the kernel segment; libraries flush freely", async () => {
   const state = createInitialState();
   const flush = resolveFn(state, "flush");
-  // builtins is a library but is in kernel's dep closure → flush refused.
+  // kernel itself is the only flush-protected segment now.
   await assert.rejects(
-    flush(state, "builtins", { force: true }),
+    flush(state, "kernel", { force: true }),
     /kernel closure/,
   );
-  assert.ok(state.cels.get("+"), "+ cel should still be present");
+  // builtins is an ordinary library: no longer kernel-protected, so a
+  // forced flush succeeds and drops its cels.
+  await flush(state, "builtins", { force: true });
+  assert.ok(!state.cels.get("+"), "+ cel should be flushed away with builtins");
 });
 
 // ── Library applications-tag warning (advisory, not error) ─────────────────

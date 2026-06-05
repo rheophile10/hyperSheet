@@ -1,0 +1,49 @@
+{
+  "name": "notepad",
+  "version": "0.0.1",
+  "role": "application",
+  "dependencies": ["html-template-parser", "plastron-dom"],
+  "cels": [
+    {
+      "key": "notepad.text",
+      "celType": "ValueCel",
+      "metadata": { "key": "notepad.text", "segment": "notepad" },
+      "v": ""
+    },
+    {
+      "key": "notepad.mount",
+      "celType": "ValueCel",
+      "metadata": { "key": "notepad.mount", "segment": "notepad" },
+      "v": "#notepad"
+    },
+    {
+      "key": "notepad.path",
+      "celType": "ValueCel",
+      "metadata": { "key": "notepad.path", "segment": "notepad" },
+      "v": "notepad.txt"
+    },
+    {
+      "key": "notepad.input-binding",
+      "celType": "ValueCel",
+      "metadata": { "key": "notepad.input-binding", "segment": "notepad" },
+      "v": { "set": "notepad.text", "extract": "value" }
+    },
+    {
+      "key": "notepad.view",
+      "celType": "FormulaCel",
+      "metadata": {
+        "key": "notepad.view",
+        "segment": "notepad",
+        "parser": "html-template",
+        "schema": "render-spec",
+        "channel": ["plastron-dom.paint"],
+        "inputMap": {
+          "text": "notepad.text",
+          "mount": "notepad.mount",
+          "binding": "notepad.input-binding"
+        }
+      },
+      "f": "<div class=\"notepad\" id=\"notepad\">\n  <div class=\"notepad-toolbar\">\n    <button class=\"notepad-save\" onClick={{(dispatch notepad.save)}}>Save</button>\n    <button class=\"notepad-load\" onClick={{(dispatch notepad.load)}}>Load</button>\n  </div>\n  <textarea class=\"notepad-text\" rows=\"20\" value={{text}} onInput={{binding}}></textarea>\n</div>"
+    }
+  ]
+}

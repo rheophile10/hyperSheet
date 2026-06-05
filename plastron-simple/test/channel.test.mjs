@@ -18,7 +18,7 @@ const userManifest = {
 const bootWithChannel = async () => {
   const captured = [];
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, {
     key: "captureDrain",
     fn: (items) => { for (const item of items) captured.push(item); },
@@ -65,7 +65,7 @@ test("a fired cel bound to a channel enqueues onto that channel", async () => {
 test("set triggers cascade + channel enqueue on the affected cel only", async () => {
   const { state, captured } = await bootWithChannel();
   const runCycle = resolveFn(state, "runCycle");
-  const set      = resolveFn(state, "set");
+  const set      = resolveFn(state, "setValue");
   const drain    = resolveFn(state, "drain");
 
   await runCycle(state);
@@ -81,7 +81,7 @@ test("set triggers cascade + channel enqueue on the affected cel only", async ()
 test("set with { flush: 'all' } drains channels inline", async () => {
   const { state, captured } = await bootWithChannel();
   const runCycle = resolveFn(state, "runCycle");
-  const set      = resolveFn(state, "set");
+  const set      = resolveFn(state, "setValue");
   const drain    = resolveFn(state, "drain");
   await runCycle(state);
   await drain(state, "ch");
@@ -100,7 +100,7 @@ test("drain on an unknown channel key is a no-op", async () => {
 test("a cel writing the same value doesn't re-enqueue (output diff suppresses)", async () => {
   const { state, captured } = await bootWithChannel();
   const runCycle = resolveFn(state, "runCycle");
-  const set      = resolveFn(state, "set");
+  const set      = resolveFn(state, "setValue");
   const drain    = resolveFn(state, "drain");
   await runCycle(state);
   await drain(state, "ch");

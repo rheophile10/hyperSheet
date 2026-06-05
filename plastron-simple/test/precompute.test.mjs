@@ -80,7 +80,7 @@ test("downstream is a lazy memoized cache — empty until first affectedFor call
 
   // A set call invokes affectedFor, which fills the cache for the
   // written key.
-  const set = resolveFn(state, "set");
+  const set = resolveFn(state, "setValue");
   await set(state, "src", 7);
   assert.ok(idx.downstream.has("src"), "downstream(src) cached on first write");
   const dsSrc = idx.downstream.get("src");
@@ -90,7 +90,7 @@ test("downstream is a lazy memoized cache — empty until first affectedFor call
 
 test("a fresh precompute pass wipes downstream and bumps the generation token", async () => {
   const state = await bootDiamond();
-  const set = resolveFn(state, "set");
+  const set = resolveFn(state, "setValue");
   await set(state, "src", 11); // populate downstream cache + bump generation
   const idxBefore = indexesOf(state);
   const genBefore = state.precomputeGeneration;

@@ -30,7 +30,7 @@ const schemasManifest = { name: "vschemas", version: "0.0.1", dependencies: [] }
 // arithmetic builtins). Registered as lambdas so formulas resolve them as
 // fn heads through the cel registry.
 const registerStdlib = async (state) => {
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, { key: "toUpper", fn: (s) => String(s).toUpperCase(), kind: "custom" });
   await register(state, { key: "concat",  fn: (...a) => a.map(String).join(""), kind: "custom" });
   await register(state, { key: "if",      fn: (c, a, b) => (c ? a : b), kind: "custom" });
@@ -187,7 +187,7 @@ test("worked example renders the expected render-spec", async () => {
 test("conditional sub-template inlines when its string turns non-empty", async () => {
   const state = await bootWorkedExample();
   const runCycle = resolveFn(state, "runCycle");
-  const set = resolveFn(state, "set");
+  const set = resolveFn(state, "setValue");
   await runCycle(state);
 
   await set(state, "app.modal.open", true);
@@ -253,7 +253,7 @@ test("a string of keyed elements inlines into keyed child vnodes", async () => {
 
 test("a hole returning a VNode embeds it as a child (no stringify, no reparse)", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   // A registered fn whose value is a VNode. The template's text-slot hole
   // sees a vnode object and inserts it as a child.
   await register(state, {
@@ -284,7 +284,7 @@ test("a hole returning a VNode embeds it as a child (no stringify, no reparse)",
 
 test("a hole returning a VNode[] embeds all of them", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, {
     key: "items",
     fn: () => [

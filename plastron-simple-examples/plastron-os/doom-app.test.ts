@@ -64,7 +64,7 @@ test("setupDoom hydrates the doom segment with a #doom-screen canvas + a registe
 
   // Switch to Doom and re-render — the view must paint a canvas with id
   // "doom-screen" (the element the harness will draw frames into).
-  await resolveFn(state, "set")(state, "os.active", "doom");
+  await resolveFn(state, "setValue")(state, "os.active", "doom");
   await resolveFn(state, "runCycle")(state);
   await resolveFn(state, "drain")(state, "plastron-dom.paint");
   getPainter(state).drain();
@@ -86,7 +86,7 @@ test("doom.boot reports a recoverable error when the WAD/wasm aren't served (pro
   const { state } = await bootOS();
   const { resolveFn, getPainter } = await import("../../plastron-simple/dist/index.js");
 
-  await resolveFn(state, "set")(state, "os.active", "doom");
+  await resolveFn(state, "setValue")(state, "os.active", "doom");
   await resolveFn(state, "runCycle")(state);
   await resolveFn(state, "drain")(state, "plastron-dom.paint");
   getPainter(state).drain();

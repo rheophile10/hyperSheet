@@ -47,7 +47,7 @@ test("file picker — open → navigate → select → close", async () => {
   const { resolveFn, getPainter } = await import("../../plastron-simple/dist/index.js");
   const painter = getPainter(state);
   const r = (k) => resolveFn(state, k);
-  const get = (k) => r("get")(state, k);
+  const get = (k) => r("getCel")(state, k)?.v;
 
   const tag = `pk${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const docA = `pick-A-${tag}.txt`, docB = `pick-B-${tag}.txt`;
@@ -56,10 +56,10 @@ test("file picker — open → navigate → select → close", async () => {
   await r("os.switch")(state, "notepad");
   await tick(); painter.drain();
   await r("file.new")(state, docA);
-  await r("set")(state, "notepad.text", "A content");
+  await r("setValue")(state, "notepad.text", "A content");
   await r("file.save")(state);
   await r("file.new")(state, docB);
-  await r("set")(state, "notepad.text", "B content");
+  await r("setValue")(state, "notepad.text", "B content");
   await r("file.save")(state);
 
   // Picker closed by default.

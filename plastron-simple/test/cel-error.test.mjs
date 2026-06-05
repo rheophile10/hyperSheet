@@ -2,8 +2,8 @@ import { test } from "bun:test";
 import assert from "node:assert/strict";
 import {
   createInitialState, precompute, precomputeOptional, resolveFn,
+  isCelError, makeCelError,
 } from "../dist/index.js";
-import { isCelError, makeCelError } from "../dist/甲骨坑/cel-error.js";
 
 const baseManifest = {
   name: "user", version: "0.0.1", description: "test", dependencies: [],
@@ -235,7 +235,7 @@ test("registerLambda still throws on bad source (imperative API, not declarative
   // registerLambda call should still throw — the caller asked us to
   // compile right now and synchronously wants to know if it worked.
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await assert.rejects(
     () => register(state, {
       key: "x",

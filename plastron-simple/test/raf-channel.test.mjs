@@ -1,8 +1,8 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, precomputeOptional, resolveFn } from "../dist/index.js";
-import { diffVNodes } from "../dist/甲骨坑/dom/diff.js";
-import { createPainter, setPainter, getPainter } from "../dist/甲骨坑/dom/paint.js";
+import { diffVNodes } from "../dist/甲骨坑/library/plastron-dom/utils/diff.js";
+import { createPainter, setPainter, getPainter } from "../dist/甲骨坑/library/plastron-dom/utils/paint.js";
 
 // raf-channel — the painter consumes render-specs through a RAF-batched
 // ChannelCel, diffs vnode trees to JSON patches, applies them to the DOM

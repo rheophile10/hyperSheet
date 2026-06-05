@@ -39,7 +39,7 @@ test("FormulaCel whose parser emits a bare Fn (no buildEvaluate) throws at hydra
   // — i.e. a CompiledLambda but not a CompiledEnvelope. This is the
   // exact misuse the new contract check is designed to surface.
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, {
     key: "bad-parser",
     fn: (_source) => () => 42,

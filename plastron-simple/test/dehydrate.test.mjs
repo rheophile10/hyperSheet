@@ -83,7 +83,7 @@ test("mutated state round-trips with the post-mutation values", async () => {
   const stateA = createInitialState();
   const hydrate   = resolveFn(stateA, "hydrate");
   const dehydrate = resolveFn(stateA, "dehydrate");
-  const setA      = resolveFn(stateA, "set");
+  const setA      = resolveFn(stateA, "setValue");
   const seg = {
     name: "user",
     cels: [
@@ -120,16 +120,24 @@ test("the manifest list round-trips with the dependencies preserved", async () =
   assert.deepEqual(byName.get("alpha").dependencies, []);
 });
 
-test("registerLambda cels land in 'default' and dehydrate appears with a synthesized manifest", async () => {
+test("source-bearing registerLambda cels land in 'default' and dehydrate with a synthesized manifest; native husks are skipped", async () => {
   const state = createInitialState();
-  const register  = resolveFn(state, "registerLambda");
+  const register  = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const dehydrate = resolveFn(state, "dehydrate");
-  await register(state, { key: "myFn", fn: (x) => x + 1 });
+
+  // Source-bearing lambda (js kind): carries an `f` body, so it survives
+  // dehydrate as a re-hydratable cel.
+  await register(state, { key: "srcFn", source: "x => x + 1", kind: "js" });
+  // Native-bodied lambda: `_fn` set, no `f` source. Roadmap 02's husk
+  // skip drops it from dehydrate output — a code seed re-seeds from the
+  // host bundle, so the husk carries no information.
+  await register(state, { key: "huskFn", fn: (x) => x + 1 });
 
   const { segments, manifests } = await dehydrate(state);
   const defaultSeg = segments.find((s) => s.name === "default");
   assert.ok(defaultSeg, "default segment exists in dehydrate output");
-  assert.ok(defaultSeg.cels.some((c) => c.key === "myFn"), "myFn cel grouped under default");
+  assert.ok(defaultSeg.cels.some((c) => c.key === "srcFn"), "source-bearing srcFn dehydrates under default");
+  assert.ok(!defaultSeg.cels.some((c) => c.key === "huskFn"), "native husk huskFn is skipped");
 
   const defaultManifest = manifests.find((m) => m.name === "default");
   assert.ok(defaultManifest, "synthesized manifest exists so rehydrate accepts the segment");

@@ -117,7 +117,7 @@ test("L1 cache: FormulaCel hits cache when inputs unchanged across runCycles", a
   assert.equal(fnCalls, callsAfterFirstCycle, "cache hit: counterFn should NOT be called again");
 
   // Change a; cache miss, counter increments by exactly 1
-  await resolveFn(state, "set")(state, "a", 10);
+  await resolveFn(state, "setValue")(state, "a", 10);
   assert.equal(fnCalls, callsAfterFirstCycle + 1, "cache miss after input change: one new call");
   assert.equal(state.cels.get("sum").v, 13);
 });
@@ -266,8 +266,8 @@ test("LambdaCel L1 cache: same args hit cache across calls", async () => {
   state.cels.get("expensiveLambda").schema = { key: "self", zod: {}, protocols: {}, memoSafe: true };
   // Reinstall trampoline now that the schema is in place (boot install
   // ran before this test mutation).
-  const { hasHooksOrCache, makeLambdaTrampoline } = await import("../dist/kernel/hooks.js");
-  const { makeMemoCache } = await import("../dist/kernel/memo-cache.js");
+  const { hasHooksOrCache, makeLambdaTrampoline } = await import("../dist/kernel/卜/hooks.js");
+  const { makeMemoCache } = await import("../dist/kernel/卜/memo-cache.js");
   const cel = state.cels.get("expensiveLambda");
   cel._memoCache = makeMemoCache(8);
   const original = (n) => { inner++; return n * n; };
@@ -362,7 +362,7 @@ test("invalidate: re-registering a lambda clears downstream FormulaCel _memoCach
     [{ name: "user", version: "0.0.1", description: "test", dependencies: ["test-schemas"] }],
   );
   // Initial registration via registerLambda (so trampolining applies).
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, { key: "track", fn: (a) => { calls++; return a; }, kind: "native" });
   await resolveFn(state, "runCycle")(state);
   const baseline = calls;
@@ -381,8 +381,8 @@ test("invalidate: re-registering a lambda clears downstream FormulaCel _memoCach
 // ── LRU eviction ───────────────────────────────────────────────────────────
 
 test("LRU: cache evicts oldest entry past maxEntries", async () => {
-  const { LruMemoCache } = await import("../dist/kernel/memo-cache.js");
-  const cache = new LruMemoCache(3);
+  const { makeMemoCache } = await import("../dist/kernel/卜/memo-cache.js");
+  const cache = makeMemoCache(3);
   cache.set([1], "a");
   cache.set([2], "b");
   cache.set([3], "c");

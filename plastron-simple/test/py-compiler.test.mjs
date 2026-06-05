@@ -38,7 +38,7 @@ test("a Python lambda compiles via Pyodide and produces correct output", { timeo
   console.log("loading Pyodide; this can take 5-20s the first time");
 
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   await register(state, {
     key: "py-double",
     kind: "py",
@@ -62,7 +62,7 @@ test("Python source without a trailing callable expression throws a clear error"
   console.log("loading Pyodide; this can take 5-20s the first time");
 
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   // No bare-name expression after the def — runPython returns None.
   await assert.rejects(
     () => register(state, {
@@ -115,7 +115,7 @@ test("forcing csp.wasm-available = false makes the py compiler throw before touc
   state.cels.set("csp.wasm-available", {
     ...state.cels.get("csp.wasm-available"), v: false,
   });
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   // The throw must fire BEFORE the lazy pyodide import — no slow boot
   // wasted when wasm is unavailable.
   await assert.rejects(

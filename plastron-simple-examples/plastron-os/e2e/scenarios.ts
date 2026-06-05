@@ -63,7 +63,7 @@ const newPage = async (browser: Browser, baseURL: string): Promise<{ ctx: Browse
 const cel = async (page: Page, key: string): Promise<unknown> =>
   page.evaluate((k) => {
     const pl = (window as { __plastron?: { resolveFn: (k: string) => (...x: unknown[]) => unknown; state: unknown } }).__plastron;
-    return pl?.resolveFn("get")(pl.state, k);
+    return pl?.resolveFn("getCel")(pl.state, k)?.v;
   }, key);
 
 const callFn = async (page: Page, fnKey: string, ...args: unknown[]): Promise<unknown> =>
@@ -333,7 +333,12 @@ const scDragDropDispatch = async (page: Page, docB: string): Promise<void> => {
 
   await page.locator(`button.card.folder:has-text("${folder}")`).first().click();
   ok(await waitForCel(page, "file-explorer.cwd", `/${folder}`), `cwd=/${folder}`);
-  ok(await page.locator(`div.card.file:has-text("${docB}")`).first().isVisible(), `${docB} landed in /${folder} via dragstart+drop`);
+  // waitFor (not a bare isVisible) — the cel write lands before the painter's
+  // next rAF flush re-renders the folder contents; same paint-timing genre as
+  // the Notepad-launch rAF wait.
+  const landed = await page.locator(`div.card.file:has-text("${docB}")`).first()
+    .waitFor({ state: "visible", timeout: 3000 }).then(() => true, () => false);
+  ok(landed, `${docB} landed in /${folder} via dragstart+drop`);
 
   await exitToHome(page);
 };

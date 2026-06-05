@@ -40,13 +40,7 @@ export type WitType = WitPrimitive | WitComposite;
 /** Discriminator predicate for primitives. Useful in bridge cels and
  *  precompute layers that route scalars (inline JS numbers / BigInts /
  *  booleans) differently from composites (handles into worker tables). */
-export const isWitPrimitive = (t: WitType): t is WitPrimitive => {
-  switch (t.kind) {
-    case "bool": case "u32": case "s32": case "u64": case "s64":
-    case "f32":  case "f64": case "char": case "string": return true;
-    default: return false;
-  }
-};
+// Guards (isWitPrimitive, isWasmHandle) live in kernel/wit.ts.
 
 /** A reference to a wasm-domain value living in some kind segment's
  *  worker-side value table. Used as the JS-visible cel.v for composite
@@ -62,10 +56,3 @@ export interface WasmHandle {
   ref: number;    // index into the kind segment's value table
 }
 
-export const isWasmHandle = (v: unknown): v is WasmHandle => {
-  if (v === null || typeof v !== "object") return false;
-  const o = v as Record<string, unknown>;
-  return typeof o.kind === "string"
-    && typeof o.ref === "number"
-    && typeof o.type === "object" && o.type !== null;
-};

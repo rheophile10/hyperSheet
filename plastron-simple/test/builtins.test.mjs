@@ -36,30 +36,25 @@ test("builtin cels carry impls matching the old hardcoded BUILTINS table", () =>
   assert.equal(plus("1", "2"), 3); // Number() coercion preserved
 });
 
-test("flush refuses builtins (kernel-closure protection from chunk A)", async () => {
-  // Pre-chunk-A: flushing builtins with { force: true } removed its cels;
-  // this test asserted the resulting "slow path errors cleanly" behavior.
+test("builtins is flushable (honest kernel closure, roadmap 02)", async () => {
+  // History: pre-chunk-A flushing builtins removed its cels; chunk-A
+  // (segment-classification) put builtins in the kernel closure via the
+  // kernel manifest's dep list, making it unflushable.
   //
-  // Post-chunk-A (segment-classification, 2026-05-24): builtins is a
-  // dependency of the kernel manifest, so it's in the boot kernel
-  // closure — unflushable regardless of `{ force: true }`. The test
-  // now asserts the new contract: flush throws, cels survive, formula
-  // evaluation continues to work.
-  //
-  // See 1-design/3-accepted/00-ontology/segment-classification.md
-  // "Multi-segment kernel".
+  // Roadmap 02 shrinks kernel.dependencies to [], so the closure is
+  // {kernel} alone and builtins is an ordinary flushable library — as its
+  // 冊.json description always promised ("Flushable; formulas referencing
+  // them error cleanly when removed").
   const state = createInitialState();
-  const flush         = resolveFn(state, "flush");
+  const flush          = resolveFn(state, "flush");
   const compileFormula = resolveFn(state, "f");
 
   const before = compileFormula("(+ a b)");
   assert.equal(before.fn({ "+": state.cels.get("+")._fn, a: 1, b: 2 }), 3);
 
-  await assert.rejects(
-    flush(state, "builtins", { force: true }),
-    /kernel closure/,
-  );
+  // No longer kernel-protected: flush succeeds and drops the op cels.
+  await flush(state, "builtins", { force: true });
   for (const k of OPS) {
-    assert.ok(state.cels.get(k), `cel "${k}" should survive — builtins is in kernel closure`);
+    assert.ok(!state.cels.get(k), `cel "${k}" should be gone — builtins flushed`);
   }
 });

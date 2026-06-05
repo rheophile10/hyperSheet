@@ -36,7 +36,7 @@ const B64 = Buffer.from(MODULE).toString("base64");
 
 test("onInstantiate hands the host the live instance; an env callback reads memory init wrote", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const hydrate  = resolveFn(state, "hydrate");
 
   let captured = null;
@@ -81,7 +81,7 @@ test("onInstantiate hands the host the live instance; an env callback reads memo
 
 test("a bare-object provider (today's shape) still satisfies imports", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const hydrate  = resolveFn(state, "hydrate");
   const runCycle = resolveFn(state, "runCycle");
 
@@ -106,7 +106,7 @@ test("a bare-object provider (today's shape) still satisfies imports", async () 
 
 test("a provider-supplied dispose lands on cel._dispose for teardown", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const hydrate  = resolveFn(state, "hydrate");
 
   let disposed = false;
@@ -134,7 +134,7 @@ test("a provider-supplied dispose lands on cel._dispose for teardown", async () 
 
 test("the cel still dehydrates as bytes + descriptor; no runtime instance leaks into JSON", async () => {
   const state = createInitialState();
-  const register = resolveFn(state, "registerLambda");
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
   const hydrate  = resolveFn(state, "hydrate");
   const dehydrate = resolveFn(state, "dehydrate");
 

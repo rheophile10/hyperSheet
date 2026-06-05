@@ -37,14 +37,14 @@ test("formula compiles and produces initial value", async () => {
 
 test("set propagates through formula cascade", async () => {
   const state = await bootGraph();
-  const set = resolveFn(state,"set");
+  const set = resolveFn(state,"setValue");
   await set(state, "x", 10);
   assert.equal(state.cels.get("sum")?.v, 13);
 });
 
 test("batch propagates one cascade per call", async () => {
   const state = await bootGraph();
-  const batch = resolveFn(state,"batch");
+  const batch = resolveFn(state,"setValueBatch");
   await batch(state, [["x", 7], ["y", 8]]);
   assert.equal(state.cels.get("sum")?.v, 15);
 });
@@ -64,7 +64,7 @@ test("core fn cels are inert — they don't appear in waveCascade", async () => 
 
 test("set on a locked cel throws", async () => {
   const state = await bootGraph();
-  const set = resolveFn(state,"set");
+  const set = resolveFn(state,"setValue");
   await assert.rejects(
     async () => { await set(state, "precomputedStates", null); },
     /locked/,
@@ -73,17 +73,18 @@ test("set on a locked cel throws", async () => {
 
 test("set on a fireable cel throws (use setCel)", async () => {
   const state = await bootGraph();
-  const set = resolveFn(state,"set");
-  // "sum" is a FormulaCel — direct set forbidden.
+  const set = resolveFn(state,"setValue");
+  // "sum" is a FormulaCel — its data is its SOURCE; a non-string is
+  // a malformed write.
   await assert.rejects(
     async () => { await set(state, "sum", 0); },
-    /compute path|setCel/,
+    /formula source/,
   );
 });
 
 test("set on a missing cel throws", async () => {
   const state = await bootGraph();
-  const set = resolveFn(state,"set");
+  const set = resolveFn(state,"setValue");
   await assert.rejects(
     async () => { await set(state, "no_such_key", 0); },
     /unknown cel/,

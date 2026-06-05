@@ -63,7 +63,10 @@ test("default export excludes the kernel closure", async () => {
   const r = await exportToDir(EXPORT_DIR);
   assert.ok(r.exportedSegments.includes("chart-helpers"));
   assert.ok(!r.exportedSegments.includes("kernel"), "kernel excluded by default");
-  assert.ok(!r.exportedSegments.includes("segment-store"), "kernel-closure library excluded by default");
+  // Honest closure (roadmap 02): the closure is {kernel} alone, so
+  // libraries like segment-store are NO LONGER kernel-closure members —
+  // they export by default like any other library.
+  assert.ok(r.exportedSegments.includes("segment-store"), "library segment-store exports by default");
 });
 
 test("includeKernel:true exports the kernel closure too", async () => {

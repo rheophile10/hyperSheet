@@ -40,7 +40,7 @@ test("File Explorer v2 — fs-tree seeded; new docs auto-file under /<app>; mkdi
   const { resolveFn, getPainter } = await import("../../plastron-simple/dist/index.js");
   const painter = getPainter(state);
   const r = (k) => resolveFn(state, k);
-  const get = (k) => r("get")(state, k);
+  const get = (k) => r("getCel")(state, k)?.v;
   const tag = `fe2${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const docA = `fe2-A-${tag}.txt`, docB = `fe2-B-${tag}.txt`;
 
@@ -55,7 +55,7 @@ test("File Explorer v2 — fs-tree seeded; new docs auto-file under /<app>; mkdi
   await r("file.new")(state, docA);
   const pad = root.childNodes.length ? null : null; // textarea grabbed by walk further down
   // Type via the cel directly is fine here (the toolbar wiring is covered elsewhere).
-  await r("set")(state, "notepad.text", "doc-A content");
+  await r("setValue")(state, "notepad.text", "doc-A content");
   await r("file.save")(state);
 
   const locs1 = get("fs-tree.locations") ?? {};
@@ -63,7 +63,7 @@ test("File Explorer v2 — fs-tree seeded; new docs auto-file under /<app>; mkdi
 
   // mkdir an archive folder + move docA into it.
   await r("file.new")(state, docB);
-  await r("set")(state, "notepad.text", "doc-B content");
+  await r("setValue")(state, "notepad.text", "doc-B content");
   await r("file.save")(state);
 
   await r("os.exit")(state);
@@ -111,8 +111,8 @@ test("File Explorer v2 — fs-tree seeded; new docs auto-file under /<app>; mkdi
   const { bootOS: bootOS2 } = await import("./browser-main.ts");
   const { state: state2 } = await bootOS2();
   const get2 = (k) => resolveFn(state2, k)(state2, k);
-  const folders3 = (resolveFn(state2, "get"))(state2, "fs-tree.folders");
-  const locs3 = (resolveFn(state2, "get"))(state2, "fs-tree.locations");
+  const folders3 = (resolveFn(state2, "getCel"))(state2, "fs-tree.folders")?.v;
+  const locs3 = (resolveFn(state2, "getCel"))(state2, "fs-tree.locations")?.v;
   assert.ok(folders3.includes(folder), `[reload] folders includes ${folder} (got ${JSON.stringify(folders3)})`);
   assert.equal(locs3[docA], folder, `[reload] ${docA} location restored`);
   assert.equal(locs3[docB], folder, `[reload] ${docB} location restored`);
@@ -129,7 +129,7 @@ test("apps self-register their app-type with file-explorer; /Desktop seeded with
   const { state } = await bootOS();
   const { resolveFn } = await import("../../plastron-simple/dist/index.js");
   const r = (k) => resolveFn(state, k);
-  const get = (k) => r("get")(state, k);
+  const get = (k) => r("getCel")(state, k)?.v;
 
   // fe.app-types populated by each app's setup.
   const types = get("fe.app-types") ?? {};
@@ -176,7 +176,7 @@ test("fileNew appends the app's extension when missing, keeps it when present", 
   const { state } = await bootOS();
   const { resolveFn } = await import("../../plastron-simple/dist/index.js");
   const r = (k) => resolveFn(state, k);
-  const get = (k) => r("get")(state, k);
+  const get = (k) => r("getCel")(state, k)?.v;
   const tag = `ext${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
   // 1. Notepad with no extension → .txt appended.

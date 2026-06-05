@@ -34,7 +34,7 @@ export const renderFileToolbar = (doc: string | null | undefined): string => {
 // ── helpers shared with the dispatch handlers ───────────────────────────────
 
 const currentApp = (state: any): string | undefined => {
-  const get = resolveFn(state, "get") as (...a: unknown[]) => unknown;
+  const get = ((st: unknown, k: string) => (resolveFn(st as never, "getCel") as (...a: unknown[]) => { v?: unknown } | undefined)(st, k)?.v) as (...a: unknown[]) => unknown;
   const active = get(state, "os.active") as string | undefined;
   if (!active || active === "home") return undefined;
   const apps = (get(state, "os.apps") as Array<{ id: string; application?: string }> | undefined) ?? [];
@@ -50,7 +50,7 @@ const ask = (msg: string, def?: string): string | null => {
  *  Reads fe.app-types (populated at boot via fe.register-app); a no-op when
  *  the app has no registered extension. */
 const withExtension = (state: any, app: string, name: string): string => {
-  const types = ((resolveFn(state, "get") as (...a: unknown[]) => unknown)(state, "fe.app-types") as Record<string, { extension?: string }> | undefined) ?? {};
+  const types = ((resolveFn(state, "getCel") as (...a: unknown[]) => { v?: unknown } | undefined)(state, "fe.app-types")?.v as Record<string, { extension?: string }> | undefined) ?? {};
   const ext = (types[app]?.extension ?? "").trim();
   if (!ext) return name;
   const dotExt = `.${ext}`;
@@ -71,7 +71,7 @@ export const fileNew = async (state: any, namePayload?: string): Promise<string 
   // autoSave: false — we'll persist once the editor cels are retargeted below.
   await (resolveFn(state, "newUserSpace") as Function)(state, name, app, { autoSave: false });
   await rebindCelsToDoc(state, app, name, { clear: true });
-  await (resolveFn(state, "set") as Function)(state, "os.doc", name, { flush: "all" });
+  await (resolveFn(state, "setValue") as Function)(state, "os.doc", name, { flush: "all" });
   await (resolveFn(state, "saveUserSpace") as Function)(state, name);
   // Let File Explorer auto-file the new doc into /<app>.
   const refresh = resolveFn(state, "fe.refresh") as Function | undefined;
@@ -85,7 +85,7 @@ export const fileNew = async (state: any, namePayload?: string): Promise<string 
  *  prompt for a name, create the user-space, retarget the editor cels
  *  WITHOUT clearing (preserve whatever the user has typed), then save. */
 export const fileSave = async (state: any): Promise<string | undefined> => {
-  const get = resolveFn(state, "get") as (...a: unknown[]) => unknown;
+  const get = ((st: unknown, k: string) => (resolveFn(st as never, "getCel") as (...a: unknown[]) => { v?: unknown } | undefined)(st, k)?.v) as (...a: unknown[]) => unknown;
   const doc = get(state, "os.doc") as string | null | undefined;
   if (doc) {
     await (resolveFn(state, "saveUserSpace") as Function)(state, doc);
@@ -99,7 +99,7 @@ export const fileSave = async (state: any): Promise<string | undefined> => {
   const name = withExtension(state, app, raw);
   await (resolveFn(state, "newUserSpace") as Function)(state, name, app, { autoSave: false });
   await rebindCelsToDoc(state, app, name);          // preserve content
-  await (resolveFn(state, "set") as Function)(state, "os.doc", name, { flush: "all" });
+  await (resolveFn(state, "setValue") as Function)(state, "os.doc", name, { flush: "all" });
   await (resolveFn(state, "saveUserSpace") as Function)(state, name);
   const refresh = resolveFn(state, "fe.refresh") as Function | undefined;
   if (refresh) await refresh(state);
@@ -141,14 +141,16 @@ export const fileOpen = async (state: any, namePayload?: string): Promise<string
       await hydrate(state, [entry.segment], []);
     }
   }
-  await (resolveFn(state, "set") as Function)(state, "os.doc", choice, { flush: "all" });
+  await (resolveFn(state, "setValue") as Function)(state, "os.doc", choice, { flush: "all" });
   return choice;
 };
 
 // ── one-shot setup: register helpers + the renderFileToolbar partial ────────
 
 export const setupFileToolbar = async (state: any): Promise<void> => {
-  const reg = resolveFn(state, "registerLambda") as (s: unknown, a: unknown) => Promise<unknown>;
+  const setCelFn_ = resolveFn(state as never, "setCel") as (s: unknown, k: string, spec: unknown) => Promise<unknown>;
+  const reg = (s: unknown, a: { key: string; fn?: unknown; kind?: string; locked?: boolean; segment?: string }) =>
+    setCelFn_(s, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, metadata: { segment: a.segment, kind: a.kind } });
   await reg(state, { key: "renderFileToolbar", fn: renderFileToolbar, kind: "custom" });
   await reg(state, { key: "file.new", fn: fileNew, kind: "custom" });
   await reg(state, { key: "file.save", fn: fileSave, kind: "custom" });

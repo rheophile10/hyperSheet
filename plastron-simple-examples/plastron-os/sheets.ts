@@ -15,7 +15,7 @@
 // ============================================================================
 
 import { resolveFn, buildSheet } from "../../plastron-simple/dist/index.js";
-import { addrFrom, indexToCol, parseRef, cellKey } from "../../plastron-simple/dist/甲骨坑/sheet/address.js";
+import { addrFrom, indexToCol, parseRef, cellKey } from "../../plastron-simple/dist/甲骨坑/library/sheet/utils/address.js";
 import { setupFileToolbar } from "./file-toolbar.js";
 import { registerDocBinding } from "./doc-binding.js";
 
@@ -84,20 +84,20 @@ const cellSource = (state: any, addr: string): string => {
 
 const clickCell = async (state: any, addr: string): Promise<void> => {
   const ref = parseRef(addr) ?? { row: 0, col: 0 };
-  await resolveFn(state, "batch")(state, [
+  await resolveFn(state, "setValueBatch")(state, [
     ["sheet.selection", { row: ref.row, col: ref.col }],
     ["sheet.formula-bar", cellSource(state, addr)],
   ], { flush: "all" });
 };
 
 const barInput = async (state: any, _p: unknown, event: any): Promise<void> => {
-  await resolveFn(state, "set")(state, "sheet.formula-bar", event?.target?.value ?? "");
+  await resolveFn(state, "setValue")(state, "sheet.formula-bar", event?.target?.value ?? "");
 };
 
 const commit = async (state: any): Promise<void> => {
-  const sel = (resolveFn(state, "get")(state, "sheet.selection") as { row: number; col: number } | undefined) ?? { row: 0, col: 0 };
+  const sel = (((s: never, k: never) => (resolveFn(s, "getCel") as (s: never, k: never) => { v?: unknown } | undefined)(s, k)?.v)(state, "sheet.selection") as { row: number; col: number } | undefined) ?? { row: 0, col: 0 };
   const addr = addrFrom(sel.col, sel.row);
-  const input = String(resolveFn(state, "get")(state, "sheet.formula-bar") ?? "");
+  const input = String(((s: never, k: never) => (resolveFn(s, "getCel") as (s: never, k: never) => { v?: unknown } | undefined)(s, k)?.v)(state, "sheet.formula-bar") ?? "");
   await resolveFn(state, "sheet.commit-cell")(state, { addr, input });
   await resolveFn(state, "drain")(state, "plastron-dom.paint");
 };
@@ -127,7 +127,9 @@ export const buildSheetsApp = async (
 ): Promise<void> => {
   const rows = opts.rows ?? 6;
   const cols = opts.cols ?? 6;
-  const reg = resolveFn(state, "registerLambda") as (s: unknown, a: unknown) => Promise<unknown>;
+  const setCelFn_ = resolveFn(state as never, "setCel") as (s: unknown, k: string, spec: unknown) => Promise<unknown>;
+  const reg = (s: unknown, a: { key: string; fn?: unknown; kind?: string; locked?: boolean; segment?: string }) =>
+    setCelFn_(s, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, metadata: { segment: a.segment, kind: a.kind } });
   await reg(state, { key: "cellVnode", fn: cellVnode, kind: "custom" });
   await reg(state, { key: "assembleTable", fn: assembleTable, kind: "custom" });
   await reg(state, { key: "selAddr", fn: selAddr, kind: "custom" });

@@ -3,11 +3,15 @@ import assert from "node:assert/strict";
 import { createInitialState, resolveFn } from "../dist/index.js";
 
 const CORE_FN_KEYS = [
-  "get", "set", "update", "batch",
-  "getCel", "setCel", "getCelBatch", "setCelBatch",
-  "touch", "consume", "drain", "registerLambda", "clearErrors",
+  "getCel", "setValue", "setValueBatch", "setCel", "setCelBatch",
+  "touch", "consume", "drain", "clearErrors",
   "runCycle", "hydrate", "dehydrate", "flush",
+  // The dormancy/application lifecycle verbs (roadmap 05/06) join the
+  // dispatch surface: each is a kernel-segment LockedLambdaCel, reachable
+  // via resolveFn, exactly like hydrate / flush.
+  "wake", "sleep", "forget", "hydrate函", "dehydrate函",
   "getSegmentManifest", "listSegments", "findDependents",
+  "registerSegmentLoader", "loadSegment", "ensureSegments", "isSegmentPending",
   "f",
 ];
 
@@ -55,9 +59,13 @@ test("precomputedStates seed has a live PrecomputedIndexes (Maps + Set, not JSON
   assert.ok(pcs.v.dynamicCascade instanceof Set, "dynamicCascade should be a Set");
 });
 
-test("kernel manifest is loaded into state.segments at boot", () => {
+test("kernel manifest is a live SegmentCel (冊.kernel) at boot", () => {
+  // The manifest store IS the SegmentCels (roadmap 03): segment X lives as
+  // a SegmentCel at key 冊.X. state.segments is a derived read-only view over
+  // them, so reading it here just confirms the live cel is present.
   const state = createInitialState();
-  assert.ok(state.segments.get("kernel"), "kernel manifest missing");
+  assert.equal(state.cels.get("冊.kernel")?.celType, "SegmentCel", "冊.kernel SegmentCel missing");
+  assert.ok(state.segments.get("kernel"), "derived state.segments view missing kernel");
 });
 
 test("no stray fns / fnMetadata / fnDispose maps on State", () => {

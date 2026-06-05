@@ -39,7 +39,7 @@ export const registerDocBinding = (binding: DocBinding): void => {
 export const getDocBinding = (app: string): DocBinding | undefined => bindings.get(app);
 
 const get = (state: State, key: string): unknown =>
-  (resolveFn(state as never, "get") as (...a: unknown[]) => unknown)(state, key);
+  (resolveFn(state as never, "getCel") as (...a: unknown[]) => { v?: unknown } | undefined)(state, key)?.v;
 
 const cels = (state: State): Map<string, Cel> =>
   (state as { cels: Map<string, Cel> }).cels;
