@@ -13,3 +13,9 @@ description: Runtime CSP capability probes (eval, wasm) surfaced as locked cels.
 Compiler segments gate on these (js-compiler on eval, wat/wasm/py/quickjs on wasm). Read with
 `getCel(state, "csp.eval-available")`. Keys exported as `CSP_EVAL_AVAILABLE_KEY` /
 `CSP_WASM_AVAILABLE_KEY` from this segment's `index.ts`.
+
+## Key ownership (segment-isolation class A)
+
+`CSP_EVAL_AVAILABLE_KEY` / `CSP_WASM_AVAILABLE_KEY` are kernel-owned
+constants (exported from the kernel barrel) — this segment seeds the
+probe CELS; consumers import the keys from the kernel, never from here.

@@ -1,7 +1,16 @@
-import {
-  bindingsEqual, vnodeEquals,
-  type AttrValue, type EventBinding, type VElement, type VNode, type VText,
-} from "../../html-template-parser/index.js";
+import type {
+  AttrValue, EventBinding, VElement, VNode, VText,
+} from "../../../../types/index.js";
+import { bump } from "../../../../kernel/index.js";
+
+/** Node-level comparators, injected by the painter — resolved ONCE per
+ *  paint drain from the vnode.equals / vnode.bindings-equal cels
+ *  (html-template-parser owns the semantics; segment-isolation forbids
+ *  importing them). */
+export interface DiffEq {
+  vnodeEquals: (a: VNode, b: VNode) => boolean;
+  bindingsEqual: (a: EventBinding, b: EventBinding) => boolean;
+}
 
 // ============================================================================
 // VNode diff — produces a JSON-shaped Patch describing what would change if
@@ -47,10 +56,11 @@ const NOOP: PatchNoop = { kind: "noop" };
 
 export const isNoop = (p: Patch): boolean => p.kind === "noop";
 
-export const diffVNodes = (prev: VNode | null, next: VNode): Patch => {
+export const diffVNodes = (prev: VNode | null, next: VNode, eq: DiffEq): Patch => {
+  bump("diffVisits");
   if (prev === null) return { kind: "init", node: next };
   if (prev === next) return NOOP;                 // ref-eq subtree bail-out
-  if (vnodeEquals(prev, next)) return NOOP;
+  if (eq.vnodeEquals(prev, next)) return NOOP;
   if (prev.type !== next.type) return { kind: "replace", node: next };
 
   if (next.type === "text") {
@@ -68,9 +78,9 @@ export const diffVNodes = (prev: VNode | null, next: VNode): Patch => {
   if (attrs) out.attrs = attrs;
   const style = diffRecord(p.style, n.style);
   if (style) out.style = style;
-  const events = diffEvents(p.events, n.events);
+  const events = diffEvents(p.events, n.events, eq);
   if (events) out.events = events;
-  const children = diffChildren(p.children, n.children);
+  const children = diffChildren(p.children, n.children, eq);
   if (children.length > 0) out.children = children;
 
   if (!out.attrs && !out.style && !out.events && !out.children) return NOOP;
@@ -97,13 +107,14 @@ const diffRecord = (
 const diffEvents = (
   a: Record<string, EventBinding> | undefined,
   b: Record<string, EventBinding> | undefined,
+  eq: DiffEq,
 ): { upsert?: Record<string, EventBinding>; remove?: string[] } | null => {
   const upsert: Record<string, EventBinding> = {};
   const remove: string[] = [];
   if (a) for (const k of Object.keys(a)) if (!b || !(k in b)) remove.push(k);
   if (b) for (const [type, binding] of Object.entries(b)) {
     const prev = a?.[type];
-    if (prev && bindingsEqual(prev, binding)) continue;
+    if (prev && eq.bindingsEqual(prev, binding)) continue;
     upsert[type] = binding;
   }
   const hasUpsert = Object.keys(upsert).length > 0;
@@ -115,13 +126,13 @@ const diffEvents = (
   return out;
 };
 
-const diffChildren = (a: VNode[] | undefined, b: VNode[] | undefined): ChildPatch[] => {
+const diffChildren = (a: VNode[] | undefined, b: VNode[] | undefined, eq: DiffEq): ChildPatch[] => {
   const oc = a ?? [];
   const nc = b ?? [];
   if (allKeyedElements(oc) && allKeyedElements(nc)) {
-    return diffChildrenKeyed(oc as VElement[], nc as VElement[]);
+    return diffChildrenKeyed(oc as VElement[], nc as VElement[], eq);
   }
-  return diffChildrenPositional(oc, nc);
+  return diffChildrenPositional(oc, nc, eq);
 };
 
 const allKeyedElements = (c: VNode[]): boolean => {
@@ -133,11 +144,11 @@ const allKeyedElements = (c: VNode[]): boolean => {
   return true;
 };
 
-const diffChildrenPositional = (oc: VNode[], nc: VNode[]): ChildPatch[] => {
+const diffChildrenPositional = (oc: VNode[], nc: VNode[], eq: DiffEq): ChildPatch[] => {
   const ops: ChildPatch[] = [];
   const min = Math.min(oc.length, nc.length);
   for (let i = 0; i < min; i++) {
-    const sub = diffVNodes(oc[i]!, nc[i]!);
+    const sub = diffVNodes(oc[i]!, nc[i]!, eq);
     if (sub.kind !== "noop") ops.push({ op: "patch", index: i, patch: sub });
   }
   if (nc.length > oc.length) ops.push({ op: "appendMany", nodes: nc.slice(oc.length) });
@@ -145,7 +156,7 @@ const diffChildrenPositional = (oc: VNode[], nc: VNode[]): ChildPatch[] => {
   return ops;
 };
 
-const diffChildrenKeyed = (oc: VElement[], nc: VElement[]): ChildPatch[] => {
+const diffChildrenKeyed = (oc: VElement[], nc: VElement[], eq: DiffEq): ChildPatch[] => {
   const oldByKey = new Map<string, { index: number; node: VElement }>();
   for (let i = 0; i < oc.length; i++) oldByKey.set(oc[i]!.key!, { index: i, node: oc[i]! });
 
@@ -154,7 +165,7 @@ const diffChildrenKeyed = (oc: VElement[], nc: VElement[]): ChildPatch[] => {
     const newChild = nc[i]!;
     const match = oldByKey.get(newChild.key!);
     if (match) {
-      entries.push({ kind: "keep", fromIndex: match.index, patch: diffVNodes(match.node, newChild) });
+      entries.push({ kind: "keep", fromIndex: match.index, patch: diffVNodes(match.node, newChild, eq) });
       oldByKey.delete(newChild.key!);
     } else {
       entries.push({ kind: "mount", node: newChild });

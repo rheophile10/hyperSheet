@@ -33,6 +33,10 @@ import * as sheet           from "./甲骨坑/library/sheet/index.js";
 import * as userSpaceOps    from "./甲骨坑/library/user-space-ops/index.js";
 import * as segmentArchive  from "./甲骨坑/library/segment-archive/index.js";
 import * as appHost         from "./甲骨坑/library/app-host/index.js";
+import * as defn            from "./甲骨坑/library/defn/index.js";
+import * as genesis         from "./甲骨坑/library/genesis/index.js";
+import * as checkpoint      from "./甲骨坑/library/checkpoint/index.js";
+import * as origin          from "./甲骨坑/library/origin/index.js";
 import * as sound           from "./甲骨坑/library/sound/index.js";
 
 // ============================================================================
@@ -81,6 +85,10 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "segment-archive":  () => [...segmentArchive.cels],
   "app-host":         () => [...appHost.cels],
   "sound":            () => [...sound.cels],
+  "defn":             () => [...defn.cels],
+  "genesis":          () => [...genesis.cels],
+  "checkpoint":       () => [...checkpoint.cels],
+  "origin":           () => [...origin.cels],
 };
 
 // application/ segments boot via host-called builders (buildNotepad,
@@ -101,6 +109,21 @@ const roleOf = (name: Key): SegmentRole => {
 };
 
 const seedManifests: ReadonlyArray<冊> = manifestSeed as unknown as 冊[];
+
+/** Per-state copies of module-level seed cels. The segment modules
+ *  build their cel arrays ONCE at import; without cloning, every state
+ *  shares the same cel OBJECTS, and any seed with a mutable v
+ *  (origin's freespace counter/draft, checkpoint's ring) or a mutated
+ *  metadata (元.view's rewired inputMap) leaks across states. Runtime
+ *  fields (_fn etc.) ride the shallow copy — they're stateless. */
+const freshCel = (cel: Cel): Cel => {
+  const out = { ...cel } as Cel;
+  out.metadata = structuredClone(cel.metadata);
+  if (cel.v !== undefined && typeof cel.v !== "function") {
+    try { out.v = structuredClone(cel.v); } catch { /* non-cloneable runtime value — share */ }
+  }
+  return out;
+};
 
 export interface CreateInitialStateOptions {
   /** Bundled segments to defer: their 冊 manifests are seeded as
@@ -147,6 +170,12 @@ const buildBundled函 = (lazy: Set<Key>): 函 => ({
 export const createInitialState = (opts?: CreateInitialStateOptions): State => {
   const cels     = new Map<Key, Cel>();
   const lazy     = new Set(opts?.lazy ?? []);
+  // `origin` is a HOST CHOICE, parked by default: it paints the freespace
+  // starting point to "#app", which a host providing its own root (e.g.
+  // plastron-os) does not want. The origin host wakes it explicitly —
+  // `await ensureSegments(state, ["origin"])` then `hydrate(state, [], [])`.
+  // Pass `lazy: []` (or any list without "origin") to opt OUT of parking.
+  if (opts?.lazy === undefined) lazy.add("origin");
   if (lazy.has("kernel")) {
     throw new Error("createInitialState: the \"kernel\" segment cannot be lazy.");
   }
@@ -216,14 +245,14 @@ export const createInitialState = (opts?: CreateInitialStateOptions): State => {
       throw new Error(`createInitialState: 冊.json names segment "${entry.name}" but no loader is registered.`);
     }
     if (wakeRoots.has(entry.name)) {
-      for (const cel of loader()) cels.set(cel.metadata.key, cel);
+      for (const cel of loader().map(freshCel)) cels.set(cel.metadata.key, cel);
     } else {
       // Lazy: park the loader (today's defer behavior — a name absent from
       // boot.wake).
       if (!pending) {
         throw new Error("createInitialState: reserved cel \"segment.loaders\" missing from kernel seed.");
       }
-      pending.set(entry.name, loader);
+      pending.set(entry.name, () => loader().map(freshCel));
     }
   }
 

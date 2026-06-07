@@ -82,7 +82,7 @@ const saveUserSpace: Fn = async (stateArg: unknown, nameArg: unknown): Promise<K
   const segByName = new Map(segments.map((s) => [s.name, s]));
   for (const manifest of manifests) {
     const segment: 甲骨 = segByName.get(manifest.name) ?? { name: manifest.name, cels: [] };
-    await put(manifest.name, manifest.version, manifest, segment);
+    await put(state, manifest.name, manifest.version, manifest, segment);
   }
   return closure;
 };
@@ -110,7 +110,7 @@ const newUserSpace: Fn = async (
   }
   if (!options.overwrite) {
     const has = resolveFn(state, "store.has") as Fn;
-    if (await has(name)) {
+    if (await has(state, name)) {
       throw new Error(
         `newUserSpace: "${name}" already exists in segment-store; pass { overwrite: true } to replace it.`,
       );
@@ -144,7 +144,7 @@ const loadUserSpace: Fn = async (
   const version = versionArg === undefined ? undefined : String(versionArg);
 
   const get = resolveFn(state, "store.get") as Fn;
-  const probe = (await get(name, version)) as { manifest: 冊 } | undefined;
+  const probe = (await get(state, name, version)) as { manifest: 冊 } | undefined;
   if (!probe) throw new Error(`loadUserSpace: "${name}" not found in segment-store.`);
   if (probe.manifest.role !== "user-space") {
     throw new Error(`loadUserSpace: "${name}" is role:"${probe.manifest.role}", not "user-space".`);

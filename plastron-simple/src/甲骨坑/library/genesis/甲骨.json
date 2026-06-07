@@ -1,0 +1,24 @@
+{
+  "name": "genesis",
+  "cels": [
+    {
+      "key": "genesis.commit",
+      "celType": "ChannelCel",
+      "metadata": {
+        "key": "genesis.commit", "segment": "genesis", "name": "genesis.commit", "drain": "genesis.drain",
+        "description": "Structure channel. Generator formulas ({genesis:true, cels:{...}}) enqueue here; the drain commits batches stamped generatedBy, diffs regenerations, and sweeps blooms whose generator is gone."
+      },
+      "v": { "drain": "genesis.drain" },
+      "locked": true
+    },
+    {
+      "key": "genesis.drain",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "genesis.drain", "segment": "genesis", "name": "genesis.drain", "kind": "native",
+        "description": "(items) - commit generator requests via setCelBatch: ownership + overwrite, regeneration diff (structural identity; seeds at creation, user data plane preserved), layer segment stamping, orphan sweep, unsuppressed refire of stale consumers."
+      },
+      "locked": true
+    }
+  ]
+}

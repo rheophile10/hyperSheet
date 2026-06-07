@@ -165,6 +165,14 @@ export const compileCelBody = async (
     if (compiled.dispose)        cel._dispose       = compiled.dispose;
     if (compiled.buildEvaluate)  cel._buildEvaluate = compiled.buildEvaluate;
     if (compiled.wasm)           cel._wasm          = compiled.wasm;
+    if (compiled.channels && compiled.channels.length > 0) {
+      // Compiler-declared channel participation (e.g. binder forms →
+      // "defn.commit"). Merge, never remove — same contract as the
+      // inputMap auto-wire.
+      const have = new Set(cel.metadata.channel ?? []);
+      for (const k of compiled.channels) have.add(k);
+      cel.metadata.channel = [...have];
+    }
   }
   writeBackCompilerKey(cel, compilerKey);
   // Auto-populate inputMap only for compilers that supply extractDeps

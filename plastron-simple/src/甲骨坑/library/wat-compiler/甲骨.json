@@ -3,7 +3,7 @@
   "cels": [
     {
       "key": "wat",
-      "celType": "LockedLambdaCel",
+      "celType": "CompilerCel",
       "metadata": {
         "key": "wat", "segment": "wat-compiler", "name": "wat", "kind": "native",
         "description": "WAT compiler. Compiles WebAssembly text-format source to a runtime Fn via wabt.js + WebAssembly.instantiate. Wraps the module's main export (or its single function export) as a callable Fn. Gated on csp.wasm-available."

@@ -1,8 +1,18 @@
 import type { 甲骨, Cel, Fn, Key, State, 冊 } from "../../../types/index.js";
 import { bindNativeFns } from "../../../kernel/index.js";
-import { backend, root } from "../file-store/index.js";
-import { putRaw, readIndex, STORE_ROOT } from "../segment-store/index.js";
-import { computeKernelClosure } from "../../../kernel/index.js";
+import { computeKernelClosure, resolveFn } from "../../../kernel/index.js";
+
+// Cross-segment facts read through the registry (isolation):
+//   file-store.backend / file-store.root — file-store's locked cels
+//   store.root / store.putRaw / store.readIndex — segment-store's surface
+const storeRoot = (state: State): string =>
+  String(state.cels.get("store.root")?.v ?? "plastron");
+const requireNodeBackend = (state: State, op: string): void => {
+  const backend = state.cels.get("file-store.backend")?.v;
+  if (backend !== "node-fs") {
+    throw new Error(`cli-segment-export: ${op} is CLI-only (live backend is "${String(backend)}", needs node-fs).`);
+  }
+};
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -68,8 +78,9 @@ const exportToDir: Fn = async (stateArg: unknown, targetArg: unknown, optsArg?: 
   };
   const { fs, path } = await loadNode();
 
-  const srcStore = path.join(path.resolve(String(state.cels.get("file-store.root")?.v ?? root)), STORE_ROOT);
-  const dstStore = path.join(path.resolve(targetDir), STORE_ROOT);
+  requireNodeBackend(state, "exportToDir");
+  const srcStore = path.join(path.resolve(String(state.cels.get("file-store.root")?.v ?? "")), storeRoot(state));
+  const dstStore = path.join(path.resolve(targetDir), storeRoot(state));
 
   if (await exists(fs, dstStore) && !opts.overwrite) {
     throw new Error(`cli-segment-export: ${dstStore} already exists — pass { overwrite: true } to replace it.`);
@@ -120,19 +131,23 @@ const exportToDir: Fn = async (stateArg: unknown, targetArg: unknown, optsArg?: 
 };
 
 const importFromDir: Fn = async (stateArg: unknown, sourceArg: unknown, optsArg?: unknown) => {
-  // state is unused today but kept in the signature for parity with
-  // exportToDir and to leave room for state-aware policy later.
-  void stateArg;
+  const state = stateArg as State;
+  requireNodeBackend(state, "importFromDir");
   const sourceDir = String(sourceArg);
   const opts = (optsArg ?? {}) as { overwrite?: boolean };
   const { fs, path } = await loadNode();
 
-  const srcStore = path.join(path.resolve(sourceDir), STORE_ROOT);
+  const srcStore = path.join(path.resolve(sourceDir), storeRoot(state));
   if (!(await exists(fs, srcStore))) {
     throw new Error(`cli-segment-export: ${srcStore} has no plastron/ store to import.`);
   }
 
-  const liveIndex = await readIndex(); // the local store's index (via file-store)
+  const readIndex = resolveFn(state, "store.readIndex");
+  const putRaw = resolveFn(state, "store.putRaw");
+  if (!readIndex || !putRaw) {
+    throw new Error("cli-segment-export: segment-store cels are not installed.");
+  }
+  const liveIndex = (await readIndex(state)) as { version: number; segments: Record<string, { latest: string; versions: string[] }> };
   const importedSegments: Key[] = [];
 
   const { manifests } = await readManifests(fs, path, srcStore);
@@ -144,7 +159,7 @@ const importFromDir: Fn = async (stateArg: unknown, sourceArg: unknown, optsArg?
     }
     const segDir = path.join(srcStore, "segments", name, version);
     const segment = JSON.parse(await fs.readFile(path.join(segDir, "segment.json"), "utf8")) as 甲骨;
-    await putRaw(name, version, manifest, segment);
+    await putRaw(state, name, version, manifest, segment);
     importedSegments.push(name);
   }
   return { importedSegments };
@@ -152,14 +167,12 @@ const importFromDir: Fn = async (stateArg: unknown, sourceArg: unknown, optsArg?
 
 export const name = "cli-segment-export" as const;
 
-// CLI-only: install the fn cels only when the live backend is node-fs.
-// Browser builds get an empty cel list — the manifest still loads (dep
-// validation stays consistent) but resolveFn(state, "exportToDir") is
-// undefined, so hosts must feature-detect before offering an export UI.
-export const cels: Cel[] =
-  backend === "node-fs"
-    ? bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
-        ["exportToDir", exportToDir],
-        ["importFromDir", importFromDir],
-      ]))
-    : [];
+// CLI-only at CALL time: the cels always install (uniform dispatch
+// surface for adjacency/validation); each fn checks the live
+// file-store.backend CEL and throws off-CLI. This replaces the old
+// module-load gate on an imported `backend` constant — the decision
+// now reads state like every other cross-segment fact.
+export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
+  ["exportToDir", exportToDir],
+  ["importFromDir", importFromDir],
+]));

@@ -14,6 +14,10 @@ export interface ChannelEnqueue {
 /** Hydrated channel — the live form, built at precompute from the
  *  DehydratedChannel descriptor on v. */
 export interface Channel {
+  /** The live queue — exposed so precompute's buildChannel can carry
+   *  pending enqueues across index rebuilds (a drain that commits cels
+   *  precomputes mid-flush; effects must survive it). */
+  _queue?: ChannelEnqueue[];
   enqueue: (args: ChannelEnqueue) => void;
   hasPending: () => boolean;
   drain: () => void | Promise<void>;

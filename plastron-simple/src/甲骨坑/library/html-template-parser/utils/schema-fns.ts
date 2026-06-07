@@ -1,6 +1,10 @@
 import type { Fn } from "../../../../types/index.js";
 import type { RenderSpec } from "./vnode.js";
-import { vnodeEquals } from "./vnode.js";
+import { vnodeEqualsWithin } from "./vnode.js";
+
+// Per the vnode-valuecel-collapse spec: deep compares are cheap on
+// fragment-sized trees and a bounded tax on monoliths (bail ⇒ changed).
+const FRAGMENT_EQ_BUDGET = 64;
 
 // ============================================================================
 // isChanged protocols for the view-layer schemas. Each pairs with a
@@ -26,7 +30,7 @@ export const stringList_isChanged: Fn = (a, b) => !stringArrayEqual(a, b);
 export const vnode_isChanged: Fn = (a, b) => {
   if (a === b) return false;
   if (!a || !b || typeof a !== "object" || typeof b !== "object") return a !== b;
-  return !vnodeEquals(a as RenderSpec["vnode"], b as RenderSpec["vnode"]);
+  return !vnodeEqualsWithin(a as RenderSpec["vnode"], b as RenderSpec["vnode"], FRAGMENT_EQ_BUDGET);
 };
 
 /** render-spec equality: same vnode (structural), same mount, same global
@@ -38,5 +42,5 @@ export const renderSpec_isChanged: Fn = (a, b) => {
   if (!ra || !rb) return true;
   if (ra.mount !== rb.mount) return true;
   if (!stringArrayEqual(ra.listeners, rb.listeners)) return true;
-  return !vnodeEquals(ra.vnode, rb.vnode);
+  return !vnodeEqualsWithin(ra.vnode, rb.vnode, FRAGMENT_EQ_BUDGET);
 };

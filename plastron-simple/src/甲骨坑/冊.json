@@ -155,5 +155,37 @@
     "version": "1.0.0",
     "description": "Web Audio capability segment. Cels sound.play-tone (oscillator), sound.play-pcm (Float32 samples), sound.stop-all, plus sound.master-gain and sound.context-state. Browser-only — off-browser every fn is a silent no-op so app code is portable. Lazy AudioContext creation on first play (browser autoplay policy). Module-scoped runtime state (the context + active source set) is shared across States — matches the host/file-store singleton pattern.",
     "dependencies": []
+  },
+  {
+    "name": "defn",
+    "version": "1.0.0",
+    "description": "Named-function definition channel: binder formulas enqueue {name, source, kind} requests; the drain commits EditableLambdaCels with definedBy/origin ownership, rename retirement, and the orphan sweep (binders are authoritative for a name's existence).",
+    "dependencies": [],
+    "role": "library"
+  },
+  {
+    "name": "genesis",
+    "version": "1.0.0",
+    "description": "Structure channel: generator formulas ({genesis:true, cels}) commit batches stamped generatedBy; regeneration diffs, seed-vs-content preservation, ownership sweep — generators are authoritative for their bloom's existence.",
+    "dependencies": [],
+    "role": "library"
+  },
+  {
+    "name": "checkpoint",
+    "version": "1.0.0",
+    "description": "Snapshot ring + restore + delta: =checkpoint(name) formulas snapshot user-space via dehydrate; restore wipes and rehydrates (the wake path); delta feeds review gates.",
+    "dependencies": [],
+    "role": "library"
+  },
+  {
+    "name": "origin",
+    "version": "1.0.0",
+    "description": "The starting point: the origin cel (readme as value), the freespace view + entry gesture, load/cels effects. Boot contract: createInitialState + hydrate paints one visible cel.",
+    "dependencies": [
+      "genesis",
+      "html-template-parser",
+      "plastron-dom"
+    ],
+    "role": "library"
   }
 ]

@@ -85,8 +85,8 @@ const fsTreeCels = (state: State, folders: string[], locations: Record<string, s
 /** Make sure the fs-tree user-space exists in segment-store and is loaded.
  *  First-time setup seeds it with one folder per known application. */
 const ensureFsTree = async (state: State, defaultFolders: string[]): Promise<void> => {
-  const has = resolveFn(state as never, "store.has") as (n: string) => Promise<boolean>;
-  if (await has(FS_TREE)) {
+  const has = resolveFn(state as never, "store.has") as (st: unknown, n: string) => Promise<boolean>;
+  if (await has(state, FS_TREE)) {
     if (!(state as { segments: Map<string, unknown> }).segments.has(FS_TREE)) {
       await callFn(state, "loadUserSpace", FS_TREE);
     }
@@ -111,11 +111,11 @@ const saveFsTree = async (state: State): Promise<void> => {
  *  that has no recorded location into "/<app>". Updates file-explorer.items
  *  + fs-tree.locations (saving when locations changed). */
 export const refresh = async (state: State): Promise<void> => {
-  const list = resolveFn(state as never, "store.list") as () => Promise<StoreListEntry[]>;
-  const getOne = resolveFn(state as never, "store.get") as (n: string) => Promise<{ manifest: FileEntry["manifest"] } | undefined>;
-  const all = (await list()) ?? [];
+  const list = resolveFn(state as never, "store.list") as (st: unknown) => Promise<StoreListEntry[]>;
+  const getOne = resolveFn(state as never, "store.get") as (st: unknown, n: string) => Promise<{ manifest: FileEntry["manifest"] } | undefined>;
+  const all = (await list(state)) ?? [];
   const hydrated = await Promise.all(all.map(async (e) => {
-    const got = await getOne(e.name);
+    const got = await getOne(state, e.name);
     return got ? { name: e.name, manifest: got.manifest } : undefined;
   }));
   const userSpaces = hydrated.filter((e): e is FileEntry =>
@@ -232,8 +232,8 @@ export const drop = async (state: State, folderPath: string, event: { preventDef
 // ── open: existing behavior (loads + launches the app) ──────────────────────
 
 export const open = async (state: State, name: string): Promise<void> => {
-  const getOne = resolveFn(state as never, "store.get") as (n: string) => Promise<{ manifest: FileEntry["manifest"] } | undefined>;
-  const got = await getOne(name);
+  const getOne = resolveFn(state as never, "store.get") as (st: unknown, n: string) => Promise<{ manifest: FileEntry["manifest"] } | undefined>;
+  const got = await getOne(state, name);
   if (!got) return;
   const app = got.manifest.applications?.[0];
   if (!app) return;

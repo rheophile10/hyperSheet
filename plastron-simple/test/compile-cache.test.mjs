@@ -42,7 +42,10 @@ test("two cels with identical source share a single compiled envelope (cache hit
   assert.equal(a._wasm, b._wasm, "identical sources should share _wasm via cache");
 
   const cache = state.cels.get("compile.cache").v;
-  assert.equal(cache.size, 1, "cache should hold exactly one entry for the shared source");
+  // firmware seed compiles (origin's 元.view) occupy slots from boot —
+  // count only this test's wat entries.
+  const watEntries = [...cache.keys()].filter((k) => k.startsWith("wat:")).length;
+  assert.equal(watEntries, 1, "cache should hold exactly one entry for the shared source");
 });
 
 // ── different sources produce different envelopes ─────────────────────────
@@ -71,7 +74,7 @@ test("distinct sources produce distinct compiled envelopes", async () => {
   const add = state.cels.get("add");
   const mul = state.cels.get("mul");
   assert.notEqual(add._fn, mul._fn, "different sources should not share _fn");
-  assert.equal(state.cels.get("compile.cache").v.size, 2);
+  assert.equal([...state.cels.get("compile.cache").v.keys()].filter((k) => k.startsWith("wat:")).length, 2); // firmware seed slots excluded
 });
 
 // ── different KINDS with the same source don't collide ─────────────────────
@@ -180,7 +183,7 @@ test("a compile error doesn't pollute the cache; fixing the source recompiles", 
     ],
   }], [baseManifest]);
   const cache = state.cels.get("compile.cache").v;
-  assert.equal(cache.size, 0, "failed compile should not enter the cache");
+  assert.equal([...cache.keys()].filter((k) => k.startsWith("wat:")).length, 0, "failed compile should not enter the cache (firmware seed slots excluded)");
 
   // Fix the source — replacing the definition triggers a fresh compile.
   await setCel(state, "op", {
@@ -188,5 +191,5 @@ test("a compile error doesn't pollute the cache; fixing the source recompiles", 
     f: "(module (func (export \"main\") (result i32) i32.const 42))",
   });
   assert.equal(typeof state.cels.get("op")._fn, "function", "valid source should compile");
-  assert.equal(cache.size, 1, "successful compile should populate the cache");
+  assert.equal([...cache.keys()].filter((k) => k.startsWith("wat:")).length, 1, "successful compile should populate the cache (firmware seed slots excluded)");
 });

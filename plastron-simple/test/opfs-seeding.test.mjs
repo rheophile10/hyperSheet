@@ -24,7 +24,7 @@ beforeAll(async () => {
 beforeEach(wipeStore);
 afterAll(wipeStore);
 
-const call = (key, ...args) => resolveFn(state, key)(...args);
+const call = (key, ...args) => resolveFn(state, key)(state, ...args);
 const seed = () => resolveFn(state, "seedStore")(state);
 
 test("seedStore boots: the cel resolves to a fn", () => {

@@ -43,7 +43,7 @@ export { bindNativeFns } from "./native-fn.js";
 // memo/trampolines, then ends with 卜's precompute.
 export {
   hydrate, hydrate函,
-  inflateCel, disposeCel, compileCelBody, resolveSchemas,
+  inflateCel, disposeCel, retireCel, compileCelBody, resolveSchemas,
   installCels, inflateAllCels, compileFireable, validateManifests,
   applyManifestDefaults,
   validateInputKinds, hydrateValue, applySchemaHydrate,
@@ -62,7 +62,7 @@ export {
 // precomputed topology. precompute builds the indexes hydrate/setCel
 // hand it; runCycle fires dirty cels wave by wave.
 export {
-  runCycle, runCascade, affectedFor,
+  runCycle, interlinked, ilk, 連鎖, runCascade, affectedFor,
   precompute, precomputeOptional, buildPrecomputedIndexes,
   celDependencies, dependentsOf, downstreamOf, upstreamOf, dependencyCelsOf,
   bfsDownstream, bumpDefGeneration, isDefinitionStale,
@@ -100,7 +100,7 @@ export {
   SEGMENT_LOADERS_KEY, getSegmentLoaders,
   BUNDLED_LOADERS_KEY, getBundledLoaders, reparkBundledLoader,
 } from "./segments/load.js";
-export { CSP_EVAL_AVAILABLE_KEY } from "./卜/precomputeOptional.js";
+export { CSP_EVAL_AVAILABLE_KEY, CSP_WASM_AVAILABLE_KEY } from "./卜/precomputeOptional.js";
 export {
   parseA1, parseCoordinates, parseAddress, parseRange,
   isRangeNotation, addressToKey, toRange, rangeToKeys,
@@ -108,3 +108,5 @@ export {
 
 // ── supporting ── schema bridging for SchemaCels.
 export { zodToJsonSchema, jsonSchemaToZod } from "./zod-schema-utils.js";
+export { counters, bump } from "./counters.js";
+export type { PlastronCounters } from "./counters.js";

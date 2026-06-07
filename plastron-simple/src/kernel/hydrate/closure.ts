@@ -45,7 +45,7 @@ export const hydrateClosure = async (
     // closure is implicit. This is what makes a saved user-space portable
     // back into any session that has the parent app booted.
     if (name !== rootName && hasSegment(state, name)) continue;
-    const rec = (await get(name, ver)) as StoreRecord | undefined;
+    const rec = (await get(state, name, ver)) as StoreRecord | undefined;
     if (!rec) {
       throw new Error(
         name === rootName

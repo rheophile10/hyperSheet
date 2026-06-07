@@ -31,7 +31,7 @@ beforeAll(async () => {
 beforeEach(wipeStore);
 afterAll(wipeStore);
 
-const call = (key, ...args) => resolveFn(state, key)(...args);
+const call = (key, ...args) => resolveFn(state, key)(state, ...args);
 
 const manifestOf = (name, version, extra = {}) => ({
   name, version, description: `${name} @ ${version}`,

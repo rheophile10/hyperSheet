@@ -1,5 +1,5 @@
-import type { CompiledEnvelope, CompiledLambda, Fn, Key, ResolvedInputs } from "../../../../types/index.js";
-import { cellKey, expandRange, parseRef } from "./address.js";
+import type { CompiledEnvelope, CompiledLambda, Fn, Key, ResolvedInputs, State } from "../../../../types/index.js";
+import { cellKey, expandRange, indexToCol, parseRef } from "./address.js";
 
 // ============================================================================
 // Infix formula parser — Excel-style `=A1*2` compiled into the FormulaCel
@@ -22,8 +22,9 @@ type Node =
   | { t: "num"; v: number }
   | { t: "str"; v: string }
   | { t: "bool"; v: boolean }
-  | { t: "ref"; ref: string }
-  | { t: "range"; range: string }
+  | { t: "ref"; ref: string; key?: string }      // key set for cross-sheet Seg!A1
+  | { t: "range"; range: string; keys?: string[] } // keys set for cross-sheet / named ranges
+  | { t: "sym"; name: string }                     // bare non-ref name → cel value by key
   | { t: "bin"; op: string; l: Node; r: Node }
   | { t: "un"; op: string; e: Node }
   | { t: "call"; name: string; args: Node[] };
@@ -50,7 +51,7 @@ const tokenize = (src: string): Tok[] => {
     }
     const two = src.slice(i, i + 2);
     if (OPS2.has(two)) { toks.push({ k: "op", v: two }); i += 2; continue; }
-    if ("+-*/&=<>(),:".includes(c)) { toks.push({ k: "op", v: c }); i++; continue; }
+    if ("+-*/&=<>(),:!".includes(c)) { toks.push({ k: "op", v: c }); i++; continue; }
     if ((c >= "0" && c <= "9") || c === ".") {
       let j = i;
       while (j < n && ((src[j]! >= "0" && src[j]! <= "9") || src[j] === ".")) j++;
@@ -149,19 +150,42 @@ const parseToks = (toks: Tok[]): Node => {
           while (peek()?.v === ",") { next(); args.push(argument()); }
         }
         eat(")");
-        return { t: "call", name: t.v.toUpperCase(), args };
+        return { t: "call", name: t.v, args };
       }
       const upper = t.v.toUpperCase();
       if (upper === "TRUE") return { t: "bool", v: true };
       if (upper === "FALSE") return { t: "bool", v: false };
+      // Cross-sheet reference: Seg!A1 (coordinate-convergence step 3).
+      // The segment keeps its case; member keys are `<segment>.<ADDR>`.
+      if (peek()?.v === "!") {
+        next(); // !
+        const refTok = next();
+        if (!refTok || refTok.k !== "name" || !parseRef(refTok.v)) {
+          throw new Error(`infix: expected a cell ref after "${t.v}!"`);
+        }
+        const addr = refTok.v.toUpperCase();
+        return { t: "ref", ref: addr, key: `${t.v}.${addr}` };
+      }
       if (parseRef(t.v)) return { t: "ref", ref: t.v.toUpperCase() };
-      throw new Error(`infix: unknown name "${t.v}"`);
+      // Bare symbol — a cel reference by exact key (named ranges resolve
+      // at compile via resolveSymbols; anything else reads the cel's v).
+      return { t: "sym", name: t.v };
     }
     throw new Error(`infix: unexpected token "${t.v}"`);
   }
-  // An argument may be a range (A1:B2) or an ordinary expression.
+  // An argument may be a range (A1:B2 / Seg!A1:B3) or an expression.
   const argument = (): Node => {
     const t = peek();
+    // Seg!A1:B3 — lookahead: name ! name : name
+    if (t?.k === "name" && !parseRef(t.v) && toks[pos + 1]?.v === "!"
+        && toks[pos + 2]?.k === "name" && parseRef(toks[pos + 2]!.v)
+        && toks[pos + 3]?.v === ":" && toks[pos + 4]?.k === "name" && parseRef(toks[pos + 4]!.v)) {
+      const seg = next()!.v; next(); // seg !
+      const from = next()!.v.toUpperCase(); next(); // from :
+      const to = next()!.v.toUpperCase();
+      const keys = expandRange(`${from}:${to}`).map((addr) => `${seg}.${addr}`);
+      return { t: "range", range: `${from}:${to}`, keys };
+    }
     if (t?.k === "name" && parseRef(t.v) && toks[pos + 1]?.v === ":") {
       const from = next()!.v;
       eat(":");
@@ -193,8 +217,10 @@ const evalNode = (node: Node, lookup: Lookup): unknown => {
     case "num": return node.v;
     case "str": return node.v;
     case "bool": return node.v;
-    case "ref": return lookup(cellKey(node.ref));
-    case "range": return rangeValues(node.range, lookup); // only meaningful in a call
+    case "ref": return lookup(node.key ?? cellKey(node.ref));
+    case "range":
+      return node.keys ? node.keys.map(lookup) : rangeValues(node.range, lookup);
+    case "sym": return lookup(node.name);
     case "un": return node.op === "-" ? -num(evalNode(node.e, lookup)) : num(evalNode(node.e, lookup));
     case "bin": {
       const op = node.op;
@@ -224,14 +250,19 @@ const scalar = (v: unknown): unknown => (Array.isArray(v) ? v[0] : v);
 const flatNums = (args: Node[], lookup: Lookup): number[] => {
   const out: number[] = [];
   for (const a of args) {
-    if (a.t === "range") for (const v of rangeValues(a.range, lookup)) out.push(num(v));
+    if (a.t === "range") {
+      const vs = a.keys ? a.keys.map(lookup) : rangeValues(a.range, lookup);
+      for (const v of vs) out.push(num(v));
+    }
     else out.push(num(evalNode(a, lookup)));
   }
   return out;
 };
 
+const BUILTIN_CALLS: ReadonlySet<string> = new Set(["SUM", "MIN", "MAX", "AVG", "AVERAGE", "IF"]);
+
 const evalCall = (node: { name: string; args: Node[] }, lookup: Lookup): unknown => {
-  switch (node.name) {
+  switch (node.name.toUpperCase()) {
     case "SUM": return flatNums(node.args, lookup).reduce((a, b) => a + b, 0);
     case "MIN": { const xs = flatNums(node.args, lookup); return xs.length ? Math.min(...xs) : 0; }
     case "MAX": { const xs = flatNums(node.args, lookup); return xs.length ? Math.max(...xs) : 0; }
@@ -240,7 +271,16 @@ const evalCall = (node: { name: string; args: Node[] }, lookup: Lookup): unknown
       const cond = evalNode(node.args[0]!, lookup);
       return cond ? evalNode(node.args[1]!, lookup) : (node.args[2] ? evalNode(node.args[2], lookup) : false);
     }
-    default: throw new Error(`infix: unknown function "${node.name}"`);
+    default: {
+      // USER SYMBOL — the name is a cel key (named-function-cels). The
+      // lookup resolves a lambda cel's callable; anything else is an
+      // undefined symbol, reported cleanly.
+      const fn = lookup(node.name);
+      if (typeof fn !== "function") {
+        throw new Error(`infix: "${node.name}" is not a function (undefined symbol)`);
+      }
+      return (fn as Fn)(...node.args.map((a) => evalNode(a, lookup)));
+    }
   }
 };
 
@@ -261,11 +301,19 @@ const literalNode = (src: string): Node => {
 
 const collectDeps = (node: Node, acc: Set<Key>): void => {
   switch (node.t) {
-    case "ref": acc.add(cellKey(node.ref)); break;
-    case "range": for (const addr of expandRange(node.range)) acc.add(cellKey(addr)); break;
+    case "ref": acc.add(node.key ?? cellKey(node.ref)); break;
+    case "range":
+      if (node.keys) for (const k of node.keys) acc.add(k);
+      else for (const addr of expandRange(node.range)) acc.add(cellKey(addr));
+      break;
+    case "sym": acc.add(node.name); break;
     case "un": collectDeps(node.e, acc); break;
     case "bin": collectDeps(node.l, acc); collectDeps(node.r, acc); break;
-    case "call": for (const a of node.args) collectDeps(a, acc); break;
+    case "call": {
+      if (!BUILTIN_CALLS.has(node.name.toUpperCase())) acc.add(node.name);
+      for (const a of node.args) collectDeps(a, acc);
+      break;
+    }
     default: break;
   }
 };
@@ -273,12 +321,108 @@ const collectDeps = (node: Node, acc: Set<Key>): void => {
 const lookupFromInputs = (inputs: ResolvedInputs): Lookup => (key) => {
   const c = inputs[key];
   if (c === undefined || Array.isArray(c)) return undefined;
-  return c.v;
+  // Head rule: lambda cels contribute their callable; FormulaCels their
+  // computed value (which may itself be a function — the unnamed
+  // `=QUICKJS(A1)` cell is callable through this branch).
+  if (c.celType === "FormulaCel") return c.v;
+  return (c as { _fn?: unknown })._fn ?? c.v;
+};
+
+// ── binder form: =QUICKJS(A1, "name" [, TRUE]) ──────────────────────────────
+// Root-level call whose name (lowercased) resolves to a CompilerCel and
+// whose second argument is a string literal. The cell's VALUE becomes
+// the definition request; the envelope declares the defn.commit channel
+// (named-function-cels design).
+interface InfixBinder { kind: string; srcNode: Node; name: string; overwrite: boolean; origin?: Key; }
+
+const binderShape = (ast: Node, state?: State): InfixBinder | undefined => {
+  if (!state || ast.t !== "call" || ast.args.length < 2 || ast.args.length > 3) return undefined;
+  const kind = ast.name.toLowerCase();
+  if (state.cels.get(kind)?.celType !== "CompilerCel") return undefined;
+  const nameArg = ast.args[1]!;
+  if (nameArg.t !== "str") return undefined;
+  const flag = ast.args[2];
+  if (flag !== undefined && flag.t !== "bool") return undefined;
+  const srcNode = ast.args[0]!;
+  return {
+    kind, srcNode, name: nameArg.v,
+    overwrite: flag?.t === "bool" ? flag.v : false,
+    origin: srcNode.t === "ref" ? cellKey(srcNode.ref) : undefined,
+  };
+};
+
+const binderEnvelope = (b: InfixBinder): CompiledEnvelope => {
+  const request = (source: unknown) => ({
+    defn: true, name: b.name, kind: b.kind, overwrite: b.overwrite,
+    source: String(source ?? ""), origin: b.origin,
+  });
+  return {
+    fn: ((record: Record<string, unknown>) => request(evalNode(b.srcNode, (k) => record[k]))) as Fn,
+    buildEvaluate: (inputs: ResolvedInputs) => {
+      const lookup = lookupFromInputs(inputs);
+      return (): unknown => request(evalNode(b.srcNode, lookup));
+    },
+    channels: ["defn.commit"],
+  };
+};
+
+// ── named-range resolution (coordinate-convergence step 2) ──────────────────
+// A bare symbol that resolves to a RangeCel becomes a keys-bearing
+// range node at COMPILE time: member keys in A1 form over the range's
+// segment (`g.A1`, …) plus a dep on the RangeCel itself — redefinition
+// bumps defGeneration and consumers recompile, exactly the S-expr
+// parser's contract. 2-dim ranges only (the sheet surface is 2-dim);
+// higher dims stay sym and read the RangeCel's struct value.
+const rangeCelKeys = (state: State, name: string): string[] | undefined => {
+  const cel = state.cels.get(name);
+  if (cel?.celType !== "RangeCel") return undefined;
+  const r = cel.v as { at?: { segment?: string; coordinates?: number[] }; shape?: number[] };
+  const at = r?.at?.coordinates;
+  const shape = r?.shape;
+  if (!at || !shape || at.length !== 2 || shape.length !== 2) return undefined;
+  const seg = r.at!.segment;
+  const keys: string[] = [];
+  for (let dr = 0; dr < shape[0]!; dr++) {
+    for (let dc = 0; dc < shape[1]!; dc++) {
+      const addr = `${indexToCol(at[1]! + dc - 1)}${at[0]! + dr}`;
+      keys.push(seg ? `${seg}.${addr}` : cellKey(addr));
+    }
+  }
+  return keys;
+};
+
+const resolveSymbols = (node: Node, state: State, defs: Set<Key>): Node => {
+  switch (node.t) {
+    case "sym": {
+      const keys = rangeCelKeys(state, node.name);
+      if (keys) { defs.add(node.name); return { t: "range", range: node.name, keys }; }
+      return node;
+    }
+    case "un": return { ...node, e: resolveSymbols(node.e, state, defs) };
+    case "bin": return { ...node, l: resolveSymbols(node.l, state, defs), r: resolveSymbols(node.r, state, defs) };
+    case "call": return { ...node, args: node.args.map((a) => resolveSymbols(a, state, defs)) };
+    default: return node;
+  }
+};
+
+// Root call whose head cel carries `metadata.genesis` → the value is a
+// structure request; declare the genesis channel (mirrors the kernel
+// S-expr parser and the binder form's channel wiring).
+const emitsTo = (ast: Node, state?: State): Key | undefined => {
+  if (!state || ast.t !== "call") return undefined;
+  const md = state.cels.get(ast.name)?.metadata as { genesis?: boolean; emitsTo?: Key } | undefined;
+  if (!md) return undefined;
+  if (md.emitsTo) return md.emitsTo;
+  return md.genesis === true ? "genesis.commit" : undefined;
 };
 
 /** The infix compiler — a FormulaCel parser. */
-export const compileInfix = (source: string): CompiledLambda => {
-  const ast = isFormula(source) ? parseSource(source) : literalNode(source);
+export const compileInfix = (source: string, state?: State): CompiledLambda => {
+  let ast = isFormula(source) ? parseSource(source) : literalNode(source);
+  if (state) ast = resolveSymbols(ast, state, new Set());
+  const binder = binderShape(ast, state);
+  if (binder) return binderEnvelope(binder);
+  const emitChannel = emitsTo(ast, state);
   const envelope: CompiledEnvelope = {
     fn: ((record: Record<string, unknown>) => evalNode(ast, (k) => record[k])) as Fn,
     buildEvaluate: (inputs: ResolvedInputs) => {
@@ -286,12 +430,24 @@ export const compileInfix = (source: string): CompiledLambda => {
       return (): unknown => evalNode(ast, lookup);
     },
   };
+  if (emitChannel) envelope.channels = [emitChannel];
   return envelope;
 };
 
-compileInfix.extractDeps = (source: string): Key[] => {
+compileInfix.extractDeps = (source: string, state?: State): Key[] => {
   if (!isFormula(source)) return [];
+  let ast = parseSource(source);
   const acc = new Set<Key>();
-  collectDeps(parseSource(source), acc);
+  if (state) ast = resolveSymbols(ast, state, acc); // named-range DEFINITION edges land in acc
+  const binder = binderShape(ast, state);
+  if (binder) {
+    // The binder depends on its SOURCE (and the compiler cel); the NAME
+    // is what it writes, not what it reads — no edge (the defn channel
+    // owns the effect; same-segment, so adjacency stays sound).
+    collectDeps(binder.srcNode, acc);
+    acc.add(binder.kind);
+    return [...acc];
+  }
+  collectDeps(ast, acc);
   return [...acc];
 };

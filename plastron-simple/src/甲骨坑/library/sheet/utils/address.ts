@@ -1,19 +1,24 @@
+import { parseA1 } from "../../../../kernel/index.js";
+
 // ============================================================================
 // A1-notation address utilities for the spreadsheet segment. Cell cels are
 // keyed `sheet.<ADDR>` (e.g. sheet.A1); the infix parser resolves a bare
-// reference A1 to that key through CELL_PREFIX. Carried forward in spirit
-// from the legacy plastron-sheet domain/address.ts.
+// reference A1 to that key through CELL_PREFIX.
+//
+// ONE NOTATION AUTHORITY (coordinate-convergence.md step 1): all PARSING
+// delegates to the kernel's `parseA1` (1-based [row, col]); this module
+// owns only the 1-based↔0-based conversion and the inverse FORMATTER
+// (indexToCol/addrFrom — the kernel has no formatter). The bijection is
+// pinned by a property test (test/address-convergence.test.mjs); the
+// private column-letter parse math is deleted.
 // ============================================================================
 
 export const CELL_PREFIX = "sheet." as const;
 
-/** Column letters → 0-based index. A→0, Z→25, AA→26, AB→27, … */
+/** Column letters → 0-based index, via the kernel parser. */
 export const colToIndex = (letters: string): number => {
-  let n = 0;
-  for (let i = 0; i < letters.length; i++) {
-    n = n * 26 + (letters.charCodeAt(i) - 64); // 'A' = 65 → 1
-  }
-  return n - 1;
+  const a1 = parseA1(`${letters}1`);
+  return a1 ? a1[1]! - 1 : -1;
 };
 
 /** 0-based column index → letters. 0→A, 25→Z, 26→AA, … */
@@ -30,13 +35,13 @@ export const indexToCol = (index: number): string => {
 
 export interface CellRef { col: number; row: number; }
 
-const REF_RE = /^([A-Za-z]+)([0-9]+)$/;
-
-/** Parse "B3" → { col: 1, row: 2 } (both 0-based). Null if not a ref. */
+/** Parse "B3" → { col: 1, row: 2 } (both 0-based). Null if not a ref.
+ *  Kernel parseA1 is the authority (1-based [row, col]); the 0-based
+ *  {col, row} conversion happens HERE and only here. */
 export const parseRef = (ref: string): CellRef | null => {
-  const m = REF_RE.exec(ref);
-  if (!m) return null;
-  return { col: colToIndex(m[1]!.toUpperCase()), row: parseInt(m[2]!, 10) - 1 };
+  const a1 = parseA1(ref);
+  if (!a1 || a1.length !== 2) return null;
+  return { col: a1[1]! - 1, row: a1[0]! - 1 };
 };
 
 /** { col, row } (0-based) → "B3". */

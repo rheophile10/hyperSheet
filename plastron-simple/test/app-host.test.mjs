@@ -56,6 +56,9 @@ test("os.launch with a document loads a user-space via session-segments", async 
 
 test("os.switch changes the active app; os.exit returns to home", async () => {
   const state = await boot();
+  // register explicitly — states no longer share seed cel objects, so
+  // the registry can't leak over from the earlier tests (it used to).
+  await op(state, "os.register-app")(state, { id: "alpha", application: "alpha-app" });
   await op(state, "os.launch")(state, "alpha", "ah.doc2", { save: false });
   await op(state, "os.switch")(state, "beta");
   assert.equal(get(state, "os.active"), "beta");

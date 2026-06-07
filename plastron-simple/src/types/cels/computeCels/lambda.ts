@@ -23,6 +23,11 @@ export interface CompiledEnvelope {
    *  later). Stored on cel._wasm at hydrate for diagnostics and future
    *  worker dispatch. */
   wasm?: Uint8Array;
+  /** Channels the compiled body participates in. compileCelBody merges
+   *  these into cel.metadata.channel — a compiler can declare that its
+   *  output is an EFFECT REQUEST committed by a drain (the binder form
+   *  of named-function-cels declares ["defn.commit"] this way). */
+  channels?: Key[];
 }
 
 export type CompiledLambda = Fn | CompiledEnvelope;

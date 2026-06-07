@@ -1,4 +1,5 @@
 import type { Cel, ChannelCel, FireableCel as ComputeCel, FireableCel, Fn, Key, ResolvedInputs, State } from "../../types/index.js";
+import { bump } from "../counters.js";
 import { isFireable } from "../cels.js";
 import type { PrecomputedIndexes } from "../../types/index.js";
 import { PRECOMPUTED_STATES_KEY } from "../卜/graph.js";
@@ -154,6 +155,7 @@ const fireCel = (
     }
     if (!shouldFire) return;
   }
+  bump("fires"); // counts cels that proceed to EVALUATION (post-suppression-gate)
 
   // Hooked path: when the cel has _memoCache or pre/post-fns, all
   // execution funnels through the hook reducer. Always async (hook fns
@@ -221,8 +223,9 @@ const finishFireSync = (
   const isChangedKey = cel.schema?.protocols.isChanged;
   const isChanged = isChangedKey ? resolveFn(state, isChangedKey) : undefined;
   if (isChanged) {
-    if (!isChanged(cel.v, newV)) return;
+    if (!isChanged(cel.v, newV)) { bump("suppressed"); return; }
   } else if (cel.v === newV) {
+    bump("suppressed");
     return;
   }
   commitChange(state, cel, newV, changed!);
@@ -291,7 +294,18 @@ export const affectedFor = (state: State, writtenKeys: Key[]): Set<Key> => {
   return affected;
 };
 
-export const runCycle: Fn = async (state: State) => {
+// ── 連鎖 — the cascade ───────────────────────────────────────────────────────
+//
+//   "A system of cels. Interlinked. Within cels interlinked. Within
+//    cels interlinked. Within one stem."
+//
+// 連鎖 (rensa, "linked chain / chain-reaction") fires the full cascade
+// once across every fireable cel, propagating each change through the
+// interlinked graph until it settles. This is the kernel's beating
+// heart — the loop that makes cels interlinked behave as one reactive
+// body. Surfaced publicly as `interlinked` (and the short `ilk`); the
+// legacy `runCycle` name is kept as an alias.
+const 連鎖: Fn = async (state: State) => {
   const indexes = readIndexes(state);
   if (!indexes) return state;
 
@@ -306,3 +320,11 @@ export const runCycle: Fn = async (state: State) => {
 };
 
 export type { Cel };
+
+/** The cascade, named. `interlinked` is canonical; `ilk` is the short
+ *  form for formulas (`(ilk)`); `runCycle` is the legacy alias. All
+ *  three resolve to 連鎖. */
+export const interlinked = 連鎖;
+export const ilk = 連鎖;
+export const runCycle = 連鎖;
+export { 連鎖 };

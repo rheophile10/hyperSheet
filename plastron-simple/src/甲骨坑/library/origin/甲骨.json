@@ -1,0 +1,234 @@
+{
+  "name": "origin",
+  "cels": [
+    {
+      "key": "元",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元",
+        "segment": "origin",
+        "name": "元",
+        "description": "the origin cel. its v is the readme (plain lowercase text, owner-edited). one artifact, two audiences: humans read it expanded, agents pack it as context."
+      },
+      "v": "you are at the origin. everything here is a cel: a key plus a value,\nmaybe computed by a formula. type a formula in the box and press enter\n- it becomes a new cel beside this one. click any cel to open or close\nit. commit an empty box on an open cel to delete it - deleting a\nformula unmakes everything it made.\n\ntry:\n  =1+1\n  =grid(3, 3)                   a small spreadsheet grid\n  =grid(4, 2, \"books\")          a named one (cells books.A1..)\n  =books!A1 & \"!\"               read another grid's cell\n  =sum(books!A1:A4)             or a range of it\n  =js(c1, \"myfn\")               turn source in c1 into myfn(...)\n  =checkpoint(\"before-mess\")    a snapshot you can restore\n  =load(\"sheet\")                load a library segment\n  =cels(\"sheet\")                list what a segment provides\n\nerrors never crash anything: a bad formula shows an error value in its\ncel and the details land in the \"errors\" cel. every loaded segment\ndocuments itself - read its skill before using it."
+    },
+    {
+      "key": "元.mount",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.mount",
+        "segment": "origin",
+        "name": "元.mount",
+        "description": "where the freespace view mounts. the host's one knob; null hides it."
+      },
+      "v": "#app"
+    },
+    {
+      "key": "元.expanded",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.expanded",
+        "segment": "origin",
+        "name": "元.expanded",
+        "description": "key of the currently open cel box (null = all closed)."
+      },
+      "v": "元"
+    },
+    {
+      "key": "元.draft",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.draft",
+        "segment": "origin",
+        "name": "元.draft",
+        "description": "the entry box's in-progress text."
+      },
+      "v": ""
+    },
+    {
+      "key": "freespace.n",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "freespace.n",
+        "segment": "origin",
+        "name": "freespace.n",
+        "description": "auto-key counter for c1, c2, ..."
+      },
+      "v": 0
+    },
+    {
+      "key": "freespace.index",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "freespace.index",
+        "segment": "origin",
+        "name": "freespace.index",
+        "description": "ordered key list of the visible freespace cels (the view's idx input; commit maintains it alongside the vals array wiring)."
+      },
+      "v": []
+    },
+    {
+      "key": "元.view",
+      "celType": "FormulaCel",
+      "metadata": {
+        "key": "元.view",
+        "segment": "origin",
+        "name": "元.view",
+        "parser": "f",
+        "schema": "render-spec",
+        "channel": [
+          "plastron-dom.paint"
+        ],
+        "inputMap": {
+          "readme": "元",
+          "expanded": "元.expanded",
+          "draft": "元.draft",
+          "mount": "元.mount",
+          "idx": "freespace.index",
+          "vals": [],
+          "banner": "freespace.banner"
+        },
+        "description": "the freespace view. UNLOCKED on purpose - minimal, ready to be entirely reworked in place. origin.commit rewires its idx/vals inputMap arrays as cels are made."
+      },
+      "f": "(originView readme expanded draft mount idx vals banner)"
+    },
+    {
+      "key": "originView",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "originView",
+        "segment": "origin",
+        "name": "originView",
+        "kind": "native",
+        "description": "(readme expanded draft mount idx vals) - freespace RenderSpec producer."
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.commit",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.commit",
+        "segment": "origin",
+        "name": "origin.commit",
+        "kind": "native",
+        "description": "(state, targetKey) - the entry gesture: sniff =/(/literal, create cN in freespace (or edit/delete the open cel), rewire the view, cycle, drain all effect channels + paint."
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.expand",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.expand",
+        "segment": "origin",
+        "name": "origin.expand",
+        "kind": "native",
+        "description": "(state, key) - toggle a cel box open/closed; seeds the draft with its source."
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.key",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.key",
+        "segment": "origin",
+        "name": "origin.key",
+        "kind": "native",
+        "description": "(state, targetKey, event) - Enter commits the draft."
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.noop",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.noop",
+        "segment": "origin",
+        "name": "origin.noop",
+        "kind": "native",
+        "description": "swallow clicks inside the entry box."
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.effects",
+      "celType": "ChannelCel",
+      "metadata": {
+        "key": "origin.effects",
+        "segment": "origin",
+        "name": "origin.effects",
+        "drain": "origin.drain",
+        "description": "load/cels requests commit here (effects at drain)."
+      },
+      "v": {
+        "drain": "origin.drain"
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.drain",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.drain",
+        "segment": "origin",
+        "name": "origin.drain",
+        "kind": "native",
+        "description": "(items) - execute load (ensureSegments) and cels (segment listing) requests; result text replaces the request as the cel's value."
+      },
+      "locked": true
+    },
+    {
+      "key": "load",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "load",
+        "segment": "origin",
+        "name": "load",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name) - load a library segment (lazy loaders + store). capability arrives silently; views are asked for."
+      },
+      "locked": true
+    },
+    {
+      "key": "cels",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "cels",
+        "segment": "origin",
+        "name": "cels",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(segment) - readable listing of a segment's cels (skill first; locked marked)."
+      },
+      "locked": true
+    },
+    {
+      "key": "readme",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "readme",
+        "segment": "origin",
+        "name": "readme",
+        "kind": "native",
+        "genesis": true,
+        "description": "() - genesis vocabulary: make the readme a banner div above freespace (freespace.banner). delete the =readme() formula and the sweep removes the div."
+      }
+    },
+    {
+      "key": "readmeBanner",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "readmeBanner",
+        "segment": "origin",
+        "name": "readmeBanner",
+        "kind": "native",
+        "description": "(readme) - vnode builder for the readme banner div."
+      }
+    }
+  ]
+}

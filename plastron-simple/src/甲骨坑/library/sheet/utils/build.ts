@@ -1,6 +1,6 @@
 import type { Cel, DehydratedCel, Fn, State, 甲骨 } from "../../../../types/index.js";
 import {
-  inflateCel, compileCelBody, resolveSchemas, precompute, resolveFn,
+  inflateCel, compileCelBody, resolveSchemas, precompute, precomputeOptional, resolveFn,
 } from "../../../../kernel/index.js";
 import { addrFrom, cellKey } from "./address.js";
 
@@ -61,7 +61,35 @@ export const buildSheet = (opts: BuildSheetOpts): 甲骨 & { version: string; de
   dc.push(ctrl("sheet.formula-bar", ""));
   dc.push(ctrl("sheet.dims", { rows: opts.rows, cols: opts.cols }));
   dc.push(ctrl("sheet.segment", segment));
-  return { name: segment, version: "0.0.1", dependencies: ["sheet"], cels: dc };
+  // "defn" is structural: every grid supports the binder gesture
+  // (`=JS(A1, "name")` → defn.commit). Compiler edges (js, quickjs, …)
+  // stay UNdeclared — they're user-introduced per formula, and the
+  // precompute drift warning reports them truthfully.
+  return { name: segment, version: "0.0.1", dependencies: ["sheet", "defn"], cels: dc };
+};
+
+/** GRID — the first genesis vocabulary (genesis-segment.md). Returns a
+ *  structure request for an empty rows×cols grid of infix cells named
+ *  `<name>.A1` …; the genesis drain commits it (stamped generatedBy,
+ *  landed in layer segment <name>). Cells are seeds: the user's typed
+ *  values/formulas survive regeneration. `=grid(3, 3)` at the origin
+ *  blooms a grid; delete the formula and the sweep unmakes it. */
+export const grid: Fn = (rows: unknown, cols: unknown, nameArg?: unknown) => {
+  const r = Math.max(1, Math.min(256, Number(rows) || 1));
+  const c = Math.max(1, Math.min(64, Number(cols) || 1));
+  const name = typeof nameArg === "string" && nameArg !== "" ? nameArg : "grid";
+  const cels: Record<string, unknown> = {};
+  for (let row = 0; row < r; row++) {
+    for (let col = 0; col < c; col++) {
+      const addr = addrFrom(col, row);
+      cels[`${name}.${addr}`] = {
+        celType: "ValueCel", v: "",
+        metadata: { name: addr, parser: "infix" },
+      };
+    }
+  }
+  cels[`${name}.dims`] = { celType: "ValueCel", v: { rows: r, cols: c }, metadata: {} };
+  return { genesis: true, layer: name, cels };
 };
 
 // ── action fns (bound as the sheet.* action cels) ───────────────────────────
@@ -145,8 +173,32 @@ export const commitCell: Fn = async (
     if (live.celType === "FormulaCel") await compileCelBody(live, state);
     resolveSchemas(state);
     precompute(state);
+    // precompute clears every _evaluate and rebuilds them only via a
+    // fire-and-forget precomputeOptional; await it here so the per-cell
+    // VIEW cels (whose formulas dispatch lambda heads like cellVnode)
+    // fire through their _evaluate closure — the generic record path
+    // resolves input VALUES, and a lambda head needs the resolved cel's
+    // _fn, which only the buildEvaluate closure reads.
+    await precomputeOptional(state);
     const runCycle = resolveFn(state, "runCycle")!;
     await runCycle(state);
+  }
+
+  // Binder formulas (named-function-cels) enqueue their definition
+  // request on defn.commit during the cycle; commit them now so the
+  // function exists by the time the user's next formula calls it. Then
+  // run the drain once more with an empty batch: its orphan sweep must
+  // see edits that REMOVED a binder (the flush skips empty queues).
+  const defnDrain = resolveFn(state, "defn.drain");
+  if (defnDrain) {
+    await resolveFn(state, "drain")!(state, "defn.commit");
+    await defnDrain([], state);
+  }
+  // Same for genesis — a sheet cell can hold a generator formula.
+  const genesisDrain = resolveFn(state, "genesis.drain");
+  if (genesisDrain) {
+    await resolveFn(state, "drain")!(state, "genesis.commit");
+    await genesisDrain([], state);
   }
 
   await set(state, "sheet.editing", { editing: false, draft: "" });

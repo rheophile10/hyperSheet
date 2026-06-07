@@ -1,7 +1,16 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, precomputeOptional, resolveFn } from "../dist/index.js";
-import { diffVNodes } from "../dist/甲骨坑/library/plastron-dom/utils/diff.js";
+import { diffVNodes as diffVNodesRaw } from "../dist/甲骨坑/library/plastron-dom/utils/diff.js";
+import { vnode_isChanged } from "../dist/甲骨坑/library/html-template-parser/utils/schema-fns.js";
+import { vnodeEquals, bindingsEqual } from "../dist/甲骨坑/library/html-template-parser/utils/vnode.js";
+
+// diffVNodes takes injected comparators since segment-isolation class D
+// (the painter resolves the vnode.equals / vnode.bindings-equal cels
+// once per drain; tests inject the same fns directly).
+const EQ = { vnodeEquals, bindingsEqual };
+const diffVNodes = (a, b) => diffVNodesRaw(a, b, EQ);
+void vnode_isChanged;
 import { createPainter, setPainter, getPainter } from "../dist/甲骨坑/library/plastron-dom/utils/paint.js";
 
 // raf-channel — the painter consumes render-specs through a RAF-batched

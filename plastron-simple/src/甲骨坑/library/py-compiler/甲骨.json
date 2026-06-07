@@ -3,7 +3,7 @@
   "cels": [
     {
       "key": "py",
-      "celType": "LockedLambdaCel",
+      "celType": "CompilerCel",
       "metadata": {
         "key": "py", "segment": "py-compiler", "name": "py", "kind": "native",
         "description": "Python compiler. Compiles Python source — typically a `def` followed by the function name — into a runtime Fn via Pyodide. Pyodide is dynamic-imported on first compile and the runtime instance is shared across all py-kind cels. v1 runs main-thread; worker isolation is v2."

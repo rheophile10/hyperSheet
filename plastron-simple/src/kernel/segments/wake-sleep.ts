@@ -75,7 +75,7 @@ const persistThroughSink = async (
   if (!put) return;
   const manifest = getSegmentManifest(state, name);
   if (!manifest) return;
-  await put(name, manifest.version, manifest, payload);
+  await put(state, name, manifest.version, manifest, payload);
 };
 
 // ── derived-graph dependents (segmentAdjacency REVERSED) ──────────────────────
@@ -260,7 +260,7 @@ const resolvePendingSource = async (state: State, name: Key): Promise<void> => {
         `segment-store library ("store.get") is not installed.`,
       );
     }
-    const raw = await get(source.store.name, source.store.version);
+    const raw = await get(state, source.store.name, source.store.version);
     if (raw === undefined) {
       throw new Error(
         `wake "${name}": segment-store has no entry for "${source.store.name}"` +

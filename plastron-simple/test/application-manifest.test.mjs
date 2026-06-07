@@ -167,7 +167,7 @@ test("hydrate函: store source resolves on first wake via store.get", async () =
   const getCelObj = state.cels.get("store.get");
   const origGet = getCelObj._fn;
   const payload = { name: "stored", cels: [dval("stored.y", "stored", 5)] };
-  getCelObj._fn = async (name) => {
+  getCelObj._fn = async (_st, name) => {
     assert.equal(name, "stored");
     return { manifest: { name: "stored", version: "1.0.0", dependencies: [], role: "application" }, segment: payload };
   };

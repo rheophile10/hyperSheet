@@ -80,7 +80,7 @@ test("newUserSpace creates the user-space, auto-saves it, and returns its manife
   // loaded into state...
   assert.ok(state.segments.has("doc"));
   // ...and persisted to the store (autoSave default true).
-  assert.equal(await fn(state, "store.has")("doc"), true);
+  assert.equal(await fn(state, "store.has")(state, "doc"), true);
 });
 
 test("newUserSpace collides on an existing stored name; overwrite:true bypasses", async () => {
@@ -166,7 +166,7 @@ test("a private user-space dep travels with save and close; shared deps don't", 
   await fn(state, "newUserSpace")(state, "doc", "demo-app", { autoSave: false, extraDeps: ["doc-notes"] });
   const persisted = await fn(state, "saveUserSpace")(state, "doc");
   assert.deepEqual(new Set(persisted), new Set(["doc", "doc-notes"]), "private closure = doc + its private dep");
-  assert.equal(await fn(state, "store.has")("doc-notes"), true, "private dep persisted");
+  assert.equal(await fn(state, "store.has")(state, "doc-notes"), true, "private dep persisted");
 
   // Close flushes both the user-space and its private dep; app stays.
   await fn(state, "closeUserSpace")(state, "doc");

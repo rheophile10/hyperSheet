@@ -28,7 +28,7 @@ const launch: Fn = async (state: State, appId: Key, docName?: Key, opts?: Launch
   const app = apps(state).find((a) => a.id === appId);
   if (docName && !hasSegment(state, docName)) {
     const has = resolveFn(state, "store.has") as Fn | undefined;
-    if (has && (await has(docName))) {
+    if (has && (await has(state, docName))) {
       await call(state, "loadUserSpace", docName);
     } else {
       const appName = app?.application ?? appId;

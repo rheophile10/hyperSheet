@@ -3,7 +3,7 @@
   "cels": [
     {
       "key": "js",
-      "celType": "LockedLambdaCel",
+      "celType": "CompilerCel",
       "metadata": {
         "key": "js", "segment": "js-compiler", "name": "js", "kind": "native",
         "description": "JavaScript compiler. Compiles JS source into runtime Fns. new Function-backed today; future JS-to-wasm pipeline swaps the body."

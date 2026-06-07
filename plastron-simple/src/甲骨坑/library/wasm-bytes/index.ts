@@ -2,11 +2,14 @@ import type {
   甲骨, Cel, CompileContext, CompiledEnvelope, Compiler, Fn, State, WasmHandle, WitType,
 } from "../../../types/index.js";
 import { isWitPrimitive } from "../../../kernel/index.js";
-import { bindNativeFns } from "../../../kernel/index.js";
-import { CSP_WASM_AVAILABLE_KEY } from "../csp/index.js";
-import { readHostImports } from "../host/index.js";
-import { fsOps } from "../file-store/index.js";
+import { resolveFn, bindNativeFns } from "../../../kernel/index.js";
+import { CSP_WASM_AVAILABLE_KEY } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
+
+// host capability namespace, read through the cel registry (isolation:
+// the host segment owns the fn; we own only the key).
+const readHostImports = (st: State): Record<string, Fn> =>
+  ((resolveFn(st, "host.imports") as Fn | undefined)?.(st) ?? {}) as Record<string, Fn>;
 
 // wasm-bytes — the "wasm" LockedLambdaCel whose _fn loads a *precompiled*
 // WebAssembly module. The sibling to wat/py/quickjs that accepts bytes
@@ -76,11 +79,17 @@ const decodeBase64 = (b64: string): Uint8Array => {
 // "file-store:<path>" → bytes via the file-store segment; otherwise the
 // source is treated as base64-encoded wasm.
 const FILE_PREFIX = "file-store:";
-const resolveBytes = async (source: string): Promise<Uint8Array> => {
+const resolveBytes = async (source: string, state?: State): Promise<Uint8Array> => {
   const trimmed = source.trim();
   if (trimmed.startsWith(FILE_PREFIX)) {
     const path = trimmed.slice(FILE_PREFIX.length);
-    return (await fsOps.read(path)) as Uint8Array;
+    const read = state ? resolveFn(state, "fs.read") : undefined;
+    if (!read) {
+      throw new Error(
+        `wasm-bytes: "${FILE_PREFIX}" sources need the file-store segment (fs.read cel) and compile-time state.`,
+      );
+    }
+    return (await read(path)) as Uint8Array;
   }
   return decodeBase64(trimmed);
 };
@@ -159,7 +168,7 @@ const wasmBytesLoader: Compiler = (async (
   }
 
   // 1. Source → bytes (base64 or file-store path).
-  const bytes = await resolveBytes(source);
+  const bytes = await resolveBytes(source, state);
   // Magic-header check: "\0asm". A friendlier failure than the opaque
   // CompileError WebAssembly.instantiate throws on garbage bytes (a
   // common symptom of a bad base64 string or a missing file).

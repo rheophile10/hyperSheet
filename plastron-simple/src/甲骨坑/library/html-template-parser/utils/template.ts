@@ -1,6 +1,7 @@
 import type {
   CompiledEnvelope, CompiledLambda, Fn, Key, ResolvedInputs,
 } from "../../../../types/index.js";
+import { bump, counters } from "../../../../kernel/index.js";
 import { compileFormula, extractDeps } from "../../../../kernel/index.js";
 import type {
   AttrValue, EventBinding, RenderSpec, VElement, VNode,
@@ -32,6 +33,10 @@ import type {
 interface Hole {
   source: string;
   fn: Fn;            // compiled formula entry: (record) => value
+  /** Fragment slot — `{{(cel "key")}}`. The hole reads the referenced
+   *  view cel's value (a RenderSpec) straight off the record and the
+   *  renderer splices its .vnode. The key is the hole's ONLY dep. */
+  celSlot?: Key;
 }
 
 type TextPart = { lit: string } | { hole: Hole };
@@ -73,10 +78,16 @@ const VOID_TAGS: ReadonlySet<string> = new Set([
   "link", "meta", "param", "source", "track", "wbr",
 ]);
 
-const mkHole = (source: string): Hole => ({
-  source,
-  fn: (compileFormula(source) as CompiledEnvelope).fn,
-});
+const CEL_SLOT_RE = /^\(cel\s+"([^"]+)"\)$/;
+
+const mkHole = (source: string): Hole => {
+  const slot = CEL_SLOT_RE.exec(source.trim());
+  if (slot) {
+    const key = slot[1]!;
+    return { source, celSlot: key, fn: ((record: Record<string, unknown>) => record[key]) as Fn };
+  }
+  return { source, fn: (compileFormula(source) as CompiledEnvelope).fn };
+};
 
 // Split a raw text run into literal + hole parts. A literal part that is
 // pure whitespace AND contains a newline is dropped (template indentation);
@@ -273,6 +284,7 @@ const collectDeps = (nodes: TemplateNode[], acc: Set<Key>): void => {
 };
 
 const addDeps = (hole: Hole, acc: Set<Key>): void => {
+  if (hole.celSlot) { acc.add(hole.celSlot); return; }
   for (const d of extractDeps(hole.source)) acc.add(d);
 };
 
@@ -312,6 +324,13 @@ const renderNodes = (
         // lets a registered fn or another cel's render-spec compose into a
         // template. See sheet-keyed-render for the headline consumer.
         if (isVNodeValue(v)) { out.push(v as VNode); continue; }
+        // A RenderSpec value (another view cel's output — the fragment
+        // slot's payload) embeds by its .vnode: ref-stable when the
+        // fragment didn't fire, so the diff skips it in O(1).
+        if (v && typeof v === "object" && "vnode" in (v as object) && isVNodeValue((v as RenderSpec).vnode)) {
+          out.push((v as RenderSpec).vnode);
+          continue;
+        }
         if (Array.isArray(v) && v.length > 0 && v.every(isVNodeValue)) {
           for (const n of v) out.push(n as VNode);
           continue;
@@ -416,8 +435,11 @@ export const compileHtmlTemplate = (source: string): CompiledLambda => {
       renderSpecFrom(renderRoot(ast, record), record)) as Fn,
     buildEvaluate: (inputs: ResolvedInputs) => {
       return (): RenderSpec => {
+        const __t0 = counters() ? performance.now() : 0;
         const record = recordFromCels(inputs);
-        return renderSpecFrom(renderRoot(ast, record), record);
+        const spec = renderSpecFrom(renderRoot(ast, record), record);
+        if (counters()) bump("templateEvalMs", performance.now() - __t0);
+        return spec;
       };
     },
   };

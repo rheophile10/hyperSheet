@@ -56,7 +56,7 @@ const random: Fn = () => Math.random();
  *  layer calls this at compile time. Missing cels fall back to noops /
  *  defaults so a stripped-down host segment doesn't crash compilers
  *  that expect the full surface. */
-export const readHostImports = (state: State): Record<Key, Fn> => {
+const readHostImports = (state: State): Record<Key, Fn> => {
   const fn = (k: Key, fallback: Fn): Fn => {
     const cel = state.cels.get(k) as (ComputeCel | undefined);
     return cel?._fn ?? fallback;
@@ -78,4 +78,9 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["host.error",  error],
   ["host.now",    now],
   ["host.random", random],
+  // The capability namespace as one read: compilers resolve this cel
+  // and hand its result to foreign runtimes (wasm imports object,
+  // Pyodide globals). Cel-mediated so the dependency is visible to
+  // segmentAdjacency — no sibling may import readHostImports directly.
+  ["host.imports", readHostImports],
 ]));

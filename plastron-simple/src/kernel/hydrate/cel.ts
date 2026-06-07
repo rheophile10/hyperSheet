@@ -1,5 +1,5 @@
 import type {
-  Cel, CelMetadata, ChannelCel, FireableCel as ComputeCel, ComputeCelMetadata, DehydratedCel,
+  Cel, CelMetadata, ChannelCel, FireableCel as ComputeCel, ComputeCelMetadata, DehydratedCel, Key,
   State,
 } from "../../types/index.js";
 import { toRange } from "../卜/space.js";
@@ -131,6 +131,31 @@ export const inflateCel = (dc: DehydratedCel): Cel => {
         `travel as segment payload (use setSegmentManifest).`,
       );
   }
+};
+
+/** Retire an OWNED cel (defn/genesis lifecycle): collect its live
+ *  consumers FIRST (after deletion, precompute drops the dangling
+ *  edges and affectedFor can no longer reach them — they must be
+ *  refired explicitly to trap undefined-symbol), dispose, DEFANG
+ *  (consumers' compiled closures captured the cel object; a stale
+ *  dispatch must resolve to undefined, not ghost-call the old fn),
+ *  then drop it from the registry. Promoted from the defn segment —
+ *  the genesis drain shares the exact lifecycle and segment isolation
+ *  forbids sibling imports. */
+export const retireCel = (state: State, key: Key, stale: Set<Key>): void => {
+  const c = state.cels.get(key);
+  if (!c) return;
+  for (const [k, cc] of state.cels) {
+    const im = cc.metadata.inputMap;
+    if (!im) continue;
+    for (const ref of Object.values(im)) {
+      if (ref === key || (Array.isArray(ref) && ref.includes(key))) { stale.add(k); break; }
+    }
+  }
+  disposeCel(c, state);
+  const z = c as { _fn?: unknown; _evaluate?: unknown; _buildEvaluate?: unknown; v?: unknown };
+  z._fn = undefined; z._evaluate = undefined; z._buildEvaluate = undefined; z.v = undefined;
+  state.cels.delete(key);
 };
 
 export const disposeCel = (cel: Cel, state: State): void => {

@@ -120,14 +120,17 @@ test("wake: re-wake hits the compile.cache (cache populated; re-compile reuses i
 
   await wake(state, "doc");
   const cache = state.cels.get("compile.cache").v;
-  const sizeAfterFirst = cache.size;
+  // Count only doc.dbl's entry — the firmware origin view also compiles
+  // through this cache during hydrate; its slot is not under test here.
+  const docEntries = () => [...cache.keys()].filter((k) => k.includes("doc.n")).length;
+  const sizeAfterFirst = docEntries();
   assert.ok(sizeAfterFirst > 0, "compile cache populated by the first wake");
 
   // Sleep then wake again — the formula source recompiles, but the cache
-  // already holds its envelope, so the cache size does not grow.
+  // already holds its envelope, so doc's entry count does not grow.
   await sleep(state, "doc");
   await wake(state, "doc");
-  assert.equal(cache.size, sizeAfterFirst, "re-wake reused the cached envelope");
+  assert.equal(docEntries(), sizeAfterFirst, "re-wake reused the cached envelope");
 });
 
 // ── sleep: dehydrate-in-place ────────────────────────────────────────────────
@@ -305,8 +308,8 @@ test("sleep: autoSave sink persists the payload through store.put before going d
 
   await sleep(state, "doc");
   assert.equal(calls.length, 1, "store.put called once on autoSave sleep");
-  assert.equal(calls[0][0], "doc", "put named the segment");
-  assert.ok(calls[0][3] && calls[0][3].name === "doc", "put handed the payload 甲骨");
+  assert.equal(calls[0][1], "doc", "put named the segment (state-first signature)");
+  assert.ok(calls[0][4] && calls[0][4].name === "doc", "put handed the payload 甲骨");
   putCel._fn = orig;
 });
 

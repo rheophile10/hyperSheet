@@ -1,5 +1,5 @@
 import type { Cel, ValueCel } from "../../../types/index.js";
-import { CSP_EVAL_AVAILABLE_KEY } from "../../../kernel/index.js";
+import { CSP_EVAL_AVAILABLE_KEY, CSP_WASM_AVAILABLE_KEY } from "../../../kernel/index.js";
 
 // ============================================================================
 // csp — runtime capability probes surfaced as locked cels.
@@ -64,7 +64,7 @@ const detectWasm = (): boolean => {
 // re-exported here for the sibling compilers. The wasm probe has no
 // kernel reader, so its key stays home.
 export { CSP_EVAL_AVAILABLE_KEY };
-export const CSP_WASM_AVAILABLE_KEY = "csp.wasm-available" as const;
+export { CSP_WASM_AVAILABLE_KEY };
 
 export const name = "csp" as const;
 

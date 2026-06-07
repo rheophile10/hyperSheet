@@ -21,7 +21,7 @@ import {
   getCel, setValue, setValueBatch, setCel, setCelBatch,
   touch, consume, drain,
   compileFormula, extractDeps, clearErrors,
-  runCycle, hydrate, hydrate函, dehydrate, dehydrate函,
+  runCycle, interlinked, ilk, hydrate, hydrate函, dehydrate, dehydrate函,
   flush, wake, sleep, forget,
   findDependents, getSegmentManifest, listSegments,
   registerSegmentLoader, loadSegment, ensureSegments, isSegmentPending,
@@ -62,7 +62,9 @@ export const nativeCels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Ma
   ["clearErrors",   clearErrors],
   ["f",             formulaFn],
   // kernel-lifecycle
-  ["runCycle",   runCycle],
+  ["interlinked", interlinked], // canonical — "a system of cels. interlinked."
+  ["ilk",         ilk],         // short form for formulas: (ilk)
+  ["runCycle",   runCycle],     // legacy alias
   ["hydrate",    hydrate],
   ["hydrate函",  hydrate函],
   ["dehydrate",  dehydrate],

@@ -1,6 +1,6 @@
-import type { ChannelEnqueue, State } from "../../../../types/index.js";
-import type { RenderSpec } from "../../html-template-parser/index.js";
-import { diffVNodes, type Patch } from "./diff.js";
+import type { ChannelEnqueue, RenderSpec, State } from "../../../../types/index.js";
+import { resolveFn } from "../../../../kernel/index.js";
+import { diffVNodes, type DiffEq, type Patch } from "./diff.js";
 import { applyPatch, type DocLike } from "./apply.js";
 import {
   applyListenerDelta, defaultResolveTarget,
@@ -57,6 +57,17 @@ const hasDocument = (): boolean =>
 
 const mountKeyOf = (mount: string | null): string => mount ?? "__default__";
 
+const resolveDiffEq = (state: State): DiffEq => {
+  const vnodeEquals = resolveFn(state, "vnode.equals") as DiffEq["vnodeEquals"] | undefined;
+  const bindingsEqual = resolveFn(state, "vnode.bindings-equal") as DiffEq["bindingsEqual"] | undefined;
+  if (!vnodeEquals || !bindingsEqual) {
+    throw new Error(
+      "plastron-dom: comparator cels (vnode.equals / vnode.bindings-equal) are not installed — the html-template-parser segment must be loaded.",
+    );
+  }
+  return { vnodeEquals, bindingsEqual };
+};
+
 export const createPainter = (state: State, opts: PainterOpts = {}): Painter => {
   const isBrowser = opts.isBrowser ?? hasDocument();
   const raf = opts.raf
@@ -85,9 +96,12 @@ export const createPainter = (state: State, opts: PainterOpts = {}): Painter => 
   const flush = (): void => {
     rafId = null;
     if (disposed) return;
+    // Comparator cels resolved ONCE per drain (not per node) — the
+    // semantics live with html-template-parser; the edge is a cel.
+    const eq = resolveDiffEq(state);
     for (const [key, next] of dirty) {
       const prev = lastApplied.get(key);
-      const patch = diffVNodes(prev?.vnode ?? null, next.vnode);
+      const patch = diffVNodes(prev?.vnode ?? null, next.vnode, eq);
       patches.set(key, patch);
       if (isBrowser && doc) {
         const target = resolveMount(next.mount);

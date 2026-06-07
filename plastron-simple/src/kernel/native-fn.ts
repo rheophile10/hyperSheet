@@ -24,6 +24,11 @@ export const bindNativeFns = (
     const fn = fnMap.get(dc.key);
     if (fn && (cel.celType === "LockedLambdaCel" || cel.celType === "EditableLambdaCel")) {
       cel._fn = fn;
+    } else if (fn && cel.celType === "CompilerCel") {
+      // CompilerCel carries its Compiler on v (resolveFn returns v) —
+      // the celType is what lets binder formulas recognize a compiler
+      // head: `(js src "times100")` / `=JS(A1, "times100")`.
+      cel.v = fn as never;
     }
     out.push(cel);
   }

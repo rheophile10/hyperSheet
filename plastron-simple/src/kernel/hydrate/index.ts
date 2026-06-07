@@ -11,8 +11,9 @@ import { assertOneDirection } from "../segments/edge-rule.js";
 // Re-export the per-entity helpers so other kernel modules (cel-body,
 // flush, host code) can grab them directly without reaching into the
 // subfolder structure.
-export { inflateCel, disposeCel } from "./cel.js";
+export { inflateCel, disposeCel, retireCel } from "./cel.js";
 export { compileCelBody } from "./formula.js";
+import { compileCelBody } from "./formula.js";
 export { validateInputKinds } from "./input-kinds.js";
 export { resolveSchemas } from "./schema.js";
 export {
@@ -59,6 +60,23 @@ export { applyManifestDefaults } from "./segment.js";
 export const hydrate: Hydrate = async (state, segments, manifests) => {
   validateManifests(state, manifests);
   await installCels(state, segments);
+  // Seed FormulaCels: boot-time segments (origin's 元.view is the first)
+  // may ship source-bodied fireables OUTSIDE the hydrate payload —
+  // bindNativeFns inflates them without a compile pass. Make the state
+  // runnable: compile any NON-PAYLOAD fireable that has source but no
+  // body and no trapped compile (payload cels already went through
+  // compileFireable — a missing _fn there is a recorded CompileError,
+  // not a todo).
+  const payloadKeys = new Set<string>();
+  for (const seg of segments) for (const dc of seg.cels) payloadKeys.add(dc.key);
+  for (const cel of state.cels.values()) {
+    if (payloadKeys.has(cel.metadata.key)) continue;
+    if ((cel as { f?: string }).f !== undefined && (cel as { _fn?: unknown })._fn === undefined
+        && (cel.v as { kind?: string } | undefined)?.kind !== "error"
+        && (cel.celType === "FormulaCel" || cel.celType === "EditableLambdaCel")) {
+      await compileCelBody(cel as never, state);
+    }
+  }
   validateInputKinds(state);
   resolveSchemas(state);
   applySchemaHydrate(state);

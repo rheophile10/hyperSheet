@@ -3,7 +3,7 @@
   "cels": [
     {
       "key": "quickjs",
-      "celType": "LockedLambdaCel",
+      "celType": "CompilerCel",
       "metadata": {
         "key": "quickjs", "segment": "quickjs-compiler", "name": "quickjs", "kind": "native",
         "description": "QuickJS compiler. Compiles JS source — last expression must be a callable — into a runtime Fn via QuickJS-emscripten. JS runs inside a wasm sandbox: no DOM, no eval, no host APIs unless explicitly granted via the host segment. Sub stitutes for Javy (same QuickJS interpreter, npm-native distribution). Lazy-loads the runtime on first compile."

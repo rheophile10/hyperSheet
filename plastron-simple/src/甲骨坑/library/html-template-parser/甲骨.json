@@ -5,7 +5,10 @@
       "key": "html-template",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "html-template", "segment": "html-template-parser", "name": "html-template", "kind": "native",
+        "key": "html-template",
+        "segment": "html-template-parser",
+        "name": "html-template",
+        "kind": "native",
         "description": "Inline HTML-template parser. A FormulaCel whose `f` is the template source and `parser` is \"html-template\" compiles to a render-spec ({vnode, mount, listeners}). Interpolation deps auto-wire into inputMap."
       },
       "locked": true
@@ -14,63 +17,119 @@
       "key": "html-template-ref",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "html-template-ref", "segment": "html-template-parser", "name": "html-template-ref", "kind": "native",
+        "key": "html-template-ref",
+        "segment": "html-template-parser",
+        "name": "html-template-ref",
+        "kind": "native",
         "description": "Live-editable HTML-template parser. The template source is read from the reserved input name \"template\" at render time and reparsed on string change. Deps are author-declared in inputMap."
       },
       "locked": true
     },
-
     {
       "key": "vnode",
       "celType": "SchemaCel",
-      "metadata": { "key": "vnode", "segment": "html-template-parser" },
+      "metadata": {
+        "key": "vnode",
+        "segment": "html-template-parser"
+      },
       "v": {
         "key": "vnode",
         "zod": {},
-        "protocols": { "isChanged": "vnode_isChanged" },
+        "protocols": {
+          "isChanged": "vnode_isChanged"
+        },
         "memoSafe": true
       }
     },
     {
       "key": "vnode_isChanged",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "vnode_isChanged", "segment": "html-template-parser", "kind": "native" },
+      "metadata": {
+        "key": "vnode_isChanged",
+        "segment": "html-template-parser",
+        "kind": "native"
+      },
       "locked": true
     },
-
     {
       "key": "render-spec",
       "celType": "SchemaCel",
-      "metadata": { "key": "render-spec", "segment": "html-template-parser" },
+      "metadata": {
+        "key": "render-spec",
+        "segment": "html-template-parser"
+      },
       "v": {
         "key": "render-spec",
         "zod": {},
-        "protocols": { "isChanged": "render-spec_isChanged" },
+        "protocols": {
+          "isChanged": "render-spec_isChanged"
+        },
         "memoSafe": true
       }
     },
     {
       "key": "render-spec_isChanged",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "render-spec_isChanged", "segment": "html-template-parser", "kind": "native" },
+      "metadata": {
+        "key": "render-spec_isChanged",
+        "segment": "html-template-parser",
+        "kind": "native"
+      },
       "locked": true
     },
-
     {
       "key": "string-list",
       "celType": "SchemaCel",
-      "metadata": { "key": "string-list", "segment": "html-template-parser" },
+      "metadata": {
+        "key": "string-list",
+        "segment": "html-template-parser"
+      },
       "v": {
         "key": "string-list",
-        "zod": { "type": "array", "items": { "type": "string" } },
-        "protocols": { "isChanged": "string-list_isChanged" },
+        "zod": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "protocols": {
+          "isChanged": "string-list_isChanged"
+        },
         "memoSafe": true
       }
     },
     {
       "key": "string-list_isChanged",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "string-list_isChanged", "segment": "html-template-parser", "kind": "native" },
+      "metadata": {
+        "key": "string-list_isChanged",
+        "segment": "html-template-parser",
+        "kind": "native"
+      },
+      "locked": true
+    },
+    {
+      "key": "vnode.equals",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "vnode.equals",
+        "segment": "html-template-parser",
+        "name": "vnode.equals",
+        "kind": "native",
+        "description": "(a, b) - deep structural VNode equality (ref-eq short-circuit at every level). Painters resolve this once per drain and thread it into their diff."
+      },
+      "locked": true
+    },
+    {
+      "key": "vnode.bindings-equal",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "vnode.bindings-equal",
+        "segment": "html-template-parser",
+        "name": "vnode.bindings-equal",
+        "kind": "native",
+        "description": "(a, b) - EventBinding equality for event-bag diffing."
+      },
       "locked": true
     }
   ]

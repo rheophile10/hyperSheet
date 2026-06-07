@@ -12,7 +12,7 @@ test("quickjs-compiler segment seeds the 'quickjs' compiler cel", () => {
   const state = createInitialState();
   const qjs = state.cels.get("quickjs");
   assert.ok(qjs, "quickjs compiler cel missing");
-  assert.equal(qjs.celType, "LockedLambdaCel");
+  assert.equal(qjs.celType, "CompilerCel"); // honest taxonomy: compilers seed as CompilerCel (binder heads)
   assert.equal(qjs.locked, true);
 });
 

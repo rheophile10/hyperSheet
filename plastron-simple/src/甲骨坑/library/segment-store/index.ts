@@ -1,6 +1,5 @@
-import type { 甲骨, 冊, Cel, Fn } from "../../../types/index.js";
-import { bindNativeFns } from "../../../kernel/index.js";
-import { fsOps } from "../file-store/index.js";
+import type { 甲骨, 冊, Cel, Fn, State } from "../../../types/index.js";
+import { bindNativeFns, resolveFn } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -20,9 +19,10 @@ import seed from "./甲骨.json" with { type: "json" };
 
 // ----- Storage layout -----
 
-// Layout constants — exported so sibling storage segments (opfs-seeding,
-// cli-segment-export) compose over the same on-disk shape.
-export const STORE_ROOT = "plastron";
+// Layout root — also seeded as the locked ValueCel "store.root" so
+// sibling storage segments compose over the same on-disk shape via the
+// registry instead of an import.
+const STORE_ROOT = "plastron";
 const ROOT = STORE_ROOT;
 const INDEX = `${ROOT}/index.json`;
 const INDEX_TMP = `${ROOT}/index.json.tmp`;
@@ -31,13 +31,19 @@ const segDir = (name: string, version: string) => `${ROOT}/segments/${name}/${ve
 interface IndexEntry { latest: string; versions: string[]; }
 export interface IndexFile { version: number; segments: Record<string, IndexEntry>; }
 
-// ----- Typed wrappers over the file-store module singleton -----
+// ----- fs access through file-store's cels (isolation: the dependency
+// is a cel edge, visible to segmentAdjacency, never an import) -----
 
-const exists    = (p: string) => fsOps.exists(p)    as Promise<boolean>;
-const readText  = (p: string) => fsOps.readText(p)  as Promise<string>;
-const writeText = (p: string, c: string) => fsOps.writeText(p, c) as Promise<void>;
-const rmdir     = (p: string) => fsOps.rmdir(p, true) as Promise<void>;
-const rename    = (a: string, b: string) => fsOps.rename(a, b) as Promise<void>;
+const fsFn = (state: State, key: string): Fn => {
+  const fn = resolveFn(state, key);
+  if (!fn) throw new Error(`segment-store: file-store cel "${key}" is not installed`);
+  return fn;
+};
+const exists    = (st: State, p: string) => fsFn(st, "fs.exists")(p)    as Promise<boolean>;
+const readText  = (st: State, p: string) => fsFn(st, "fs.readText")(p)  as Promise<string>;
+const writeText = (st: State, p: string, c: string) => fsFn(st, "fs.writeText")(p, c) as Promise<void>;
+const rmdir     = (st: State, p: string) => fsFn(st, "fs.rmdir")(p, true) as Promise<void>;
+const rename    = (st: State, p: string, b: string) => fsFn(st, "fs.rename")(p, b) as Promise<void>;
 
 // ----- Name / version validation -----
 
@@ -59,10 +65,10 @@ const assertComponent = (kind: "name" | "version", value: unknown): string => {
 
 // ----- Index read / atomic write -----
 
-export const readIndex = async (): Promise<IndexFile> => {
-  if (!(await exists(INDEX))) return { version: 1, segments: {} };
+const readIndex = async (state: State): Promise<IndexFile> => {
+  if (!(await exists(state, INDEX))) return { version: 1, segments: {} };
   try {
-    const parsed = JSON.parse(await readText(INDEX)) as IndexFile;
+    const parsed = JSON.parse(await readText(state, INDEX)) as IndexFile;
     if (!parsed || typeof parsed !== "object" || typeof parsed.segments !== "object") {
       throw new Error("malformed");
     }
@@ -76,9 +82,9 @@ export const readIndex = async (): Promise<IndexFile> => {
 // rename over the live file. The rename is atomic on every backend we
 // target, so a reader sees either the old or the new index, never a
 // partial write.
-const writeIndexAtomic = async (idx: IndexFile): Promise<void> => {
-  await writeText(INDEX_TMP, JSON.stringify(idx, null, 2));
-  await rename(INDEX_TMP, INDEX);
+const writeIndexAtomic = async (state: State, idx: IndexFile): Promise<void> => {
+  await writeText(state, INDEX_TMP, JSON.stringify(idx, null, 2));
+  await rename(state, INDEX_TMP, INDEX);
 };
 
 // ----- Ops -----
@@ -89,28 +95,29 @@ const writeIndexAtomic = async (idx: IndexFile): Promise<void> => {
 // path (opfs-seeding) needs to write the kernel closure into the store,
 // so it composes over putRaw directly. Exported for that reason; not a
 // formula-facing cel.
-export const putRaw: Fn = async (
-  nameArg: unknown, versionArg: unknown, manifest: unknown, segment: unknown,
+const putRaw: Fn = async (
+  stateArg: unknown, nameArg: unknown, versionArg: unknown, manifest: unknown, segment: unknown,
 ) => {
+  const state = stateArg as State;
   const name = assertComponent("name", nameArg);
   const version = assertComponent("version", versionArg);
 
   // Per-segment files first, so any index entry we add below already has
   // its payload on disk.
   const dir = segDir(name, version);
-  await writeText(`${dir}/manifest.json`, JSON.stringify(manifest, null, 2));
-  await writeText(`${dir}/segment.json`, JSON.stringify(segment, null, 2));
+  await writeText(state, `${dir}/manifest.json`, JSON.stringify(manifest, null, 2));
+  await writeText(state, `${dir}/segment.json`, JSON.stringify(segment, null, 2));
 
-  const idx = await readIndex();
+  const idx = await readIndex(state);
   const entry = idx.segments[name] ?? { latest: version, versions: [] };
   if (!entry.versions.includes(version)) entry.versions.push(version);
   entry.latest = version;
   idx.segments[name] = entry;
-  await writeIndexAtomic(idx);
+  await writeIndexAtomic(state, idx);
 };
 
 const put: Fn = async (
-  nameArg: unknown, versionArg: unknown, manifest: unknown, segment: unknown,
+  stateArg: unknown, nameArg: unknown, versionArg: unknown, manifest: unknown, segment: unknown,
 ) => {
   // Kernel-role guard runs BEFORE the write — calling the public put on a
   // kernel-closure segment is a programming error (use the seeding path).
@@ -119,36 +126,38 @@ const put: Fn = async (
       `segment-store: refusing to put kernel-closure segment "${String(nameArg)}" — kernel seeds are bundled, not stored.`,
     );
   }
-  return putRaw(nameArg, versionArg, manifest, segment);
+  return putRaw(stateArg, nameArg, versionArg, manifest, segment);
 };
 
-const get: Fn = async (nameArg: unknown, versionArg?: unknown) => {
+const get: Fn = async (stateArg: unknown, nameArg: unknown, versionArg?: unknown) => {
+  const state = stateArg as State;
   const name = String(nameArg);
-  const idx = await readIndex();
+  const idx = await readIndex(state);
   const entry = idx.segments[name];
   if (!entry) return undefined;
   const version = versionArg === undefined ? entry.latest : String(versionArg);
   if (!entry.versions.includes(version)) return undefined;
   const dir = segDir(name, version);
-  if (!(await exists(`${dir}/manifest.json`))) return undefined;
-  const manifest = JSON.parse(await readText(`${dir}/manifest.json`)) as 冊;
-  const segment = JSON.parse(await readText(`${dir}/segment.json`)) as 甲骨;
+  if (!(await exists(state, `${dir}/manifest.json`))) return undefined;
+  const manifest = JSON.parse(await readText(state, `${dir}/manifest.json`)) as 冊;
+  const segment = JSON.parse(await readText(state, `${dir}/segment.json`)) as 甲骨;
   return { manifest, segment };
 };
 
-const list: Fn = async () => {
-  const idx = await readIndex();
+const list: Fn = async (stateArg: unknown) => {
+  const idx = await readIndex(stateArg as State);
   return Object.entries(idx.segments).map(([name, entry]) => ({ name, latest: entry.latest }));
 };
 
-const del: Fn = async (nameArg: unknown, versionArg?: unknown) => {
+const del: Fn = async (stateArg: unknown, nameArg: unknown, versionArg?: unknown) => {
+  const state = stateArg as State;
   const name = String(nameArg);
-  const idx = await readIndex();
+  const idx = await readIndex(state);
   const entry = idx.segments[name];
   if (!entry) return; // nothing to do
   const version = versionArg === undefined ? entry.latest : String(versionArg);
 
-  await rmdir(segDir(name, version));
+  await rmdir(state, segDir(name, version));
 
   entry.versions = entry.versions.filter((v) => v !== version);
   if (entry.versions.length === 0) {
@@ -158,11 +167,11 @@ const del: Fn = async (nameArg: unknown, versionArg?: unknown) => {
     // semver ordering; "last surviving in insertion order" is the rule.
     entry.latest = entry.versions[entry.versions.length - 1];
   }
-  await writeIndexAtomic(idx);
+  await writeIndexAtomic(state, idx);
 };
 
-const has: Fn = async (nameArg: unknown) => {
-  const idx = await readIndex();
+const has: Fn = async (stateArg: unknown, nameArg: unknown) => {
+  const idx = await readIndex(stateArg as State);
   return Boolean(idx.segments[String(nameArg)]);
 };
 
@@ -176,4 +185,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["store.list",   list],
   ["store.delete", del],
   ["store.has",    has],
+  // Unguarded write + raw index read, cel-bound so sibling segments
+  // (opfs-seeding, cli-segment-export) compose via dispatch, never import.
+  ["store.putRaw",    putRaw],
+  ["store.readIndex", (async (st: unknown) => readIndex(st as State)) as Fn],
 ]));

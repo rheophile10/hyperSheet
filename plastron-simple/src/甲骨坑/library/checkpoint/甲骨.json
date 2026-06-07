@@ -1,0 +1,105 @@
+{
+  "name": "checkpoint",
+  "cels": [
+    {
+      "key": "checkpoint.commit",
+      "celType": "ChannelCel",
+      "metadata": {
+        "key": "checkpoint.commit",
+        "segment": "checkpoint",
+        "name": "checkpoint.commit",
+        "drain": "checkpoint.drain",
+        "description": "Checkpoint channel. =checkpoint(\"name\") formulas enqueue {checkpoint:true, name}; the drain snapshots user-space into the ring."
+      },
+      "v": {
+        "drain": "checkpoint.drain"
+      },
+      "locked": true
+    },
+    {
+      "key": "checkpoint.drain",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "checkpoint.drain",
+        "segment": "checkpoint",
+        "name": "checkpoint.drain",
+        "kind": "native",
+        "description": "(items) - take dehydrate snapshots for enqueued checkpoint requests; ring capped at 20."
+      },
+      "locked": true
+    },
+    {
+      "key": "checkpoint",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "checkpoint",
+        "segment": "checkpoint",
+        "name": "checkpoint",
+        "kind": "native",
+        "emitsTo": "checkpoint.commit",
+        "description": "(name) - vocabulary head: value is a checkpoint request; the channel drain takes the snapshot."
+      },
+      "locked": true
+    },
+    {
+      "key": "checkpoint.snapshot",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "checkpoint.snapshot",
+        "segment": "checkpoint",
+        "name": "checkpoint.snapshot",
+        "kind": "native",
+        "description": "(state, name) - imperative snapshot (gestures/drains call this directly)."
+      },
+      "locked": true
+    },
+    {
+      "key": "checkpoint.restore",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "checkpoint.restore",
+        "segment": "checkpoint",
+        "name": "checkpoint.restore",
+        "kind": "native",
+        "description": "(state, name?) - DISPATCHED ONLY: wipe non-kernel user-space, rehydrate the named (or latest) snapshot, precompute, cycle."
+      },
+      "locked": true
+    },
+    {
+      "key": "checkpoint.delta",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "checkpoint.delta",
+        "segment": "checkpoint",
+        "name": "checkpoint.delta",
+        "kind": "native",
+        "description": "(state, from, to?) - {added, removed, changed} cel keys between two snapshots, or snapshot vs live when to omitted."
+      },
+      "locked": true
+    },
+    {
+      "key": "checkpoint.list",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "checkpoint.list",
+        "segment": "checkpoint",
+        "name": "checkpoint.list",
+        "kind": "native",
+        "description": "(state) - snapshot names in ring order."
+      },
+      "locked": true
+    },
+    {
+      "key": "checkpoint.ring",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "checkpoint.ring",
+        "segment": "kernel",
+        "name": "checkpoint.ring",
+        "description": "The in-memory snapshot ring. Segment 'kernel' ON PURPOSE (the errors-log precedent): dehydrate excludes it (snapshots never nest into snapshots) and restore's wipe keeps it (the ring survives its own restores)."
+      },
+      "v": [],
+      "locked": true
+    }
+  ]
+}

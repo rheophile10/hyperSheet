@@ -4,6 +4,7 @@ import { compileHtmlTemplate, compileHtmlTemplateRef } from "./utils/template.js
 import {
   renderSpec_isChanged, stringList_isChanged, vnode_isChanged,
 } from "./utils/schema-fns.js";
+import { bindingsEqual, vnodeEquals } from "./utils/vnode.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -33,12 +34,13 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["vnode_isChanged",       vnode_isChanged],
   ["render-spec_isChanged", renderSpec_isChanged],
   ["string-list_isChanged", stringList_isChanged],
+  // Node-level comparators for painters: resolved once per paint drain
+  // (plastron-dom), threaded into the diff — never imported.
+  ["vnode.equals",         vnodeEquals as Fn],
+  ["vnode.bindings-equal", bindingsEqual as Fn],
 ]));
 
-// html-template-parser owns the vnode / render-spec types. Re-exported
-// here so sibling segments (e.g. plastron-dom) reach them through this
-// barrel rather than reaching into utils/ — the cross-segment edge rule.
-export type {
-  AttrValue, EventBinding, VText, VElement, VNode, RenderSpec,
-} from "./utils/vnode.js";
-export { text, bindingsEqual, vnodeEquals } from "./utils/vnode.js";
+// The vnode/render-spec TYPES are platform (src/types/vnode.ts).
+// Comparators are reached via the vnode.equals / vnode.bindings-equal
+// cels — no sibling imports from this barrel (segment-isolation D).
+export { text } from "./utils/vnode.js";

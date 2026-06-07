@@ -46,6 +46,7 @@ test("desktop boots to a home screen, launches an app on click, and exits home",
 
   const m = mockRaf();
   const state = createInitialState();
+  if (state.cels.get("元.mount")) state.cels.get("元.mount").v = null; // host owns #app (origin opt-out until roadmap 08)
   const painter = createPainter(state, { raf: m.raf, caf: m.caf, isBrowser: true, doc: globalThis.document, resolveMount: (x) => (x === "#app" ? root : null) });
   setPainter(state, painter);
 

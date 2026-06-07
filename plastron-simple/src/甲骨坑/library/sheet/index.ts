@@ -1,7 +1,7 @@
 import type { 甲骨, Cel, Fn } from "../../../types/index.js";
 import { bindNativeFns } from "../../../kernel/index.js";
 import { compileInfix } from "./utils/infix.js";
-import { commitCell, cancelEdit, moveSelection, startEdit } from "./utils/build.js";
+import { commitCell, cancelEdit, moveSelection, startEdit, grid } from "./utils/build.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -22,6 +22,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["sheet.cancel-edit",    cancelEdit],
   ["sheet.move-selection", moveSelection],
   ["sheet.start-edit",     startEdit],
+  ["grid",                 grid],
 ]));
 
 export { buildSheet } from "./utils/build.js";

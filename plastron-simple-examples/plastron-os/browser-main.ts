@@ -40,6 +40,7 @@ export interface BootOpts {
 
 export const bootOS = async (opts: BootOpts = {}): Promise<{ state: ReturnType<typeof createInitialState> }> => {
 const state = createInitialState();
+  if (state.cels.get("元.mount")) state.cels.get("元.mount").v = null; // host owns #app (origin opt-out until roadmap 08)
 const r = (k: string) => resolveFn(state, k) as (...a: unknown[]) => unknown;
 
 // ── Notepad: a small custom view sharing the file toolbar ──────────────────
@@ -421,8 +422,8 @@ if (opts.deferApps) {
 // a future delete UI) it like any other doc.
 const seedDesktopReadme = async (): Promise<void> => {
   const READ_ME = "README.txt";
-  const storeHas = r("store.has") as (n: string) => Promise<boolean>;
-  if (await storeHas(READ_ME)) return;                  // already exists in OPFS / node-fs
+  const storeHas = r("store.has") as (st: unknown, n: string) => Promise<boolean>;
+  if (await storeHas(state, READ_ME)) return;                  // already exists in OPFS / node-fs
   if (state.segments.has(READ_ME)) return;              // or already loaded in this session
 
   // First boot only: the README is a notepad doc, so notepad's segment

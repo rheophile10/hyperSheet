@@ -1,8 +1,12 @@
 import type { 甲骨, Cel, CompiledEnvelope, Compiler, Fn, State } from "../../../types/index.js";
-import { bindNativeFns } from "../../../kernel/index.js";
-import { CSP_WASM_AVAILABLE_KEY } from "../csp/index.js";
-import { readHostImports } from "../host/index.js";
+import { resolveFn, bindNativeFns } from "../../../kernel/index.js";
+import { CSP_WASM_AVAILABLE_KEY } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
+
+// host capability namespace, read through the cel registry (isolation:
+// the host segment owns the fn; we own only the key).
+const readHostImports = (st: State): Record<string, Fn> =>
+  ((resolveFn(st, "host.imports") as Fn | undefined)?.(st) ?? {}) as Record<string, Fn>;
 
 // wat-compiler — the "wat" LockedLambdaCel whose _fn is the WebAssembly
 // text-format compiler. Other cels reference it as

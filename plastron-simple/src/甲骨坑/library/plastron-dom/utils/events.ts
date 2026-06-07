@@ -1,6 +1,6 @@
 import type { CompiledEnvelope, Fn, Key, State } from "../../../../types/index.js";
 import { compileFormula, extractDeps, resolveFn } from "../../../../kernel/index.js";
-import type { EventBinding } from "../../html-template-parser/index.js";
+import type { EventBinding } from "../../../../types/index.js";
 
 // compileFormula always emits a CompiledEnvelope; narrow to grab its entry fn.
 const formulaFn = (src: string): Fn => (compileFormula(src) as CompiledEnvelope).fn;
@@ -318,7 +318,10 @@ export const applyListenerDelta = (
       continue;
     }
     const target = resolveTarget(parsed.target);
-    if (!target) continue;
+    // A target that can't host listeners (structural fake documents in
+    // tests/benches, SSR shims) is treated like an absent one — same
+    // contract as the painter's diff-only mode off-browser.
+    if (!target || typeof target.addEventListener !== "function") continue;
     const fn = makeListener({ f: parsed.source }, state);
     target.addEventListener(parsed.event, fn);
     reg.set(dedupe, { spec, fn, target, type: parsed.event });

@@ -121,10 +121,37 @@
       }
     },
     {
+      "key": "ilk",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "ilk",
+        "segment": "kernel",
+        "name": "ilk",
+        "kind": "native",
+        "description": "Short form of interlinked, for formulas: (ilk). Cels of an ilk, interlinked."
+      },
+      "locked": true
+    },
+    {
+      "key": "interlinked",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "interlinked",
+        "segment": "kernel",
+        "name": "interlinked",
+        "kind": "native",
+        "description": "The cascade — \"a system of cels. interlinked.\" Fire propagation once across every fireable cel until the interlinked graph settles. Canonical name (impl: 連鎖); runCycle is a legacy alias, ilk the short form."
+      },
+      "locked": true
+    },
+    {
       "key": "runCycle",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "runCycle", "segment": "kernel", "name": "runCycle", "kind": "native",
+        "key": "runCycle",
+        "segment": "kernel",
+        "name": "runCycle",
+        "kind": "native",
         "description": "Fire the full cascade once across every fireable cel."
       },
       "locked": true
@@ -133,7 +160,10 @@
       "key": "hydrate",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "hydrate", "segment": "kernel", "name": "hydrate", "kind": "native",
+        "key": "hydrate",
+        "segment": "kernel",
+        "name": "hydrate",
+        "kind": "native",
         "description": "Inflate segments + manifests + fn maps into state.cels; lock-aware."
       },
       "locked": true
@@ -142,7 +172,10 @@
       "key": "dehydrate",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "dehydrate", "segment": "kernel", "name": "dehydrate", "kind": "native",
+        "key": "dehydrate",
+        "segment": "kernel",
+        "name": "dehydrate",
+        "kind": "native",
         "description": "Serialize non-kernel cels and manifests to JSON-shaped 甲骨 + 冊 records."
       },
       "locked": true
@@ -151,7 +184,10 @@
       "key": "hydrate函",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "hydrate函", "segment": "kernel", "name": "hydrate函", "kind": "native",
+        "key": "hydrate函",
+        "segment": "kernel",
+        "name": "hydrate函",
+        "kind": "native",
         "description": "Boot an application from ONE 函 artifact (version + per-segment payload sources + boot record): install entries dormant/codeSeed, wake the boot roots, apply boot.set. codeSeed missing from the host bundle fails here, before anything runs."
       },
       "locked": true
@@ -160,7 +196,10 @@
       "key": "dehydrate函",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "dehydrate函", "segment": "kernel", "name": "dehydrate函", "kind": "native",
+        "key": "dehydrate函",
+        "segment": "kernel",
+        "name": "dehydrate函",
+        "kind": "native",
         "description": "Warm boot: emit the application as ONE 函 artifact — awake segments deflated inline, dormant payloads passed through, bundled/native as codeSeed, boot.wake = the currently-awake root cover."
       },
       "locked": true
@@ -169,7 +208,10 @@
       "key": "flush",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "flush", "segment": "kernel", "name": "flush", "kind": "native",
+        "key": "flush",
+        "segment": "kernel",
+        "name": "flush",
+        "kind": "native",
         "description": "Tear down a segment and its dependents; fires _dispose, removes cels, precomputes."
       },
       "locked": true
@@ -178,7 +220,10 @@
       "key": "wake",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "wake", "segment": "kernel", "name": "wake", "kind": "native",
+        "key": "wake",
+        "segment": "kernel",
+        "name": "wake",
+        "kind": "native",
         "description": "Inflate + compile a dormant segment plus its dormant dependency closure (compile.cache softens recompile), run the hydrate post-install passes, then one settle cascade over the woken cels. Idempotent; async."
       },
       "locked": true
@@ -187,7 +232,10 @@
       "key": "sleep",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "sleep", "segment": "kernel", "name": "sleep", "kind": "native",
+        "key": "sleep",
+        "segment": "kernel",
+        "name": "sleep",
+        "kind": "native",
         "description": "Dehydrate a segment in place: _dispose each cel, deflate to a 甲骨 payload on the SegmentCel's _dormant, drop the live cels. Refuses when awake dependents exist unless { cascade: true }; user-space SCCs sleep as a unit; kernel never sleeps."
       },
       "locked": true
@@ -196,7 +244,10 @@
       "key": "forget",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "forget", "segment": "kernel", "name": "forget", "kind": "native",
+        "key": "forget",
+        "segment": "kernel",
+        "name": "forget",
+        "kind": "native",
         "description": "Remove a segment from state: dormant ⇒ optional persist-to-sink, delete, precompute; awake ⇒ sleep-then-forget (delegates to flush). Kernel-closure guard stays."
       },
       "locked": true
@@ -205,7 +256,10 @@
       "key": "getSegmentManifest",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "getSegmentManifest", "segment": "kernel", "name": "getSegmentManifest", "kind": "native",
+        "key": "getSegmentManifest",
+        "segment": "kernel",
+        "name": "getSegmentManifest",
+        "kind": "native",
         "description": "Read a 冊 manifest from state.segments by name."
       },
       "locked": true
@@ -214,7 +268,10 @@
       "key": "listSegments",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "listSegments", "segment": "kernel", "name": "listSegments", "kind": "native",
+        "key": "listSegments",
+        "segment": "kernel",
+        "name": "listSegments",
+        "kind": "native",
         "description": "Return every 冊 currently loaded into state.segments."
       },
       "locked": true
@@ -223,7 +280,10 @@
       "key": "findDependents",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "findDependents", "segment": "kernel", "name": "findDependents", "kind": "native",
+        "key": "findDependents",
+        "segment": "kernel",
+        "name": "findDependents",
+        "kind": "native",
         "description": "Walk 冊.dependencies to find every manifest that transitively depends on a given segment."
       },
       "locked": true
@@ -232,7 +292,10 @@
       "key": "registerSegmentLoader",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "registerSegmentLoader", "segment": "kernel", "name": "registerSegmentLoader", "kind": "native",
+        "key": "registerSegmentLoader",
+        "segment": "kernel",
+        "name": "registerSegmentLoader",
+        "kind": "native",
         "description": "Park a loader (sync or async () => Cel[]) for a not-yet-installed segment in the reserved segment.loaders registry; optionally seeds its 冊 manifest."
       },
       "locked": true
@@ -241,7 +304,10 @@
       "key": "loadSegment",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "loadSegment", "segment": "kernel", "name": "loadSegment", "kind": "native",
+        "key": "loadSegment",
+        "segment": "kernel",
+        "name": "loadSegment",
+        "kind": "native",
         "description": "Install one pending segment's cels (live code-seed cels — no compile), then run schema/memo passes and precompute. No-op when the segment isn't pending."
       },
       "locked": true
@@ -250,7 +316,10 @@
       "key": "ensureSegments",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "ensureSegments", "segment": "kernel", "name": "ensureSegments", "kind": "native",
+        "key": "ensureSegments",
+        "segment": "kernel",
+        "name": "ensureSegments",
+        "kind": "native",
         "description": "Load every pending segment in the 冊.dependencies closure of the given names, concurrently, with a single precompute for the batch."
       },
       "locked": true
@@ -259,7 +328,10 @@
       "key": "isSegmentPending",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "isSegmentPending", "segment": "kernel", "name": "isSegmentPending", "kind": "native",
+        "key": "isSegmentPending",
+        "segment": "kernel",
+        "name": "isSegmentPending",
+        "kind": "native",
         "description": "True when a segment's manifest is registered but its cels await loadSegment/ensureSegments."
       },
       "locked": true
@@ -267,24 +339,46 @@
     {
       "key": "cel-error",
       "celType": "SchemaCel",
-      "metadata": { "key": "cel-error", "segment": "kernel" },
+      "metadata": {
+        "key": "cel-error",
+        "segment": "kernel"
+      },
       "v": {
         "key": "cel-error",
         "zod": {
           "type": "object",
-          "required": ["kind", "at", "trap", "message"],
+          "required": [
+            "kind",
+            "at",
+            "trap",
+            "message"
+          ],
           "properties": {
-            "kind":    { "type": "string", "const": "error" },
-            "at":      { "type": "array", "items": { "type": "string" } },
-            "trap":    { "type": "string" },
-            "message": { "type": "string" },
-            "stack":   { "type": "string" }
+            "kind": {
+              "type": "string",
+              "const": "error"
+            },
+            "at": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "trap": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "stack": {
+              "type": "string"
+            }
           },
           "additionalProperties": false
         },
         "protocols": {
           "isChanged": "cel-error_isChanged",
-          "hydrate":   "cel-error_hydrate",
+          "hydrate": "cel-error_hydrate",
           "dehydrate": "cel-error_dehydrate"
         }
       }
@@ -292,19 +386,31 @@
     {
       "key": "cel-error_isChanged",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "cel-error_isChanged", "segment": "kernel", "kind": "native" },
+      "metadata": {
+        "key": "cel-error_isChanged",
+        "segment": "kernel",
+        "kind": "native"
+      },
       "locked": true
     },
     {
       "key": "cel-error_hydrate",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "cel-error_hydrate", "segment": "kernel", "kind": "native" },
+      "metadata": {
+        "key": "cel-error_hydrate",
+        "segment": "kernel",
+        "kind": "native"
+      },
       "locked": true
     },
     {
       "key": "cel-error_dehydrate",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "cel-error_dehydrate", "segment": "kernel", "kind": "native" },
+      "metadata": {
+        "key": "cel-error_dehydrate",
+        "segment": "kernel",
+        "kind": "native"
+      },
       "locked": true
     }
   ]

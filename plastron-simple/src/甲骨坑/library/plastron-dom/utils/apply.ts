@@ -1,5 +1,5 @@
 import type { State } from "../../../../types/index.js";
-import type { AttrValue, VElement, VNode, VText } from "../../html-template-parser/index.js";
+import type { AttrValue, VElement, VNode, VText } from "../../../../types/index.js";
 import type { Patch, PatchEl } from "./diff.js";
 import {
   attachEvents, applyEventDelta, detachAllListeners,

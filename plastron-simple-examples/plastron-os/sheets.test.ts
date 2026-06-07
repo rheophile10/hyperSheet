@@ -27,6 +27,19 @@ const mkEl = (tag) => {
   };
   return el;
 };
+// Listenable fake document — sheet.listeners attaches document|keydown
+// through the painter's global registry, so the doc mock must host (and
+// let tests fire) listeners.
+const mkDoc = (root) => {
+  const L = new Map();
+  return {
+    createElement: mkEl, createTextNode: (s) => ({ nodeType: 3, data: s }),
+    querySelector: (s) => (s === "#app" ? root : null),
+    addEventListener(t, fn) { (L.get(t) ?? L.set(t, new Set()).get(t)).add(fn); },
+    removeEventListener(t, fn) { L.get(t)?.delete(fn); },
+    fire(t, ev = {}) { for (const fn of [...(L.get(t) ?? [])]) fn({ type: t, ...ev }); },
+  };
+};
 const txt = (n) => (n.nodeType === 3 ? n.data : (n.childNodes ?? []).map(txt).join(""));
 const walk = (n, p, o = []) => { if (n?.nodeType === 1) { if (p(n)) o.push(n); for (const c of n.childNodes) walk(c, p, o); } return o; };
 const cell = (root, addr) => walk(root, (n) => n.tag === "td" && n.attrs["data-addr"] === addr)[0];
@@ -40,6 +53,7 @@ test("Sheets renders the grid, selects into the formula bar, commits a formula",
 
   const m = mockRaf();
   const state = createInitialState();
+  if (state.cels.get("元.mount")) state.cels.get("元.mount").v = null;
   setPainter(state, createPainter(state, { raf: m.raf, caf: m.caf, isBrowser: true, doc: globalThis.document, resolveMount: (x) => (x === "#app" ? root : null) }));
 
   await buildSheetsApp(state, { rows: 3, cols: 3, cells: { A1: "10", B1: "=A1*2" } });
@@ -76,6 +90,7 @@ test("Pictograph emoji sequence — define a person, create two, wave at each ot
 
   const m = mockRaf();
   const state = createInitialState();
+  if (state.cels.get("元.mount")) state.cels.get("元.mount").v = null;
   setPainter(state, createPainter(state, { raf: m.raf, caf: m.caf, isBrowser: true, doc: globalThis.document, resolveMount: (x) => (x === "#app" ? root : null) }));
 
   // A1 / A2 are the people; B1 / B2 apply the "person template" via & concat
@@ -105,4 +120,62 @@ test("Pictograph emoji sequence — define a person, create two, wave at each ot
   assert.match(txt(cell(root, "B3")), /👋/);
   assert.match(txt(cell(root, "B3")), /boy/);
   assert.match(txt(cell(root, "B3")), /girl/);
+});
+
+test("keyboard: arrows move selection, Enter commits the bar and moves down", async () => {
+  const root = mkEl("app");
+  globalThis.document = mkDoc(root);
+  const m = mockRaf();
+  const state = createInitialState();
+  if (state.cels.get("元.mount")) state.cels.get("元.mount").v = null;
+  setPainter(state, createPainter(state, { raf: m.raf, caf: m.caf, isBrowser: true, doc: globalThis.document, resolveMount: (x) => (x === "#app" ? root : null) }));
+  await buildSheetsApp(state, { rows: 3, cols: 3, cells: { A1: "10", B1: "=A1*2" } });
+  await precomputeOptional(state);
+  await resolveFn(state, "setValue")(state, "os.active", "sheets");
+  await resolveFn(state, "runCycle")(state);
+  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  m.run();
+
+  globalThis.document.fire("keydown", { key: "ArrowRight", target: { tagName: "TD" } });
+  await tick(); m.run();
+  assert.deepEqual(resolveFn(state, "getCel")(state, "sheet.selection")?.v, { row: 0, col: 1 });
+  assert.equal(fx(root).value, "=A1*2", "bar mirrors the selected cell on keyboard move");
+
+  const input = fx(root);
+  input.value = "=A1*9";
+  input.fire("input");
+  await tick();
+  globalThis.document.fire("keydown", { key: "Enter", target: { tagName: "INPUT" }, preventDefault: () => {} });
+  await tick(); m.run();
+  assert.equal(txt(cell(root, "B1")), "90", "Enter committed the draft");
+  assert.deepEqual(resolveFn(state, "getCel")(state, "sheet.selection")?.v, { row: 1, col: 1 }, "Enter moved down");
+
+  await resolveFn(state, "setValue")(state, "os.active", "home");
+  globalThis.document.fire("keydown", { key: "ArrowDown", target: { tagName: "TD" } });
+  await tick();
+  assert.deepEqual(resolveFn(state, "getCel")(state, "sheet.selection")?.v, { row: 1, col: 1 }, "no movement while inactive");
+});
+
+test("display kinds: binder shows ƒ name, undefined symbol shows #NAME? with title", async () => {
+  const root = mkEl("app");
+  globalThis.document = mkDoc(root);
+  const m = mockRaf();
+  const state = createInitialState();
+  if (state.cels.get("元.mount")) state.cels.get("元.mount").v = null;
+  setPainter(state, createPainter(state, { raf: m.raf, caf: m.caf, isBrowser: true, doc: globalThis.document, resolveMount: (x) => (x === "#app" ? root : null) }));
+  await buildSheetsApp(state, { rows: 3, cols: 4, cells: {
+    A1: "(x) => x * 100", B1: '=JS(A1, "times100")', C1: "=times100(7)", D1: "=nope(1)",
+  } });
+  await precomputeOptional(state);
+  await resolveFn(state, "setValue")(state, "os.active", "sheets");
+  await resolveFn(state, "runCycle")(state);
+  await resolveFn(state, "drain")(state, "defn.commit");
+  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  m.run();
+
+  assert.equal(txt(cell(root, "B1")), "ƒ times100", "binder cell displays its definition");
+  assert.equal(txt(cell(root, "C1")), "700", "named function call computes");
+  assert.equal(txt(cell(root, "D1")), "#NAME?", "unbound symbol shows Excel-style error");
+  assert.match(String(cell(root, "D1").attrs.title ?? ""), /undefined symbol/, "hover title carries the trap message");
+  assert.match(String(cell(root, "D1").attrs.class), /error/, "error class applied");
 });

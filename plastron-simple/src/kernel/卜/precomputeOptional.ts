@@ -5,11 +5,13 @@ import { isFireable } from "../cels.js";
 import type { PrecomputedIndexes } from "../../types/index.js";
 import { PRECOMPUTED_STATES_KEY } from "./graph.js";
 
-/** Reserved key of the csp segment's eval-capability probe cel. Owned
- *  here — its kernel-side reader — because kernel code must not import
- *  from 甲骨坑. The csp segment imports this via kernel/index and seeds
- *  the cel; the wasm probe's key stays with csp (no kernel reader). */
+/** Reserved keys of the csp segment's capability probe cels. Owned
+ *  kernel-side — kernel code must not import from 甲骨坑, and per
+ *  segment-isolation neither may sibling segments import from csp. The
+ *  csp segment imports both via kernel/index and seeds the cels; the
+ *  wasm-family compilers read them through the kernel barrel too. */
 export const CSP_EVAL_AVAILABLE_KEY = "csp.eval-available" as const;
+export const CSP_WASM_AVAILABLE_KEY = "csp.wasm-available" as const;
 
 const OPTIONAL_CHUNK_SIZE = 256;
 

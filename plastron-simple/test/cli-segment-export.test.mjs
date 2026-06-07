@@ -26,7 +26,7 @@ beforeAll(async () => {
 beforeEach(wipeStore);
 afterAll(wipeStore);
 
-const call = (key, ...args) => resolveFn(state, key)(...args);
+const call = (key, ...args) => resolveFn(state, key)(state, ...args);
 const exportToDir = (dir, opts) => resolveFn(state, "exportToDir")(state, dir, opts);
 const importFromDir = (dir, opts) => resolveFn(state, "importFromDir")(state, dir, opts);
 const seed = () => resolveFn(state, "seedStore")(state);

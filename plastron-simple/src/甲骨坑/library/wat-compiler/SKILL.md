@@ -14,3 +14,7 @@ description: The 'wat' compiler cel — WebAssembly text source → Fn via wabt.
 
 Any `EditableLambdaCel` with `metadata.kind: "wat"` compiles through this. Host imports default
 to `{ host }`.
+
+Seeded as a `CompilerCel` (the compiler fn lives on `v`), which also makes it a
+**binder head**: `=WAT(A1, "name")` in a sheet / `(wat src "name")` in S-expr
+defines a named function from the referenced source (see the `defn` segment).

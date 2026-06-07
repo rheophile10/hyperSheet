@@ -23,6 +23,9 @@ export type * from "./甲骨/index.js";
 // unions, and their companion code types.
 export type * from "./cels/index.js";
 
+// VNode / RenderSpec — the view layer's value contract (see types/vnode.ts).
+export type * from "./vnode.js";
+
 // Wasm — WIT type model and handles.
 export type { WitType, WitPrimitive, WitComposite, WasmHandle } from "./wit.js";
 

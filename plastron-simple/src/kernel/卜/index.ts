@@ -10,7 +10,7 @@ export { precomputeOptional } from "./precomputeOptional.js";
 export { topoLevels, transitiveClosure, dependentOrderFrom } from "./topo.js";
 
 // Recalculation — fire dirty cels wave by wave, level by level.
-export { runCycle, runCascade, affectedFor } from "./runCycle.js";
+export { runCycle, interlinked, ilk, 連鎖, runCascade, affectedFor } from "./runCycle.js";
 export {
   celDependencies, dependentsOf, downstreamOf, upstreamOf, dependencyCelsOf,
   bfsDownstream, bumpDefGeneration, isDefinitionStale,

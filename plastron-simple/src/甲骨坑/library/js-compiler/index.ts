@@ -1,6 +1,6 @@
 import type { 甲骨, Cel, Compiler, Fn, State } from "../../../types/index.js";
 import { bindNativeFns } from "../../../kernel/index.js";
-import { CSP_EVAL_AVAILABLE_KEY } from "../csp/index.js";
+import { CSP_EVAL_AVAILABLE_KEY } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // js-compiler — the "js" LockedLambdaCel whose _fn is the live JS

@@ -12,7 +12,7 @@ test("py-compiler segment seeds the 'py' compiler cel", () => {
   const state = createInitialState();
   const py = state.cels.get("py");
   assert.ok(py, "py compiler cel missing");
-  assert.equal(py.celType, "LockedLambdaCel");
+  assert.equal(py.celType, "CompilerCel"); // honest taxonomy: compilers seed as CompilerCel (binder heads)
   assert.equal(py.locked, true);
 });
 

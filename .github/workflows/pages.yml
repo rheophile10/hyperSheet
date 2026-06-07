@@ -1,27 +1,24 @@
-# Deploys the bundled plastron-OS (a single self-contained index.html) to
-# GitHub Pages on every push to master. The bundle is reproducible from
-# source — never commit dist/ — so the workflow rebuilds from scratch each
-# time. The kernel needs a tsc compile first (plastron-simple's `build`
-# script); plastron-os's bundle.ts then bundles its browser-main.ts +
-# kernel into one HTML.
+# Deploys the plastron demo to GitHub Pages on every push to master.
+# Landing page = the ORIGIN host (the north-star starting point: 元 in
+# freespace — type formulas, grow an app, "a system of cels. interlinked.").
+# The full plastron-OS demo is kept reachable at /os/. Both are single
+# self-contained index.html files, rebuilt from source each run (never
+# commit dist/).
 #
 # Configure once: Settings → Pages → Source: "GitHub Actions".
 
-name: Deploy plastron-OS to GitHub Pages
+name: Deploy plastron demo to GitHub Pages
 
 on:
   push:
     branches: [master]
   workflow_dispatch:
 
-# https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, but never cancel an in-progress one
-# so a deploy mid-flight isn't interrupted by a follow-up push.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -46,9 +43,19 @@ jobs:
         working-directory: plastron-simple
         run: bun run build
 
-      - name: Bundle plastron-OS
+      - name: Bundle origin host (landing page)
+        working-directory: plastron-simple-examples/origin
+        run: bun bundle.ts
+
+      - name: Bundle plastron-OS (full demo)
         working-directory: plastron-simple-examples/plastron-os
         run: bun bundle.ts
+
+      - name: Assemble deploy dir (origin at /, OS at /os/)
+        run: |
+          mkdir -p deploy/os
+          cp plastron-simple-examples/origin/dist/index.html deploy/index.html
+          cp plastron-simple-examples/plastron-os/dist/index.html deploy/os/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -56,9 +63,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # The whole dist/ — Bun emits a single index.html via inline-assets,
-          # but uploading the directory keeps room for future sidecars.
-          path: plastron-simple-examples/plastron-os/dist
+          path: deploy
 
   deploy:
     needs: build

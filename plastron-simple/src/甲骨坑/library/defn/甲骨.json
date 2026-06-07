@@ -1,0 +1,24 @@
+{
+  "name": "defn",
+  "cels": [
+    {
+      "key": "defn.commit",
+      "celType": "ChannelCel",
+      "metadata": {
+        "key": "defn.commit", "segment": "defn", "name": "defn.commit", "drain": "defn.drain",
+        "description": "Definition-commit channel. Binder formulas (compiler call + name literal) enqueue here; the drain owns creation, redefinition, rename retirement, and the orphan sweep."
+      },
+      "v": { "drain": "defn.drain" },
+      "locked": true
+    },
+    {
+      "key": "defn.drain",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "defn.drain", "segment": "defn", "name": "defn.drain", "kind": "native",
+        "description": "(items) - commit binder requests: setCel EditableLambdaCels (definedBy/origin stamped), enforce ownership + overwrite flag, retire renames and orphans (binders are authoritative for a name's existence)."
+      },
+      "locked": true
+    }
+  ]
+}

@@ -448,18 +448,76 @@ const buildEvaluateFor = (
   return () => evaluateAgainstCels(ast, cels);
 };
 
+// ── binder form: (compilerKey srcRef "name" [true]) ─────────────────────────
+// A root-level call whose head resolves to a CompilerCel and whose
+// second argument is a string literal is a BINDER (named-function-cels
+// design): its VALUE is the definition request
+//   { defn: true, name, source, kind, overwrite, origin }
+// and the envelope declares the "defn.commit" channel — the defn
+// segment's drain commits the actual setCel. The binder never compiles
+// anything itself.
+interface BinderShape { kind: string; srcExp: SExp; name: string; overwrite: boolean; origin?: Key; }
+
+const binderShape = (ast: SExp, state?: State): BinderShape | undefined => {
+  if (!state || !Array.isArray(ast) || ast.length < 3 || ast.length > 4) return undefined;
+  const [head, srcExp, nameLit, flag] = ast;
+  if (typeof head !== "string" || isStringLit(head)) return undefined;
+  if (state.cels.get(head)?.celType !== "CompilerCel") return undefined;
+  if (typeof nameLit !== "string" || !isStringLit(nameLit)) return undefined;
+  if (flag !== undefined && flag !== "true" && flag !== "false") return undefined;
+  return {
+    kind: head,
+    srcExp: srcExp as SExp,
+    name: nameLit.slice(1, -1),
+    overwrite: flag === "true",
+    origin: typeof srcExp === "string" && !isStringLit(srcExp) ? srcExp : undefined,
+  };
+};
+
+const binderEnvelope = (b: BinderShape): CompiledLambda => {
+  const request = (source: unknown) => ({
+    defn: true, name: b.name, kind: b.kind, overwrite: b.overwrite,
+    source: String(source ?? ""), origin: b.origin,
+  });
+  return {
+    fn: ((inputs: Record<string, unknown>) => request(evaluate(b.srcExp, inputs))) as Fn,
+    buildEvaluate: (cels: ResolvedInputs) =>
+      () => request(evaluateAgainstCels(b.srcExp, cels)),
+    channels: ["defn.commit"],
+  };
+};
+
 /** Parse a formula once; return the runtime body + buildEvaluate hook
  *  the kernel uses for the per-cel monomorphic closure path. Pass
  *  `state` to resolve named ranges (RangeCel refs) at parse time —
  *  the registry compile path (kernel-io's "f" cel) always does; bare
  *  compileFormula(src) callers (template event bindings) skip it and
  *  named-range symbols stay ordinary cel refs. */
+// A root call whose head cel is marked `metadata.genesis` computes a
+// STRUCTURE REQUEST as its value — declare the genesis channel so the
+// drain commits it (same wiring as the defn binder; the envelope body
+// is the ordinary one, only the channel declaration differs).
+const emitsTo = (ast: SExp, state?: State): Key | undefined => {
+  if (!state || !Array.isArray(ast) || ast.length === 0) return undefined;
+  const head = ast[0];
+  if (typeof head !== "string" || isStringLit(head)) return undefined;
+  const md = state.cels.get(head)?.metadata as { genesis?: boolean; emitsTo?: Key } | undefined;
+  if (!md) return undefined;
+  if (md.emitsTo) return md.emitsTo;                  // generalized: any effect channel
+  return md.genesis === true ? "genesis.commit" : undefined;
+};
+
 export const compileFormula = (src: string, state?: State): CompiledLambda => {
   const ast = parse(src, state);
+  const binder = binderShape(ast, state);
+  if (binder) return binderEnvelope(binder);
   const fn: Fn = (inputs: Record<string, unknown>) => evaluate(ast, inputs);
-  return {
+  const envelope: CompiledLambda = {
     fn,
     buildEvaluate: (cels: ResolvedInputs, cspEvalAvailable: boolean) =>
       buildEvaluateFor(ast, cels, cspEvalAvailable),
   };
+  const ch = emitsTo(ast, state);
+  if (ch) (envelope as { channels?: Key[] }).channels = [ch];
+  return envelope;
 };

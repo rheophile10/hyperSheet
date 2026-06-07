@@ -38,3 +38,5 @@ plastron-simple-examples/pictograph/甲骨.json
 
 # Tmp e2e logs.
 /tmp/e2e-*.log
+.claude/
+plastron-simple-examples/*/doom-assets-inline.ts

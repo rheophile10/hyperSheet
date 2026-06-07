@@ -117,9 +117,9 @@ export const fileOpen = async (state: any, namePayload?: string): Promise<string
   if (!app) return undefined;
   // store.list returns { name, latest }; pull manifests via store.get to filter.
   const list = resolveFn(state, "store.list") as Function;
-  const getOne = resolveFn(state, "store.get") as (n: string) => Promise<{ manifest: { role?: string; applications?: string[] } } | undefined>;
-  const all = (await list()) as Array<{ name: string; latest: string }>;
-  const withMeta = await Promise.all(all.map(async (e) => ({ name: e.name, entry: await getOne(e.name) })));
+  const getOne = resolveFn(state, "store.get") as (st: unknown, n: string) => Promise<{ manifest: { role?: string; applications?: string[] } } | undefined>;
+  const all = (await list(state)) as Array<{ name: string; latest: string }>;
+  const withMeta = await Promise.all(all.map(async (e) => ({ name: e.name, entry: await getOne(state, e.name) })));
   const candidates = withMeta
     .filter((e) => e.entry && e.entry.manifest.role === "user-space" && (e.entry.manifest.applications ?? []).includes(app))
     .map((e) => e.name);
@@ -135,7 +135,7 @@ export const fileOpen = async (state: any, namePayload?: string): Promise<string
     // to another doc since, retarget back. The cheap thing is to just
     // re-hydrate the segment-store's payload via load + replace.
     const get = resolveFn(state, "store.get") as Function;
-    const entry = await get(choice);
+    const entry = await get(state, choice);
     if (entry?.segment) {
       const hydrate = resolveFn(state, "hydrate") as Function;
       await hydrate(state, [entry.segment], []);

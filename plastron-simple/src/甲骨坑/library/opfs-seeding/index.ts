@@ -1,6 +1,5 @@
 import type { 甲骨, Cel, DehydratedCel, Fn, Key, State } from "../../../types/index.js";
-import { bindNativeFns } from "../../../kernel/index.js";
-import { putRaw, readIndex } from "../segment-store/index.js";
+import { bindNativeFns, resolveFn } from "../../../kernel/index.js";
 import { deflateCel, segmentEntries } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
@@ -51,7 +50,12 @@ const seedStore: Fn = async (stateArg: unknown): Promise<SeedResult> => {
     bucket.push(deflateCel(cel, state));
   }
 
-  const idx = await readIndex();
+  const readIndex = resolveFn(state, "store.readIndex");
+  const putRaw = resolveFn(state, "store.putRaw");
+  if (!readIndex || !putRaw) {
+    throw new Error("opfs-seeding: segment-store cels (store.readIndex/store.putRaw) are not installed.");
+  }
+  const idx = (await readIndex(state)) as Awaited<ReturnType<typeof readIndexShape>>;
   const seeded: Key[] = [];
   const skipped: Key[] = [];
 
@@ -66,7 +70,7 @@ const seedStore: Fn = async (stateArg: unknown): Promise<SeedResult> => {
     const cels = celsBySegment.get(name) ?? [];
     const 甲骨rec: 甲骨 = { name, cels };
     // putRaw (not put): seeding legitimately writes role:kernel segments.
-    await putRaw(name, version, manifest, 甲骨rec);
+    await putRaw(state, name, version, manifest, 甲骨rec);
     seeded.push(name);
   }
 
@@ -79,3 +83,7 @@ export const cels: Cel[] = bindNativeFns(
   seed as unknown as 甲骨,
   new Map<string, Fn>([["seedStore", seedStore]]),
 );
+
+// Local view of segment-store's index shape (the contract is the JSON
+// on disk, not a TS import).
+const readIndexShape = async (): Promise<{ version: number; segments: Record<string, { latest: string; versions: string[] }> }> => ({ version: 1, segments: {} });

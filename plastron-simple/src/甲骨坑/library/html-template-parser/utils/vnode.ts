@@ -1,71 +1,14 @@
-// ============================================================================
-// VNode — a JSON-shaped virtual-DOM tree, the output of the view-layer's
-// template parser and the input to the painter (raf-channel). Pure data:
-// no DOM, no closures, round-trips through dehydrate.
-//
-// Carried forward from the legacy `segments/plastron-dom/src/vnode.ts`
-// (per the htm-view-layers / raf-channel designs) and trimmed to the core
-// the plastron-simple kernel surface needs. The one substantive addition
-// is the `{ f: string }` form on EventBinding — a formula-source binding
-// the painter compiles lazily on first dispatch (see event-registries).
-//
-// tsconfig here ships no DOM lib, so this module stays free of Element /
-// EventListener types; those live in the painter (apply), which narrows
-// the host structurally.
-// ============================================================================
+import type {
+  AttrValue, EventBinding, RenderSpec, VElement, VNode, VText,
+} from "../../../../types/index.js";
 
-export type AttrValue = string | number | boolean | null;
+// Comparators + builders for the platform VNode types (types/vnode.ts).
+// This segment OWNS the comparison semantics; siblings reach them via
+// the cels vnode.equals / vnode.bindings-equal, never by import.
 
-/** Declarative event binding carried inside a VElement's `events` bag.
- *  All four forms are JSON-shaped — they round-trip through dehydrate and
- *  carry no closures. The painter turns them into real DOM listeners. */
-export interface EventBinding {
-  /** Formula-source binding. The painter compiles this S-expression
-   *  lazily on first dispatch and caches the closure. The primary form
-   *  produced by the template parser for event slots (see the
-   *  htm-view-layers "event-slot" rule). */
-  f?: string;
-  /** Cel key to write on the event. */
-  set?: string;
-  /** Fixed value to write when `set` is present. */
-  value?: unknown;
-  /** Read a named property off `event.target` and write it to `set`.
-   *  Precedence when `set` is present: `value` > `extract` > EventInfo. */
-  extract?: "value" | "checked" | "valueAsNumber" | "valueAsDate" | "files";
-  /** Cel key naming a registered fn to invoke on the event. */
-  dispatch?: string;
-  /** Static payload passed to the dispatch fn. */
-  payload?: unknown;
-}
-
-export interface VText {
-  type: "text";
-  text: string;
-}
-
-export interface VElement {
-  type: "el";
-  tag: string;
-  /** Child-reconciliation hint — local to the parent's children list,
-   *  UNRELATED to `cel.key`. When every child in both the old and new
-   *  lists is a keyed VElement, the diff reconciles by key. */
-  key?: string;
-  attrs?: Record<string, AttrValue>;
-  /** Inline styles, diffed and applied per-property at paint time. */
-  style?: Record<string, AttrValue>;
-  events?: Record<string, EventBinding>;
-  children?: VNode[];
-}
-
-export type VNode = VText | VElement;
-
-/** The view cel's output: the vnode tree, where to mount it, and the
- *  global listener specs the painter reconciles (see event-registries). */
-export interface RenderSpec {
-  vnode: VNode;
-  mount: string | null;
-  listeners: string[];
-}
+// Re-export the platform types so segment-internal modules keep one
+// import site.
+export type { AttrValue, EventBinding, RenderSpec, VElement, VNode, VText };
 
 // ── builders ────────────────────────────────────────────────────────────────
 
@@ -137,4 +80,32 @@ export const vnodeEquals = (a: VNode, b: VNode): boolean => {
   if (!recordEqual(a.style, be.style)) return false;
   if (!eventsEqual(a.events, be.events)) return false;
   return childrenEqual(a.children, be.children);
+};
+
+
+/** Budgeted deep equality — counts element/text nodes visited; once the
+ *  budget is exhausted, reports NOT equal ("changed"). This keeps the
+ *  isChanged protocol O(budget) on monolithic trees (where the paint
+ *  diff is the efficient path) while giving small fragment trees full
+ *  suppression. See vnode-valuecel-collapse.md "budgeted depth". */
+export const vnodeEqualsWithin = (a: VNode, b: VNode, budget: number): boolean => {
+  let remaining = budget;
+  const walk = (x: VNode, y: VNode): boolean => {
+    if (x === y) return true;
+    if (--remaining < 0) return false;            // budget bail ⇒ "changed"
+    if (x.type !== y.type) return false;
+    if (x.type === "text") return x.text === (y as VText).text;
+    const ye = y as VElement;
+    if (x.tag !== ye.tag || x.key !== ye.key) return false;
+    // node-local field compare via the unbudgeted helper on a childless
+    // clone would allocate; reuse vnodeEquals shallow parts directly:
+    const xa = { ...x, children: undefined } as VNode;
+    const ya = { ...ye, children: undefined } as VNode;
+    if (!vnodeEquals(xa, ya)) return false;
+    const xc = x.children ?? [], yc = ye.children ?? [];
+    if (xc.length !== yc.length) return false;
+    for (let i = 0; i < xc.length; i++) if (!walk(xc[i]!, yc[i]!)) return false;
+    return true;
+  };
+  return walk(a, b);
 };

@@ -23,21 +23,37 @@ import { registerDocBinding } from "./doc-binding.js";
 
 type V = { type: "el" | "text"; tag?: string; key?: string; attrs?: Record<string, unknown>; events?: Record<string, unknown>; children?: V[]; text?: string };
 
-const displayValue = (v: unknown): string => {
+/** Excel-flavored display for the value kinds a cell can now hold:
+ *  CelError → #NAME? (undefined symbol) / #ERR! (other traps), defn
+ *  binder request → ƒ name, other objects → JSON (never
+ *  "[object Object]"). */
+export const displayValue = (v: unknown): string => {
   if (v === null || v === undefined || v === "") return "";
   if (typeof v === "number") return Number.isFinite(v) ? (Number.isInteger(v) ? String(v) : v.toFixed(2)) : "—";
+  if (typeof v === "object") {
+    const o = v as { kind?: unknown; message?: unknown; defn?: unknown; name?: unknown };
+    if (o.kind === "error") return /undefined symbol/.test(String(o.message ?? "")) ? "#NAME?" : "#ERR!";
+    if (o.defn === true) return `ƒ ${String(o.name ?? "")}`;
+    try { return JSON.stringify(v) ?? ""; } catch { return "#ERR!"; }
+  }
   return String(v);
 };
 
 /** A `<td>` VNode for a single cell — addr is baked in as a literal so the
- *  click binding doesn't need to re-resolve it at paint time. */
-export const cellVnode = (value: unknown, addr: string): V => ({
-  type: "el", tag: "td",
-  key: addr,
-  attrs: { class: "cell", "data-addr": addr },
-  events: { click: { f: `(dispatch "sheet.click" "${addr}")` } },
-  children: [{ type: "text", text: displayValue(value) }],
-});
+ *  click binding doesn't need to re-resolve it at paint time. Error cells
+ *  carry the trap message in `title` so hover explains the #ERR!. */
+export const cellVnode = (value: unknown, addr: string): V => {
+  const err = value && typeof value === "object" && (value as { kind?: unknown }).kind === "error";
+  const attrs: Record<string, unknown> = { class: err ? "cell error" : "cell", "data-addr": addr };
+  if (err) attrs.title = String((value as { message?: unknown }).message ?? "");
+  return {
+    type: "el", tag: "td",
+    key: addr,
+    attrs,
+    events: { click: { f: `(dispatch "sheet.click" "${addr}")` } },
+    children: [{ type: "text", text: displayValue(value) }],
+  };
+};
 
 /** Compose the full `<table>` VNode from the per-cell VNodes (row-major).
  *  The selected cell is rendered as a clone with `.selected` class so the
@@ -102,11 +118,59 @@ const commit = async (state: any): Promise<void> => {
   await resolveFn(state, "drain")(state, "plastron-dom.paint");
 };
 
+// ── keyboard navigation (document|keydown global listener) ──────────────────
+// One self-gated handler: it no-ops unless Sheets is the active app, so the
+// listener can stay attached across app switches (the painter's null-mount
+// skip means a deactivated view never reconciles its listener away).
+//   Enter  — commit the formula bar, move down (Excel's gesture)
+//   Escape — restore the bar from the selected cell (abandon the draft)
+//   Arrows / Tab / Shift+Tab — move selection (unless typing in the bar)
+const keyNav = async (state: any, _p: unknown, event: any): Promise<void> => {
+  if (state.cels.get("os.active")?.v !== "sheets") return;
+  const k = String(event?.key ?? "");
+  const tag = String(event?.target?.tagName ?? "").toUpperCase();
+  const inBar = tag === "INPUT" || tag === "TEXTAREA";
+  const move = async (dr: number, dc: number): Promise<void> => {
+    await resolveFn(state, "sheet.move-selection")(state, { dr, dc });
+    await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  };
+  if (k === "Enter") {
+    event?.preventDefault?.();
+    await commit(state);
+    await move(1, 0);
+  } else if (k === "Escape") {
+    const sel = (state.cels.get("sheet.selection")?.v as { row: number; col: number } | undefined) ?? { row: 0, col: 0 };
+    await resolveFn(state, "setValue")(state, "sheet.formula-bar", cellSource(state, addrFrom(sel.col, sel.row)), { flush: "all" });
+  } else if (k === "Tab") {
+    event?.preventDefault?.();
+    await move(0, event?.shiftKey ? -1 : 1);
+  } else if (!inBar) {
+    if (k === "ArrowUp") await move(-1, 0);
+    else if (k === "ArrowDown") await move(1, 0);
+    else if (k === "ArrowLeft") await move(0, -1);
+    else if (k === "ArrowRight") await move(0, 1);
+  }
+};
+
 // ── the sheet view template ─────────────────────────────────────────────────
+
+// The file toolbar is a FRAGMENT view cel (vnode-valuecel-collapse):
+// `{{(cel "sheet.toolbar.view")}}` splices its RenderSpec by reference,
+// so toolbar work is zero when os.doc didn't change and the paint diff
+// skips its subtree in O(1). The monolithic (string-inlined) form stays
+// available via opts.monolithicToolbar for the DOM-fingerprint identity
+// regression test.
+const TOOLBAR_FRAGMENT_TEMPLATE = `
+    <div class="file-toolbar">
+      <button class="ft-new"  onClick={{(dispatch "file.new")}}>📄 New</button>
+      <button class="ft-save" onClick={{(dispatch "file.save")}}>💾 Save</button>
+      <button class="ft-open" onClick={{(dispatch "file.pick")}}>📂 Open</button>
+      <span class="doc-name">{{(toolbarLabel doc)}}</span>
+    </div>`;
 
 const SHEET_TEMPLATE = `
 <div class="sheet-app">
-  {{(renderFileToolbar doc)}}
+  {{(cel "sheet.toolbar.view")}}
   <div class="bar">
     <button class="close" onClick={{(dispatch "os.exit")}}>×</button>
     <span class="cellref">{{(selAddr sel)}}</span>
@@ -123,8 +187,9 @@ const SHEET_TEMPLATE = `
 // ── builder ─────────────────────────────────────────────────────────────────
 
 export const buildSheetsApp = async (
-  state: any, opts: { rows?: number; cols?: number; cells?: Record<string, string> } = {},
+  state: any, opts: { rows?: number; cols?: number; cells?: Record<string, string>; monolithicToolbar?: boolean } = {},
 ): Promise<void> => {
+  const monolithic = opts.monolithicToolbar === true;
   const rows = opts.rows ?? 6;
   const cols = opts.cols ?? 6;
   const setCelFn_ = resolveFn(state as never, "setCel") as (s: unknown, k: string, spec: unknown) => Promise<unknown>;
@@ -136,8 +201,10 @@ export const buildSheetsApp = async (
   await reg(state, { key: "sheet.click", fn: clickCell, kind: "custom" });
   await reg(state, { key: "sheet.bar-input", fn: barInput, kind: "custom" });
   await reg(state, { key: "sheet.commit", fn: commit, kind: "custom" });
+  await reg(state, { key: "sheet.key", fn: keyNav, kind: "custom" });
   await reg(state, { key: "if", fn: (c: unknown, a: unknown, b: unknown) => (c ? a : b), kind: "custom" });
   await reg(state, { key: "eq", fn: (a: unknown, b: unknown) => a === b, kind: "custom" });
+  await reg(state, { key: "toolbarLabel", fn: (doc: unknown) => String(doc ?? "(unsaved)").replace(/[<>{}]/g, ""), kind: "custom" });
 
   // currentMeta closes over state so the template can show the selected
   // cel's metadata without dragging state through the formula language.
@@ -184,20 +251,41 @@ export const buildSheetsApp = async (
     metadata: { key: "sheet.mount", segment: "sheets", parser: "f", inputMap: { active: "os.active" } },
     f: `(if (eq active "sheets") "#app" null)`,
   });
+  // Global keyboard listener spec (RenderSpec.listeners reserved input).
+  // Static — keyNav self-gates on os.active, so attach-once is safe.
+  seg.cels.push({
+    key: "sheet.listeners", celType: "ValueCel",
+    metadata: { key: "sheet.listeners", segment: "sheets" },
+    v: ['document|keydown|(dispatch "sheet.key")'],
+  });
   // App-type advertisement — file-explorer + picker read this for our file icon.
   seg.cels.push({
     key: "sheets.app-type", celType: "ValueCel",
     metadata: { key: "sheets.app-type", segment: "sheets" },
     v: { key: "sheets", title: "Sheets", extension: "csv", icon: "📊" },
   });
+  if (!monolithic) {
+    seg.cels.push({
+      key: "sheet.toolbar.view", celType: "FormulaCel",
+      metadata: {
+        key: "sheet.toolbar.view", segment: "sheets", parser: "html-template", schema: "render-spec",
+        inputMap: { doc: "os.doc" },
+      },
+      f: TOOLBAR_FRAGMENT_TEMPLATE,
+    });
+  }
   seg.cels.push({
     key: "sheet.view", celType: "FormulaCel",
     metadata: {
       key: "sheet.view", segment: "sheets", parser: "html-template", schema: "render-spec",
       channel: ["plastron-dom.paint"],
-      inputMap: { mount: "sheet.mount", sel: "sheet.selection", formulaBar: "sheet.formula-bar", doc: "os.doc", cellViews: cellViewKeys, dims: "sheet.dims" },
+      inputMap: monolithic
+        ? { mount: "sheet.mount", listeners: "sheet.listeners", sel: "sheet.selection", formulaBar: "sheet.formula-bar", doc: "os.doc", cellViews: cellViewKeys, dims: "sheet.dims" }
+        : { mount: "sheet.mount", listeners: "sheet.listeners", sel: "sheet.selection", formulaBar: "sheet.formula-bar", cellViews: cellViewKeys, dims: "sheet.dims" },
     },
-    f: SHEET_TEMPLATE,
+    f: monolithic
+      ? SHEET_TEMPLATE.replace('{{(cel "sheet.toolbar.view")}}', '{{(renderFileToolbar doc)}}')
+      : SHEET_TEMPLATE,
   });
 
   const deps = ["sheet", "app-host", "html-template-parser", "plastron-dom", "segment-store", "user-space-ops"];

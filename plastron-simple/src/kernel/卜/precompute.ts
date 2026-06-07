@@ -2,6 +2,7 @@ import type {
   Cel, Channel, ChannelCel, ChannelEnqueue, FireableCel, Key, SegmentCel,
   SegmentRole, State,
 } from "../../types/index.js";
+import { bump, counters } from "../counters.js";
 import type { PrecomputedIndexes } from "../../types/index.js";
 import { PRECOMPUTED_STATES_KEY } from "./graph.js";
 import { isFireable, kindOf } from "../cels.js";
@@ -39,10 +40,16 @@ export const buildPrecomputedIndexes = (): PrecomputedIndexes => ({
 // descriptor. Internal queue + resolveFn lookup for drain/dispose so
 // the cel registry stays the single source of truth for runtime fns.
 const buildChannel = (cel: ChannelCel, state: State): Channel => {
+  // PRESERVE pending enqueues across rebuilds: precompute runs between
+  // fire and drain all the time (a drain that commits cels — genesis,
+  // defn — precomputes mid-flush), and a fresh queue would silently
+  // drop queued effects (found via the origin: the paint queue vanished
+  // whenever a bloom's setCelBatch precomputed before the paint drain).
   const queue: ChannelEnqueue[] = [];
   const drainKey = cel.v.drain;
   const disposeKey = cel.v.dispose;
   return {
+    _queue: queue,
     enqueue: (args) => { queue.push(args); },
     hasPending: () => queue.length > 0,
     drain: () => {
@@ -62,6 +69,13 @@ const buildChannel = (cel: ChannelCel, state: State): Channel => {
 };
 
 export const precompute = (state: State): void => {
+  if (!counters()) { precomputeBody(state); return; }
+  const t0 = performance.now();
+  precomputeBody(state);
+  bump("precomputeCount"); bump("precomputeMs", performance.now() - t0);
+};
+
+const precomputeBody = (state: State): void => {
   const cels = state.cels;
 
   const byWave = new Map<number, Key[]>();
@@ -245,6 +259,8 @@ const edgeTargetKeys = (cel: EdgeSource): Key[] => {
     inputMap?: Record<string, Key | Key[]>;
     imports?: Key;
     channel?: Key[];
+    definedBy?: Key;
+    generatedBy?: Key;
   };
   const out: Key[] = [];
   if (md.inputMap) {
@@ -255,6 +271,14 @@ const edgeTargetKeys = (cel: EdgeSource): Key[] => {
   }
   if (md.imports) out.push(md.imports);
   if (md.channel) out.push(...md.channel);
+  // OWNERSHIP edges (defn/genesis lifecycle): an owned cel's segment
+  // depends on its owner's — dormancy/wake must keep owner and owned
+  // together. ADJACENCY ONLY: ownership is deliberately NOT part of
+  // celDependencies/children — a cascade edge onto an owned lambda
+  // would let fireCel call it and overwrite its v (genesis-segment.md
+  // accepted Q4).
+  if (md.definedBy) out.push(md.definedBy);
+  if (md.generatedBy) out.push(md.generatedBy);
   return out;
 };
 

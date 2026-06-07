@@ -15,3 +15,7 @@ description: The 'py' compiler cel — Python source → Fn via Pyodide. Plus py
 
 Any `EditableLambdaCel` with `metadata.kind: "py"` compiles through this. Worker mode runs
 `utils/py-worker.ts` inside a WHATWG Worker (URL resolved at runtime as `./utils/py-worker.js`).
+
+Seeded as a `CompilerCel` (the compiler fn lives on `v`), which also makes it a
+**binder head**: `=PY(A1, "name")` in a sheet / `(py src "name")` in S-expr
+defines a named function from the referenced source (see the `defn` segment).

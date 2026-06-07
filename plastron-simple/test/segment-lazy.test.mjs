@@ -12,12 +12,18 @@ import {
 // runtime-defined segments.
 // ============================================================================
 
-test("default createInitialState: nothing pending, registry cel exists", () => {
+test("default createInitialState: only origin parked (host-choice), registry cel exists", () => {
   const state = createInitialState();
   const loaders = getSegmentLoaders(state);
   assert.ok(loaders instanceof Map);
-  assert.equal(loaders.size, 0);
+  // origin is parked by default (a host-choice segment; see origin-segment.md).
+  assert.deepEqual([...loaders.keys()], ["origin"]);
   assert.ok(state.cels.get(SEGMENT_LOADERS_KEY)?.locked);
+});
+
+test("createInitialState({ lazy: [] }) opts out of the origin default", () => {
+  const state = createInitialState({ lazy: [] });
+  assert.equal(getSegmentLoaders(state).size, 0);
 });
 
 test("lazy segment: manifest seeded, cels absent, pending until loaded", () => {

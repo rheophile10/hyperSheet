@@ -2,10 +2,14 @@ import type {
   甲骨, Cel, CompileContext, Compiler, Fn, Key, State, WasmHandle, WitType,
 } from "../../../types/index.js";
 import { isWitPrimitive } from "../../../kernel/index.js";
-import { bindNativeFns } from "../../../kernel/index.js";
-import { CSP_WASM_AVAILABLE_KEY } from "../csp/index.js";
-import { readHostImports } from "../host/index.js";
+import { resolveFn, bindNativeFns } from "../../../kernel/index.js";
+import { CSP_WASM_AVAILABLE_KEY } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
+
+// host capability namespace, read through the cel registry (isolation:
+// the host segment owns the fn; we own only the key).
+const readHostImports = (st: State): Record<string, Fn> =>
+  ((resolveFn(st, "host.imports") as Fn | undefined)?.(st) ?? {}) as Record<string, Fn>;
 
 // Composite WIT types (list / record / variant) tell us the cel's
 // value should stay as a handle into the kind's worker / runtime,
