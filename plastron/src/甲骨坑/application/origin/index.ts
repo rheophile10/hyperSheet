@@ -494,14 +494,23 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   }
 
   await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["元.draft", ""], ["元.error", null]]);
-  // fire generators so they enqueue, then commit structure + sweep…
-  await (resolveFn(state, "runCycle") as Fn)(state);
+  // fire generators so they enqueue, then commit structure + sweep. Loop until
+  // quiescent: an effect can create a cel whose own formula is a request (e.g.
+  // cel("cel(\"banana\")") → c1 = =cel("banana") → another cel) — keep draining
+  // until a pass adds nothing new (capped, so a runaway can't spin forever).
   const drain = resolveFn(state, "drain") as Fn;
-  for (const ch of ["genesis.commit", "defn.commit", "checkpoint.commit", "origin.effects"]) {
-    if (state.cels.get(ch)) await drain(state, ch);
+  const gd = resolveFn(state, "genesis.drain") as Fn | undefined;
+  const dd = resolveFn(state, "defn.drain") as Fn | undefined;
+  for (let pass = 0; pass < 8; pass++) {
+    const before = state.cels.size;
+    await (resolveFn(state, "runCycle") as Fn)(state);
+    for (const ch of ["genesis.commit", "defn.commit", "checkpoint.commit", "origin.effects"]) {
+      if (state.cels.get(ch)) await drain(state, ch);
+    }
+    if (gd) await gd([], state);
+    if (dd) await dd([], state);
+    if (state.cels.size === before) break; // no new cels this pass → settled
   }
-  const gd = resolveFn(state, "genesis.drain") as Fn | undefined; if (gd) await gd([], state);
-  const dd = resolveFn(state, "defn.drain") as Fn | undefined; if (dd) await dd([], state);
   // …rebuild the cell list (new grids in, swept cels out), re-fire, paint.
   await rewireView(state, cellKeys(state));
   await (resolveFn(state, "runCycle") as Fn)(state);
@@ -785,7 +794,9 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         let n = 1; while (state.cels.get(`c${n}`)) n++;
         const ck = `c${n}`;
         const spec = sniffCel(String(req.content ?? ""));
-        await setCel(state, ck, { celType: spec.celType, f: spec.f, v: spec.v, metadata: { segment: "origin", name: ck, parser: spec.parser } });
+        // emitsTo lets a cel whose formula is itself a request (e.g. cel(…))
+        // route it to this drain — so cel("cel(\"banana\")") really makes another cel.
+        await setCel(state, ck, { celType: spec.celType, f: spec.f, v: spec.v, metadata: { segment: "origin", name: ck, parser: spec.parser, emitsTo: "origin.effects" } });
         result = `created cel ${ck}`;
       } else if (req.originSeed) {
         result = buildSeed(state); // the whole document as one paste-able formula

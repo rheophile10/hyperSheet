@@ -44,7 +44,12 @@ const tokenize = (src: string): Tok[] => {
     if (c === " " || c === "\t" || c === "\n" || c === "\r") { i++; continue; }
     if (c === '"') {
       let j = i + 1, s = "";
-      while (j < n && src[j] !== '"') { s += src[j]; j++; }
+      // backslash escapes the next char literally — so a string can hold a
+      // quote (\") or a backslash (\\), e.g. cel("cel(\"banana\")").
+      while (j < n && src[j] !== '"') {
+        if (src[j] === "\\" && j + 1 < n) { s += src[j + 1]; j += 2; }
+        else { s += src[j]; j++; }
+      }
       toks.push({ k: "str", v: s });
       i = j + 1;
       continue;

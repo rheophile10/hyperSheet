@@ -151,6 +151,9 @@ await withPage("=cel(value) + =cel(formula) create new cels beside 元", async (
   await put(page, '=cel("monkey")');
   eq(await cel(page, "c1"), "monkey", 'cel("monkey") → c1 holds the value');
   ok(await page.evaluate(() => (((globalThis as any).plastron.state.cels.get("元.cells")?.v) ?? []).includes("c1")), "c1 shows in the cell list");
+  // a cel holding a formula that makes ANOTHER cel — escaped quotes + nested drain
+  await put(page, '=cel("cel(\\"banana\\")")');
+  ok(await page.evaluate(() => [...(globalThis as any).plastron.state.cels.values()].some((c: { v?: unknown }) => c.v === "banana")), 'cel("cel(\\"banana\\")") makes a cel holding banana');
 });
 
 await withPage("=cels is the grid (renamed); =members lists a segment", async (page) => {
