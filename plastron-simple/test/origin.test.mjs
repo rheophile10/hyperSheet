@@ -59,12 +59,14 @@ const put = async (state, root, m, src, key = "元") => {
   m.run();
 };
 
-test("boot: A1 (元) renders the readme as a dom object in its cell", async () => {
+test("boot: 元 holds a styled mount; the readme renders in the top region", async () => {
   const { state, root } = await boot();
-  assert.deepEqual(cells(root).map((c) => c.attrs["data-key"]), ["元"], "one cell at boot — 元 (A1)");
-  assert.ok(cls(root, "readme"), "readme dom rendered in A1");
-  assert.match(txt(cls(root, "readme")), /this is cell A1/);
-  assert.ok(state.cels.get("元").v?.type === "el", "A1's value is a vnode (the readme)");
+  assert.deepEqual(cells(root).map((c) => c.attrs["data-key"]), ["元"], "one cell — 元");
+  assert.equal(state.cels.get("元").v?.__at, "top", "元's value is a mount placement");
+  const rm = cls(root, "readme");
+  assert.ok(rm, "readme rendered (in the region)");
+  assert.ok(rm.style && Object.keys(rm.style.props).length > 0, "readme carries inline styles");
+  assert.match(txt(rm), /try these in a cell/);
 });
 
 test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restores readme", async () => {
@@ -75,7 +77,8 @@ test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restore
   await put(state, root, m, "7");
   assert.equal(cellVal(root, "元"), "7", "literal renders in A1");
   await put(state, root, m, "");
-  assert.ok(cls(root, "readme"), "empty A1 -> readme back (un-deletable)");
+  assert.ok(cls(root, "readme"), "empty 元 -> readme back (un-deletable)");
+  assert.equal(state.cels.get("元").v?.__at, "top", "readme restored as a mount");
 });
 
 test("A1 can render a dom object", async () => {
@@ -118,13 +121,12 @@ test("=cels(sheet) lists a segment; unknown symbols show #NAME?", async () => {
 
 test("mount(region, content) places a dom in a region; deleting removes it", async () => {
   const { state, root, m } = await boot();
-  await put(state, root, m, '(mount "top" (dom "h2.hello" "pinned"))');
-  const region = () => walk(root, (n) => String(n.attrs?.class ?? "").includes("region-top"))[0];
-  assert.ok(region(), "top region rendered");
-  assert.ok(walk(region(), (n) => n.tag === "h2").length > 0, "dom placed in the region, not the cell");
-  assert.match(txt(region()), /pinned/);
-  await put(state, root, m, "");
-  assert.equal(walk(root, (n) => String(n.attrs?.class ?? "").includes("region-top")).length, 0, "region gone with the formula");
+  const hello = () => walk(root, (n) => String(n.attrs?.class ?? "") === "hello")[0];
+  await put(state, root, m, '(mount "top" (dom "h2.hello" "pinned"))'); // replaces 元's readme mount
+  assert.ok(hello(), "dom placed in the region, not the cell");
+  assert.match(txt(hello()), /pinned/);
+  await put(state, root, m, ""); // clear 元 → readme mount restored
+  assert.equal(hello(), undefined, "the pinned dom is gone with its formula");
 });
 
 test("introspection: inspect / segments / vocab return readable values", async () => {

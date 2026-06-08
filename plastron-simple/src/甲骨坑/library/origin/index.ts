@@ -37,14 +37,36 @@ const isVnode = (v: unknown): v is V =>
  *  nested dom(...) → child elements. A freespace cell whose value is a
  *  vnode renders in the STACK above the cels; delete the formula and it
  *  is gone — composed by value, nothing to unmount. */
+const isStyle = (c: unknown): c is { __style: Record<string, unknown> } =>
+  !!c && typeof c === "object" && typeof (c as { __style?: unknown }).__style === "object";
+
 const dom: Fn = (tag: unknown, ...children: unknown[]): V => {
   const spec = String(tag ?? "div");
   const dot = spec.indexOf(".");
   const name = dot === -1 ? spec : spec.slice(0, dot);
   const cls = dot === -1 ? undefined : spec.slice(dot + 1).replace(/\./g, " ");
-  const kids: V[] = children.map((c) => (isVnode(c) ? c : T(c)));
+  // a (style …) child sets inline style; the rest are children
+  let style: Record<string, unknown> | undefined;
+  const kids: V[] = [];
+  for (const c of children) {
+    if (isStyle(c)) { style = { ...style, ...c.__style }; continue; }
+    kids.push(isVnode(c) ? c : T(c));
+  }
   const attrs = cls ? { class: cls } : undefined;
-  return { type: "el", tag: name || "div", ...(attrs ? { attrs } : {}), children: kids };
+  return {
+    type: "el", tag: name || "div",
+    ...(attrs ? { attrs } : {}),
+    ...(style ? { style: style as Record<string, string | number | boolean | null> } : {}),
+    children: kids,
+  };
+};
+
+/** style(prop, value, prop, value, …) — inline styles for a dom element.
+ *  Pass as a child: (dom "h1" (style "color" "tomato" "font-size" "2rem") "hi"). */
+const style: Fn = (...pairs: unknown[]): { __style: Record<string, unknown> } => {
+  const s: Record<string, unknown> = {};
+  for (let i = 0; i + 1 < pairs.length; i += 2) s[String(pairs[i])] = pairs[i + 1];
+  return { __style: s };
 };
 
 /** How a cell's VALUE shows when not being edited: a dom vnode renders
@@ -238,12 +260,7 @@ const sniff = (src: string): { celType: string; f?: string; v?: unknown; parser?
 };
 
 const VIEW_KEY = "元.view";
-const README = '(dom "div.readme" (dom "h2" "the origin") '
-  + '(dom "p" "this is cell A1. put a formula or value here and it shows the result.") '
-  + '(dom "p" "  =1+1            shows 2") '
-  + '(dom "p" "  =grid(3, 3)     makes a 3x3 worksheet of cels like this one") '
-  + '(dom "p" "  =dom(\\"h2\\" \\"hi\\")  makes a heading") '
-  + '(dom "p" "click a cell\'s label to edit it; clear A1 to bring this back."))';
+const README = "(mount \"top\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (dom \"h1\" (style \"margin\" \"0 0 .2rem\" \"font-size\" \"1.7rem\" \"font-family\" \"system-ui\") \"plastron \ud83d\udc22\")\n    (dom \"p\" (style \"margin\" \"0 0 .8rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"a spreadsheet where formulas can also build dom, cels, sheets, and apps. try these in a cell:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=sheets(\\\"in\\\" 4 3 \\\"out\\\" 4 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"(dom \\\"h2\\\" (style \\\"color\\\" \\\"tomato\\\") \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"(mount \\\"top\\\" (dom \\\"p\\\" \\\"pinned above\\\"))   place dom in a region\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"\u5143\\\")              this cel as json\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click \u5143 to edit this; clear it to bring it back.\")))";
 
 /** The current spreadsheet cell list: 元 (A1) plus every genesis-created
  *  DATA cel (grid cells), sorted. Rebuilt after each commit so new grids
@@ -438,6 +455,7 @@ export const name = "origin" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["originView",     originView],
   ["dom",            dom],
+  ["style",          style],
   ["mount",          mount],
   ["origin.commit",  commit],
   ["origin.edit",    edit],
