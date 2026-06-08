@@ -56,6 +56,8 @@ jobs:
           mkdir -p deploy/os
           cp plastron-simple-examples/origin/dist/index.html deploy/index.html
           cp plastron-simple-examples/plastron-os/dist/index.html deploy/os/index.html
+          # custom domain — tells GitHub Pages to serve + provision a cert for plastron.ca
+          echo 'plastron.ca' > deploy/CNAME
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
