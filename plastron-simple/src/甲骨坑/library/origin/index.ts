@@ -9,38 +9,24 @@ import seed from "./甲骨.json" with { type: "json" };
 // ============================================================================
 // origin — the starting point (origin-segment.md, accepted).
 //
-// Boot contract: createInitialState() + hydrate(state, [], []) leaves
-// 元.view mounted at 元.mount ("#app") painting FREESPACE: the origin
-// cel (its v IS the plain-text readme — owner-edited, no markdown) and
-// every user cel created through the entry gesture, as clickable boxes.
-//
-// The freespace index is the VIEW'S OWN inputMap: origin.commit creates
-// `c1, c2, …` (segment "freespace") and rewires 元.view's inputMap via
-// a metadata-only setCel — the two-tier write design carrying the UI.
-// Kernel/firmware cels are never listed, so the floor stays invisible
-// (sparseness is a visibility rule, not a count).
-//
-// The view is DELIBERATELY minimal and unlocked — built to be edited
-// and entirely reworked in place; it renders through plastron-dom like
-// every other view (no bespoke paint path).
+// The origin IS A SPREADSHEET and 元 is cell A1. Boot contract:
+// createInitialState() + ensureSegments(["origin"]) + hydrate([],[])
+// mounts 元.view at 元.mount ("#app"). Every cel in 元.cells is an
+// editable spreadsheet cell: it shows its evaluated value; click the
+// label to edit the source; Enter re-evaluates. 元 (A1) is seeded with
+// the readme. The ONLY thing past an ordinary spreadsheet — a cell's
+// formula may also build dom objects, more cels, worksheets, toolbars:
+//   =1+1          → 2
+//   =grid(3,3)    → a 3×3 worksheet of cels, each like 元
+//   =dom("h2"…)   → a heading rendered in the cell
+// 元.view is UNLOCKED — it renders through plastron-dom like any view,
+// built to be reworked in place.
 // ============================================================================
 
 type V = { type: "el" | "text"; tag?: string; key?: string; attrs?: Record<string, unknown>; events?: Record<string, unknown>; children?: V[]; text?: string };
 const T = (s: unknown): V => ({ type: "text", text: String(s ?? "") });
 const el = (tag: string, attrs: Record<string, unknown>, children: V[], events?: Record<string, unknown>): V =>
   ({ type: "el", tag, attrs, children, ...(events ? { events } : {}) });
-
-const short = (v: unknown): string => {
-  if (v === null || v === undefined || v === "") return "";
-  if (typeof v === "object") {
-    const o = v as { kind?: unknown; message?: unknown; defn?: unknown; genesis?: unknown; name?: unknown };
-    if (o.kind === "error") return /undefined symbol|is not defined/.test(String(o.message)) ? "#NAME?" : "#ERR!";
-    if (o.defn === true) return `f ${String(o.name ?? "")}`;
-    if (o.genesis === true) return "(structure)";
-    try { return JSON.stringify(v).slice(0, 60); } catch { return "#ERR!"; }
-  }
-  return String(v).slice(0, 60);
-};
 
 const isVnode = (v: unknown): v is V =>
   !!v && typeof v === "object" && ((v as V).type === "el" || (v as V).type === "text");
@@ -61,61 +47,75 @@ const dom: Fn = (tag: unknown, ...children: unknown[]): V => {
   return { type: "el", tag: name || "div", ...(attrs ? { attrs } : {}), children: kids };
 };
 
-/** The freespace renderer (parser "f"): (expanded draft mount idx vals)
- *  → render-spec. Freespace cells whose VALUE is a vnode render live in
- *  the `.app-stack` above; every cell also keeps a handle box below
- *  (open it to edit/delete its formula). 元 is the input anchor. */
-const originView: Fn = (
-  expanded: unknown, draft: unknown, mount: unknown, idx: unknown, vals: unknown,
-) => {
-  const keys = Array.isArray(idx) ? (idx as string[]) : [];
-  const values = Array.isArray(vals) ? (vals as unknown[]) : [];
-  const open = typeof expanded === "string" ? expanded : null;
-
-  // Only the HEADER toggles expand/close — never the whole open box, so
-  // clicking into the input doesn't bubble up and collapse the cel
-  // (events-as-data has no stopPropagation; the header carries the only
-  // toggle, the body carries none).
-  const header = (key: string, trailing: V[]): V =>
-    el("div", { class: "cel-head" }, [el("span", { class: "k" }, [T(key)]), ...trailing],
-      { click: { dispatch: "origin.expand", payload: key } });
-
-  const editor = (key: string): V =>
-    el("input", { class: "entry", value: String(draft ?? ""), placeholder: "type a formula, press enter" }, [], {
-      input: { set: "元.draft", extract: "value" },
-      keydown: { dispatch: "origin.key", payload: key },
-    });
-
-  const openBox = (key: string, body: V[]): V =>
-    el("div", { class: "cel open", "data-key": key }, [header(key, []), ...body, editor(key)]);
-  const closedBox = (key: string, valNode: V): V =>
-    el("div", { class: "cel", "data-key": key }, [header(key, [valNode])]);
-  const valNodeFor = (v: unknown): V =>
-    el("span", { class: "v" }, [T(isVnode(v) ? "(view)" : short(v))]);
-
-  const stack: V[] = [];   // vnode-valued cells, rendered live above
-  const boxes: V[] = [];   // handles (origin first), rendered below
-
-  const originOpen = open === "元";
-  boxes.push(originOpen ? openBox("元", []) : closedBox("元", el("span", { class: "v" }, [])));
-
-  for (let i = 0; i < keys.length; i++) {
-    const key = keys[i]!;
-    const v = values[i];
-    if (isVnode(v)) stack.push(v as V);
-    boxes.push(open === key
-      ? openBox(key, [el("pre", { class: "val" }, [T(isVnode(v) ? "(view)" : short(v))])])
-      : closedBox(key, valNodeFor(v)));
+/** How a cell's VALUE shows when not being edited: a dom vnode renders
+ *  live; a number/string shows as text; a structure request (genesis /
+ *  defn) shows a ƒ marker (it made cels/functions elsewhere); errors
+ *  show Excel-style. Empty shows nothing. */
+const displayCell = (v: unknown): V => {
+  if (isVnode(v)) return v as V;
+  if (v === null || v === undefined || v === "") return T("");
+  if (typeof v === "object") {
+    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; defn?: unknown; name?: unknown };
+    if (o.kind === "error") return T(/undefined symbol|not a function/.test(String(o.message)) ? "#NAME?" : "#ERR!");
+    if (o.genesis === true) return T("ƒ grid");
+    if (o.defn === true) return T(`ƒ ${String(o.name ?? "")}`);
+    try { return T(JSON.stringify(v).slice(0, 60)); } catch { return T("#ERR!"); }
   }
+  return T(String(v));
+};
 
-  const children: V[] = [];
-  if (stack.length) children.push(el("div", { class: "app-stack" }, stack));
-  children.push(el("div", { class: "freespace" }, boxes));
+/** The spreadsheet renderer (parser "f"): (editing draft mount keys vals)
+ *  → render-spec. Every cel in `keys` is an editable spreadsheet cell —
+ *  it shows its evaluated value; click its label to edit the source;
+ *  Enter re-evaluates. 元 is just the first cell (A1); grid() adds more.
+ *  The ONLY thing past an ordinary spreadsheet: a cell's formula may
+ *  evaluate to a dom object / make cels / make worksheets, and that
+ *  renders right in the cell. */
+const originView: Fn = (
+  editing: unknown, draft: unknown, mount: unknown, keys: unknown, vals: unknown,
+) => {
+  const ks = Array.isArray(keys) ? (keys as string[]) : ["元"];
+  const vs = Array.isArray(vals) ? (vals as unknown[]) : [];
+  const active = typeof editing === "string" ? editing : null;
+
+  const cell = (key: string, value: unknown): V => {
+    const isOn = active === key;
+    const label = key === "元" ? "A1" : key.includes(".") ? key.slice(key.indexOf(".") + 1) : key;
+    const head = el("div", { class: "cell-label" }, [T(label)], { click: { dispatch: "origin.edit", payload: key } });
+    const body = isOn
+      ? el("input", { class: "cell-input", value: String(draft ?? "") }, [], {
+          input: { set: "元.draft", extract: "value" },
+          keydown: { dispatch: "origin.key", payload: key }, // origin.key commits only on Enter
+        })
+      : el("div", { class: "cell-value" }, [displayCell(value)]);
+    return el("div", { class: isOn ? "cell editing" : "cell", "data-key": key }, [head, body]);
+  };
+
+  const cells = ks.map((k, i) => cell(k, vs[i]));
   return {
-    vnode: el("div", { class: "origin-root" }, children),
+    vnode: el("div", { class: "sheet" }, cells),
     mount: typeof mount === "string" ? mount : null,
     listeners: [],
   };
+};
+
+/** grid(rows, cols [, name]) — a genesis vocabulary that adds rows×cols
+ *  editable cels, each identical to 元. `=grid(3,3)` in any cell makes a
+ *  3×3 worksheet; the cels are real (name.A1 … data ValueCels), each a
+ *  spreadsheet cell you type formulas/values into. Delete the formula
+ *  and the genesis sweep removes them. */
+const grid: Fn = (rows: unknown, cols: unknown, nameArg?: unknown): unknown => {
+  const r = Math.max(1, Math.min(50, Math.floor(Number(rows) || 1)));
+  const c = Math.max(1, Math.min(26, Math.floor(Number(cols) || 1)));
+  const name = typeof nameArg === "string" && nameArg !== "" ? nameArg : "g";
+  const cels: Record<string, unknown> = {};
+  for (let row = 0; row < r; row++) {
+    for (let col = 0; col < c; col++) {
+      const addr = `${String.fromCharCode(65 + col)}${row + 1}`;
+      cels[`${name}.${addr}`] = { celType: "ValueCel", v: "", metadata: { name: addr, parser: "infix" } };
+    }
+  }
+  return { genesis: true, layer: name, cels };
 };
 
 // ── the entry gesture ────────────────────────────────────────────────────────
@@ -129,96 +129,90 @@ const sniff = (src: string): { celType: string; f?: string; v?: unknown; parser?
 };
 
 const VIEW_KEY = "元.view";
+const README = '(dom "div.readme" (dom "h2" "the origin") '
+  + '(dom "p" "this is cell A1. put a formula or value here and it shows the result.") '
+  + '(dom "p" "  =1+1            shows 2") '
+  + '(dom "p" "  =grid(3, 3)     makes a 3x3 worksheet of cels like this one") '
+  + '(dom "p" "  =dom(\\"h2\\" \\"hi\\")  makes a heading") '
+  + '(dom "p" "click a cell\'s label to edit it; clear A1 to bring this back."))';
 
-const freespaceKeys = (state: State): string[] => {
-  const idx = state.cels.get("freespace.index")?.v;
-  return Array.isArray(idx) ? [...(idx as string[])] : [];
+/** The current spreadsheet cell list: 元 (A1) plus every genesis-created
+ *  DATA cel (grid cells), sorted. Rebuilt after each commit so new grids
+ *  show and swept ones vanish. */
+const cellKeys = (state: State): string[] => {
+  const out: string[] = ["元"];
+  for (const [k, c] of state.cels) {
+    if (k === "元") continue;
+    const md = c.metadata as { generatedBy?: Key };
+    if (md.generatedBy && (c.celType === "ValueCel" || c.celType === "FormulaCel")) out.push(k);
+  }
+  return [out[0]!, ...out.slice(1).sort()];
 };
 
-// Array INPUTS resolve to VALUES, so the key list itself travels as a
-// value (freespace.index) while the same keys wire the vals array ref.
+// 元.view's `vals` is an ARRAY inputMap of the cell keys (→ array of
+// values); `keys` is the same list as a value cel. Rewire both so the
+// view re-fires against the live cell set.
 const rewireView = async (state: State, keys: string[]): Promise<void> => {
   const im = { ...(state.cels.get(VIEW_KEY)?.metadata.inputMap as Record<string, Key | Key[]>) };
   im.vals = keys;
-  await (resolveFn(state, "setValue") as Fn)(state, "freespace.index", keys);
+  await (resolveFn(state, "setValue") as Fn)(state, "元.cells", keys);
   await (resolveFn(state, "setCel") as Fn)(state, VIEW_KEY, { metadata: { inputMap: im } });
 };
 
-// Commit STRUCTURE first (genesis/defn/checkpoint/effects), THEN run a
-// cycle so views render against the settled graph, THEN paint. A
-// structure drain calls precompute (which rebuilds channels), so any
-// paint enqueued before it would be lost — draining paint LAST, after a
-// fresh cycle, sidesteps that without globally preserving channel
-// queues (which replays stale specs and drops listeners).
-const drainAll = async (state: State, keys: string[]): Promise<void> => {
+/** edit — start editing a cell: seed the draft with its source, mark it
+ *  active. Clicking the label of the active cell again closes it. */
+const edit: Fn = async (state: State, payload?: unknown) => {
+  const key = typeof payload === "string" ? payload : null;
+  const cur = state.cels.get("元.editing")?.v;
+  const next = cur === key ? null : key;
+  let draft = "";
+  if (next) {
+    const c = state.cels.get(next);
+    const f = (c as { f?: string } | undefined)?.f;
+    draft = f ?? (c?.v === undefined || c?.v === null ? "" : String(c.v));
+  }
+  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", next], ["元.draft", draft]]);
+  await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
+  return state;
+};
+
+/** commit — set the edited cell's content from the draft and re-evaluate.
+ *  Every cell (元 included) executes its formula/value like A1. 元 is
+ *  un-deletable: clearing it restores the readme. A structure formula
+ *  (=grid …) makes more cels; the post-drain rebuild adds them. */
+const commit: Fn = async (state: State, payload?: unknown) => {
+  const key = typeof payload === "string" ? payload : "元";
+  const draft = String(state.cels.get("元.draft")?.v ?? "").trim();
+  const setCel = resolveFn(state, "setCel") as Fn;
+
+  const src = key === "元" && draft === "" ? README : draft;
+  const spec = src === "" ? { celType: "ValueCel", v: "" } : sniff(src);
+  // Carry forward ownership/name stamps so editing a GRID cell keeps it
+  // owned by its generator (else the sweep can't reclaim it, and the
+  // grid never goes away). A1's own segment/name pass through too.
+  const prior = state.cels.get(key)?.metadata as
+    { segment?: string; name?: string; generatedBy?: Key; definedBy?: Key; origin?: Key } | undefined;
+  const md: Record<string, unknown> = { segment: prior?.segment ?? "origin" };
+  if (prior?.name) md.name = prior.name;
+  if (prior?.generatedBy) md.generatedBy = prior.generatedBy;
+  if (prior?.definedBy) md.definedBy = prior.definedBy;
+  if (prior?.origin) md.origin = prior.origin;
+  if (spec.parser) md.parser = spec.parser;
+  await setCel(state, key, { celType: spec.celType, f: spec.f, v: spec.v, metadata: md });
+
+  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["元.draft", ""]]);
+  // fire generators so they enqueue, then commit structure + sweep…
+  await (resolveFn(state, "runCycle") as Fn)(state);
   const drain = resolveFn(state, "drain") as Fn;
   for (const ch of ["genesis.commit", "defn.commit", "checkpoint.commit", "origin.effects"]) {
     if (state.cels.get(ch)) await drain(state, ch);
   }
-  const g = resolveFn(state, "genesis.drain") as Fn | undefined;
-  if (g) await g([], state);          // sweep even when nothing enqueued
-  const d = resolveFn(state, "defn.drain") as Fn | undefined;
-  if (d) await d([], state);
-  // Rewire the freespace view NOW (a fresh keys array re-fires 元.view
-  // into the post-rebuild paint channel), cycle, then paint.
-  await rewireView(state, keys);
+  const gd = resolveFn(state, "genesis.drain") as Fn | undefined; if (gd) await gd([], state);
+  const dd = resolveFn(state, "defn.drain") as Fn | undefined; if (dd) await dd([], state);
+  // …rebuild the cell list (new grids in, swept cels out), re-fire, paint.
+  await rewireView(state, cellKeys(state));
   await (resolveFn(state, "runCycle") as Fn)(state);
   await drain(state, "plastron-dom.paint");
-};
-
-/** commit the draft: on 元 → NEW freespace cel (c1, c2, …); on an open
- *  user cel → edit that cel in place. Empty draft on a user cel DELETES
- *  it (the freespace way to unmake a formula — and its bloom). */
-const commit: Fn = async (state: State, payload?: unknown) => {
-  const target = typeof payload === "string" ? payload : "元";
-  const draft = String(state.cels.get("元.draft")?.v ?? "").trim();
-  const setCel = resolveFn(state, "setCel") as Fn;
-  const setValue = resolveFn(state, "setValue") as Fn;
-  let keys = freespaceKeys(state);
-
-  if (target !== "元" && draft === "") {
-    // delete the cel; its bloom is swept by the empty-batch drains
-    const cel = state.cels.get(target);
-    if (cel && !cel.locked) {
-      state.cels.delete(target);
-      keys = keys.filter((k) => k !== target);
-    }
-  } else if (draft !== "") {
-    const spec = sniff(draft);
-    const key = target === "元"
-      ? `c${(Number(state.cels.get("freespace.n")?.v) || 0) + 1}`
-      : target;
-    if (target === "元") {
-      await setValue(state, "freespace.n", (Number(state.cels.get("freespace.n")?.v) || 0) + 1);
-      keys.push(key);
-    }
-    const md: Record<string, unknown> = { segment: "freespace" };
-    if (spec.parser) md.parser = spec.parser;
-    await setCel(state, key, { celType: spec.celType, f: spec.f, v: spec.v, metadata: md });
-  }
-
-  await setValue(state, "元.draft", "");
-  // Fire generators so they enqueue their structure requests…
-  await (resolveFn(state, "runCycle") as Fn)(state);
-  // …commit the structure (genesis/defn/checkpoint), settle, THEN
-  // rewire the view AFTER the structure drains' precomputes — so the
-  // view's paint enqueue lands in the live (post-rebuild) channel.
-  await drainAll(state, keys);
-  return state;
-};
-
-const expand: Fn = async (state: State, payload?: unknown) => {
-  const key = typeof payload === "string" ? payload : null;
-  const cur = state.cels.get("元.expanded")?.v;
-  const next = cur === key ? null : key;
-  // seed the draft with the cel's editable source
-  let draft = "";
-  if (next && next !== "元") {
-    const c = state.cels.get(next);
-    if (c) draft = (c as { f?: string }).f ?? (c.v === undefined || c.v === null ? "" : String(c.v));
-  }
-  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.expanded", next], ["元.draft", draft]]);
-  await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
   return state;
 };
 
@@ -275,17 +269,15 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
   }
 };
 
-const noop: Fn = () => undefined;
-
 export const name = "origin" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["originView",     originView],
   ["dom",            dom],
   ["origin.commit",  commit],
-  ["origin.expand",  expand],
+  ["origin.edit",    edit],
   ["origin.key",     key],
-  ["origin.noop",    noop],
+  ["grid",           grid],
   ["origin.drain",   effectsDrain],
   ["load",           loadFn],
   ["cels",           celsFn],

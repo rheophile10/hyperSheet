@@ -2,9 +2,9 @@ import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, precomputeOptional, resolveFn, createPainter, setPainter } from "../dist/index.js";
 
-// origin — the starting point (origin-segment.md, accepted). The boot
-// contract paints ONE visible cel; the entry gesture makes cels; a
-// grid blooms from a formula and is swept when the formula goes.
+// origin — the spreadsheet starting point (origin-segment.md, accepted).
+// 元 is cell A1: put a formula/value, it executes and renders in place.
+// grid() adds n×n cels, each like 元. A formula can also build dom.
 
 const mkEl = (tag) => {
   const L = new Map();
@@ -27,11 +27,12 @@ const mkEl = (tag) => {
 };
 const walk = (n, p, o = []) => { if (n?.nodeType === 1) { if (p(n)) o.push(n); for (const c of n.childNodes) walk(c, p, o); } return o; };
 const txt = (n) => (n.nodeType === 3 ? n.data : (n.childNodes ?? []).map(txt).join(""));
-const boxes = (root) => walk(root, (n) => n.tag === "div" && /^cel( open)?$/.test(String(n.attrs.class ?? "")));
-const boxByKey = (root, key) => boxes(root).find((b) => b.attrs["data-key"] === key);
+const cells = (root) => walk(root, (n) => n.tag === "div" && /^cell( editing)?$/.test(String(n.attrs.class ?? "")));
+const cellByKey = (root, key) => cells(root).find((b) => b.attrs["data-key"] === key);
+const cls = (root, c) => walk(root, (n) => String(n.attrs?.class ?? "") === c)[0];
+const cellVal = (root, key) => { const c = cellByKey(root, key); const v = c && walk(c, (n)=>String(n.attrs?.class??"")==="cell-value")[0]; return v ? txt(v) : ""; };
 const mockRaf = () => { const q = []; return { raf: (cb) => q.push(cb), caf: () => {}, run: () => { for (const cb of q.splice(0)) cb(); } }; };
 
-// THE BOOT CONTRACT — two lines (plus the test painter).
 const boot = async () => {
   const root = mkEl("app");
   globalThis.document = {
@@ -42,7 +43,7 @@ const boot = async () => {
   const m = mockRaf();
   const state = createInitialState();
   setPainter(state, createPainter(state, { raf: m.raf, caf: m.caf, isBrowser: true, doc: globalThis.document, resolveMount: (x) => (x === "#app" ? root : null) }));
-  await resolveFn(state, "ensureSegments")(state, ["origin"]); // origin is a host choice (parked by default)
+  await resolveFn(state, "ensureSegments")(state, ["origin"]);
   await resolveFn(state, "hydrate")(state, [], []);
   await precomputeOptional(state);
   await resolveFn(state, "runCycle")(state);
@@ -51,92 +52,66 @@ const boot = async () => {
   return { state, root, m };
 };
 
-const type = async (state, root, m, source, target = "元") => {
-  await resolveFn(state, "setValue")(state, "元.draft", source);
-  await resolveFn(state, "origin.commit")(state, target);
+const put = async (state, root, m, src, key = "元") => {
+  await resolveFn(state, "origin.edit")(state, key); m.run();
+  await resolveFn(state, "setValue")(state, "元.draft", src);
+  await resolveFn(state, "origin.commit")(state, key);
   m.run();
 };
 
-const stackDiv = (root) => walk(root, (n) => String(n.attrs?.class ?? "") === "readme")[0];
-
-test("boot contract: origin + a readme dom cell; readme renders live in the stack above", async () => {
+test("boot: A1 (元) renders the readme as a dom object in its cell", async () => {
   const { state, root } = await boot();
-  const bs = boxes(root);
-  // baseline freespace: the origin anchor + the seeded readme dom cell
-  assert.deepEqual(bs.map((b) => b.attrs["data-key"]), ["元", "readme"]);
-  // the readme is a dom() formula whose value renders live above the cels
-  assert.ok(state.cels.get("readme").v?.type === "el", "readme cell value is a vnode");
-  assert.ok(stackDiv(root), "readme div painted in the stack");
-  assert.match(txt(stackDiv(root)), /you are at the origin/, "readme text rendered");
-  // the floor exists but is invisible
-  assert.ok(state.cels.get("setValue"), "kernel cels present");
-  assert.ok(state.cels.get("genesis.commit"), "genesis in the firmware closure");
+  assert.deepEqual(cells(root).map((c) => c.attrs["data-key"]), ["元"], "one cell at boot — A1");
+  assert.ok(cls(root, "readme"), "readme dom rendered in A1");
+  assert.match(txt(cls(root, "readme")), /this is cell A1/);
+  assert.ok(state.cels.get("元").v?.type === "el", "A1's value is a vnode (the readme)");
 });
 
-test("dom(): a vnode-valued cell renders in the stack; deleting the formula removes it", async () => {
+test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restores readme", async () => {
   const { state, root, m } = await boot();
-  await type(state, root, m, '=dom("div.note", "hi there")');
-  const note = () => walk(root, (n) => String(n.attrs?.class ?? "") === "note")[0];
-  assert.ok(note(), "dom div painted in the stack");
-  assert.match(txt(note()), /hi there/);
-
-  await resolveFn(state, "origin.expand")(state, "c1"); m.run();
-  await type(state, root, m, "", "c1");
-  assert.equal(state.cels.get("c1"), undefined, "formula deleted");
-  assert.equal(note(), undefined, "the div disappeared with its formula");
+  await put(state, root, m, "=1+1");
+  assert.equal(state.cels.get("元").v, 2, "=1+1 -> 2 in A1");
+  assert.equal(cellVal(root, "元"), "2", "A1 renders 2");
+  await put(state, root, m, "7");
+  assert.equal(cellVal(root, "元"), "7", "literal renders in A1");
+  await put(state, root, m, "");
+  assert.ok(cls(root, "readme"), "empty A1 -> readme back (un-deletable)");
 });
 
-test("entry gesture: =1+1 becomes c1 showing 2; literals become ValueCels", async () => {
+test("A1 can render a dom object", async () => {
   const { state, root, m } = await boot();
-  await type(state, root, m, "=1+1");
-  assert.ok(boxByKey(root, "c1"), "c1 box appeared");
-  assert.match(txt(boxByKey(root, "c1")), /2/, "computed value shown");
-  assert.equal(state.cels.get("c1").metadata.segment, "freespace");
-
-  await type(state, root, m, "hello");
-  assert.equal(state.cels.get("c2").celType, "ValueCel");
-  await type(state, root, m, "(+ 2 3)");
-  assert.match(txt(boxByKey(root, "c3")), /5/, "s-expr sniffed");
+  await put(state, root, m, '(dom "h2" "hi")');
+  assert.equal(state.cels.get("元").v?.tag, "h2", "A1 value is an <h2> vnode");
+  assert.ok(walk(root, (n) => n.tag === "h2").length > 0, "h2 rendered in the cell");
 });
 
-test("grid bloom and sweep — the north-star invariant at the origin", async () => {
+test("=grid(3,3) makes a 3x3 worksheet of cels, each editable like 元", async () => {
   const { state, root, m } = await boot();
-  await type(state, root, m, '=grid(2, 2, "g")');
-  assert.ok(state.cels.get("g.A1"), "grid bloomed from the typed formula");
-  assert.equal(state.cels.get("g.A1").metadata.generatedBy, "c1");
-  // bloom is INVISIBLE in freespace (layer segment, not freespace)
-  assert.equal(boxByKey(root, "g.A1"), undefined, "grid cells are not freespace boxes");
-  assert.ok(boxByKey(root, "c1"), "the generator cel is the visible thing");
-
-  // delete the formula: open c1, commit empty
-  await resolveFn(state, "origin.expand")(state, "c1"); m.run();
-  await type(state, root, m, "", "c1");
-  assert.equal(state.cels.get("c1"), undefined, "formula cel deleted");
-  assert.equal(state.cels.get("g.A1"), undefined, "bloom swept");
-  // back to the baseline freespace: 元 + the seeded readme
-  assert.deepEqual(boxes(root).map((b) => b.attrs["data-key"]), ["元", "readme"]);
+  await put(state, root, m, "=grid(3, 3)");
+  for (const a of ["g.A1", "g.C3", "g.B2"]) assert.ok(state.cels.get(a), `${a} created`);
+  assert.equal(cells(root).length, 10, "A1 + 9 grid cels");
+  assert.ok(cellByKey(root, "g.A1"), "grid cell g.A1 rendered");
+  await put(state, root, m, "10", "g.A1");
+  await put(state, root, m, "=g!A1*2", "g.B1"); // cross-sheet ref into the grid's namespace
+  assert.equal(state.cels.get("g.B1").v, 20, "g.B1 computes from g!A1*2 (bare-A1 scoping is a follow-up)");
+  await put(state, root, m, "");
+  assert.equal(state.cels.get("g.A1"), undefined, "grid swept when its formula is gone");
+  assert.deepEqual(cells(root).map((c) => c.attrs["data-key"]), ["元"], "back to just A1");
 });
 
-test("editing an open cel commits in place; cross-grid formulas work from freespace", async () => {
+test("editing a cell label opens an input seeded with its source", async () => {
   const { state, root, m } = await boot();
-  await type(state, root, m, '=grid(2, 1, "books")');
-  await resolveFn(state, "setValue")(state, "books.A1", 7);
-  await type(state, root, m, "=books!A1 * 3");
-  assert.match(txt(boxByKey(root, "c2")), /21/);
-
-  // edit c2 in place
-  await resolveFn(state, "origin.expand")(state, "c2"); m.run();
-  assert.equal(state.cels.get("元.draft").v, "=books!A1 * 3", "draft seeded with source");
-  await type(state, root, m, "=books!A1 + 1", "c2");
-  assert.match(txt(boxByKey(root, "c2")), /8/, "in-place edit recomputed");
+  await put(state, root, m, "=2+3");
+  await resolveFn(state, "origin.edit")(state, "元"); m.run();
+  assert.equal(state.cels.get("元.editing").v, "元", "A1 marked editing");
+  assert.equal(state.cels.get("元.draft").v, "=2+3", "draft seeded with the cell source");
+  assert.ok(walk(root, (n) => n.tag === "input").length > 0, "input shown for the active cell");
 });
 
-test("=cels(\"sheet\") lists a segment; =load reports; unknown symbols show #NAME?", async () => {
+test("=cels(sheet) lists a segment; unknown symbols show #NAME?", async () => {
   const { state, root, m } = await boot();
-  await type(state, root, m, '=cels("sheet")');
-  const listing = String(state.cels.get("c1").v);
-  assert.match(listing, /grid\s+\[LockedLambdaCel/, "segment members listed");
-
-  await type(state, root, m, "=nosuchthing(1)");
-  assert.match(txt(boxByKey(root, "c2")), /#NAME\?/, "clean unknown-symbol display");
+  await put(state, root, m, '=cels("sheet")');
+  assert.match(String(state.cels.get("元").v), /infix/, "segment members listed");
+  await put(state, root, m, "=nope(1)");
+  assert.match(txt(cellByKey(root, "元")), /#NAME\?/, "undefined symbol shows #NAME?");
 });

@@ -3,14 +3,15 @@
   "cels": [
     {
       "key": "元",
-      "celType": "ValueCel",
+      "celType": "FormulaCel",
       "metadata": {
         "key": "元",
         "segment": "origin",
         "name": "元",
-        "description": "the origin cel. its v is the readme (plain lowercase text, owner-edited). one artifact, two audiences: humans read it expanded, agents pack it as context."
+        "parser": "f",
+        "description": "cell A1 of the origin spreadsheet. holds a formula/value that executes and renders in place; seeded with the readme. un-deletable (clearing restores the readme); editable."
       },
-      "v": "type a formula below"
+      "f": "(dom \"div.readme\" (dom \"h2\" \"the origin\") (dom \"p\" \"this is cell A1. put a formula or value here and it shows the result.\") (dom \"p\" \"  =1+1            shows 2\") (dom \"p\" \"  =grid(3, 3)     makes a 3x3 worksheet of cels like this one\") (dom \"p\" \"  =dom(\\\"h2\\\" \\\"hi\\\")  makes a heading\") (dom \"p\" \"click a cell label to edit it; clear A1 to bring this back.\"))"
     },
     {
       "key": "元.mount",
@@ -19,20 +20,20 @@
         "key": "元.mount",
         "segment": "origin",
         "name": "元.mount",
-        "description": "where the freespace view mounts. the host's one knob; null hides it."
+        "description": "where the sheet view mounts. the host's one knob; null hides it."
       },
       "v": "#app"
     },
     {
-      "key": "元.expanded",
+      "key": "元.editing",
       "celType": "ValueCel",
       "metadata": {
-        "key": "元.expanded",
+        "key": "元.editing",
         "segment": "origin",
-        "name": "元.expanded",
-        "description": "key of the currently open cel box (null = all closed)."
+        "name": "元.editing",
+        "description": "key of the cell currently being edited (null = none)."
       },
-      "v": "元"
+      "v": null
     },
     {
       "key": "元.draft",
@@ -41,32 +42,21 @@
         "key": "元.draft",
         "segment": "origin",
         "name": "元.draft",
-        "description": "the entry box's in-progress text."
+        "description": "the edit input's in-progress text."
       },
       "v": ""
     },
     {
-      "key": "freespace.n",
+      "key": "元.cells",
       "celType": "ValueCel",
       "metadata": {
-        "key": "freespace.n",
+        "key": "元.cells",
         "segment": "origin",
-        "name": "freespace.n",
-        "description": "auto-key counter for c1, c2, ..."
-      },
-      "v": 0
-    },
-    {
-      "key": "freespace.index",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "freespace.index",
-        "segment": "origin",
-        "name": "freespace.index",
-        "description": "ordered key list of the visible freespace cels (the view's idx input; commit maintains it alongside the vals array wiring)."
+        "name": "元.cells",
+        "description": "ordered spreadsheet cell keys: 元 (A1) + genesis-created grid cels."
       },
       "v": [
-        "readme"
+        "元"
       ]
     },
     {
@@ -82,77 +72,90 @@
           "plastron-dom.paint"
         ],
         "inputMap": {
-          "expanded": "元.expanded",
+          "editing": "元.editing",
           "draft": "元.draft",
           "mount": "元.mount",
-          "idx": "freespace.index",
+          "keys": "元.cells",
           "vals": [
-            "readme"
+            "元"
           ]
         },
-        "description": "the freespace view. UNLOCKED on purpose - minimal, ready to be entirely reworked in place. origin.commit rewires its idx/vals inputMap arrays as cels are made."
+        "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place."
       },
-      "f": "(originView expanded draft mount idx vals)"
+      "f": "(originView editing draft mount keys vals)"
     },
     {
       "key": "originView",
       "celType": "LockedLambdaCel",
+      "locked": true,
       "metadata": {
         "key": "originView",
         "segment": "origin",
         "name": "originView",
         "kind": "native",
-        "description": "(readme expanded draft mount idx vals) - freespace RenderSpec producer."
-      },
-      "locked": true
+        "description": "(editing draft mount keys vals) - spreadsheet RenderSpec producer."
+      }
+    },
+    {
+      "key": "dom",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "dom",
+        "segment": "origin",
+        "name": "dom",
+        "kind": "native",
+        "description": "(tag ...children) - a presentation vnode value. tag.class emmet sugar; string children -> text, nested dom -> elements. Renders in the cell that holds it."
+      }
+    },
+    {
+      "key": "grid",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "grid",
+        "segment": "origin",
+        "name": "grid",
+        "kind": "native",
+        "genesis": true,
+        "description": "(rows cols [name]) - genesis: add rows*cols editable cels, each like 元 (name.A1 .. data cels). =grid(3,3) makes a 3x3 worksheet; delete the formula and the sweep removes them."
+      }
     },
     {
       "key": "origin.commit",
       "celType": "LockedLambdaCel",
+      "locked": true,
       "metadata": {
         "key": "origin.commit",
         "segment": "origin",
         "name": "origin.commit",
         "kind": "native",
-        "description": "(state, targetKey) - the entry gesture: sniff =/(/literal, create cN in freespace (or edit/delete the open cel), rewire the view, cycle, drain all effect channels + paint."
-      },
-      "locked": true
+        "description": "(state, cellKey) - set the cell's content from the draft and re-evaluate; rebuild the cell list (new grids in, swept out); 元 un-deletable (empty restores readme)."
+      }
     },
     {
-      "key": "origin.expand",
+      "key": "origin.edit",
       "celType": "LockedLambdaCel",
+      "locked": true,
       "metadata": {
-        "key": "origin.expand",
+        "key": "origin.edit",
         "segment": "origin",
-        "name": "origin.expand",
+        "name": "origin.edit",
         "kind": "native",
-        "description": "(state, key) - toggle a cel box open/closed; seeds the draft with its source."
-      },
-      "locked": true
+        "description": "(state, cellKey) - start editing a cell (seed draft with its source); click the active cell's label again to close."
+      }
     },
     {
       "key": "origin.key",
       "celType": "LockedLambdaCel",
+      "locked": true,
       "metadata": {
         "key": "origin.key",
         "segment": "origin",
         "name": "origin.key",
         "kind": "native",
-        "description": "(state, targetKey, event) - Enter commits the draft."
-      },
-      "locked": true
-    },
-    {
-      "key": "origin.noop",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "origin.noop",
-        "segment": "origin",
-        "name": "origin.noop",
-        "kind": "native",
-        "description": "swallow clicks inside the entry box."
-      },
-      "locked": true
+        "description": "(state, cellKey, event) - Enter commits the draft."
+      }
     },
     {
       "key": "origin.effects",
@@ -172,31 +175,32 @@
     {
       "key": "origin.drain",
       "celType": "LockedLambdaCel",
+      "locked": true,
       "metadata": {
         "key": "origin.drain",
         "segment": "origin",
         "name": "origin.drain",
         "kind": "native",
         "description": "(items) - execute load (ensureSegments) and cels (segment listing) requests; result text replaces the request as the cel's value."
-      },
-      "locked": true
+      }
     },
     {
       "key": "load",
       "celType": "LockedLambdaCel",
+      "locked": true,
       "metadata": {
         "key": "load",
         "segment": "origin",
         "name": "load",
         "kind": "native",
         "emitsTo": "origin.effects",
-        "description": "(name) - load a library segment (lazy loaders + store). capability arrives silently; views are asked for."
-      },
-      "locked": true
+        "description": "(name) - load a library segment (lazy loaders + store)."
+      }
     },
     {
       "key": "cels",
       "celType": "LockedLambdaCel",
+      "locked": true,
       "metadata": {
         "key": "cels",
         "segment": "origin",
@@ -204,31 +208,7 @@
         "kind": "native",
         "emitsTo": "origin.effects",
         "description": "(segment) - readable listing of a segment's cels (skill first; locked marked)."
-      },
-      "locked": true
-    },
-    {
-      "key": "dom",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "dom",
-        "segment": "origin",
-        "name": "dom",
-        "kind": "native",
-        "description": "(tag ...children) - a presentation vnode value. tag.class emmet sugar. children: strings -> text, nested dom -> elements. A freespace cell whose value is a vnode renders in the stack above; delete the formula and it is gone."
       }
-    },
-    {
-      "key": "readme",
-      "celType": "FormulaCel",
-      "metadata": {
-        "key": "readme",
-        "segment": "freespace",
-        "name": "readme",
-        "parser": "f"
-      },
-      "f": "(dom \"div.readme\" (dom \"h2\" \"the origin\") (dom \"p\" \"you are at the origin. type a formula in a cel below and press enter \\u2014 it becomes a new cel beside this one. click any cel's header to open it; open and commit an empty box to delete it (deleting a formula unmakes what it made).\") (dom \"p\" \"try:\") (dom \"pre\" \"  (dom \\\"h2\\\" \\\"hello\\\")     a heading, stacked above\") (dom \"pre\" \"  =grid(3, 3)             a grid of data cels\") (dom \"pre\" \"  =cels(\\\"sheet\\\")          browse a library\") (dom \"pre\" \"  =checkpoint(\\\"safe\\\")     a snapshot to restore\") (dom \"pre\" \"  (ilk)                   recompute — cels interlinked\"))"
     }
   ]
 }
