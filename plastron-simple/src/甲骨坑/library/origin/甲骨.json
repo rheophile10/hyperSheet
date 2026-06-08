@@ -36,6 +36,17 @@
       "v": null
     },
     {
+      "key": "元.expanded",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.expanded",
+        "segment": "origin",
+        "name": "元.expanded",
+        "description": "key of the cell whose formula is shown in the expanded panel (null = none)."
+      },
+      "v": null
+    },
+    {
       "key": "元.draft",
       "celType": "ValueCel",
       "metadata": {
@@ -73,6 +84,7 @@
         ],
         "inputMap": {
           "editing": "元.editing",
+          "expanded": "元.expanded",
           "draft": "元.draft",
           "mount": "元.mount",
           "keys": "元.cells",
@@ -82,7 +94,7 @@
         },
         "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place."
       },
-      "f": "(originView editing draft mount keys vals)"
+      "f": "(originView editing expanded draft mount keys vals)"
     },
     {
       "key": "originView",
@@ -93,7 +105,7 @@
         "segment": "origin",
         "name": "originView",
         "kind": "native",
-        "description": "(editing draft mount keys vals) - spreadsheet RenderSpec producer."
+        "description": "(editing expanded draft mount keys vals) - spreadsheet RenderSpec producer: 元 button + grid() layers as Excel tables + expanded formula panel."
       }
     },
     {
@@ -143,6 +155,18 @@
         "name": "origin.edit",
         "kind": "native",
         "description": "(state, cellKey) - start editing a cell (seed draft with its source); click the active cell's label again to close."
+      }
+    },
+    {
+      "key": "origin.expand",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.expand",
+        "segment": "origin",
+        "name": "origin.expand",
+        "kind": "native",
+        "description": "(state, cellKey) - open/close the expanded formula panel for a cell (shares draft + commit with inline editing)."
       }
     },
     {

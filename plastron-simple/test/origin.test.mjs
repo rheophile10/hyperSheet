@@ -27,10 +27,10 @@ const mkEl = (tag) => {
 };
 const walk = (n, p, o = []) => { if (n?.nodeType === 1) { if (p(n)) o.push(n); for (const c of n.childNodes) walk(c, p, o); } return o; };
 const txt = (n) => (n.nodeType === 3 ? n.data : (n.childNodes ?? []).map(txt).join(""));
-const cells = (root) => walk(root, (n) => n.tag === "div" && /^cell( editing)?$/.test(String(n.attrs.class ?? "")));
+const cells = (root) => walk(root, (n) => (n.tag === "div" || n.tag === "td") && /(^| )cell( |$)/.test(String(n.attrs.class ?? "")) && n.attrs["data-key"]);
 const cellByKey = (root, key) => cells(root).find((b) => b.attrs["data-key"] === key);
 const cls = (root, c) => walk(root, (n) => String(n.attrs?.class ?? "") === c)[0];
-const cellVal = (root, key) => { const c = cellByKey(root, key); const v = c && walk(c, (n)=>String(n.attrs?.class??"")==="cell-value")[0]; return v ? txt(v) : ""; };
+const cellVal = (root, key) => { const c = cellByKey(root, key); const v = c && walk(c, (n)=>String(n.attrs?.class??"")==="cell-value")[0]; return v ? txt(v).replace("⤢","").trim() : ""; };
 const mockRaf = () => { const q = []; return { raf: (cb) => q.push(cb), caf: () => {}, run: () => { for (const cb of q.splice(0)) cb(); } }; };
 
 const boot = async () => {
@@ -61,7 +61,7 @@ const put = async (state, root, m, src, key = "元") => {
 
 test("boot: A1 (元) renders the readme as a dom object in its cell", async () => {
   const { state, root } = await boot();
-  assert.deepEqual(cells(root).map((c) => c.attrs["data-key"]), ["元"], "one cell at boot — A1");
+  assert.deepEqual(cells(root).map((c) => c.attrs["data-key"]), ["元"], "one cell at boot — 元 (A1)");
   assert.ok(cls(root, "readme"), "readme dom rendered in A1");
   assert.match(txt(cls(root, "readme")), /this is cell A1/);
   assert.ok(state.cels.get("元").v?.type === "el", "A1's value is a vnode (the readme)");

@@ -64,36 +64,95 @@ const displayCell = (v: unknown): V => {
   return T(String(v));
 };
 
-/** The spreadsheet renderer (parser "f"): (editing draft mount keys vals)
- *  → render-spec. Every cel in `keys` is an editable spreadsheet cell —
- *  it shows its evaluated value; click its label to edit the source;
- *  Enter re-evaluates. 元 is just the first cell (A1); grid() adds more.
- *  The ONLY thing past an ordinary spreadsheet: a cell's formula may
- *  evaluate to a dom object / make cels / make worksheets, and that
- *  renders right in the cell. */
+// A1-address parsing for the Excel grid layout (col letters → index, etc.)
+const colIdx = (letters: string): number => {
+  let n = 0; for (const ch of letters) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1;
+};
+const addrOf = (key: string): { col: number; row: number } | null => {
+  const m = /([A-Z]+)([0-9]+)$/.exec(key.includes(".") ? key.slice(key.indexOf(".") + 1) : key);
+  return m ? { col: colIdx(m[1]!), row: parseInt(m[2]!, 10) - 1 } : null;
+};
+
+/** The spreadsheet renderer (parser "f"):
+ *  (editing expanded draft mount keys vals) → render-spec.
+ *  The base sheet's first cel (元) is a labelled button; every grid()
+ *  layer renders as an Excel-style <table> (corner + column letters +
+ *  row numbers). Click a cell to edit inline; the ⤢ on a cell opens an
+ *  expanded editor panel for its full formula. A cell's value shows in
+ *  place — a number, text, or a live dom object. */
 const originView: Fn = (
-  editing: unknown, draft: unknown, mount: unknown, keys: unknown, vals: unknown,
+  editing: unknown, expanded: unknown, draft: unknown, mount: unknown, keys: unknown, vals: unknown,
 ) => {
   const ks = Array.isArray(keys) ? (keys as string[]) : ["元"];
   const vs = Array.isArray(vals) ? (vals as unknown[]) : [];
   const active = typeof editing === "string" ? editing : null;
+  const open = typeof expanded === "string" ? expanded : null;
+  const valOf = new Map<string, unknown>(); ks.forEach((k, i) => valOf.set(k, vs[i]));
 
-  const cell = (key: string, value: unknown): V => {
-    const isOn = active === key;
-    const label = key === "元" ? "A1" : key.includes(".") ? key.slice(key.indexOf(".") + 1) : key;
-    const head = el("div", { class: "cell-label" }, [T(label)], { click: { dispatch: "origin.edit", payload: key } });
-    const body = isOn
-      ? el("input", { class: "cell-input", value: String(draft ?? "") }, [], {
-          input: { set: "元.draft", extract: "value" },
-          keydown: { dispatch: "origin.key", payload: key }, // origin.key commits only on Enter
-        })
-      : el("div", { class: "cell-value" }, [displayCell(value)]);
-    return el("div", { class: isOn ? "cell editing" : "cell", "data-key": key }, [head, body]);
+  const editor = (key: string, big: boolean): V =>
+    el(big ? "textarea" : "input", { class: big ? "cell-edit big" : "cell-edit", value: String(draft ?? "") }, [], {
+      input: { set: "元.draft", extract: "value" },
+      keydown: { dispatch: "origin.key", payload: key }, // origin.key commits on Enter
+    });
+  const expandBtn = (key: string): V =>
+    el("button", { class: "cell-expand", title: "expand formula" }, [T("⤢")],
+      { click: { dispatch: "origin.expand", payload: key } });
+
+  // the inner of a cell: inline editor when active, else the value + ⤢
+  const body = (key: string, value: unknown): V =>
+    active === key
+      ? editor(key, false)
+      : el("div", { class: "cell-value" }, [displayCell(value), expandBtn(key)]);
+
+  // base sheet: 元 as a labelled button-box (the "元 button")
+  const baseCell = (key: string, value: unknown): V =>
+    el("div", { class: active === key ? "cell zhorigin editing" : "cell zhorigin", "data-key": key },
+      [el("div", { class: "cell-label" }, [T("元")], { click: { dispatch: "origin.edit", payload: key } }), body(key, value)]);
+
+  // a grid layer → an Excel-style table
+  const gridTable = (layer: string, members: string[]): V => {
+    let maxC = 0, maxR = 0;
+    const at = new Map<string, string>();
+    for (const k of members) {
+      const a = addrOf(k); if (!a) continue;
+      at.set(`${a.col},${a.row}`, k); maxC = Math.max(maxC, a.col); maxR = Math.max(maxR, a.row);
+    }
+    const colLetter = (c: number): string => { let s = "", n = c + 1; while (n > 0) { s = String.fromCharCode(65 + (n - 1) % 26) + s; n = Math.floor((n - 1) / 26); } return s; };
+    const head = el("tr", {}, [el("th", { class: "corner" }, [T(layer)]),
+      ...Array.from({ length: maxC + 1 }, (_, c) => el("th", {}, [T(colLetter(c))]))]);
+    const rows = Array.from({ length: maxR + 1 }, (_, r) =>
+      el("tr", {}, [el("th", { class: "rownum" }, [T(String(r + 1))]),
+        ...Array.from({ length: maxC + 1 }, (_, c) => {
+          const k = at.get(`${c},${r}`);
+          return el("td", { class: k && active === k ? "cell editing" : "cell", "data-key": k ?? "" },
+            k ? [body(k, valOf.get(k))] : []);
+        })]));
+    return el("table", { class: "grid" }, [el("thead", {}, [head]), el("tbody", {}, rows)]);
   };
 
-  const cells = ks.map((k, i) => cell(k, vs[i]));
+  // group: base cels (no dot) vs grid layers (segment before the dot)
+  const base: string[] = []; const layers = new Map<string, string[]>();
+  for (const k of ks) {
+    const dot = k.indexOf(".");
+    if (dot === -1) base.push(k);
+    else { const lr = k.slice(0, dot); (layers.get(lr) ?? layers.set(lr, []).get(lr))!.push(k); }
+  }
+
+  const sections: V[] = base.map((k) => baseCell(k, valOf.get(k)));
+  for (const [layer, members] of layers) sections.push(gridTable(layer, members));
+
+  // expanded editor panel (full formula for one cell)
+  if (open) {
+    const label = open === "元" ? "元" : open.includes(".") ? open.slice(open.indexOf(".") + 1) : open;
+    sections.push(el("div", { class: "expand-panel" }, [
+      el("div", { class: "expand-head" }, [T(label), el("button", { class: "expand-close", title: "close" }, [T("×")], { click: { dispatch: "origin.expand", payload: open } })]),
+      editor(open, true),
+      el("div", { class: "expand-value" }, [displayCell(valOf.get(open))]),
+    ]));
+  }
+
   return {
-    vnode: el("div", { class: "sheet" }, cells),
+    vnode: el("div", { class: "sheet" }, sections),
     mount: typeof mount === "string" ? mount : null,
     listeners: [],
   };
@@ -159,19 +218,35 @@ const rewireView = async (state: State, keys: string[]): Promise<void> => {
   await (resolveFn(state, "setCel") as Fn)(state, VIEW_KEY, { metadata: { inputMap: im } });
 };
 
-/** edit — start editing a cell: seed the draft with its source, mark it
- *  active. Clicking the label of the active cell again closes it. */
+// source text of a cell (formula `f`, else stringified value)
+const cellSource = (state: State, key: string): string => {
+  const c = state.cels.get(key);
+  const f = (c as { f?: string } | undefined)?.f;
+  return f ?? (c?.v === undefined || c?.v === null ? "" : String(c.v));
+};
+
+/** edit — start INLINE editing a cell (seed the draft with its source);
+ *  clicking the active cell's label again closes it. Closes any
+ *  expanded panel. */
 const edit: Fn = async (state: State, payload?: unknown) => {
   const key = typeof payload === "string" ? payload : null;
   const cur = state.cels.get("元.editing")?.v;
   const next = cur === key ? null : key;
-  let draft = "";
-  if (next) {
-    const c = state.cels.get(next);
-    const f = (c as { f?: string } | undefined)?.f;
-    draft = f ?? (c?.v === undefined || c?.v === null ? "" : String(c.v));
-  }
-  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", next], ["元.draft", draft]]);
+  await (resolveFn(state, "setValueBatch") as Fn)(state,
+    [["元.editing", next], ["元.expanded", null], ["元.draft", next ? cellSource(state, next) : ""]]);
+  await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
+  return state;
+};
+
+/** expand — open the expanded editor PANEL for a cell (the full formula
+ *  in a textarea + its value). Toggles; shares the draft + commit with
+ *  inline editing. */
+const expand: Fn = async (state: State, payload?: unknown) => {
+  const key = typeof payload === "string" ? payload : null;
+  const cur = state.cels.get("元.expanded")?.v;
+  const next = cur === key ? null : key;
+  await (resolveFn(state, "setValueBatch") as Fn)(state,
+    [["元.expanded", next], ["元.editing", null], ["元.draft", next ? cellSource(state, next) : ""]]);
   await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
   return state;
 };
@@ -200,7 +275,7 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   if (spec.parser) md.parser = spec.parser;
   await setCel(state, key, { celType: spec.celType, f: spec.f, v: spec.v, metadata: md });
 
-  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["元.draft", ""]]);
+  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["元.expanded", null], ["元.draft", ""]]);
   // fire generators so they enqueue, then commit structure + sweep…
   await (resolveFn(state, "runCycle") as Fn)(state);
   const drain = resolveFn(state, "drain") as Fn;
@@ -276,6 +351,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["dom",            dom],
   ["origin.commit",  commit],
   ["origin.edit",    edit],
+  ["origin.expand",  expand],
   ["origin.key",     key],
   ["grid",           grid],
   ["origin.drain",   effectsDrain],
