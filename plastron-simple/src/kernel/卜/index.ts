@@ -1,4 +1,4 @@
-// 卜 — reading the cracks. Everything that turns staged inputs into
+// 卜 — recalculation. Everything that turns staged inputs into
 // recalculated values: the precomputed topology, the cascade runner,
 // invalidation, memo/hook execution, and the default formula language.
 // (The PrecomputedIndexes type + reserved keys live in types/state.ts.)

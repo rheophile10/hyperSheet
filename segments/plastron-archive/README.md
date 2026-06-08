@@ -11,11 +11,11 @@ A `.甲` archive is a standard ZIP. Inside, you'll find both the working
 tree and the xit repo internals:
 
 ```
-oracle.甲
+archive.甲
 ├── manifest.json            ← table of contents
 ├── segments/
 │   ├── default.json         ← one Segment per file
-│   ├── plastromancy.json
+│   ├── sheet.json
 │   └── 甲骨.json
 └── .xit/                    ← xit repo internals (commits, refs, objects)
 ```
@@ -27,7 +27,7 @@ oracle.甲
   "version": 1,
   "format": "application/vnd.plastron.甲",
   "createdAt": "2026-05-07T00:00:00Z",
-  "segments": ["default", "plastromancy", "甲骨"]
+  "segments": ["default", "sheet", "甲骨"]
 }
 ```
 
@@ -54,17 +54,17 @@ import { readFile, writeFile } from "node:fs/promises";
 const segments = state.fns.get("dehydrate")!(state) as Segment[];
 
 // First export — fresh repo.
-const bytes = await exportArchive(segments, { message: "initial oracle" });
-await writeFile("oracle.甲", bytes);
+const bytes = await exportArchive(segments, { message: "initial commit" });
+await writeFile("archive.甲", bytes);
 
 // Subsequent export — pass the previous bytes to extend history.
-const previous = await readFile("oracle.甲");
+const previous = await readFile("archive.甲");
 const next = await exportArchive(segments, {
   previous,
   message: "added 甲骨 segment",
   author: "Ian <ian@example.com>",
 });
-await writeFile("oracle.甲", next);
+await writeFile("archive.甲", next);
 ```
 
 ### Import
@@ -74,7 +74,7 @@ import { importArchive } from "plastron-archive";
 import { readFile } from "node:fs/promises";
 import { createInitialState } from "plastron";
 
-const bytes = await readFile("oracle.甲");
+const bytes = await readFile("archive.甲");
 const { manifest, segments, archive } = await importArchive(bytes);
 
 const state = createInitialState();

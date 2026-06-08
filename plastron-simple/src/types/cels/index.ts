@@ -1,7 +1,6 @@
 // ============================================================================
-// The cel taxonomy — folder structure mirrors lineage. Lore name: 兆
-// (the crack-omen pictograph: 契 carves them, 兆 forms, 卜 reads them,
-// 甲骨 preserves them).
+// The cel taxonomy — folder structure mirrors lineage. The kanji 兆
+// names a cel; the lifecycle is 契 → 兆 → 卜 → 甲骨.
 //
 //   baseCel.ts                INSTRUMENTAL — never leaves this folder
 //   ├── valueCel.ts           DATA

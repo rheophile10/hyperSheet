@@ -79,7 +79,7 @@ Sources of truth:
 
 ## Repo conventions
 
-- **Naming.** The on-disk archive format is `.甲`. The lore term is **plastromancy** (the practice) — not "plastronomy". The user has corrected this before.
+- **Naming.** The on-disk archive format is `.甲`. Keep the kanji (甲骨, 卜, 契, 兆, 譜, 元, 連鎖, …) as opaque identifiers; do NOT add English prose explaining their origin or etymology in READMEs or comments — leave it for readers to infer from the code.
 - **Cel keys in formulas:** ASCII `[\w.-]+`. Unicode is fine elsewhere.
 - **Code that touches deprecated directories** (`plastron/`, `segments/`, `examples/`) requires explicit user opt-in. If asked to fix something there, double-check the user actually wants the fix rather than a port forward to plastron-simple.
 - **Prefer Bun built-ins when they're available in both CLI and browser.** `bun:sqlite` (with `sqlite-wasm + OPFS` as the browser twin), `Bun.password`, `Bun.hash`, `WebSocket`, `fetch`, `Worker`, `HTMLRewriter`, etc. — reach for them before pulling npm packages or rolling our own. See `plastron-simple/docs/BUN-FEATURES.md` for the full survey and which APIs cross both runtimes.

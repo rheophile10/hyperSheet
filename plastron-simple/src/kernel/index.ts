@@ -1,7 +1,7 @@
 // ============================================================================
 // kernel — the public surface, in the order a State lives its life.
 //
-//   resolveFn → hydrate → 契 (carve inputs) → 卜 (crack/recalc) → dehydrate
+//   resolveFn → hydrate → 契 (inputs) → 卜 (recalc) → dehydrate
 //
 // Every fn here also lives as a cel in state.cels (bound by the
 // 甲骨坑/kernel segment's index.ts), so hosts normally reach them via
@@ -58,7 +58,7 @@ export {
   touch, consume, drain, flushChannels,  // channels
 } from "./契/index.js";
 
-// ── 3. 卜 ── read the cracks: propagate staged changes through the
+// ── 3. 卜 ── recalculation: propagate staged changes through the
 // precomputed topology. precompute builds the indexes hydrate/setCel
 // hand it; runCycle fires dirty cels wave by wave.
 export {

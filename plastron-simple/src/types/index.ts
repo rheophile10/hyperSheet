@@ -16,7 +16,7 @@ export type JsonValue =
   | { [k: string]: JsonValue };
 
 // 甲骨 — the dehydrated world: 譜 + metadata lineage, DehydratedCel,
-// manifests. (Lore: 契 carves, 兆 form, 卜 reads, 甲骨 preserves.)
+// manifests. (Pipeline: 契 → 兆 → 卜 → 甲骨.)
 export type * from "./甲骨/index.js";
 
 // The cel taxonomy (lore name 兆) — concrete cels, plane/execution

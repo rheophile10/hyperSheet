@@ -1,4 +1,4 @@
-// 契 — carving inputs into the live state. Two mutually exclusive
+// 契 — inputs into the live state. Two mutually exclusive
 // write tiers, selected by WHAT you are writing, not how:
 //
 //   DATA  (recalc tier)     setValue / setValueBatch — a ValueCel's v

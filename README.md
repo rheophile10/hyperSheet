@@ -32,11 +32,7 @@ Three properties fall out of the design:
 
 - **The formula language is yours.** The kernel only knows cels, dependencies, and arithmetic builtins. Everything else — formula parsers, JS lambdas, WASM-backed languages — installs as a *compiler cel*. Add a `kind`, cels can speak it.
 - **The graph is data.** Cels, schemas, compilers, even the host runtime all dehydrate to JSON segments. Ship a `.zip`, fold it into an `index.html`, or just commit it to git.
-- **The host is interchangeable.** A cascade is just `runCycle(state)`. React, the DOM, a CLI, a worker, a github-pages static deploy — the kernel doesn't care.
-
-## Lore
-
-The name comes from the Shang-dynasty diviners who heat-cracked turtle plastrons to compute answers and then inscribed both the question and the answer on the same shell. One artifact: substrate, query, computation, record. Spreadsheets are the same idea, three thousand years later. The on-disk archive format is `.甲`. The practice is **plastromancy**.
+- **The host is interchangeable.** A cascade is just `runCycle(state)`. React, the DOM, a CLI, a worker, a github-pages static deploy — the kernel doesn't care. The on-disk archive format is `.甲`.
 
 ## Repo layout
 
@@ -64,7 +60,6 @@ plastron-simple-examples/
   sheets/  notepad/  file-explorer/  …   sibling sandbox examples developed in parallel
 
 bench/                                   perf benches + the krausest framework comparison
-plastromancy.md                          lore + design philosophy long-form
 
 plastron/  segments/  examples/          original kernel + ecosystem — being phased out
                                          (do NOT add to; see CLAUDE.md for policy)
