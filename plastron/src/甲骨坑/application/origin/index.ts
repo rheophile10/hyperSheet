@@ -374,6 +374,27 @@ const grid: Fn = (...args: unknown[]): unknown => {
  *  a cel holding that formula. The new cel lands as a base cel beside 元. */
 const celFn: Fn = (content?: unknown) => ({ originCel: true, content: content == null ? "" : String(content) });
 
+/** doc(…parts) — compose an ENTIRE document from cels()/def()/cel() parts into
+ *  ONE genesis batch. This is what `seed()` emits: paste a doc(…) into 元 and
+ *  the whole app re-materializes (genesis seeds at creation, preserves edits). */
+const doc: Fn = (...parts: unknown[]): unknown => {
+  const cels: Record<string, unknown> = {};
+  let cn = 0;
+  for (const p of parts) {
+    if (!p || typeof p !== "object") continue;
+    const o = p as Record<string, unknown>;
+    if (o.genesis === true && o.cels) Object.assign(cels, o.cels);                       // cels(…)
+    else if (o.cels && o.layer) Object.assign(cels, o.cels as Record<string, unknown>);  // gridShape direct
+    else if (o.originDef === true) cels[String(o.name)] = { celType: "EditableLambdaCel", f: String(o.source ?? ""), metadata: { kind: String(o.kind ?? "js"), name: String(o.name) } };
+    else if (o.originCel === true) { const k = `c${++cn}`; const s = sniffCel(String(o.content ?? "")); cels[k] = { celType: s.celType, f: s.f, v: s.v, metadata: { name: k, parser: s.parser } }; }
+  }
+  return { genesis: true, cels };
+};
+
+// seed() — ask the drain (which has state) to serialize the whole document to a
+// single recreating formula. Callable from ANY cel; its value becomes the source.
+const seedFn: Fn = () => ({ originSeed: true });
+
 // ── the entry gesture ────────────────────────────────────────────────────────
 
 const sniff = (src: string): { celType: string; f?: string; v?: unknown; parser?: string } => {
@@ -538,6 +559,44 @@ const collectArchive = (state: State): { v: number; cells: [string, string][]; d
     }
   }
   return { v: 1, cells, defs };
+};
+
+// serialize the whole document to a single recreating formula source. Grids →
+// cels("seg", r, c, at(addr, src)…); base cels → cel(src); defs → def(…). One
+// grid alone stays a bare cels(…); anything composite wraps in doc(…).
+const qstr = (s: string): string => '"' + s.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+const gridDims = (addrs: string[]): { r: number; c: number } => {
+  let r = 1, c = 1;
+  for (const a of addrs) {
+    const m = /^([A-Za-z]+)(\d+)$/.exec(a);
+    if (!m) continue;
+    let col = 0; for (const ch of m[1]!.toUpperCase()) col = col * 26 + (ch.charCodeAt(0) - 64);
+    r = Math.max(r, parseInt(m[2]!, 10)); c = Math.max(c, col);
+  }
+  return { r, c };
+};
+const buildSeed = (state: State): string => {
+  const arch = collectArchive(state);
+  const grids = new Map<string, [string, string][]>();
+  const bases: string[] = [];
+  for (const [key, src] of arch.cells) {
+    if (key === "元" || /^=?\s*seed\s*\(/.test(src)) continue;   // skip 元 + any =seed() cell (no self-capture)
+    const dot = key.indexOf(".");
+    if (dot < 0) { bases.push(src); continue; }
+    const seg = key.slice(0, dot), addr = key.slice(dot + 1);
+    (grids.get(seg) ?? grids.set(seg, []).get(seg)!).push([addr, src]);
+  }
+  const parts: string[] = [];
+  for (const [seg, cells] of grids) {
+    const { r, c } = gridDims(cells.map(([a]) => a));
+    const ats = cells.filter(([, s]) => s !== "").map(([a, s]) => `at(${qstr(a)}, ${qstr(s)})`);
+    parts.push(`cels(${qstr(seg)}, ${r}, ${c}${ats.length ? ", " + ats.join(", ") : ""})`);
+  }
+  for (const s of bases) parts.push(`cel(${qstr(s)})`);
+  for (const [name, kind, f] of arch.defs) parts.push(`def(${qstr(name)}, ${qstr(kind)}, ${qstr(f)})`);
+  if (parts.length === 0) return "=cels(1, 1)";
+  if (parts.length === 1 && parts[0]!.startsWith("cels(")) return "=" + parts[0];
+  return "=doc(" + parts.join(", ") + ")";
 };
 
 const restoreArchive = async (state: State, arch: { cells?: [string, string][]; defs?: [string, string, string][] }): Promise<void> => {
@@ -728,6 +787,9 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const spec = sniffCel(String(req.content ?? ""));
         await setCel(state, ck, { celType: spec.celType, f: spec.f, v: spec.v, metadata: { segment: "origin", name: ck, parser: spec.parser } });
         result = `created cel ${ck}`;
+      } else if (req.originSeed) {
+        result = buildSeed(state); // the whole document as one paste-able formula
+
       } else if (req.originSave) {
         const ls = LS();
         if (!ls) result = "(no localStorage here)";
@@ -790,6 +852,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["grid",           grid],
   ["cel",            celFn],
   ["at",             at],
+  ["doc",            doc],
+  ["seed",           seedFn],
   ["origin.drain",   effectsDrain],
   ["load",           loadFn],
   ["members",        celsFn],

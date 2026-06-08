@@ -165,6 +165,21 @@ await withPage('=cels("in",4,3, at("a1","apple"), at("b2","=1+1")) fills cells',
   eq(await cel(page, "in.B2"), 2, "in.B2 = the at() formula, computed");
 });
 
+await withPage("seed() serializes the whole document into one paste-able formula", async (page) => {
+  await put(page, '=doc(cels("in",2,2,at("a1","apple"),at("b2","=1+1")), cel("monkey"), def("double","js","x => x * 2"))');
+  const seedStr = String(await put(page, "=seed()", "in.A2"));
+  ok(/doc\(/.test(seedStr) && /cels\("in"/.test(seedStr) && /def\("double"/.test(seedStr), `seed() emits a doc(...) (${seedStr.slice(0, 64)}…)`);
+  // paste it into a FRESH page's 元 — the whole app re-materializes
+  await page.reload();
+  await page.waitForFunction(() => !!(globalThis as { plastron?: unknown }).plastron, { timeout: 8000 });
+  await page.waitForTimeout(300);
+  await put(page, seedStr);
+  eq(await cel(page, "in.A1"), "apple", "recreated in.A1 value");
+  eq(await cel(page, "in.B2"), 2, "recreated in.B2 formula (=1+1)");
+  eq(await cel(page, "c1"), "monkey", "recreated base cel");
+  eq(await put(page, "=double(21)", "in.B1"), 42, "recreated def is callable");
+});
+
 await withPage("=def + =double(21) → 42", async (page) => {
   await put(page, '=def("double", "js", "x => x * 2")');
   ok(String(await cel(page, "元")).includes('defined "double"'), "def confirms");
