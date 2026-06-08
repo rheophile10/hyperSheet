@@ -89,7 +89,7 @@ await withPage("boot — canvas readme renders + draws", async (page) => {
   ok(await page.$('table.grid td.cell[data-key="元"]'), "元 is a uniform table cell (same UI as grid cels)");
   ok(await page.$(".readme"), "readme card rendered");
   ok(await page.$(".readme canvas"), "canvas banner element present");
-  ok(await page.evaluate(() => !!document.querySelector(".readme")?.textContent?.includes("this readme is made from the formula")), "intro text present");
+  ok(await page.evaluate(() => !!document.querySelector(".readme")?.textContent?.includes("this readme is the formula")), "intro text present");
   ok(await page.$(".readme table.fx td.fx-code"), "formulas shown in a two-column table");
   ok(await page.$('.readme a[href*="github.com/rheophile10/plastron"]'), "repo link present");
   // the banner canvas painted (filled background + title)
