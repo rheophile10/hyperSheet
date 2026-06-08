@@ -59,12 +59,13 @@ const put = async (state, root, m, src, key = "元") => {
   m.run();
 };
 
-test("boot: 元 holds a styled mount; the readme renders in .origin", async () => {
+test("boot: 元 is an empty cell; the readme renders below", async () => {
   const { state, root } = await boot();
   assert.deepEqual(cells(root).map((c) => c.attrs["data-key"]), ["元"], "one cell — 元");
-  assert.equal(state.cels.get("元").v?.__mount, ".origin", "元's value is a mount placement");
+  assert.equal(state.cels.get("元").v, "", "元 is empty at boot");
+  assert.equal(state.cels.get("readme").v?.__mount, ".origin", "the readme cel mounts to .origin (below the sheet)");
   const rm = cls(root, "readme");
-  assert.ok(rm, "readme rendered (mounted in .origin)");
+  assert.ok(rm, "readme rendered below the sheet");
   assert.ok(rm.style && Object.keys(rm.style.props).length > 0, "readme carries inline styles");
   assert.match(txt(rm), /every formula starts with =/);
 });
@@ -77,8 +78,8 @@ test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restore
   await put(state, root, m, "7");
   assert.equal(cellVal(root, "元"), "7", "literal renders in A1");
   await put(state, root, m, "");
-  assert.ok(cls(root, "readme"), "empty 元 -> readme back (un-deletable)");
-  assert.equal(state.cels.get("元").v?.__mount, ".origin", "readme restored as a mount");
+  assert.equal(state.cels.get("元").v, "", "cleared 元 is empty");
+  assert.ok(cls(root, "readme"), "readme still shows (a separate cel, always below)");
 });
 
 test("A1 can render a dom object", async () => {
@@ -120,7 +121,7 @@ test("editing a cell label opens an input seeded with its source", async () => {
   await resolveFn(state, "origin.edit")(state, "元"); m.run();
   assert.equal(state.cels.get("元.editing").v, "元", "A1 marked editing");
   assert.equal(state.cels.get("元.draft").v, "=2+3", "draft seeded with the cell source");
-  assert.ok(walk(root, (n) => n.tag === "input").length > 0, "input shown for the active cell");
+  assert.ok(walk(root, (n) => n.tag === "textarea").length > 0, "editor (textarea) shown for the active base cell");
 });
 
 test("=cels(sheet) lists a segment; unknown symbols show #NAME?", async () => {

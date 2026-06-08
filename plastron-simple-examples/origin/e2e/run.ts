@@ -84,9 +84,9 @@ const cel = (page: Page, key: string): Promise<unknown> =>
 // ── cases ───────────────────────────────────────────────────────────────────
 
 await withPage("boot — canvas readme renders + draws", async (page) => {
-  const mount = await cel(page, "元");
-  eq((mount as { __mount?: string })?.__mount, ".origin", "元 mounts into .origin");
-  ok(await page.$('table.grid td.cell[data-key="元"]'), "元 renders as a table cell — same UI as grid cels");
+  eq(await cel(page, "元"), "", "元 is an empty editable cell");
+  eq((await cel(page, "readme") as { __mount?: string })?.__mount, ".origin", "the readme cel mounts below");
+  ok(await page.$('table.grid.base td.cell.base[data-key="元"]'), "元 is the base sheet cell (autofit/expandable)");
   ok(await page.$(".readme"), "readme card rendered");
   const canvas = await page.$(".readme canvas");
   ok(canvas, "canvas banner element present");
@@ -188,14 +188,14 @@ await withPage("a syntax error surfaces, stays editing", async (page) => {
 await withPage("click a cell to edit it", async (page) => {
   await page.click('td.cell[data-key="元"] .cell-value');
   await page.waitForTimeout(80);
-  ok(await page.$('td.cell[data-key="元"] input.cell-edit'), "click opens the inline editor");
+  ok(await page.$('td.cell[data-key="元"] textarea.cell-edit'), "click opens the expandable editor");
 });
 
 await withPage("clearing 元 restores the readme", async (page) => {
   await put(page, "=1 + 1");
   await put(page, "");
-  eq((await cel(page, "元") as { __mount?: string })?.__mount, ".origin", "readme mount restored");
-  ok(await page.$(".readme canvas"), "canvas banner back");
+  eq(await cel(page, "元"), "", "cleared 元 is empty");
+  ok(await page.$(".readme canvas"), "readme (with canvas banner) still below");
 });
 
 await withPage("=mount targets existing nodes only (no top/bottom regions)", async (page) => {

@@ -3,15 +3,14 @@
   "cels": [
     {
       "key": "元",
-      "celType": "FormulaCel",
+      "celType": "ValueCel",
       "metadata": {
         "key": "元",
         "segment": "origin",
         "name": "元",
-        "parser": "f",
-        "description": "cell A1 of the origin spreadsheet. holds a formula/value that executes and renders in place; seeded with the readme. un-deletable (clearing restores the readme); editable."
+        "description": "cell A1 — the main editable cell. empty at boot; type a formula/value and it executes and renders in place."
       },
-      "f": "(mount \".origin\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (canvas 540 96 (rect 0 0 540 96 \"#16161f\") (text 18 40 \"plastron 🐢\" \"#f5f5f7\" \"bold 26px system-ui\") (text 18 72 \"a spreadsheet that draws — this banner is a =canvas formula\" \"#8a8a99\" \"13px system-ui\") (rect 372 66 16 20 \"#4a90d9\") (rect 394 54 16 32 \"#5fb0e8\") (rect 416 42 16 44 \"#7fd0ff\") (rect 438 58 16 28 \"#5fb0e8\") (rect 460 48 16 38 \"#7fd0ff\") (circle 506 40 13 \"#e6677a\"))\n    (dom \"p\" (style \"margin\" \".8rem 0 .4rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"every formula starts with = — try these in any cell:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")   a function from javascript\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=def(\\\"sq\\\", \\\"py\\\", \\\"lambda x: x * x\\\")   a function from python (loads pyodide)\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=double(21)                call your function -> 42\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"=canvas(300, 80, rect(0,0,300,80,\\\"#222\\\"), text(14,46,\\\"hi\\\",\\\"#fff\\\"))   draw on a canvas\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=mount(\\\".sheet\\\", dom(\\\"p\\\", \\\"under the cells\\\"))  pin dom under an element\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"mount\\\")           a function: signature + source\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grok(\\\"say hi in 5 words\\\", key)   chat with grok (key = a cel holding your api key)\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"this whole page is one index.html — no install, no PWA. runs offline from your desktop.\")\n    (dom \"p\" (style \"margin\" \".4rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click 元 to edit this; clear it to bring it back.\")))"
+      "v": ""
     },
     {
       "key": "元.mount",
@@ -90,11 +89,24 @@
           "keys": "元.cells",
           "vals": [
             "元"
-          ]
+          ],
+          "readme": "readme"
         },
         "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place."
       },
-      "f": "(originView editing draft mount error keys vals)"
+      "f": "(originView editing draft mount error keys vals readme)"
+    },
+    {
+      "key": "readme",
+      "celType": "FormulaCel",
+      "metadata": {
+        "key": "readme",
+        "segment": "origin",
+        "name": "readme",
+        "parser": "f",
+        "description": "the readme — a (mount \".origin\" (dom …)) value rendered below the sheet; editable like any formula."
+      },
+      "f": "(mount \".origin\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (canvas 540 96 (rect 0 0 540 96 \"#16161f\") (text 18 40 \"plastron 🐢\" \"#f5f5f7\" \"bold 26px system-ui\") (text 18 72 \"a spreadsheet that draws — this banner is a =canvas formula\" \"#8a8a99\" \"13px system-ui\") (rect 372 66 16 20 \"#4a90d9\") (rect 394 54 16 32 \"#5fb0e8\") (rect 416 42 16 44 \"#7fd0ff\") (rect 438 58 16 28 \"#5fb0e8\") (rect 460 48 16 38 \"#7fd0ff\") (circle 506 40 13 \"#e6677a\"))\n    (dom \"p\" (style \"margin\" \".8rem 0 .4rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"every formula starts with = — try these in any cell:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")   a function from javascript\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=def(\\\"sq\\\", \\\"py\\\", \\\"lambda x: x * x\\\")   a function from python (loads pyodide)\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=double(21)                call your function -> 42\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"=canvas(300, 80, rect(0,0,300,80,\\\"#222\\\"), text(14,46,\\\"hi\\\",\\\"#fff\\\"))   draw on a canvas\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=mount(\\\".sheet\\\", dom(\\\"p\\\", \\\"under the cells\\\"))  pin dom under an element\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"mount\\\")           a function: signature + source\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grok(\\\"say hi in 5 words\\\", key)   chat with grok (key = a cel holding your api key)\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"this whole page is one index.html — no install, no PWA. runs offline from your desktop.\")\n    (dom \"p\" (style \"margin\" \".4rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click 元 to edit this; clear it to bring it back.\")))"
     },
     {
       "key": "originView",
@@ -303,7 +315,10 @@
       "celType": "LockedLambdaCel",
       "locked": true,
       "metadata": {
-        "key": "chat", "segment": "origin", "name": "chat", "kind": "native",
+        "key": "chat",
+        "segment": "origin",
+        "name": "chat",
+        "kind": "native",
         "emitsTo": "origin.effects",
         "description": "(prompt, apiKey [, model] [, url]) - a chat-completion request to an OpenAI-shaped endpoint; the reply text lands in the cell. apiKey is the value - a literal string or a cel reference holding the key."
       }
@@ -313,7 +328,10 @@
       "celType": "LockedLambdaCel",
       "locked": true,
       "metadata": {
-        "key": "grok", "segment": "origin", "name": "grok", "kind": "native",
+        "key": "grok",
+        "segment": "origin",
+        "name": "grok",
+        "kind": "native",
         "emitsTo": "origin.effects",
         "description": "(prompt, apiKey [, model]) - chat() pinned to xAI Grok. =grok(\"say hi\", apiKeyCel) or =grok(\"say hi\", \"xai-...\"). browser CORS may block direct calls; works from a CLI/Bun host."
       }
@@ -323,7 +341,10 @@
       "celType": "LockedLambdaCel",
       "locked": true,
       "metadata": {
-        "key": "cdn", "segment": "origin", "name": "cdn", "kind": "native",
+        "key": "cdn",
+        "segment": "origin",
+        "name": "cdn",
+        "kind": "native",
         "emitsTo": "origin.effects",
         "description": "(url) - load an external script/library from a URL via the kernel loadScript primitive. =cdn(\"https://cdn.jsdelivr.net/npm/canvas-confetti\") then call what it exposes."
       }

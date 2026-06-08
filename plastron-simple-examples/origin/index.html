@@ -13,9 +13,7 @@
       body { margin: 0; font: 15px/1.5 system-ui, sans-serif; width: max-content; min-width: 100%; }
       #app { min-height: 100vh; padding: 2rem; }
       .origin { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; margin: 0 auto; }
-      /* the readme mounts into .origin; float it above the sheet */
-      .origin > .readme { order: -1; }
-      .sheet { display: flex; flex-direction: column; gap: 1.25rem; align-items: start; }
+      .sheet { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; }
       .grid-scroll { overflow-x: auto; max-width: 100%; }
 
       .readme { margin: 0; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: .82rem; }
@@ -37,6 +35,14 @@
       table.grid td.cell:hover { background: #8881; }
       table.grid td.cell.editing { outline: 2px solid #4a90d9; outline-offset: -2px; }
 
+      /* the base sheet (元): its lone cell autofits its content and expands —
+         roomy, wraps, grows with what you type/compute, never the tiny grid box */
+      table.grid.base td.cell.base {
+        min-width: 22rem; max-width: 70rem; height: auto; vertical-align: top; white-space: normal;
+      }
+      td.cell.base .cell-value { min-height: 2.4rem; align-items: stretch; }
+      td.cell.base .cell-value > :first-child { white-space: normal; overflow: visible; text-overflow: clip; }
+
       /* cell internals */
       .cell-value { display: flex; align-items: flex-start; gap: .25rem; padding: .15rem .4rem; min-height: 1.6rem; font-family: ui-monospace, monospace; font-size: .85rem; }
       .cell-value > :first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -48,6 +54,8 @@
       .cell-editing { display: flex; flex-direction: column; gap: .2rem; }
       .cell-error { color: #d4453e; background: #d4453e1a; font-family: ui-monospace, monospace; font-size: .76rem; padding: .15rem .45rem; border-radius: .3rem; }
       .cell-edit { width: 100%; font: inherit; font-family: ui-monospace, monospace; font-size: .85rem; padding: .15rem .4rem; border: 0; background: #4a90d922; }
+      /* the base cell's editor: a resizable textarea so long formulas expand */
+      textarea.cell-edit.big { min-width: 22rem; min-height: 3rem; resize: both; white-space: pre-wrap; line-height: 1.4; }
     </style>
   </head>
   <body>

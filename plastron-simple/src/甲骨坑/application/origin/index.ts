@@ -81,7 +81,7 @@ const displayCell = (v: unknown): V => {
     if (o.kind === "error") return T(/undefined symbol|not a function/.test(String(o.message)) ? "#NAME?" : "#ERR!");
     if (o.genesis === true) return T("ƒ grid");
     if (o.defn === true) return T(`ƒ ${String(o.name ?? "")}`);
-    if (typeof o.__mount === "string") return T(`→ ${o.__mount}`); // spliced into a node of the view; renders there, not here
+    if (typeof o.__mount === "string") return T(""); // content renders elsewhere (mounted) — the cell stays clean
     try { return T(JSON.stringify(v).slice(0, 60)); } catch { return T("#ERR!"); }
   }
   // a multi-line string (inspect output, a paragraph) keeps its shape in a
@@ -137,7 +137,7 @@ const addrOf = (key: string): { col: number; row: number } | null => {
  *  expanded editor panel for its full formula. A cell's value shows in
  *  place — a number, text, or a live dom object. */
 const originView: Fn = (
-  editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown,
+  editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown, readme: unknown,
 ) => {
   const ks = Array.isArray(keys) ? (keys as string[]) : ["元"];
   const vs = Array.isArray(vals) ? (vals as unknown[]) : [];
@@ -145,11 +145,12 @@ const originView: Fn = (
   const errMsg = typeof error === "string" ? error : null;
   const valOf = new Map<string, unknown>(); ks.forEach((k, i) => valOf.set(k, vs[i]));
 
-  // the editor input, plus an error line when its last formula failed to
-  // compile (so a syntax error shows instead of doing nothing)
-  const editor = (key: string): V =>
+  // the editor, plus an error line when its last formula failed to compile.
+  // `big` (the base cell) uses a resizable textarea so long formulas are
+  // comfortable to edit; grid cells use a one-line input.
+  const editor = (key: string, big: boolean): V =>
     el("div", { class: "cell-editing" }, [
-      el("input", { class: "cell-edit", value: String(draft ?? "") }, [], {
+      el(big ? "textarea" : "input", { class: big ? "cell-edit big" : "cell-edit", value: String(draft ?? "") }, [], {
         input: { set: "元.draft", extract: "value" },
         keydown: { dispatch: "origin.key", payload: key }, // origin.key commits on Enter
       }),
@@ -157,10 +158,9 @@ const originView: Fn = (
     ]);
 
   // the inner of a cell: inline editor when active, else the value. CLICK
-  // the value to edit it — the one edit gesture, working for grid cells
-  // (which have no label) and for 元.
-  const body = (key: string, value: unknown): V => {
-    if (active === key) return editor(key);
+  // the value to edit it — one edit gesture for every cell.
+  const body = (key: string, value: unknown, big: boolean): V => {
+    if (active === key) return editor(key, big);
     // wrap the value in an element so it's the flex:1 child of .cell-value
     const shown = displayCell(value);
     const valEl = shown.type === "text" ? el("span", { class: "cell-val-text" }, [shown]) : shown;
@@ -170,9 +170,10 @@ const originView: Fn = (
 
   // ANY set of cels → one Excel-style table (corner label + column letters +
   // row numbers). Used for BOTH the base sheet (元 at A1) and every grid()
-  // layer, so the base cel and grid cels share exactly one cell UI.
+  // layer, so the base cel and grid cels share exactly one cell UI. `base`
+  // marks the base sheet, whose lone cell autofits its content + expands.
   const colLetter = (c: number): string => { let s = "", n = c + 1; while (n > 0) { s = String.fromCharCode(65 + (n - 1) % 26) + s; n = Math.floor((n - 1) / 26); } return s; };
-  const sheetTable = (label: string, entries: { key: string; col: number; row: number }[]): V => {
+  const sheetTable = (label: string, entries: { key: string; col: number; row: number }[], base: boolean): V => {
     let maxC = 0, maxR = 0;
     const at = new Map<string, string>();
     for (const e of entries) { at.set(`${e.col},${e.row}`, e.key); maxC = Math.max(maxC, e.col); maxR = Math.max(maxR, e.row); }
@@ -182,12 +183,12 @@ const originView: Fn = (
       el("tr", {}, [el("th", { class: "rownum" }, [T(String(r + 1))]),
         ...Array.from({ length: maxC + 1 }, (_, c) => {
           const k = at.get(`${c},${r}`);
-          return el("td", { class: k && active === k ? "cell editing" : "cell", "data-key": k ?? "" },
-            k ? [body(k, valOf.get(k))] : []);
+          const cls = `${k && active === k ? "cell editing" : "cell"}${base ? " base" : ""}`;
+          return el("td", { class: cls, "data-key": k ?? "" }, k ? [body(k, valOf.get(k), base)] : []);
         })]));
     // wrap in a horizontal scroller so a wide grid reaches column A
     // (a centered overflowing table clips its left edge unreachably).
-    return el("div", { class: "grid-scroll" }, [el("table", { class: "grid" }, [el("thead", {}, [head]), el("tbody", {}, rows)])]);
+    return el("div", { class: "grid-scroll" }, [el("table", { class: base ? "grid base" : "grid" }, [el("thead", {}, [head]), el("tbody", {}, rows)])]);
   };
 
   // group: base cels (no dot) vs grid layers (segment before the dot)
@@ -200,11 +201,11 @@ const originView: Fn = (
 
   const sections: V[] = [];
   // the base sheet: 元 at A1, any other base cels down column A — same table
-  // chrome as a grid (corner "元", A/1 headers, identical cells).
-  if (base.length) sections.push(sheetTable("元", base.map((k, i) => ({ key: k, col: 0, row: i }))));
+  // chrome as a grid (corner "元", A/1 headers) but autofit + expandable.
+  if (base.length) sections.push(sheetTable("元", base.map((k, i) => ({ key: k, col: 0, row: i })), true));
   for (const [layer, members] of layers) {
     const entries = members.map((k) => { const a = addrOf(k); return a ? { key: k, col: a.col, row: a.row } : null; }).filter((e): e is { key: string; col: number; row: number } => !!e);
-    sections.push(sheetTable(layer, entries));
+    sections.push(sheetTable(layer, entries, false));
   }
 
   // PLACED dom — a cell whose value is mount(target, content). The dom is
@@ -213,13 +214,16 @@ const originView: Fn = (
   // there, not in its cell. A bare word that matches no node is a region
   // anchor the origin lays out around the sheet ("top" above, "bottom"
   // below, others above in name order). Delete the formula → it's gone.
+  const asPlacement = (v: unknown): { sel: string; vnode: V } | null => {
+    const o = v as { __mount?: unknown; vnode?: unknown } | undefined;
+    return o && typeof o === "object" && typeof o.__mount === "string" && isVnode(o.vnode)
+      ? { sel: o.__mount, vnode: o.vnode as V } : null;
+  };
   const placements: { sel: string; vnode: V }[] = [];
-  for (const k of ks) {
-    const v = valOf.get(k) as { __mount?: unknown; vnode?: unknown } | undefined;
-    if (v && typeof v === "object" && typeof v.__mount === "string" && isVnode(v.vnode)) {
-      placements.push({ sel: v.__mount, vnode: v.vnode as V });
-    }
-  }
+  for (const k of ks) { const p = asPlacement(valOf.get(k)); if (p) placements.push(p); }
+  // the readme is a dedicated cel mounted below the sheet (not a spreadsheet
+  // cell) — so 元 itself stays an empty, editable cell.
+  const rp = asPlacement(readme); if (rp) placements.push(rp);
 
   const sheetNode = el("div", { class: "sheet" }, sections);
   const originNode = el("div", { class: "origin" }, [sheetNode]);
@@ -300,7 +304,6 @@ const sniff = (src: string): { celType: string; f?: string; v?: unknown; parser?
 };
 
 const VIEW_KEY = "元.view";
-const README = "(mount \".origin\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (canvas 540 96 (rect 0 0 540 96 \"#16161f\") (text 18 40 \"plastron 🐢\" \"#f5f5f7\" \"bold 26px system-ui\") (text 18 72 \"a spreadsheet that draws — this banner is a =canvas formula\" \"#8a8a99\" \"13px system-ui\") (rect 372 66 16 20 \"#4a90d9\") (rect 394 54 16 32 \"#5fb0e8\") (rect 416 42 16 44 \"#7fd0ff\") (rect 438 58 16 28 \"#5fb0e8\") (rect 460 48 16 38 \"#7fd0ff\") (circle 506 40 13 \"#e6677a\"))\n    (dom \"p\" (style \"margin\" \".8rem 0 .4rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"every formula starts with = — try these in any cell:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")   a function from javascript\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=def(\\\"sq\\\", \\\"py\\\", \\\"lambda x: x * x\\\")   a function from python (loads pyodide)\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=double(21)                call your function -> 42\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"=canvas(300, 80, rect(0,0,300,80,\\\"#222\\\"), text(14,46,\\\"hi\\\",\\\"#fff\\\"))   draw on a canvas\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=mount(\\\".sheet\\\", dom(\\\"p\\\", \\\"under the cells\\\"))  pin dom under an element\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"mount\\\")           a function: signature + source\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grok(\\\"say hi in 5 words\\\", key)   chat with grok (key = a cel holding your api key)\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"this whole page is one index.html — no install, no PWA. runs offline from your desktop.\")\n    (dom \"p\" (style \"margin\" \".4rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click 元 to edit this; clear it to bring it back.\")))";
 
 /** The current spreadsheet cell list: 元 (A1) plus every genesis-created
  *  DATA cel (grid cells), sorted. Rebuilt after each commit so new grids
@@ -353,7 +356,7 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   const draft = String(state.cels.get("元.draft")?.v ?? "").trim();
   const setCel = resolveFn(state, "setCel") as Fn;
 
-  const src = key === "元" && draft === "" ? README : draft;
+  const src = draft;
   const spec = src === "" ? { celType: "ValueCel", v: "" } : sniff(src);
   // Carry forward ownership/name stamps so editing a GRID cell keeps it
   // owned by its generator (else the sweep can't reclaim it, and the
