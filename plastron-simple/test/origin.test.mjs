@@ -159,6 +159,9 @@ test("introspection: inspect / segments / vocab return readable values", async (
   assert.match(fnsrc, /\nsource: /, "source comes last");
   assert.match(fnsrc, /__mount/, "shows the actual fn body");
   assert.match(fnsrc, /selector/, "shows the (updated) description");
+  // multi-line value renders as a <pre> so it's not jumbled into one line
+  assert.ok(walk(root, (n) => n.tag === "pre" && /cell-pre/.test(String(n.attrs?.class ?? "")))[0],
+    "inspect output renders in a <pre>, not a flat text node");
 
   await put(state, root, m, "=segments()");
   assert.match(String(state.cels.get("元").v), /origin/, "segments lists loaded segments");
@@ -168,6 +171,20 @@ test("introspection: inspect / segments / vocab return readable values", async (
   assert.match(v, /functions/, "vocab lists functions");
   assert.match(v, /\bdom\b/, "dom is listed as usable");
   assert.match(v, /\bgrid\b/, "grid is listed as usable");
+});
+
+test("inspect into a grid cell keeps its generator stamp; another cell can pin it", async () => {
+  const { state, root, m } = await boot();
+  await put(state, root, m, "=grid(3, 3)");
+  await put(state, root, m, '=inspect("mount")', "g3x3.A1");      // result lands back in A1
+  assert.ok(state.cels.get("g3x3.A1").metadata.generatedBy, "A1 still owned by the grid generator");
+  // reference A1's yaml from B1 and pin it under .sheet as a <pre>
+  await put(state, root, m, '(mount ".sheet" (dom "pre.pinned" g3x3.A1))', "g3x3.B1");
+  assert.equal((state.cels.get("errors")?.v ?? []).filter((e) => /generator/.test(String(e.message))).length, 0, "no genesis ownership refusal");
+  const sheet = walk(root, (n) => String(n.attrs?.class ?? "") === "sheet")[0];
+  const pin = walk(sheet, (n) => n.tag === "pre" && /pinned/.test(String(n.attrs?.class ?? "")))[0];
+  assert.ok(pin, "the inspect yaml is pinned under .sheet as a <pre>");
+  assert.match(txt(pin), /name: mount/, "the pinned pre holds the referenced cell's yaml");
 });
 
 test("grid default name is g<r>x<c> — nested + different-shape grids don't collide", async () => {

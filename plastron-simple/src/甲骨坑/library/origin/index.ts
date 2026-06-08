@@ -84,6 +84,10 @@ const displayCell = (v: unknown): V => {
     if (typeof o.__mount === "string") return T(`→ ${o.__mount}`); // spliced into a node of the view; renders there, not here
     try { return T(JSON.stringify(v).slice(0, 60)); } catch { return T("#ERR!"); }
   }
+  // a multi-line string (inspect output, a paragraph) keeps its shape in a
+  // <pre>; inline it stays a one-line preview (.cell-value clips it), but
+  // the ⤢ expand panel shows it formatted top-to-bottom.
+  if (typeof v === "string" && v.includes("\n")) return el("pre", { class: "cell-pre" }, [T(v)]);
   return T(String(v));
 };
 
@@ -539,9 +543,17 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         result = [`functions (call as (${"name"} …) or =name(…)):`, ...fns.sort(),
           "", "values (reference by name):", ...vals.sort()].join("\n");
       } else continue;
-      await setCel(state, cel.metadata.key, {
-        celType: "ValueCel", v: result, metadata: { segment: cel.metadata.segment },
-      });
+      // Carry forward ownership/name stamps — an introspection result lands
+      // back IN the requesting cell, and if that's a grid cell, dropping
+      // `generatedBy` orphans it (the next commit's genesis then refuses to
+      // re-own it). Same stamps `commit` preserves.
+      const pm = cel.metadata as { segment?: string; name?: string; generatedBy?: Key; definedBy?: Key; origin?: Key };
+      const keep: Record<string, unknown> = { segment: pm.segment };
+      if (pm.name) keep.name = pm.name;
+      if (pm.generatedBy) keep.generatedBy = pm.generatedBy;
+      if (pm.definedBy) keep.definedBy = pm.definedBy;
+      if (pm.origin) keep.origin = pm.origin;
+      await setCel(state, cel.metadata.key, { celType: "ValueCel", v: result, metadata: keep });
     } catch (e) {
       const err = makeCelError([cel.metadata.key], "OriginError", e);
       appendError(state, err);

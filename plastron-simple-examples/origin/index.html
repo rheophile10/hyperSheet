@@ -54,6 +54,10 @@
       }
       .cell:hover .cell-expand, .cell.zhorigin:hover .cell-expand { opacity: .9; }
       .cell-expand:hover { opacity: 1; background: #4a90d944; }
+      .cell-pre { margin: 0; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: .8rem; line-height: 1.4; }
+      /* a multi-line value renders formatted in place (beats the grid-cell
+         one-line clip rule below) */
+      .cell-value > pre.cell-pre { white-space: pre-wrap; overflow: visible; text-overflow: clip; }
       .cell-edit { width: 100%; font: inherit; font-family: ui-monospace, monospace; font-size: .85rem; padding: .15rem .4rem; border: 0; background: #4a90d922; }
       .cell-edit.big { min-height: 10rem; resize: vertical; }
 
