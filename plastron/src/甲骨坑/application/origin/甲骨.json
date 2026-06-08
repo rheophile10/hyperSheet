@@ -171,6 +171,15 @@
       }
     },
     {
+      "key": "cel",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "cel", "segment": "origin", "name": "cel", "kind": "native", "emitsTo": "origin.effects",
+        "description": "(content?) - create ONE new cel beside 元. cel() makes an empty cel; cel(\"monkey\") a cel holding the value monkey; cel(\"cel(\\\"x\\\")\") a cel holding that formula."
+      }
+    },
+    {
       "key": "grid",
       "celType": "LockedLambdaCel",
       "locked": true,

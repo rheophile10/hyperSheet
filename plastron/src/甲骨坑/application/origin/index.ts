@@ -291,44 +291,74 @@ const mount: Fn = (target: unknown, content: unknown): unknown =>
 
 // Build the genesis request for ONE named grid (rows×cols of empty
 // infix cels under `name.A1` …). Shared by grid() and sheets().
-const gridShape = (rows: unknown, cols: unknown, name: string): { layer: string; cels: Record<string, unknown> } => {
+// a cell SOURCE → cel spec. Like sniff, but a bare `name(…)` call counts as a
+// formula too (so cell values like cel("monkey") become formulas, not text).
+const sniffCel = (src: string): { celType: string; f?: string; v?: unknown; parser?: string } => {
+  const t = String(src ?? "").trim();
+  if (t === "") return { celType: "ValueCel", v: "" };
+  if (t.startsWith("=")) return { celType: "FormulaCel", f: t, parser: "infix" };
+  if (t.startsWith("(")) return { celType: "FormulaCel", f: t, parser: "f" };
+  if (/^[a-zA-Z_][\w.-]*\s*\(/.test(t)) return { celType: "FormulaCel", f: "=" + t, parser: "infix" };
+  const n = Number(t);
+  return { celType: "ValueCel", v: t !== "" && !Number.isNaN(n) ? n : src };
+};
+
+const gridShape = (rows: unknown, cols: unknown, name: string, values?: Record<string, unknown>): { layer: string; cels: Record<string, unknown> } => {
   const r = Math.max(1, Math.min(100, Math.floor(Number(rows) || 1))); // capped — true million-scale needs virtualization (excel-scale roadmap)
   const c = Math.max(1, Math.min(50, Math.floor(Number(cols) || 1)));
   const colLetter = (n: number): string => { let s = "", x = n + 1; while (x > 0) { s = String.fromCharCode(65 + (x - 1) % 26) + s; x = Math.floor((x - 1) / 26); } return s; };
+  const valAt = (addr: string): string => {
+    if (!values) return "";
+    const hit = values[addr] ?? values[addr.toLowerCase()] ?? values[addr.toUpperCase()];
+    return hit === undefined || hit === null ? "" : String(hit);
+  };
   const cels: Record<string, unknown> = {};
   for (let row = 0; row < r; row++) {
     for (let col = 0; col < c; col++) {
       const addr = `${colLetter(col)}${row + 1}`;
-      cels[`${name}.${addr}`] = { celType: "ValueCel", v: "", metadata: { name: addr, parser: "infix" } };
+      const spec = sniffCel(valAt(addr));
+      cels[`${name}.${addr}`] = { celType: spec.celType, f: spec.f, v: spec.v, metadata: { name: addr, parser: spec.parser ?? "infix" } };
     }
   }
   return { layer: name, cels };
 };
 
-/** grid — a genesis vocabulary that adds worksheets of editable cels,
- *  each like 元. Two shapes from ONE formula:
- *    grid(rows, cols)            → one sheet, auto-named g<r>x<c>
- *    grid(rows, cols, "name")    → one named sheet
- *    grid("in", 4, 3, "out", 4, 3) → a WORKBOOK of named sheets (a string
- *                                    first arg switches to name,r,c triples)
- *  The auto name g<r>x<c> means different-shaped grids never collide — a
- *  grid in a cell of another grid just works. Delete the formula → swept. */
+const isValues = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x);
+
+/** cels — a genesis vocabulary that adds worksheets of editable cels, each
+ *  like 元. Shapes from ONE formula:
+ *    cels(rows, cols)              → one sheet, auto-named g<r>x<c>
+ *    cels(rows, cols, "name")      → one named sheet
+ *    cels("in", 4, 3, "out", 4, 3) → a WORKBOOK of named sheets
+ *    cels("in", 4, 3, {a1:"apple", b2:"cel(\"monkey\")"})  → a sheet with
+ *      initial cell contents (a value, or a formula like cel(…) / =1+1).
+ *  Delete the formula → swept. `grid` is a back-compat alias. */
 const grid: Fn = (...args: unknown[]): unknown => {
-  // string first arg → workbook of (name, rows, cols) triples.
   if (typeof args[0] === "string") {
+    // workbook: (name, rows, cols [, {values}])+ triples, optional values each.
     const cels: Record<string, unknown> = {};
-    for (let i = 0; i + 2 < args.length; i += 3) {
-      const nm = String(args[i] ?? "").trim() || `s${i / 3 + 1}`;
-      Object.assign(cels, gridShape(args[i + 1], args[i + 2], nm).cels);
+    let i = 0, n = 0;
+    while (i + 2 < args.length) {
+      const nm = String(args[i] ?? "").trim() || `s${++n}`;
+      const raw = args[i + 3];
+      const vals = isValues(raw) ? raw : undefined;
+      Object.assign(cels, gridShape(args[i + 1], args[i + 2], nm, vals).cels);
+      i += vals ? 4 : 3;
     }
     return { genesis: true, cels };
   }
-  // numbers → one sheet: (rows, cols [, name]).
-  const [rows, cols, nameArg] = args;
-  const name = typeof nameArg === "string" && nameArg !== "" ? nameArg
+  // numbers → one sheet: (rows, cols [, name] [, {values}]).
+  const [rows, cols, a3, a4] = args;
+  const name = typeof a3 === "string" && a3 !== "" ? a3
     : `g${Math.max(1, Math.min(100, Math.floor(Number(rows) || 1)))}x${Math.max(1, Math.min(50, Math.floor(Number(cols) || 1)))}`;
-  return { genesis: true, ...gridShape(rows, cols, name) };
+  const values = isValues(a3) ? a3 : isValues(a4) ? a4 : undefined;
+  return { genesis: true, ...gridShape(rows, cols, name, values) };
 };
+
+/** cel(content?) — create ONE new cel out of the origin cel. `cel()` makes an
+ *  empty cel; `cel("monkey")` a cel holding the value monkey; `cel("cel(\"x\")")`
+ *  a cel holding that formula. The new cel lands as a base cel beside 元. */
+const celFn: Fn = (content?: unknown) => ({ originCel: true, content: content == null ? "" : String(content) });
 
 // ── the entry gesture ────────────────────────────────────────────────────────
 
@@ -352,8 +382,11 @@ const cellKeys = (state: State): string[] => {
   const out: string[] = ["元"];
   for (const [k, c] of state.cels) {
     if (k === "元") continue;
-    const md = c.metadata as { generatedBy?: Key };
-    if (md.generatedBy && (c.celType === "ValueCel" || c.celType === "FormulaCel")) out.push(k);
+    if (c.celType !== "ValueCel" && c.celType !== "FormulaCel") continue;
+    const md = c.metadata as { generatedBy?: Key; segment?: string };
+    // grid cels (genesis-owned) + cel()-created base cels (c1, c2, …; no dot,
+    // origin segment — but not the internal 元.* state cels, which have dots).
+    if (md.generatedBy || (md.segment === "origin" && /^c\d+$/.test(k))) out.push(k);
   }
   return [out[0]!, ...out.slice(1).sort()];
 };
@@ -673,6 +706,14 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const url = String(req.url ?? "");
         if (!url) result = `(cdn: pass a url, e.g. =cdn("https://cdn.jsdelivr.net/npm/…"))`;
         else { await (resolveFn(state, "loadScript") as Fn)(state, url); result = `loaded ${url}`; }
+      } else if (req.originCel) {
+        // create ONE new base cel (c1, c2, …) holding the given content. The
+        // requesting cell becomes the confirmation below, so it won't re-fire.
+        let n = 1; while (state.cels.get(`c${n}`)) n++;
+        const ck = `c${n}`;
+        const spec = sniffCel(String(req.content ?? ""));
+        await setCel(state, ck, { celType: spec.celType, f: spec.f, v: spec.v, metadata: { segment: "origin", name: ck, parser: spec.parser } });
+        result = `created cel ${ck}`;
       } else if (req.originSave) {
         const ls = LS();
         if (!ls) result = "(no localStorage here)";
@@ -732,6 +773,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.edit",    edit],
   ["origin.key",     key],
   ["grid",           grid],
+  ["cel",            celFn],
   ["origin.drain",   effectsDrain],
   ["load",           loadFn],
   ["cels",           celsFn],
