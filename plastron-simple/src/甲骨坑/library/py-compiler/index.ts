@@ -2,7 +2,7 @@ import type {
   甲骨, Cel, CompileContext, Compiler, Fn, Key, State, WasmHandle, WitType,
 } from "../../../types/index.js";
 import { isWitPrimitive } from "../../../kernel/index.js";
-import { resolveFn, bindNativeFns } from "../../../kernel/index.js";
+import { resolveFn, bindNativeFns, loadScript } from "../../../kernel/index.js";
 import { CSP_WASM_AVAILABLE_KEY } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
@@ -69,24 +69,30 @@ const isPyProxyLike = (v: unknown): v is PyProxyLike =>
 
 // ── main-thread mode ────────────────────────────────────────────────────────
 
+// Default CDN for the browser path. Overridable via globalThis.__pyodideCdn —
+// the "option" so a host (or a formula) can pin a version / mirror / self-host.
+const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v0.29.4/full/";
+
 let _pyodide: Promise<PyodideAPI> | undefined;
 const getPyodide = (): Promise<PyodideAPI> => {
   if (!_pyodide) {
-    // Browser hosts can't resolve the bundled (external) "pyodide" import, so
-    // they load pyodide.js from a CDN, which sets globalThis.loadPyodide; an
-    // optional __pyodideIndexURL points it at the CDN's runtime assets. Node/
-    // Bun fall through to the installed package.
     const g = globalThis as {
       loadPyodide?: (opts?: Record<string, unknown>) => Promise<PyodideAPI>;
-      __pyodideIndexURL?: string;
+      __pyodideCdn?: string; document?: unknown;
     };
-    _pyodide = typeof g.loadPyodide === "function"
-      ? g.loadPyodide(g.__pyodideIndexURL ? { indexURL: g.__pyodideIndexURL } : undefined)
-      : import("pyodide").then(
-        (m) => (m as unknown as {
-          loadPyodide: (opts?: Record<string, unknown>) => Promise<PyodideAPI>;
-        }).loadPyodide(),
-      );
+    _pyodide = (async (): Promise<PyodideAPI> => {
+      // Node/Bun: the package is installed — import it directly.
+      if (!g.document) {
+        const m = await import("pyodide") as unknown as { loadPyodide: (o?: Record<string, unknown>) => Promise<PyodideAPI> };
+        return m.loadPyodide();
+      }
+      // Browser: the bundle marks "pyodide" external, so pull pyodide.js from a
+      // CDN via the kernel's loadScript primitive (explicit, idempotent), then
+      // use the global it defines. A host can pre-set globalThis.loadPyodide.
+      const base = g.__pyodideCdn ?? PYODIDE_CDN;
+      if (typeof g.loadPyodide !== "function") await loadScript(base + "pyodide.js");
+      return g.loadPyodide!({ indexURL: base });
+    })();
   }
   return _pyodide;
 };

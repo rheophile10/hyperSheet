@@ -168,21 +168,15 @@ const originView: Fn = (
       { click: { dispatch: "origin.edit", payload: key } });
   };
 
-  // base sheet: 元 as a labelled button-box (the "元 button")
-  const baseCell = (key: string, value: unknown): V =>
-    el("div", { class: active === key ? "cell zhorigin editing" : "cell zhorigin", "data-key": key },
-      [el("div", { class: "cell-label" }, [T("元")], { click: { dispatch: "origin.edit", payload: key } }), body(key, value)]);
-
-  // a grid layer → an Excel-style table
-  const gridTable = (layer: string, members: string[]): V => {
+  // ANY set of cels → one Excel-style table (corner label + column letters +
+  // row numbers). Used for BOTH the base sheet (元 at A1) and every grid()
+  // layer, so the base cel and grid cels share exactly one cell UI.
+  const colLetter = (c: number): string => { let s = "", n = c + 1; while (n > 0) { s = String.fromCharCode(65 + (n - 1) % 26) + s; n = Math.floor((n - 1) / 26); } return s; };
+  const sheetTable = (label: string, entries: { key: string; col: number; row: number }[]): V => {
     let maxC = 0, maxR = 0;
     const at = new Map<string, string>();
-    for (const k of members) {
-      const a = addrOf(k); if (!a) continue;
-      at.set(`${a.col},${a.row}`, k); maxC = Math.max(maxC, a.col); maxR = Math.max(maxR, a.row);
-    }
-    const colLetter = (c: number): string => { let s = "", n = c + 1; while (n > 0) { s = String.fromCharCode(65 + (n - 1) % 26) + s; n = Math.floor((n - 1) / 26); } return s; };
-    const head = el("tr", {}, [el("th", { class: "corner" }, [T(layer)]),
+    for (const e of entries) { at.set(`${e.col},${e.row}`, e.key); maxC = Math.max(maxC, e.col); maxR = Math.max(maxR, e.row); }
+    const head = el("tr", {}, [el("th", { class: "corner" }, [T(label)]),
       ...Array.from({ length: maxC + 1 }, (_, c) => el("th", {}, [T(colLetter(c))]))]);
     const rows = Array.from({ length: maxR + 1 }, (_, r) =>
       el("tr", {}, [el("th", { class: "rownum" }, [T(String(r + 1))]),
@@ -204,8 +198,14 @@ const originView: Fn = (
     else { const lr = k.slice(0, dot); (layers.get(lr) ?? layers.set(lr, []).get(lr))!.push(k); }
   }
 
-  const sections: V[] = base.map((k) => baseCell(k, valOf.get(k)));
-  for (const [layer, members] of layers) sections.push(gridTable(layer, members));
+  const sections: V[] = [];
+  // the base sheet: 元 at A1, any other base cels down column A — same table
+  // chrome as a grid (corner "元", A/1 headers, identical cells).
+  if (base.length) sections.push(sheetTable("元", base.map((k, i) => ({ key: k, col: 0, row: i }))));
+  for (const [layer, members] of layers) {
+    const entries = members.map((k) => { const a = addrOf(k); return a ? { key: k, col: a.col, row: a.row } : null; }).filter((e): e is { key: string; col: number; row: number } => !!e);
+    sections.push(sheetTable(layer, entries));
+  }
 
   // PLACED dom — a cell whose value is mount(target, content). The dom is
   // spliced into the first node of THIS view matching `target` (a node the
@@ -465,6 +465,10 @@ const grokFn: Fn = (prompt: unknown, key: unknown, model: unknown) =>
   ({ originChat: true, provider: "grok", prompt: String(prompt ?? ""), key: String(key ?? ""),
      model: model == null || model === "" ? "grok-3-mini" : String(model),
      url: "https://api.x.ai/v1/chat/completions" });
+/** cdn(url) — load an external script/library from a URL via the kernel's
+ *  loadScript primitive. The explicit way external resources enter the page
+ *  (e.g. a charting lib, or a self-hosted Pyodide build). */
+const cdnFn: Fn = (url: unknown) => ({ originCdn: true, url: String(url ?? "") });
 
 const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<void> => {
   const state = (stateArg ?? items[0]?.state) as State | undefined;
@@ -560,6 +564,10 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
           metadata: { kind, segment: "origin", name: nm },
         });
         result = `defined "${nm}" (${kind}) — call it: =${nm}(…)`;
+      } else if (req.originCdn) {
+        const url = String(req.url ?? "");
+        if (!url) result = `(cdn: pass a url, e.g. =cdn("https://cdn.jsdelivr.net/npm/…"))`;
+        else { await (resolveFn(state, "loadScript") as Fn)(state, url); result = `loaded ${url}`; }
       } else if (req.originChat) {
         // chat completion — POST to an OpenAI-shaped endpoint, await the reply.
         const url = String(req.url ?? "https://api.x.ai/v1/chat/completions");
@@ -619,4 +627,5 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["def",            defFn],
   ["chat",           chatFn],
   ["grok",           grokFn],
+  ["cdn",            cdnFn],
 ]));

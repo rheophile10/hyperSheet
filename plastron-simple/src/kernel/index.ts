@@ -37,6 +37,7 @@ export type { CelError } from "./cel-error.js";
 // segment's cel seed by key. Every 甲骨坑 segment's index.ts reaches it
 // through this barrel.
 export { bindNativeFns } from "./native-fn.js";
+export { loadScript, loadScriptFn } from "./loadScript.js";
 
 // ── 1. hydrate ── 甲骨 archive → live State. Installs cels, compiles
 // fireables (async, in topo layers), resolves schemas, installs

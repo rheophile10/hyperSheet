@@ -86,6 +86,7 @@ const cel = (page: Page, key: string): Promise<unknown> =>
 await withPage("boot — canvas readme renders + draws", async (page) => {
   const mount = await cel(page, "元");
   eq((mount as { __mount?: string })?.__mount, ".origin", "元 mounts into .origin");
+  ok(await page.$('table.grid td.cell[data-key="元"]'), "元 renders as a table cell — same UI as grid cels");
   ok(await page.$(".readme"), "readme card rendered");
   const canvas = await page.$(".readme canvas");
   ok(canvas, "canvas banner element present");
@@ -108,14 +109,14 @@ await withPage("=grid(8, 5) → one sheet", async (page) => {
   await put(page, "=grid(8, 5)");
   ok(await cel(page, "g8x5.A1") !== null, "g8x5.A1 created");
   ok(await cel(page, "g8x5.E8") !== null, "g8x5.E8 created");
-  eq(await page.evaluate(() => document.querySelectorAll("table.grid").length), 1, "one grid table");
+  eq(await page.evaluate(() => document.querySelectorAll("table.grid").length), 2, "base 元 table + the grid");
 });
 
 await withPage("=grid(\"in\",4,3,\"out\",4,3) → workbook", async (page) => {
   await put(page, '=grid("in", 4, 3, "out", 4, 3)');
   ok(await cel(page, "in.A1") !== null, "in.A1 created");
   ok(await cel(page, "out.C4") !== null, "out.C4 created");
-  eq(await page.evaluate(() => document.querySelectorAll("table.grid").length), 2, "two sheets");
+  eq(await page.evaluate(() => document.querySelectorAll("table.grid").length), 3, "base 元 table + two sheets");
 });
 
 await withPage("=def + =double(21) → 42", async (page) => {
@@ -185,9 +186,9 @@ await withPage("a syntax error surfaces, stays editing", async (page) => {
 });
 
 await withPage("click a cell to edit it", async (page) => {
-  await page.click(".cell.zhorigin .cell-value");
+  await page.click('td.cell[data-key="元"] .cell-value');
   await page.waitForTimeout(80);
-  ok(await page.$(".cell.zhorigin input.cell-edit"), "click opens the inline editor");
+  ok(await page.$('td.cell[data-key="元"] input.cell-edit'), "click opens the inline editor");
 });
 
 await withPage("clearing 元 restores the readme", async (page) => {
@@ -210,9 +211,16 @@ await withPage("wide mounted content is reachable (body grows to fit)", async (p
   ok(fits, "body widened to fit a 3000px child (horizontal scroll, not clipped)");
 });
 
-// Python — loads Pyodide from the CDN on first use (needs network; ~slower).
+// =cdn(url) — load an external library at runtime via the kernel primitive.
+await withPage("=cdn(url) loads an external library (needs network)", async (page) => {
+  const res = String(await put(page, '=cdn("https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js")'));
+  ok(/^loaded /.test(res), "cdn confirms the load");
+  ok(await page.evaluate(() => typeof (globalThis as any).confetti === "function"), "the loaded lib's global is available");
+});
+
+// Python — the py-compiler pulls Pyodide from a CDN on first use (via the
+// kernel loadScript primitive), so the first def is slow + needs network.
 await withPage("=def(py) + call works via Pyodide", async (page) => {
-  await page.waitForFunction(() => typeof (globalThis as any).loadPyodide === "function", { timeout: 20000 });
   const out = await page.evaluate(async () => {
     const { state, resolveFn } = (globalThis as any).plastron;
     const put = async (s: string) => { await resolveFn(state, "origin.edit")(state, "元"); await resolveFn(state, "setValue")(state, "元.draft", s); await resolveFn(state, "origin.commit")(state, "元"); };

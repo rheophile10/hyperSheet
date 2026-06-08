@@ -317,6 +317,16 @@
         "emitsTo": "origin.effects",
         "description": "(prompt, apiKey [, model]) - chat() pinned to xAI Grok. =grok(\"say hi\", apiKeyCel) or =grok(\"say hi\", \"xai-...\"). browser CORS may block direct calls; works from a CLI/Bun host."
       }
+    },
+    {
+      "key": "cdn",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "cdn", "segment": "origin", "name": "cdn", "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(url) - load an external script/library from a URL via the kernel loadScript primitive. =cdn(\"https://cdn.jsdelivr.net/npm/canvas-confetti\") then call what it exposes."
+      }
     }
   ]
 }

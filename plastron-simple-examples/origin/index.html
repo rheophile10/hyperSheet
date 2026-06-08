@@ -18,17 +18,6 @@
       .sheet { display: flex; flex-direction: column; gap: 1.25rem; align-items: start; }
       .grid-scroll { overflow-x: auto; max-width: 100%; }
 
-      /* the 元 button — the base sheet's A1 */
-      .cell.zhorigin {
-        border: 1px solid #8884; border-radius: .6rem; background: #8881;
-        min-width: 16rem; max-width: 44rem; overflow: hidden;
-      }
-      .cell.zhorigin .cell-label {
-        font-weight: 700; color: #888; font-family: ui-monospace, monospace;
-        padding: .35rem .7rem; cursor: pointer; border-bottom: 1px solid #8883; background: #8881;
-      }
-      .cell.zhorigin .cell-label:hover { background: #8883; }
-      .cell.zhorigin .cell-value { padding: .6rem .8rem; }
       .readme { margin: 0; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: .82rem; }
       .readme h2 { margin: 0 0 .4rem; font-size: 1.05rem; }
       .readme p { margin: .1rem 0; white-space: pre-wrap; }
@@ -64,11 +53,8 @@
   <body>
     <div id="app"></div>
     <a href="./os/" style="position:fixed;bottom:.6rem;right:.8rem;font-size:.75rem;opacity:.5;color:inherit">plastron-os ↗</a>
-    <!-- Pyodide loader (defer; ~lazy — the 10MB runtime only downloads when a
-         py formula first runs). Sets globalThis.loadPyodide; the py-compiler
-         prefers it over the bundled (external) import. Needs network. -->
-    <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.js"></script>
-    <script>globalThis.__pyodideIndexURL = "https://cdn.jsdelivr.net/pyodide/v0.29.4/full/";</script>
+    <!-- No external <script> tags: the py-compiler pulls Pyodide from a CDN
+         itself (via the kernel loadScript primitive) on first py use. -->
     <script type="module" src="./origin-main.ts"></script>
   </body>
 </html>

@@ -26,7 +26,7 @@ import {
   findDependents, getSegmentManifest, listSegments,
   registerSegmentLoader, loadSegment, ensureSegments, isSegmentPending,
   cel_error_isChanged, cel_error_hydrate, cel_error_dehydrate,
-  bindNativeFns,
+  bindNativeFns, loadScriptFn,
   buildPrecomputedIndexes,
   PRECOMPUTED_STATES_KEY, COMPILE_CACHE_KEY, ERRORS_LOG_KEY,
   SEGMENT_LOADERS_KEY, BUNDLED_LOADERS_KEY,
@@ -81,6 +81,9 @@ export const nativeCels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Ma
   ["loadSegment",           loadSegment           as Fn],
   ["ensureSegments",        ensureSegments        as Fn],
   ["isSegmentPending",      isSegmentPending      as Fn],
+  // host capability: load an external script from a URL (a CDN). Browser-only;
+  // off-browser it resolves immediately.
+  ["loadScript",            loadScriptFn],
   // cel-error: trap-as-value schema + protocol fns. Kernel-resident: cels
   // that hold CelError values attach this schema so dehydrate/isChanged
   // dispatch through cel-error_dehydrate / cel-error_isChanged.
