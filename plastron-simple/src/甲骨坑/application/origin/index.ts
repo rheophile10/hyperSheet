@@ -95,7 +95,7 @@ const SX = {
   th: "border:1px solid #8883;background:#8881;text-align:center;color:#888;font-weight:600;font-size:.8rem;font-family:ui-monospace,monospace;min-width:1.8rem;padding:0 .35rem;height:1.9rem",
   corner: "border:1px solid #8883;background:#8881;text-align:center;color:#aaa;font-weight:700;font-size:.8rem;font-family:ui-monospace,monospace;padding:0 .35rem;height:1.9rem",
   td: "border:1px solid #8883;padding:0;height:1.9rem;text-align:left;vertical-align:top;cursor:cell",
-  cellValue: "display:flex;align-items:flex-start;gap:.25rem;padding:.15rem .4rem;min-height:1.6rem;font-family:ui-monospace,monospace;font-size:.85rem;resize:both;overflow:auto;cursor:text",
+  cellValue: "display:flex;align-items:flex-start;gap:.25rem;padding:.15rem .4rem;min-height:1.6rem;max-width:min(56rem,88vw);font-family:ui-monospace,monospace;font-size:.85rem;resize:both;overflow:auto;cursor:text",
   valFirst: "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
   pre: "margin:0;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:.8rem;line-height:1.4;flex:1;min-width:0;overflow:visible",
   src: "margin:0;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:.8rem;line-height:1.4;color:#8ab4f8;max-height:16rem;overflow:auto;flex:1;min-width:0",
