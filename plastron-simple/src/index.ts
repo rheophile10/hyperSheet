@@ -36,6 +36,7 @@ import * as appHost         from "./甲骨坑/library/app-host/index.js";
 import * as defn            from "./甲骨坑/library/defn/index.js";
 import * as genesis         from "./甲骨坑/library/genesis/index.js";
 import * as checkpoint      from "./甲骨坑/library/checkpoint/index.js";
+import * as plastronCanvas  from "./甲骨坑/library/plastron-canvas/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
 import * as sound           from "./甲骨坑/library/sound/index.js";
 
@@ -88,6 +89,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "defn":             () => [...defn.cels],
   "genesis":          () => [...genesis.cels],
   "checkpoint":       () => [...checkpoint.cels],
+  "plastron-canvas":  () => [...plastronCanvas.cels],
 };
 
 // application/ segments. notepad + web-editor boot via host-called builders

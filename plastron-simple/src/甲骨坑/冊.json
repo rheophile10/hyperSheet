@@ -178,13 +178,22 @@
     "role": "library"
   },
   {
+    "name": "plastron-canvas",
+    "version": "1.0.0",
+    "description": "Formula-authored 2d graphics: rect/text/line/circle ops and canvas(w,h,…ops) → a <canvas> VNODE carrying a data-ops draw-spec; the plastron-dom painter replays it onto the 2d context after each paint.",
+    "dependencies": [],
+    "role": "library"
+  },
+  {
     "name": "origin",
     "version": "1.0.0",
     "description": "The starting point: the origin cel (readme as value), the freespace view + entry gesture, load/cels effects. Boot contract: createInitialState + hydrate paints one visible cel.",
     "dependencies": [
       "genesis",
       "html-template-parser",
-      "plastron-dom"
+      "plastron-dom",
+      "plastron-canvas",
+      "checkpoint"
     ],
     "role": "application"
   }

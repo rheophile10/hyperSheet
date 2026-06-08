@@ -1,0 +1,50 @@
+{
+  "name": "plastron-canvas",
+  "cels": [
+    {
+      "key": "rect",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "rect", "segment": "plastron-canvas", "name": "rect", "kind": "native",
+        "description": "(x, y, w, h [, fill] [, stroke] [, lineWidth]) - a canvas rectangle op. pass to canvas(): =canvas(200, 80, rect(0, 0, 200, 80, \"#1a1a2e\"))."
+      }
+    },
+    {
+      "key": "text",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "text", "segment": "plastron-canvas", "name": "text", "kind": "native",
+        "description": "(x, y, text [, fill] [, font]) - a canvas text op (baseline at x,y). =text(12, 24, \"hi\", \"#fff\", \"16px system-ui\")."
+      }
+    },
+    {
+      "key": "line",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "line", "segment": "plastron-canvas", "name": "line", "kind": "native",
+        "description": "(x1, y1, x2, y2 [, stroke] [, lineWidth]) - a canvas line segment op."
+      }
+    },
+    {
+      "key": "circle",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "circle", "segment": "plastron-canvas", "name": "circle", "kind": "native",
+        "description": "(x, y, r [, fill] [, stroke] [, lineWidth]) - a canvas circle op."
+      }
+    },
+    {
+      "key": "canvas",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "canvas", "segment": "plastron-canvas", "name": "canvas", "kind": "native",
+        "description": "(width, height, ...ops) - a <canvas> drawn from rect/text/line/circle ops; the painter replays them onto the 2d context. use as a cell value or inside mount/dom."
+      }
+    }
+  ]
+}

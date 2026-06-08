@@ -2,6 +2,7 @@ import type { ChannelEnqueue, RenderSpec, State } from "../../../../types/index.
 import { resolveFn } from "../../../../kernel/index.js";
 import { diffVNodes, type DiffEq, type Patch } from "./diff.js";
 import { applyPatch, type DocLike } from "./apply.js";
+import { drawCanvases } from "./canvas.js";
 import {
   applyListenerDelta, defaultResolveTarget,
   type GlobalRegistry, type ListenerRegistry, type ResolveTarget,
@@ -108,6 +109,9 @@ export const createPainter = (state: State, opts: PainterOpts = {}): Painter => 
         if (target) {
           const node = applyPatch(target as never, mountedNode.get(key) ?? null, patch, perElement, state, doc);
           mountedNode.set(key, node as { nodeType: number } | null);
+          // replay any <canvas data-ops> draw-specs onto their 2d contexts
+          // (plastron-canvas vocabulary). Guarded — never breaks a flush.
+          drawCanvases(target);
         }
       }
       applyListenerDelta(prev?.listeners, next.listeners, globalReg, state, resolveTarget);

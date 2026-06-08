@@ -306,7 +306,7 @@ const sniff = (src: string): { celType: string; f?: string; v?: unknown; parser?
 };
 
 const VIEW_KEY = "元.view";
-const README = "(mount \"top\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (dom \"h1\" (style \"margin\" \"0 0 .2rem\" \"font-size\" \"1.7rem\" \"font-family\" \"system-ui\") \"plastron \ud83d\udc22\")\n    (dom \"p\" (style \"margin\" \"0 0 .8rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"a spreadsheet where formulas can also build dom, cels, sheets, and apps. every formula starts with = — try these:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")   a function from javascript\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=double(21)                call your function -> 42\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=mount(\\\".sheet\\\", dom(\\\"p\\\", \\\"under the cells\\\"))  pin dom under an element\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"mount\\\")           a function: signature + source\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"this whole page is one index.html \u2014 no install, no PWA. the \u2193 save button keeps a copy with your sheet baked in; double-click it to run offline from your desktop.\")\n    (dom \"p\" (style \"margin\" \".4rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click \u5143 to edit this; clear it to bring it back.\")))";
+const README = "(mount \"top\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (canvas 540 96 (rect 0 0 540 96 \"#16161f\") (text 18 40 \"plastron 🐢\" \"#f5f5f7\" \"bold 26px system-ui\") (text 18 72 \"a spreadsheet that draws — this banner is a =canvas formula\" \"#8a8a99\" \"13px system-ui\") (rect 372 66 16 20 \"#4a90d9\") (rect 394 54 16 32 \"#5fb0e8\") (rect 416 42 16 44 \"#7fd0ff\") (rect 438 58 16 28 \"#5fb0e8\") (rect 460 48 16 38 \"#7fd0ff\") (circle 506 40 13 \"#e6677a\"))\n    (dom \"p\" (style \"margin\" \".8rem 0 .4rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"every formula starts with = — try these in any cell:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")   a function from javascript\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=double(21)                call your function -> 42\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"=canvas(300, 80, rect(0,0,300,80,\\\"#222\\\"), text(14,46,\\\"hi\\\",\\\"#fff\\\"))   draw on a canvas\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=mount(\\\".sheet\\\", dom(\\\"p\\\", \\\"under the cells\\\"))  pin dom under an element\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"mount\\\")           a function: signature + source\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grok(\\\"say hi in 5 words\\\", key)   chat with grok (key = a cel holding your api key)\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"this whole page is one index.html — no install, no PWA. the ↓ save button keeps a copy with your sheet baked in; double-click it to run offline from your desktop.\")\n    (dom \"p\" (style \"margin\" \".4rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click 元 to edit this; clear it to bring it back.\")))";
 
 /** The current spreadsheet cell list: 元 (A1) plus every genesis-created
  *  DATA cel (grid cells), sorted. Rebuilt after each commit so new grids
@@ -458,6 +458,19 @@ const vocabFn: Fn = (seg?: unknown) => ({ originVocab: true, segment: seg == nul
  *  any formula: `=double(21)` → 42. */
 const defFn: Fn = (name: unknown, kind: unknown, source: unknown) =>
   ({ originDef: true, name: String(name ?? ""), kind: String(kind ?? "js"), source: String(source ?? "") });
+/** chat(prompt, apiKey [, model] [, url]) — a chat-completion request to an
+ *  OpenAI-shaped endpoint. The effects drain does the fetch and drops the
+ *  reply text in the cell. apiKey is the value: pass a literal "xai-…" or a
+ *  cel reference holding the key (the formula resolves it before calling). */
+const chatFn: Fn = (prompt: unknown, key: unknown, model: unknown, url: unknown) =>
+  ({ originChat: true, prompt: String(prompt ?? ""), key: String(key ?? ""),
+     model: model == null || model === "" ? undefined : String(model),
+     url: url == null || url === "" ? undefined : String(url) });
+/** grok(prompt, apiKey [, model]) — chat() pinned to xAI's Grok endpoint. */
+const grokFn: Fn = (prompt: unknown, key: unknown, model: unknown) =>
+  ({ originChat: true, provider: "grok", prompt: String(prompt ?? ""), key: String(key ?? ""),
+     model: model == null || model === "" ? "grok-3-mini" : String(model),
+     url: "https://api.x.ai/v1/chat/completions" });
 
 const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<void> => {
   const state = (stateArg ?? items[0]?.state) as State | undefined;
@@ -553,6 +566,25 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
           metadata: { kind, segment: "origin", name: nm },
         });
         result = `defined "${nm}" (${kind}) — call it: =${nm}(…)`;
+      } else if (req.originChat) {
+        // chat completion — POST to an OpenAI-shaped endpoint, await the reply.
+        const url = String(req.url ?? "https://api.x.ai/v1/chat/completions");
+        const model = String(req.model ?? "grok-3-mini");
+        const key = String(req.key ?? "");
+        if (!key) {
+          result = `(no api key — pass one: =grok("hi", "xai-…") or =grok("hi", apiKeyCel))`;
+        } else {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+            body: JSON.stringify({ model, messages: [{ role: "user", content: String(req.prompt ?? "") }] }),
+          });
+          if (!res.ok) result = `(chat ${res.status}: ${(await res.text()).slice(0, 200)})`;
+          else {
+            const j = await res.json() as { choices?: { message?: { content?: string } }[] };
+            result = j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
+          }
+        }
       } else continue;
       // Carry forward ownership/name stamps — an introspection result lands
       // back IN the requesting cell, and if that's a grid cell, dropping
@@ -591,4 +623,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["segments",       segmentsFn],
   ["vocab",          vocabFn],
   ["def",            defFn],
+  ["chat",           chatFn],
+  ["grok",           grokFn],
 ]));
