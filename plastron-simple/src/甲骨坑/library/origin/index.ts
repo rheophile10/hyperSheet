@@ -55,10 +55,11 @@ const displayCell = (v: unknown): V => {
   if (isVnode(v)) return v as V;
   if (v === null || v === undefined || v === "") return T("");
   if (typeof v === "object") {
-    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; defn?: unknown; name?: unknown };
+    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; defn?: unknown; name?: unknown; __at?: unknown };
     if (o.kind === "error") return T(/undefined symbol|not a function/.test(String(o.message)) ? "#NAME?" : "#ERR!");
     if (o.genesis === true) return T("ƒ grid");
     if (o.defn === true) return T(`ƒ ${String(o.name ?? "")}`);
+    if (typeof o.__at === "string") return T(`→ ${o.__at}`); // mounted to a region; renders there, not here
     try { return T(JSON.stringify(v).slice(0, 60)); } catch { return T("#ERR!"); }
   }
   return T(String(v));
@@ -127,7 +128,9 @@ const originView: Fn = (
           return el("td", { class: k && active === k ? "cell editing" : "cell", "data-key": k ?? "" },
             k ? [body(k, valOf.get(k))] : []);
         })]));
-    return el("table", { class: "grid" }, [el("thead", {}, [head]), el("tbody", {}, rows)]);
+    // wrap in a horizontal scroller so a wide grid reaches column A
+    // (a centered overflowing table clips its left edge unreachably).
+    return el("div", { class: "grid-scroll" }, [el("table", { class: "grid" }, [el("thead", {}, [head]), el("tbody", {}, rows)])]);
   };
 
   // group: base cels (no dot) vs grid layers (segment before the dot)
@@ -187,8 +190,8 @@ const mount: Fn = (region: unknown, content: unknown): unknown =>
  *  spreadsheet cell you type formulas/values into. Delete the formula
  *  and the genesis sweep removes them. */
 const grid: Fn = (rows: unknown, cols: unknown, nameArg?: unknown): unknown => {
-  const r = Math.max(1, Math.min(50, Math.floor(Number(rows) || 1)));
-  const c = Math.max(1, Math.min(26, Math.floor(Number(cols) || 1)));
+  const r = Math.max(1, Math.min(100, Math.floor(Number(rows) || 1))); // capped — true million-scale needs virtualization (excel-scale roadmap)
+  const c = Math.max(1, Math.min(50, Math.floor(Number(cols) || 1)));
   const name = typeof nameArg === "string" && nameArg !== "" ? nameArg : "g";
   const cels: Record<string, unknown> = {};
   for (let row = 0; row < r; row++) {
