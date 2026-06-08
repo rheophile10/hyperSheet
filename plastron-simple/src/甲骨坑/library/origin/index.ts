@@ -77,14 +77,43 @@ const displayCell = (v: unknown): V => {
   if (isVnode(v)) return v as V;
   if (v === null || v === undefined || v === "") return T("");
   if (typeof v === "object") {
-    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; defn?: unknown; name?: unknown; __at?: unknown };
+    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; defn?: unknown; name?: unknown; __mount?: unknown };
     if (o.kind === "error") return T(/undefined symbol|not a function/.test(String(o.message)) ? "#NAME?" : "#ERR!");
     if (o.genesis === true) return T("ƒ grid");
     if (o.defn === true) return T(`ƒ ${String(o.name ?? "")}`);
-    if (typeof o.__at === "string") return T(`→ ${o.__at}`); // mounted to a region; renders there, not here
+    if (typeof o.__mount === "string") return T(`→ ${o.__mount}`); // spliced into a node of the view; renders there, not here
     try { return T(JSON.stringify(v).slice(0, 60)); } catch { return T("#ERR!"); }
   }
   return T(String(v));
+};
+
+// A minimal CSS-ish selector, matched against the view's OWN render tree
+// (NOT the live DOM). mount() splices its content into the first matching
+// SPEC node so the painter — which owns #app and re-renders every frame —
+// reconciles it like everything else; a node appended to the live DOM by
+// xpath would just be wiped on the next paint. Grammar: optional tag plus
+// any number of .class / #id — ".sheet", "div.cell", "#k".
+const parseSel = (sel: string): { tag?: string; classes: string[]; id?: string } | null => {
+  const m = /^([a-zA-Z][\w-]*)?((?:[.#][\w-]+)+)?$/.exec(sel.trim());
+  if (!m || (!m[1] && !m[2])) return null;
+  const classes: string[] = []; let id: string | undefined;
+  for (const tok of (m[2] ?? "").match(/[.#][\w-]+/g) ?? []) {
+    if (tok[0] === ".") classes.push(tok.slice(1)); else id = tok.slice(1);
+  }
+  return { tag: m[1], classes, id };
+};
+const matchNode = (n: V, p: { tag?: string; classes: string[]; id?: string }): boolean => {
+  if (n.type !== "el") return false;
+  if (p.tag && n.tag !== p.tag) return false;
+  const cls = String((n.attrs as Record<string, unknown> | undefined)?.class ?? "").split(/\s+/);
+  if (p.classes.some((c) => !cls.includes(c))) return false;
+  if (p.id && (n.attrs as Record<string, unknown> | undefined)?.id !== p.id) return false;
+  return true;
+};
+const findNode = (root: V, p: { tag?: string; classes: string[]; id?: string }): V | null => {
+  if (matchNode(root, p)) return root;
+  for (const c of root.children ?? []) { const r = findNode(c, p); if (r) return r; }
+  return null;
 };
 
 // A1-address parsing for the Excel grid layout (col letters → index, etc.)
@@ -176,35 +205,52 @@ const originView: Fn = (
     ]));
   }
 
-  // PLACED dom — a cell whose value is mount(region, content). The dom
-  // renders in that REGION (the origin lays it out around the sheet),
-  // not in its cell; delete the formula and it's gone. Region "bottom"
-  // renders below the sheet, anything else above (in name order).
-  const placed = new Map<string, V[]>();
+  // PLACED dom — a cell whose value is mount(target, content). The dom is
+  // spliced into the first node of THIS view matching `target` (a node the
+  // origin renders: ".sheet", ".region-top", "div.cell", …) and renders
+  // there, not in its cell. A bare word that matches no node is a region
+  // anchor the origin lays out around the sheet ("top" above, "bottom"
+  // below, others above in name order). Delete the formula → it's gone.
+  const placements: { sel: string; vnode: V }[] = [];
   for (const k of ks) {
-    const v = valOf.get(k) as { __at?: unknown; vnode?: unknown } | undefined;
-    if (v && typeof v === "object" && typeof v.__at === "string" && isVnode(v.vnode)) {
-      const r = v.__at; (placed.get(r) ?? placed.set(r, []).get(r))!.push(v.vnode as V);
+    const v = valOf.get(k) as { __mount?: unknown; vnode?: unknown } | undefined;
+    if (v && typeof v === "object" && typeof v.__mount === "string" && isVnode(v.vnode)) {
+      placements.push({ sel: v.__mount, vnode: v.vnode as V });
     }
   }
-  const region = (name: string): V => el("div", { class: `region region-${name}` }, placed.get(name)!);
-  const above = [...placed.keys()].filter((r) => r !== "bottom").sort().map(region);
-  const below = placed.has("bottom") ? [region("bottom")] : [];
 
-  return {
-    vnode: el("div", { class: "origin" }, [...above, el("div", { class: "sheet" }, sections), ...below]),
-    mount: typeof mount === "string" ? mount : null,
-    listeners: [],
-  };
+  const sheetNode = el("div", { class: "sheet" }, sections);
+  const topRegion = el("div", { class: "region region-top" }, []);
+  const bottomRegion = el("div", { class: "region region-bottom" }, []);
+  const originNode = el("div", { class: "origin" }, [topRegion, sheetNode, bottomRegion]);
+  const extraRegions = new Map<string, V>();
+
+  for (const { sel, vnode } of placements) {
+    const p = parseSel(sel);
+    let target = p ? findNode(originNode, p) : null;
+    if (!target) {
+      const named = sel.trim().replace(/^[.#]/, "") || "top";
+      target = named === "top" ? topRegion : named === "bottom" ? bottomRegion
+        : (extraRegions.get(named) ?? extraRegions.set(named, el("div", { class: `region region-${named}` }, [])).get(named)!);
+    }
+    (target.children ??= []).push(vnode);
+  }
+  originNode.children = [topRegion, ...[...extraRegions.keys()].sort().map((n) => extraRegions.get(n)!), sheetNode, bottomRegion];
+
+  return { vnode: originNode, mount: typeof mount === "string" ? mount : null, listeners: [] };
 };
 
-/** mount(region, content) — PLACE a dom object in a named region the
- *  origin lays out around the sheet (e.g. "top", "bottom"), instead of
- *  inside the cell that holds the formula. Composes cleanly (the origin
- *  view owns #app and renders the region), and vanishes when the
- *  formula is deleted — no painter-target conflict. */
-const mount: Fn = (region: unknown, content: unknown): unknown =>
-  ({ __at: String(region ?? "top"), vnode: isVnode(content) ? content : T(content) });
+/** mount(target, content) — PLACE a dom object UNDER another element of the
+ *  sheet, instead of inside the cell that holds the formula. `target` is a
+ *  simple selector matched against the origin's own render tree: ".sheet"
+ *  pins under the cells, ".region-top"/"top" in a region the origin lays
+ *  out around the sheet, "div.cell" under the first cell, "#id" by id. The
+ *  origin view owns #app and re-paints every frame, so mount splices into
+ *  the SPEC (reconciled like everything else) rather than the live DOM —
+ *  this is why it's a selector into the view, not an xpath into the page.
+ *  Vanishes when the formula is deleted; no painter-target conflict. */
+const mount: Fn = (target: unknown, content: unknown): unknown =>
+  ({ __mount: String(target ?? "top"), vnode: isVnode(content) ? content : T(content) });
 
 // Build the genesis request for ONE named grid (rows×cols of empty
 // infix cels under `name.A1` …). Shared by grid() and sheets().
@@ -260,7 +306,7 @@ const sniff = (src: string): { celType: string; f?: string; v?: unknown; parser?
 };
 
 const VIEW_KEY = "元.view";
-const README = "(mount \"top\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (dom \"h1\" (style \"margin\" \"0 0 .2rem\" \"font-size\" \"1.7rem\" \"font-family\" \"system-ui\") \"plastron \ud83d\udc22\")\n    (dom \"p\" (style \"margin\" \"0 0 .8rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"a spreadsheet where formulas can also build dom, cels, sheets, and apps. try these in a cell:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=sheets(\\\"in\\\" 4 3 \\\"out\\\" 4 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"(dom \\\"h2\\\" (style \\\"color\\\" \\\"tomato\\\") \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"(mount \\\"top\\\" (dom \\\"p\\\" \\\"pinned above\\\"))   place dom in a region\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"\u5143\\\")              this cel as json\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click \u5143 to edit this; clear it to bring it back.\")))";
+const README = "(mount \"top\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (dom \"h1\" (style \"margin\" \"0 0 .2rem\" \"font-size\" \"1.7rem\" \"font-family\" \"system-ui\") \"plastron \ud83d\udc22\")\n    (dom \"p\" (style \"margin\" \"0 0 .8rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"a spreadsheet where formulas can also build dom, cels, sheets, and apps. try these in a cell:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=sheets(\\\"in\\\" 4 3 \\\"out\\\" 4 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"(dom \\\"h2\\\" (style \\\"color\\\" \\\"tomato\\\") \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"(mount \\\".sheet\\\" (dom \\\"p\\\" \\\"under the cells\\\"))  pin dom under any element\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"\u5143\\\")              this cel as json\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click \u5143 to edit this; clear it to bring it back.\")))";
 
 /** The current spreadsheet cell list: 元 (A1) plus every genesis-created
  *  DATA cel (grid cells), sorted. Rebuilt after each commit so new grids

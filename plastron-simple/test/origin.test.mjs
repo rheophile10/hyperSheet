@@ -62,7 +62,7 @@ const put = async (state, root, m, src, key = "元") => {
 test("boot: 元 holds a styled mount; the readme renders in the top region", async () => {
   const { state, root } = await boot();
   assert.deepEqual(cells(root).map((c) => c.attrs["data-key"]), ["元"], "one cell — 元");
-  assert.equal(state.cels.get("元").v?.__at, "top", "元's value is a mount placement");
+  assert.equal(state.cels.get("元").v?.__mount, "top", "元's value is a mount placement");
   const rm = cls(root, "readme");
   assert.ok(rm, "readme rendered (in the region)");
   assert.ok(rm.style && Object.keys(rm.style.props).length > 0, "readme carries inline styles");
@@ -78,7 +78,7 @@ test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restore
   assert.equal(cellVal(root, "元"), "7", "literal renders in A1");
   await put(state, root, m, "");
   assert.ok(cls(root, "readme"), "empty 元 -> readme back (un-deletable)");
-  assert.equal(state.cels.get("元").v?.__at, "top", "readme restored as a mount");
+  assert.equal(state.cels.get("元").v?.__mount, "top", "readme restored as a mount");
 });
 
 test("A1 can render a dom object", async () => {
@@ -127,6 +127,19 @@ test("mount(region, content) places a dom in a region; deleting removes it", asy
   assert.match(txt(hello()), /pinned/);
   await put(state, root, m, ""); // clear 元 → readme mount restored
   assert.equal(hello(), undefined, "the pinned dom is gone with its formula");
+});
+
+test("mount(selector, content) splices under any element of the view (e.g. .sheet)", async () => {
+  const { state, root, m } = await boot();
+  await put(state, root, m, "=grid(3, 3)"); // gives the view a .sheet with cells + a grid
+  await put(state, root, m, '(mount ".sheet" (dom "div.under" "below the cells"))', "g3x3.A1");
+  const sheet = walk(root, (n) => String(n.attrs?.class ?? "") === "sheet")[0];
+  assert.ok(sheet, "the .sheet node rendered");
+  const under = walk(sheet, (n) => String(n.attrs?.class ?? "") === "under")[0];
+  assert.ok(under, "the dom is spliced UNDER .sheet, not appended to a region");
+  assert.match(txt(under), /below the cells/);
+  await put(state, root, m, "", "g3x3.A1"); // clear the formula
+  assert.equal(walk(root, (n) => String(n.attrs?.class ?? "") === "under")[0], undefined, "gone with its formula");
 });
 
 test("introspection: inspect / segments / vocab return readable values", async () => {
