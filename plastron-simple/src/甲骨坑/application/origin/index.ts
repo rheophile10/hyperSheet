@@ -137,43 +137,44 @@ const addrOf = (key: string): { col: number; row: number } | null => {
  *  expanded editor panel for its full formula. A cell's value shows in
  *  place — a number, text, or a live dom object. */
 const originView: Fn = (
-  editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown, readme: unknown,
+  editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown, srcs: unknown,
 ) => {
   const ks = Array.isArray(keys) ? (keys as string[]) : ["元"];
   const vs = Array.isArray(vals) ? (vals as unknown[]) : [];
+  const ss = Array.isArray(srcs) ? (srcs as unknown[]) : [];
   const active = typeof editing === "string" ? editing : null;
   const errMsg = typeof error === "string" ? error : null;
   const valOf = new Map<string, unknown>(); ks.forEach((k, i) => valOf.set(k, vs[i]));
+  const srcOf = new Map<string, string>(); ks.forEach((k, i) => srcOf.set(k, String(ss[i] ?? "")));
 
-  // the editor, plus an error line when its last formula failed to compile.
-  // `big` (the base cell) uses a resizable textarea so long formulas are
-  // comfortable to edit; grid cells use a one-line input.
-  const editor = (key: string, big: boolean): V =>
+  // the editor — a resizable textarea (the SAME for every cell), plus an
+  // error line when its last formula failed to compile.
+  const editor = (key: string): V =>
     el("div", { class: "cell-editing" }, [
-      el(big ? "textarea" : "input", { class: big ? "cell-edit big" : "cell-edit", value: String(draft ?? "") }, [], {
+      el("textarea", { class: "cell-edit", value: String(draft ?? "") }, [], {
         input: { set: "元.draft", extract: "value" },
         keydown: { dispatch: "origin.key", payload: key }, // origin.key commits on Enter
       }),
       ...(errMsg ? [el("div", { class: "cell-error" }, [T(errMsg)])] : []),
     ]);
 
-  // the inner of a cell: inline editor when active, else the value. CLICK
-  // the value to edit it — one edit gesture for every cell.
-  const body = (key: string, value: unknown, big: boolean): V => {
-    if (active === key) return editor(key, big);
-    // wrap the value in an element so it's the flex:1 child of .cell-value
-    const shown = displayCell(value);
+  // the inner of a cell: inline editor when active, else the value. A cell
+  // whose value renders ELSEWHERE (a mount — e.g. the readme in 元) shows its
+  // SOURCE here, so the formula is visible + editable. Click to edit.
+  const body = (key: string, value: unknown): V => {
+    if (active === key) return editor(key);
+    const isMount = !!value && typeof value === "object" && typeof (value as { __mount?: unknown }).__mount === "string";
+    const shown = isMount ? el("pre", { class: "cell-pre cell-src" }, [T(srcOf.get(key) ?? "")]) : displayCell(value);
     const valEl = shown.type === "text" ? el("span", { class: "cell-val-text" }, [shown]) : shown;
     return el("div", { class: "cell-value", title: "click to edit" }, [valEl],
       { click: { dispatch: "origin.edit", payload: key } });
   };
 
   // ANY set of cels → one Excel-style table (corner label + column letters +
-  // row numbers). Used for BOTH the base sheet (元 at A1) and every grid()
-  // layer, so the base cel and grid cels share exactly one cell UI. `base`
-  // marks the base sheet, whose lone cell autofits its content + expands.
+  // row numbers). The base sheet (元 at A1) and every grid() layer go through
+  // this same renderer — ONE cell UI everywhere, every cell resizable.
   const colLetter = (c: number): string => { let s = "", n = c + 1; while (n > 0) { s = String.fromCharCode(65 + (n - 1) % 26) + s; n = Math.floor((n - 1) / 26); } return s; };
-  const sheetTable = (label: string, entries: { key: string; col: number; row: number }[], base: boolean): V => {
+  const sheetTable = (label: string, entries: { key: string; col: number; row: number }[]): V => {
     let maxC = 0, maxR = 0;
     const at = new Map<string, string>();
     for (const e of entries) { at.set(`${e.col},${e.row}`, e.key); maxC = Math.max(maxC, e.col); maxR = Math.max(maxR, e.row); }
@@ -183,12 +184,12 @@ const originView: Fn = (
       el("tr", {}, [el("th", { class: "rownum" }, [T(String(r + 1))]),
         ...Array.from({ length: maxC + 1 }, (_, c) => {
           const k = at.get(`${c},${r}`);
-          const cls = `${k && active === k ? "cell editing" : "cell"}${base ? " base" : ""}`;
-          return el("td", { class: cls, "data-key": k ?? "" }, k ? [body(k, valOf.get(k), base)] : []);
+          return el("td", { class: k && active === k ? "cell editing" : "cell", "data-key": k ?? "" },
+            k ? [body(k, valOf.get(k))] : []);
         })]));
     // wrap in a horizontal scroller so a wide grid reaches column A
     // (a centered overflowing table clips its left edge unreachably).
-    return el("div", { class: "grid-scroll" }, [el("table", { class: base ? "grid base" : "grid" }, [el("thead", {}, [head]), el("tbody", {}, rows)])]);
+    return el("div", { class: "grid-scroll" }, [el("table", { class: "grid" }, [el("thead", {}, [head]), el("tbody", {}, rows)])]);
   };
 
   // group: base cels (no dot) vs grid layers (segment before the dot)
@@ -200,12 +201,11 @@ const originView: Fn = (
   }
 
   const sections: V[] = [];
-  // the base sheet: 元 at A1, any other base cels down column A — same table
-  // chrome as a grid (corner "元", A/1 headers) but autofit + expandable.
-  if (base.length) sections.push(sheetTable("元", base.map((k, i) => ({ key: k, col: 0, row: i })), true));
+  // the base sheet: 元 at A1, any other base cels down column A.
+  if (base.length) sections.push(sheetTable("元", base.map((k, i) => ({ key: k, col: 0, row: i }))));
   for (const [layer, members] of layers) {
     const entries = members.map((k) => { const a = addrOf(k); return a ? { key: k, col: a.col, row: a.row } : null; }).filter((e): e is { key: string; col: number; row: number } => !!e);
-    sections.push(sheetTable(layer, entries, false));
+    sections.push(sheetTable(layer, entries));
   }
 
   // PLACED dom — a cell whose value is mount(target, content). The dom is
@@ -221,9 +221,6 @@ const originView: Fn = (
   };
   const placements: { sel: string; vnode: V }[] = [];
   for (const k of ks) { const p = asPlacement(valOf.get(k)); if (p) placements.push(p); }
-  // the readme is a dedicated cel mounted below the sheet (not a spreadsheet
-  // cell) — so 元 itself stays an empty, editable cell.
-  const rp = asPlacement(readme); if (rp) placements.push(rp);
 
   const sheetNode = el("div", { class: "sheet" }, sections);
   const originNode = el("div", { class: "origin" }, [sheetNode]);
@@ -304,6 +301,9 @@ const sniff = (src: string): { celType: string; f?: string; v?: unknown; parser?
 };
 
 const VIEW_KEY = "元.view";
+// 元's default formula (the readme) — sourced from the seed, restored when 元
+// is cleared so the readme is un-deletable.
+const README = String((seed as { cels: { key: string; f?: string }[] }).cels.find((c) => c.key === "元")?.f ?? "");
 
 /** The current spreadsheet cell list: 元 (A1) plus every genesis-created
  *  DATA cel (grid cells), sorted. Rebuilt after each commit so new grids
@@ -324,7 +324,8 @@ const cellKeys = (state: State): string[] => {
 const rewireView = async (state: State, keys: string[]): Promise<void> => {
   const im = { ...(state.cels.get(VIEW_KEY)?.metadata.inputMap as Record<string, Key | Key[]>) };
   im.vals = keys;
-  await (resolveFn(state, "setValue") as Fn)(state, "元.cells", keys);
+  await (resolveFn(state, "setValueBatch") as Fn)(state,
+    [["元.cells", keys], ["元.srcs", keys.map((k) => cellSource(state, k))]]);
   await (resolveFn(state, "setCel") as Fn)(state, VIEW_KEY, { metadata: { inputMap: im } });
 };
 
@@ -356,7 +357,7 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   const draft = String(state.cels.get("元.draft")?.v ?? "").trim();
   const setCel = resolveFn(state, "setCel") as Fn;
 
-  const src = draft;
+  const src = key === "元" && draft === "" ? README : draft;
   const spec = src === "" ? { celType: "ValueCel", v: "" } : sniff(src);
   // Carry forward ownership/name stamps so editing a GRID cell keeps it
   // owned by its generator (else the sweep can't reclaim it, and the

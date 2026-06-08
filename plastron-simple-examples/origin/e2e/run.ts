@@ -84,9 +84,9 @@ const cel = (page: Page, key: string): Promise<unknown> =>
 // ── cases ───────────────────────────────────────────────────────────────────
 
 await withPage("boot — canvas readme renders + draws", async (page) => {
-  eq(await cel(page, "元"), "", "元 is an empty editable cell");
-  eq((await cel(page, "readme") as { __mount?: string })?.__mount, ".origin", "the readme cel mounts below");
-  ok(await page.$('table.grid.base td.cell.base[data-key="元"]'), "元 is the base sheet cell (autofit/expandable)");
+  eq((await cel(page, "元") as { __mount?: string })?.__mount, ".origin", "元 holds the readme (renders below)");
+  ok(await page.$('td.cell[data-key="元"] pre.cell-src'), "元 shows its SOURCE — the readme formula text");
+  ok(await page.$('table.grid td.cell[data-key="元"]'), "元 is a uniform table cell (same UI as grid cels)");
   ok(await page.$(".readme"), "readme card rendered");
   const canvas = await page.$(".readme canvas");
   ok(canvas, "canvas banner element present");
@@ -194,7 +194,7 @@ await withPage("click a cell to edit it", async (page) => {
 await withPage("clearing 元 restores the readme", async (page) => {
   await put(page, "=1 + 1");
   await put(page, "");
-  eq(await cel(page, "元"), "", "cleared 元 is empty");
+  eq((await cel(page, "元") as { __mount?: string })?.__mount, ".origin", "clearing 元 restores the readme");
   ok(await page.$(".readme canvas"), "readme (with canvas banner) still below");
 });
 

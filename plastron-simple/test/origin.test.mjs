@@ -59,15 +59,18 @@ const put = async (state, root, m, src, key = "元") => {
   m.run();
 };
 
-test("boot: 元 is an empty cell; the readme renders below", async () => {
+test("boot: 元 holds the readme; it renders below and 元 shows its source", async () => {
   const { state, root } = await boot();
   assert.deepEqual(cells(root).map((c) => c.attrs["data-key"]), ["元"], "one cell — 元");
-  assert.equal(state.cels.get("元").v, "", "元 is empty at boot");
-  assert.equal(state.cels.get("readme").v?.__mount, ".origin", "the readme cel mounts to .origin (below the sheet)");
+  assert.equal(state.cels.get("元").v?.__mount, ".origin", "元's value is the readme mount (renders below)");
   const rm = cls(root, "readme");
   assert.ok(rm, "readme rendered below the sheet");
   assert.ok(rm.style && Object.keys(rm.style.props).length > 0, "readme carries inline styles");
   assert.match(txt(rm), /every formula starts with =/);
+  // 元 (a mounted cell) shows its SOURCE — the readme formula text
+  const src = walk(root, (n) => /(^| )cell-src( |$)/.test(String(n.attrs?.class ?? "")))[0];
+  assert.ok(src, "元 cell shows its source");
+  assert.match(txt(src), /mount/, "the readme formula is visible in 元");
 });
 
 test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restores readme", async () => {
@@ -78,8 +81,8 @@ test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restore
   await put(state, root, m, "7");
   assert.equal(cellVal(root, "元"), "7", "literal renders in A1");
   await put(state, root, m, "");
-  assert.equal(state.cels.get("元").v, "", "cleared 元 is empty");
-  assert.ok(cls(root, "readme"), "readme still shows (a separate cel, always below)");
+  assert.ok(cls(root, "readme"), "empty 元 -> readme back (un-deletable)");
+  assert.equal(state.cels.get("元").v?.__mount, ".origin", "readme restored as a mount");
 });
 
 test("A1 can render a dom object", async () => {
