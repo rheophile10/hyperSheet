@@ -36,7 +36,7 @@ import * as appHost         from "./甲骨坑/library/app-host/index.js";
 import * as defn            from "./甲骨坑/library/defn/index.js";
 import * as genesis         from "./甲骨坑/library/genesis/index.js";
 import * as checkpoint      from "./甲骨坑/library/checkpoint/index.js";
-import * as origin          from "./甲骨坑/library/origin/index.js";
+import * as origin          from "./甲骨坑/application/origin/index.js";
 import * as sound           from "./甲骨坑/library/sound/index.js";
 
 // ============================================================================
@@ -88,12 +88,14 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "defn":             () => [...defn.cels],
   "genesis":          () => [...genesis.cels],
   "checkpoint":       () => [...checkpoint.cels],
-  "origin":           () => [...origin.cels],
 };
 
-// application/ segments boot via host-called builders (buildNotepad,
-// buildWebEditor), not 冊.json — no eager loaders today.
-const applicationLoaders: Record<Key, () => Cel[]> = {};
+// application/ segments. notepad + web-editor boot via host-called builders
+// (buildNotepad, buildWebEditor); origin is the freespace host application,
+// loaded by `ensureSegments(["origin"])` and parked-by-default below.
+const applicationLoaders: Record<Key, () => Cel[]> = {
+  "origin":           () => [...origin.cels],
+};
 
 const segmentLoaders: Record<Key, () => Cel[]> = {
   ...kernelLoaders,

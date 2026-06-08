@@ -186,6 +186,6 @@
       "html-template-parser",
       "plastron-dom"
     ],
-    "role": "library"
+    "role": "application"
   }
 ]

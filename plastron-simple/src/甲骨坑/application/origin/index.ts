@@ -137,28 +137,42 @@ const addrOf = (key: string): { col: number; row: number } | null => {
  *  expanded editor panel for its full formula. A cell's value shows in
  *  place — a number, text, or a live dom object. */
 const originView: Fn = (
-  editing: unknown, expanded: unknown, draft: unknown, mount: unknown, keys: unknown, vals: unknown,
+  editing: unknown, expanded: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown,
 ) => {
   const ks = Array.isArray(keys) ? (keys as string[]) : ["元"];
   const vs = Array.isArray(vals) ? (vals as unknown[]) : [];
   const active = typeof editing === "string" ? editing : null;
   const open = typeof expanded === "string" ? expanded : null;
+  const errMsg = typeof error === "string" ? error : null;
   const valOf = new Map<string, unknown>(); ks.forEach((k, i) => valOf.set(k, vs[i]));
 
+  // the editor input/textarea, plus an error line when its last formula
+  // failed to compile (so a syntax error shows instead of doing nothing)
   const editor = (key: string, big: boolean): V =>
-    el(big ? "textarea" : "input", { class: big ? "cell-edit big" : "cell-edit", value: String(draft ?? "") }, [], {
-      input: { set: "元.draft", extract: "value" },
-      keydown: { dispatch: "origin.key", payload: key }, // origin.key commits on Enter
-    });
+    el("div", { class: "cell-editing" }, [
+      el(big ? "textarea" : "input", { class: big ? "cell-edit big" : "cell-edit", value: String(draft ?? "") }, [], {
+        input: { set: "元.draft", extract: "value" },
+        keydown: { dispatch: "origin.key", payload: key }, // origin.key commits on Enter
+      }),
+      ...(errMsg ? [el("div", { class: "cell-error" }, [T(errMsg)])] : []),
+    ]);
   const expandBtn = (key: string): V =>
-    el("button", { class: "cell-expand", title: "expand formula" }, [T("⤢")],
+    el("button", { class: "cell-expand", title: "expand formula (or double-click the cell)" }, [T("⤢")],
       { click: { dispatch: "origin.expand", payload: key } });
 
-  // the inner of a cell: inline editor when active, else the value + ⤢
-  const body = (key: string, value: unknown): V =>
-    active === key
-      ? editor(key, false)
-      : el("div", { class: "cell-value" }, [displayCell(value), expandBtn(key)]);
+  // the inner of a cell: inline editor when active, else the value + ⤢.
+  // Double-click the value to edit inline (the main path for grid cells,
+  // which have no label); the ⤢ opens the big editor for long formulas.
+  const body = (key: string, value: unknown): V => {
+    if (active === key) return editor(key, false);
+    // wrap the value in an element so IT (not the button) is the flex:1
+    // first child — a bare text value would make the <button> the first
+    // ELEMENT child and stretch it across the cell.
+    const shown = displayCell(value);
+    const valEl = shown.type === "text" ? el("span", { class: "cell-val-text" }, [shown]) : shown;
+    return el("div", { class: "cell-value", title: "double-click to edit" }, [valEl, expandBtn(key)],
+      { dblclick: { dispatch: "origin.edit", payload: key } });
+  };
 
   // base sheet: 元 as a labelled button-box (the "元 button")
   const baseCell = (key: string, value: unknown): V =>
@@ -310,7 +324,7 @@ const sniff = (src: string): { celType: string; f?: string; v?: unknown; parser?
 };
 
 const VIEW_KEY = "元.view";
-const README = "(mount \"top\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (dom \"h1\" (style \"margin\" \"0 0 .2rem\" \"font-size\" \"1.7rem\" \"font-family\" \"system-ui\") \"plastron \ud83d\udc22\")\n    (dom \"p\" (style \"margin\" \"0 0 .8rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"a spreadsheet where formulas can also build dom, cels, sheets, and apps. try these in a cell:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=sheets(\\\"in\\\" 4 3 \\\"out\\\" 4 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"(dom \\\"h2\\\" (style \\\"color\\\" \\\"tomato\\\") \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"(mount \\\".sheet\\\" (dom \\\"p\\\" \\\"under the cells\\\"))  pin dom under any element\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"\u5143\\\")              this cel as json\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"this whole page is one index.html \u2014 no install, no PWA. the \u2193 save button keeps a copy with your sheet baked in; double-click it to run offline from your desktop.\")\n    (dom \"p\" (style \"margin\" \".4rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click \u5143 to edit this; clear it to bring it back.\")))";
+const README = "(mount \"top\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (dom \"h1\" (style \"margin\" \"0 0 .2rem\" \"font-size\" \"1.7rem\" \"font-family\" \"system-ui\") \"plastron \ud83d\udc22\")\n    (dom \"p\" (style \"margin\" \"0 0 .8rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"a spreadsheet where formulas can also build dom, cels, sheets, and apps. every formula starts with = — try these:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=sheets(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=mount(\\\".sheet\\\", dom(\\\"p\\\", \\\"under the cells\\\"))  pin dom under an element\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"mount\\\")           a function: signature + source\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"this whole page is one index.html \u2014 no install, no PWA. the \u2193 save button keeps a copy with your sheet baked in; double-click it to run offline from your desktop.\")\n    (dom \"p\" (style \"margin\" \".4rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click \u5143 to edit this; clear it to bring it back.\")))";
 
 /** The current spreadsheet cell list: 元 (A1) plus every genesis-created
  *  DATA cel (grid cells), sorted. Rebuilt after each commit so new grids
@@ -350,7 +364,7 @@ const edit: Fn = async (state: State, payload?: unknown) => {
   const cur = state.cels.get("元.editing")?.v;
   const next = cur === key ? null : key;
   await (resolveFn(state, "setValueBatch") as Fn)(state,
-    [["元.editing", next], ["元.expanded", null], ["元.draft", next ? cellSource(state, next) : ""]]);
+    [["元.editing", next], ["元.expanded", null], ["元.draft", next ? cellSource(state, next) : ""], ["元.error", null]]);
   await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
   return state;
 };
@@ -363,7 +377,7 @@ const expand: Fn = async (state: State, payload?: unknown) => {
   const cur = state.cels.get("元.expanded")?.v;
   const next = cur === key ? null : key;
   await (resolveFn(state, "setValueBatch") as Fn)(state,
-    [["元.expanded", next], ["元.editing", null], ["元.draft", next ? cellSource(state, next) : ""]]);
+    [["元.expanded", next], ["元.editing", null], ["元.draft", next ? cellSource(state, next) : ""], ["元.error", null]]);
   await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
   return state;
 };
@@ -390,9 +404,22 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   if (prior?.definedBy) md.definedBy = prior.definedBy;
   if (prior?.origin) md.origin = prior.origin;
   if (spec.parser) md.parser = spec.parser;
-  await setCel(state, key, { celType: spec.celType, f: spec.f, v: spec.v, metadata: md });
+  try {
+    await setCel(state, key, { celType: spec.celType, f: spec.f, v: spec.v, metadata: md });
+  } catch (e) {
+    // A parse/compile error (e.g. `=sheets("in" 4 3)` — infix wants commas)
+    // throws OUT of setCel, which would abort the commit before any paint —
+    // so the cell looked like it did nothing. Surface the message under the
+    // editor and stay in the cell so it can be fixed.
+    const msg = String((e as { message?: unknown })?.message ?? e).replace(/^setCel:\s*"[^"]*"\s*—\s*/, "");
+    // keep the bad draft and force the cell into edit mode so the error
+    // line is visible (it renders under the active editor).
+    await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", msg], ["元.editing", key], ["元.expanded", null]]);
+    await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
+    return state;
+  }
 
-  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["元.expanded", null], ["元.draft", ""]]);
+  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["元.expanded", null], ["元.draft", ""], ["元.error", null]]);
   // fire generators so they enqueue, then commit structure + sweep…
   await (resolveFn(state, "runCycle") as Fn)(state);
   const drain = resolveFn(state, "drain") as Fn;

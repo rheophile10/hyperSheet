@@ -66,7 +66,7 @@ test("boot: 元 holds a styled mount; the readme renders in the top region", asy
   const rm = cls(root, "readme");
   assert.ok(rm, "readme rendered (in the region)");
   assert.ok(rm.style && Object.keys(rm.style.props).length > 0, "readme carries inline styles");
-  assert.match(txt(rm), /try these in a cell/);
+  assert.match(txt(rm), /every formula starts with =/);
 });
 
 test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restores readme", async () => {
@@ -100,6 +100,18 @@ test("=grid(3,3) makes a 3x3 worksheet of cels, each editable like 元", async (
   await put(state, root, m, "");
   assert.equal(state.cels.get("g3x3.A1"), undefined, "grid swept when its formula is gone");
   assert.deepEqual(cells(root).map((c) => c.attrs["data-key"]), ["元"], "back to just A1");
+});
+
+test("a syntax error surfaces under the editor instead of doing nothing", async () => {
+  const { state, root, m } = await boot();
+  await put(state, root, m, '=sheets("in" 4 3)'); // infix wants commas — this won't compile
+  assert.match(String(state.cels.get("元.error").v ?? ""), /expected|infix|\)/, "the parse error is captured");
+  assert.equal(state.cels.get("元.editing").v, "元", "stays in the cell so it can be fixed");
+  assert.ok(walk(root, (n) => String(n.attrs?.class ?? "") === "cell-error")[0], "error line is rendered");
+  // fixing it (commas) clears the error and commits
+  await put(state, root, m, '=sheets("in", 4, 3)');
+  assert.equal(state.cels.get("元.error").v, null, "error cleared on a good commit");
+  assert.ok(state.cels.get("in.A1"), "the corrected formula ran");
 });
 
 test("editing a cell label opens an input seeded with its source", async () => {
