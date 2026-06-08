@@ -27,7 +27,7 @@ const mkEl = (tag) => {
 };
 const walk = (n, p, o = []) => { if (n?.nodeType === 1) { if (p(n)) o.push(n); for (const c of n.childNodes) walk(c, p, o); } return o; };
 const txt = (n) => (n.nodeType === 3 ? n.data : (n.childNodes ?? []).map(txt).join(""));
-const boxes = (root) => walk(root, (n) => n.tag === "div" && String(n.attrs.class ?? "").startsWith("cel"));
+const boxes = (root) => walk(root, (n) => n.tag === "div" && /^cel( open)?$/.test(String(n.attrs.class ?? "")));
 const boxByKey = (root, key) => boxes(root).find((b) => b.attrs["data-key"] === key);
 const mockRaf = () => { const q = []; return { raf: (cb) => q.push(cb), caf: () => {}, run: () => { for (const cb of q.splice(0)) cb(); } }; };
 

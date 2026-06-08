@@ -58,29 +58,36 @@ const originView: Fn = (
   const bannerNode = banner && typeof banner === "object" && "type" in (banner as object)
     ? (banner as V) : null;
 
-  const box = (key: string, body: V[], isOpen: boolean): V =>
-    el("div", { class: isOpen ? "cel open" : "cel", "data-key": key }, body,
+  // Only the HEADER toggles expand/close — never the whole open box, so
+  // clicking into the input doesn't bubble up and collapse the cel
+  // (events-as-data has no stopPropagation; the header carries the only
+  // toggle, the body carries none).
+  const header = (key: string, trailing: V[]): V =>
+    el("div", { class: "cel-head" }, [el("span", { class: "k" }, [T(key)]), ...trailing],
       { click: { dispatch: "origin.expand", payload: key } });
 
   const editor = (key: string): V =>
     el("input", { class: "entry", value: String(draft ?? ""), placeholder: "type a formula, press enter" }, [], {
       input: { set: "元.draft", extract: "value" },
       keydown: { dispatch: "origin.key", payload: key },
-      click: { dispatch: "origin.noop" }, // keep box-click from re-toggling while typing
     });
+
+  const openBox = (key: string, body: V[]): V =>
+    el("div", { class: "cel open", "data-key": key }, [header(key, []), ...body, editor(key)]);
+  const closedBox = (key: string, valNode: V): V =>
+    el("div", { class: "cel", "data-key": key }, [header(key, [valNode])]);
 
   const boxes: V[] = [];
   const originOpen = open === "元";
-  boxes.push(box("元", originOpen
-    ? [el("pre", { class: "readme" }, [T(readme)]), editor("元")]
-    : [el("span", { class: "k" }, [T("元")])], originOpen));
+  boxes.push(originOpen
+    ? openBox("元", [el("pre", { class: "readme" }, [T(readme)])])
+    : closedBox("元", el("span", { class: "v" }, [])));
 
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i]!;
-    const isOpen = open === key;
-    boxes.push(box(key, isOpen
-      ? [el("span", { class: "k" }, [T(key)]), el("pre", { class: "val" }, [T(short(values[i]))]), editor(key)]
-      : [el("span", { class: "k" }, [T(key)]), el("span", { class: "v" }, [T(short(values[i]))])], isOpen));
+    boxes.push(open === key
+      ? openBox(key, [el("pre", { class: "val" }, [T(short(values[i]))])])
+      : closedBox(key, el("span", { class: "v" }, [T(short(values[i]))])));
   }
 
   const children = bannerNode ? [bannerNode, el("div", { class: "freespace" }, boxes)] : [el("div", { class: "freespace" }, boxes)];
