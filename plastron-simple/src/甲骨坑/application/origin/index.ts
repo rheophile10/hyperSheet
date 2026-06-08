@@ -39,23 +39,27 @@ const isVnode = (v: unknown): v is V =>
  *  is gone — composed by value, nothing to unmount. */
 const isStyle = (c: unknown): c is { __style: Record<string, unknown> } =>
   !!c && typeof c === "object" && typeof (c as { __style?: unknown }).__style === "object";
+const isAttr = (c: unknown): c is { __attr: Record<string, unknown> } =>
+  !!c && typeof c === "object" && typeof (c as { __attr?: unknown }).__attr === "object";
 
 const dom: Fn = (tag: unknown, ...children: unknown[]): V => {
   const spec = String(tag ?? "div");
   const dot = spec.indexOf(".");
   const name = dot === -1 ? spec : spec.slice(0, dot);
   const cls = dot === -1 ? undefined : spec.slice(dot + 1).replace(/\./g, " ");
-  // a (style …) child sets inline style; the rest are children
+  // (style …) children set inline style; (attr …) children set attributes
+  // (href, target, …); the rest are child nodes.
   let style: Record<string, unknown> | undefined;
+  const attrs: Record<string, unknown> = cls ? { class: cls } : {};
   const kids: V[] = [];
   for (const c of children) {
     if (isStyle(c)) { style = { ...style, ...c.__style }; continue; }
+    if (isAttr(c)) { Object.assign(attrs, c.__attr); continue; }
     kids.push(isVnode(c) ? c : T(c));
   }
-  const attrs = cls ? { class: cls } : undefined;
   return {
     type: "el", tag: name || "div",
-    ...(attrs ? { attrs } : {}),
+    ...(Object.keys(attrs).length ? { attrs } : {}),
     ...(style ? { style: style as Record<string, string | number | boolean | null> } : {}),
     children: kids,
   };
@@ -67,6 +71,14 @@ const style: Fn = (...pairs: unknown[]): { __style: Record<string, unknown> } =>
   const s: Record<string, unknown> = {};
   for (let i = 0; i + 1 < pairs.length; i += 2) s[String(pairs[i])] = pairs[i + 1];
   return { __style: s };
+};
+
+/** attr(name, value, …) — HTML attributes for a dom element (href, target,
+ *  id, …). Pass as a child: (dom "a" (attr "href" "https://…") "link"). */
+const attr: Fn = (...pairs: unknown[]): { __attr: Record<string, unknown> } => {
+  const a: Record<string, unknown> = {};
+  for (let i = 0; i + 1 < pairs.length; i += 2) a[String(pairs[i])] = pairs[i + 1];
+  return { __attr: a };
 };
 
 /** How a cell's VALUE shows when not being edited: a dom vnode renders
@@ -410,6 +422,47 @@ const key: Fn = async (state: State, payload: unknown, event: unknown) => {
   return state;
 };
 
+// ── persistence — save the sheet to localStorage; auto-load it on boot ───────
+// A "sheet archive" is just the cell SOURCES (元.cells) + any def'd functions.
+// Replaying them reconstructs the sheet (grids regenerate, values + formulas
+// come back). The full .甲 graph archive is the eventual path; this round-trips
+// the origin's own data today without a user-space-segment refactor.
+
+const LS = (): Storage | undefined => (globalThis as { localStorage?: Storage }).localStorage;
+const slot = (name?: unknown): string => `plastron.sheet.${String(name || "default") || "default"}`;
+
+const collectArchive = (state: State): { v: number; cells: [string, string][]; defs: [string, string, string][] } => {
+  const keys = (state.cels.get("元.cells")?.v as string[] | undefined) ?? ["元"];
+  const cells: [string, string][] = [];
+  for (const k of keys) { const s = cellSource(state, k); if (s !== "" && s !== README) cells.push([k, s]); }
+  const defs: [string, string, string][] = [];
+  for (const [k, c] of state.cels) {
+    if (c.celType === "EditableLambdaCel" && c.metadata.segment === "origin") {
+      const f = (c as { f?: string }).f;
+      if (f) defs.push([k, String((c.metadata as { kind?: unknown }).kind ?? "js"), f]);
+    }
+  }
+  return { v: 1, cells, defs };
+};
+
+const restoreArchive = async (state: State, arch: { cells?: [string, string][]; defs?: [string, string, string][] }): Promise<void> => {
+  const setCel = resolveFn(state, "setCel") as Fn;
+  for (const [k, kind, f] of (arch.defs ?? [])) {
+    await setCel(state, k, { celType: "EditableLambdaCel", f, metadata: { kind, segment: "origin", name: k } });
+  }
+  const setValue = resolveFn(state, "setValue") as Fn;
+  for (const [k, src] of (arch.cells ?? [])) { await setValue(state, "元.draft", src); await commit(state, k); }
+};
+
+const saveFn: Fn = (name?: unknown) => ({ originSave: true, name: name == null ? "" : String(name) });
+const openFn: Fn = (name?: unknown) => ({ originOpen: true, name: name == null ? "" : String(name) });
+/** origin.autoload — restore the default slot on boot (the host calls this). */
+const autoload: Fn = async (state: State): Promise<State> => {
+  const raw = LS()?.getItem(slot());
+  if (raw) { try { await restoreArchive(state, JSON.parse(raw)); } catch { /* corrupt save — ignore */ } }
+  return state;
+};
+
 // ── inspect rendering — a tiny YAML-ish doc, easiest for a human to read ─────
 
 // `label: value` per field; multi-line strings become a `|` literal block
@@ -572,6 +625,14 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const url = String(req.url ?? "");
         if (!url) result = `(cdn: pass a url, e.g. =cdn("https://cdn.jsdelivr.net/npm/…"))`;
         else { await (resolveFn(state, "loadScript") as Fn)(state, url); result = `loaded ${url}`; }
+      } else if (req.originSave) {
+        const ls = LS();
+        if (!ls) result = "(no localStorage here)";
+        else { ls.setItem(slot(req.name), JSON.stringify(collectArchive(state))); result = `saved — reload and your sheet is back (slot "${String(req.name || "default")}")`; }
+      } else if (req.originOpen) {
+        const raw = LS()?.getItem(slot(req.name));
+        if (!raw) result = `(nothing saved as "${String(req.name || "default")}")`;
+        else { await restoreArchive(state, JSON.parse(raw)); result = `opened "${String(req.name || "default")}"`; }
       } else if (req.originChat) {
         // chat completion — POST to an OpenAI-shaped endpoint, await the reply.
         const url = String(req.url ?? "https://api.x.ai/v1/chat/completions");
@@ -617,6 +678,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["originView",     originView],
   ["dom",            dom],
   ["style",          style],
+  ["attr",           attr],
   ["mount",          mount],
   ["origin.commit",  commit],
   ["origin.edit",    edit],
@@ -632,4 +694,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["chat",           chatFn],
   ["grok",           grokFn],
   ["cdn",            cdnFn],
+  ["save",           saveFn],
+  ["open",           openFn],
+  ["origin.autoload", autoload],
 ]));

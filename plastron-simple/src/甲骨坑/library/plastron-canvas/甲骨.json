@@ -38,6 +38,15 @@
       }
     },
     {
+      "key": "orbit",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "orbit", "segment": "plastron-canvas", "name": "orbit", "kind": "native",
+        "description": "(cx, cy, orbitR, planetR, period [, color] [, phase]) - an ANIMATED canvas op: a planet circling (cx,cy) once every `period` seconds. A canvas with an orbit op runs a rAF loop; stack a few around a circle() for a heliocentric system."
+      }
+    },
+    {
       "key": "canvas",
       "celType": "LockedLambdaCel",
       "locked": true,

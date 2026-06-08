@@ -33,6 +33,13 @@ const line: Fn = (x1, y1, x2, y2, stroke, lineWidth) =>
 const circle: Fn = (x, y, r, fill, stroke, lineWidth) =>
   ({ op: "circle", x: num(x), y: num(y), r: num(r), fill: str(fill), stroke: str(stroke), lineWidth: str(lineWidth) ? num(lineWidth) : undefined });
 
+/** orbit(cx, cy, orbitR, planetR, period [, color] [, phase]) — an ANIMATED
+ *  op: a planet circling (cx,cy) at radius orbitR, once every `period` seconds.
+ *  A canvas with any orbit op runs a rAF loop (see plastron-dom). Stack a few
+ *  around a central circle() for a heliocentric system. */
+const orbit: Fn = (cx, cy, orbitR, planetR, period, color, phase) =>
+  ({ op: "orbit", cx: num(cx), cy: num(cy), orbitR: num(orbitR), planetR: num(planetR), period: num(period, 8), color: str(color), phase: num(phase) });
+
 /** canvas(width, height, …ops) — a <canvas> VNODE that draws `ops`. Use it
  *  as a cell value or inside mount/dom: `=canvas(600, 140, rect(…), text(…))`.
  *  Composes by concat — `(canvas 600 140 (bars data) (axes))` once you have
@@ -53,5 +60,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["text",   text],
   ["line",   line],
   ["circle", circle],
+  ["orbit",  orbit],
   ["canvas", canvas],
 ]));

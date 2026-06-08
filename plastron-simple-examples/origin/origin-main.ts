@@ -19,5 +19,9 @@ await (resolveFn(state, "precomputeOptional") ?? precomputeOptional)(state);
 await (resolve(state, "runCycle"))(state);
 await (resolve(state, "drain"))(state, "plastron-dom.paint");
 
+// restore a previously =save()d sheet (localStorage default slot), then repaint
+await (resolve(state, "origin.autoload"))(state);
+await (resolve(state, "drain"))(state, "plastron-dom.paint");
+
 // expose for console tinkering + the Playwright suite
 (globalThis as { plastron?: unknown }).plastron = { state, resolveFn };

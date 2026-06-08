@@ -16,9 +16,18 @@
       .sheet { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; }
       .grid-scroll { overflow-x: auto; max-width: 100%; }
 
-      .readme { margin: 0; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: .82rem; }
+      .readme { margin: 0; font-family: ui-monospace, monospace; font-size: .82rem; }
       .readme h2 { margin: 0 0 .4rem; font-size: 1.05rem; }
-      .readme p { margin: .1rem 0; white-space: pre-wrap; }
+      .readme canvas { display: block; margin: 0 0 .3rem; border-radius: .4rem; }
+      .readme p.fx-say { margin: .7rem 0 .25rem; color: #b9b9c2; font-family: system-ui; }
+      /* the two-column formula tables */
+      .readme table.fx { border-collapse: collapse; width: 100%; margin: 0 0 .2rem; }
+      .readme table.fx td { border: 1px solid #8883; padding: .22rem .5rem; vertical-align: top; font-size: .8rem; }
+      .readme td.fx-code { font-family: ui-monospace, monospace; color: #8ab4f8; white-space: pre-wrap; word-break: break-word; }
+      .readme td.fx-desc { color: #999; font-family: system-ui; white-space: normal; }
+      .readme p.fx-repo { margin: .9rem 0 0; }
+      .readme a { color: #7fd0ff; text-decoration: none; }
+      .readme a:hover { text-decoration: underline; }
 
       /* Excel-style grid for grid() layers */
       table.grid { border-collapse: collapse; font-variant-numeric: tabular-nums; }

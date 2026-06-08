@@ -88,17 +88,45 @@ await withPage("boot — canvas readme renders + draws", async (page) => {
   ok(await page.$('td.cell[data-key="元"] pre.cell-src'), "元 shows its SOURCE — the readme formula text");
   ok(await page.$('table.grid td.cell[data-key="元"]'), "元 is a uniform table cell (same UI as grid cels)");
   ok(await page.$(".readme"), "readme card rendered");
-  const canvas = await page.$(".readme canvas");
-  ok(canvas, "canvas banner element present");
-  ok(await page.evaluate(() => !!document.querySelector(".readme")?.textContent?.includes("every formula starts with =")), "intro text present");
-  // pixels were drawn (banner has a filled background + bars)
+  ok(await page.$(".readme canvas"), "canvas banner element present");
+  ok(await page.evaluate(() => !!document.querySelector(".readme")?.textContent?.includes("this readme is made from the formula")), "intro text present");
+  ok(await page.$(".readme table.fx td.fx-code"), "formulas shown in a two-column table");
+  ok(await page.$('.readme a[href*="github.com/rheophile10/plastron"]'), "repo link present");
+  // the banner canvas painted (filled background + title)
   const drawn = await page.evaluate(() => {
     const c = document.querySelector(".readme canvas") as HTMLCanvasElement;
-    const ctx = c.getContext("2d")!; const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
     let nonzero = 0; for (let i = 3; i < d.length; i += 4) if (d[i] !== 0) nonzero++;
     return nonzero;
   });
   ok(drawn > 1000, `canvas actually painted (${drawn} opaque px)`);
+});
+
+await withPage("the heliocentric canvas is ANIMATED (pixels change over time)", async (page) => {
+  // the 2nd readme canvas is the solar system (orbit ops → rAF loop)
+  const sample = () => page.evaluate(() => {
+    const cs = [...document.querySelectorAll(".readme canvas")] as HTMLCanvasElement[];
+    const c = cs[cs.length - 1]; // the heliocentric one
+    const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+    let h = 0; for (let i = 0; i < d.length; i += 16) h = (h * 31 + d[i]!) | 0; // cheap frame hash
+    return h;
+  });
+  const a = await sample();
+  await page.waitForTimeout(500);
+  const b = await sample();
+  ok(a !== b, `frame changed between samples (${a} → ${b}) — animation running`);
+});
+
+await withPage("=save() persists + reload restores the sheet", async (page) => {
+  await put(page, "=grid(2, 2)");
+  await put(page, "42", "g2x2.A1");
+  await put(page, "=g2x2!A1 + 8", "g2x2.B1");
+  ok(/^saved/.test(String(await put(page, "=save()"))), "save confirms");
+  await page.reload();
+  await page.waitForFunction(() => !!(globalThis as { plastron?: unknown }).plastron, { timeout: 8000 });
+  await page.waitForTimeout(400);
+  eq(await cel(page, "g2x2.A1"), 42, "g2x2.A1 restored after reload");
+  eq(await cel(page, "g2x2.B1"), 50, "g2x2.B1 recomputed (42 + 8)");
 });
 
 await withPage("=1 + 1 → 2", async (page) => eq(await put(page, "=1 + 1"), 2, "arithmetic"));

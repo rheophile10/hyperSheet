@@ -66,7 +66,9 @@ test("boot: 元 holds the readme; it renders below and 元 shows its source", as
   const rm = cls(root, "readme");
   assert.ok(rm, "readme rendered below the sheet");
   assert.ok(rm.style && Object.keys(rm.style.props).length > 0, "readme carries inline styles");
-  assert.match(txt(rm), /every formula starts with =/);
+  assert.match(txt(rm), /this readme is made from the formula/);
+  assert.ok(walk(root, (n) => n.tag === "table" && /(^| )fx( |$)/.test(String(n.attrs?.class ?? "")))[0], "formulas shown in a table");
+  assert.ok(walk(root, (n) => n.tag === "a" && String(n.attrs?.href ?? "").includes("github.com"))[0], "repo link present");
   // 元 (a mounted cell) shows its SOURCE — the readme formula text
   const src = walk(root, (n) => /(^| )cell-src( |$)/.test(String(n.attrs?.class ?? "")))[0];
   assert.ok(src, "元 cell shows its source");
