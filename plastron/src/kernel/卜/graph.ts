@@ -116,6 +116,12 @@ export const bumpDefGeneration = (state: State, cel: Cel): void => {
  *  the cel last compiled — the fire-time recompile trigger. */
 export const isDefinitionStale = (state: State, cel: Cel): boolean => {
   const compiledGen = (cel as { _compiledGen?: number })._compiledGen ?? 0;
+  // Fast path: if NOTHING has been redefined since this cel compiled, no
+  // dependency can have a newer _defGen than compiledGen — skip the per-dep
+  // scan. This is the common case in a pure DATA cascade (the hot path).
+  // Equivalent: every _defGen ≤ state.defGeneration, so defGeneration ≤
+  // compiledGen ⇒ no dep is stale.
+  if ((state.defGeneration ?? 0) <= compiledGen) return false;
   for (const k of celDependencies(cel)) {
     const dep = state.cels.get(k);
     if (!dep || !isDefinitionCel(dep)) continue;

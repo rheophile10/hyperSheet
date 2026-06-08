@@ -194,3 +194,36 @@ Takeaways:
 
 Methodology + reproduction recipe: `bench/krausest/README.md`.
 Framework dir source: `bench/krausest/{keyed,non-keyed}/plastron-dom-v0.0.2/`.
+
+---
+
+## v2 — old kernel vs new kernel (amortization, this machine, 2026-06-08)
+
+The bench was ported to the new kernel (`*.new.ts`, `resolveFn`/`setCelBatch`/
+`setValue`); the old kernel runs from a local `plastron-old/` (`*.old.ts`).
+Fair tick = one `setValue` (it cascades on its own).
+
+| n (chain depth) | old p50 | new p50 (before) | new p50 (after fix) |
+|---|---|---|---|
+| 100  | 86.7μs | 163μs  | **77.5μs** |
+| 500  | 214μs  | 819μs  | **374μs**  |
+| 1000 | 445μs  | 1598μs | **705μs**  |
+
+**Verdict: the new kernel regressed ~2–4×, growing with chain depth.**
+
+**Root cause (CPU profile):** `isDefinitionStale` (graph.ts) ran the fire-time
+recompile check by scanning every cel's dependencies on EVERY fire (~14.4%
+self), and `celDependencies` rebuilt the dep array each call (~16.5%) — ~31% of
+the cascade. A pure data cascade never redefines anything, so the scan always
+returned false after paying full cost.
+
+**Fix:** short-circuit `isDefinitionStale` when `state.defGeneration <=
+cel._compiledGen` (nothing redefined since compile ⇒ cannot be stale). Provably
+equivalent; 548 kernel + 107 origin e2e green. Recovers ~55% — new kernel now
+0.9–1.75× of old (n=100 is faster).
+
+**Residual gap (~1.6× at n=1000):** `fireCel` (24.5%) + `runCascade` (10.4%) +
+`celDependencies` still-uncached (now via affectedFor/bfs) — the more-indirect
+cascade of the de-classed kernel. Next lever: memoize `celDependencies` per cel.
+
+TODO: port life (grid) + cellx (wide-fan) for the full picture; then krausest.
