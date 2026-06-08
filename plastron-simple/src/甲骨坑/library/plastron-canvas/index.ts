@@ -16,6 +16,8 @@ import seed from "./甲骨.json" with { type: "json" };
 const num = (v: unknown, d = 0): number => { const n = Number(v); return Number.isFinite(n) ? n : d; };
 const str = (v: unknown): string | undefined => (v === undefined || v === null || v === "" ? undefined : String(v));
 const isOp = (o: unknown): boolean => !!o && typeof o === "object" && typeof (o as { op?: unknown }).op === "string";
+const isStyle = (c: unknown): c is { __style: Record<string, unknown> } =>
+  !!c && typeof c === "object" && typeof (c as { __style?: unknown }).__style === "object";
 
 /** rect(x, y, w, h [, fill] [, stroke] [, lineWidth]) — a filled/stroked box. */
 const rect: Fn = (x, y, w, h, fill, stroke, lineWidth) =>
@@ -44,11 +46,15 @@ const orbit: Fn = (cx, cy, orbitR, planetR, period, color, phase) =>
  *  as a cell value or inside mount/dom: `=canvas(600, 140, rect(…), text(…))`.
  *  Composes by concat — `(canvas 600 140 (bars data) (axes))` once you have
  *  vocabulary fns that return op lists. */
-const canvas: Fn = (width, height, ...ops) => {
-  const opList = ops.filter(isOp);
+const canvas: Fn = (width, height, ...rest) => {
+  // ops plus an optional (style …) child for inline styling of the <canvas>
+  let style: Record<string, unknown> | undefined;
+  const opList: unknown[] = [];
+  for (const c of rest) { if (isStyle(c)) { style = { ...style, ...c.__style }; continue; } if (isOp(c)) opList.push(c); }
   return {
     type: "el", tag: "canvas",
     attrs: { width: Math.max(1, num(width, 300)), height: Math.max(1, num(height, 150)), "data-ops": JSON.stringify(opList) },
+    ...(style ? { style: style as Record<string, string | number | boolean | null> } : {}),
     children: [],
   };
 };
