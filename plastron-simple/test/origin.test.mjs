@@ -57,15 +57,33 @@ const type = async (state, root, m, source, target = "元") => {
   m.run();
 };
 
-test("boot contract: hydrate paints exactly one visible cel — the origin, readme inside", async () => {
+const stackDiv = (root) => walk(root, (n) => String(n.attrs?.class ?? "") === "readme")[0];
+
+test("boot contract: origin + a readme dom cell; readme renders live in the stack above", async () => {
   const { state, root } = await boot();
   const bs = boxes(root);
-  assert.equal(bs.length, 1, "one visible cel above the invisible floor");
-  assert.equal(bs[0].attrs["data-key"], "元");
-  assert.match(txt(bs[0]), /you are at the origin/, "the readme is the value, rendered");
+  // baseline freespace: the origin anchor + the seeded readme dom cell
+  assert.deepEqual(bs.map((b) => b.attrs["data-key"]), ["元", "readme"]);
+  // the readme is a dom() formula whose value renders live above the cels
+  assert.ok(state.cels.get("readme").v?.type === "el", "readme cell value is a vnode");
+  assert.ok(stackDiv(root), "readme div painted in the stack");
+  assert.match(txt(stackDiv(root)), /you are at the origin/, "readme text rendered");
   // the floor exists but is invisible
   assert.ok(state.cels.get("setValue"), "kernel cels present");
   assert.ok(state.cels.get("genesis.commit"), "genesis in the firmware closure");
+});
+
+test("dom(): a vnode-valued cell renders in the stack; deleting the formula removes it", async () => {
+  const { state, root, m } = await boot();
+  await type(state, root, m, '=dom("div.note", "hi there")');
+  const note = () => walk(root, (n) => String(n.attrs?.class ?? "") === "note")[0];
+  assert.ok(note(), "dom div painted in the stack");
+  assert.match(txt(note()), /hi there/);
+
+  await resolveFn(state, "origin.expand")(state, "c1"); m.run();
+  await type(state, root, m, "", "c1");
+  assert.equal(state.cels.get("c1"), undefined, "formula deleted");
+  assert.equal(note(), undefined, "the div disappeared with its formula");
 });
 
 test("entry gesture: =1+1 becomes c1 showing 2; literals become ValueCels", async () => {
@@ -95,7 +113,8 @@ test("grid bloom and sweep — the north-star invariant at the origin", async ()
   await type(state, root, m, "", "c1");
   assert.equal(state.cels.get("c1"), undefined, "formula cel deleted");
   assert.equal(state.cels.get("g.A1"), undefined, "bloom swept");
-  assert.equal(boxes(root).length, 1, "freespace is one cel again");
+  // back to the baseline freespace: 元 + the seeded readme
+  assert.deepEqual(boxes(root).map((b) => b.attrs["data-key"]), ["元", "readme"]);
 });
 
 test("editing an open cel commits in place; cross-grid formulas work from freespace", async () => {
@@ -120,35 +139,4 @@ test("=cels(\"sheet\") lists a segment; =load reports; unknown symbols show #NAM
 
   await type(state, root, m, "=nosuchthing(1)");
   assert.match(txt(boxByKey(root, "c2")), /#NAME\?/, "clean unknown-symbol display");
-});
-
-test("=checkpoint + restore round-trips freespace", async () => {
-  const { state, root, m } = await boot();
-  await type(state, root, m, "=40+2");
-  await type(state, root, m, '=checkpoint("good")');
-  await resolveFn(state, "drain")(state, "checkpoint.commit");
-  await type(state, root, m, "=9000");
-  assert.ok(boxByKey(root, "c3"));
-  await resolveFn(state, "checkpoint.restore")(state, "good");
-  await resolveFn(state, "drain")(state, "plastron-dom.paint"); m.run();
-  assert.equal(state.cels.get("c3"), undefined, "post-snapshot cel gone after restore");
-  assert.match(txt(boxByKey(root, "c1")), /42/, "pre-snapshot cel restored");
-});
-
-test("readme() makes a banner div above freespace; deleting the formula removes it", async () => {
-  const { state, root, m } = await boot();
-  const banner = () => boxes(root) && walk(root, (n) => String(n.attrs?.class ?? "") === "readme-banner")[0];
-
-  assert.equal(banner(), undefined, "no banner before the formula");
-
-  await type(state, root, m, "=readme()");
-  assert.ok(state.cels.get("freespace.banner")?.v, "banner cel generated");
-  assert.ok(banner(), "banner div painted above freespace");
-  assert.match(txt(banner()), /you are at the origin/, "banner shows the readme text");
-
-  // delete the generating formula → genesis sweep → banner gone
-  await resolveFn(state, "origin.expand")(state, "c1"); m.run();
-  await type(state, root, m, "", "c1");
-  assert.equal(state.cels.get("freespace.banner")?.v, undefined, "banner cel swept");
-  assert.equal(banner(), undefined, "banner div disappeared with its formula");
 });

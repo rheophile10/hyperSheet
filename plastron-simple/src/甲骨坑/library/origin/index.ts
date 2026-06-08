@@ -42,21 +42,35 @@ const short = (v: unknown): string => {
   return String(v).slice(0, 60);
 };
 
-/** The freespace renderer — a plain RenderSpec producer (parser "f").
- *  (readme expanded draft mount idx vals banner) → render-spec. The
- *  optional `banner` is a vnode spliced ABOVE the cels — set by a
- *  generated `freespace.banner` cel (the `readme()` vocabulary), and
- *  gone the moment that cel is swept (genesis lifecycle → the div
- *  vanishes with its formula). */
+const isVnode = (v: unknown): v is V =>
+  !!v && typeof v === "object" && ((v as V).type === "el" || (v as V).type === "text");
+
+/** dom(tag, ...children) — a presentation vnode VALUE (not a mounted
+ *  view; 元.view composes it). `tag` accepts an emmet-ish class:
+ *  "div.readme" → <div class="readme">. Children: strings → text nodes,
+ *  nested dom(...) → child elements. A freespace cell whose value is a
+ *  vnode renders in the STACK above the cels; delete the formula and it
+ *  is gone — composed by value, nothing to unmount. */
+const dom: Fn = (tag: unknown, ...children: unknown[]): V => {
+  const spec = String(tag ?? "div");
+  const dot = spec.indexOf(".");
+  const name = dot === -1 ? spec : spec.slice(0, dot);
+  const cls = dot === -1 ? undefined : spec.slice(dot + 1).replace(/\./g, " ");
+  const kids: V[] = children.map((c) => (isVnode(c) ? c : T(c)));
+  const attrs = cls ? { class: cls } : undefined;
+  return { type: "el", tag: name || "div", ...(attrs ? { attrs } : {}), children: kids };
+};
+
+/** The freespace renderer (parser "f"): (expanded draft mount idx vals)
+ *  → render-spec. Freespace cells whose VALUE is a vnode render live in
+ *  the `.app-stack` above; every cell also keeps a handle box below
+ *  (open it to edit/delete its formula). 元 is the input anchor. */
 const originView: Fn = (
-  readme: unknown, expanded: unknown, draft: unknown, mount: unknown,
-  idx: unknown, vals: unknown, banner: unknown,
+  expanded: unknown, draft: unknown, mount: unknown, idx: unknown, vals: unknown,
 ) => {
   const keys = Array.isArray(idx) ? (idx as string[]) : [];
   const values = Array.isArray(vals) ? (vals as unknown[]) : [];
   const open = typeof expanded === "string" ? expanded : null;
-  const bannerNode = banner && typeof banner === "object" && "type" in (banner as object)
-    ? (banner as V) : null;
 
   // Only the HEADER toggles expand/close — never the whole open box, so
   // clicking into the input doesn't bubble up and collapse the cel
@@ -76,51 +90,33 @@ const originView: Fn = (
     el("div", { class: "cel open", "data-key": key }, [header(key, []), ...body, editor(key)]);
   const closedBox = (key: string, valNode: V): V =>
     el("div", { class: "cel", "data-key": key }, [header(key, [valNode])]);
+  const valNodeFor = (v: unknown): V =>
+    el("span", { class: "v" }, [T(isVnode(v) ? "(view)" : short(v))]);
 
-  const boxes: V[] = [];
+  const stack: V[] = [];   // vnode-valued cells, rendered live above
+  const boxes: V[] = [];   // handles (origin first), rendered below
+
   const originOpen = open === "元";
-  boxes.push(originOpen
-    ? openBox("元", [el("pre", { class: "readme" }, [T(readme)])])
-    : closedBox("元", el("span", { class: "v" }, [])));
+  boxes.push(originOpen ? openBox("元", []) : closedBox("元", el("span", { class: "v" }, [])));
 
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i]!;
+    const v = values[i];
+    if (isVnode(v)) stack.push(v as V);
     boxes.push(open === key
-      ? openBox(key, [el("pre", { class: "val" }, [T(short(values[i]))])])
-      : closedBox(key, el("span", { class: "v" }, [T(short(values[i]))])));
+      ? openBox(key, [el("pre", { class: "val" }, [T(isVnode(v) ? "(view)" : short(v))])])
+      : closedBox(key, valNodeFor(v)));
   }
 
-  const children = bannerNode ? [bannerNode, el("div", { class: "freespace" }, boxes)] : [el("div", { class: "freespace" }, boxes)];
+  const children: V[] = [];
+  if (stack.length) children.push(el("div", { class: "app-stack" }, stack));
+  children.push(el("div", { class: "freespace" }, boxes));
   return {
     vnode: el("div", { class: "origin-root" }, children),
     mount: typeof mount === "string" ? mount : null,
     listeners: [],
   };
 };
-
-/** readme() — a GENESIS vocabulary that makes the readme a banner div
- *  above the freespace. It emits a `freespace.banner` FormulaCel whose
- *  value is a <div> vnode of 元's text; 元.view splices it on top.
- *  Delete the `=readme()` formula and the genesis sweep retires
- *  freespace.banner → the banner input goes undefined → the div
- *  disappears. (The whole point: the chrome is made of the same stuff
- *  it edits, and unmaking the formula unmakes the view.) */
-const readmeFn: Fn = () => ({
-  genesis: true,
-  layer: "origin",
-  cels: {
-    "freespace.banner": {
-      celType: "FormulaCel",
-      f: "(readmeBanner readme)",
-      fStructural: true,
-      metadata: { parser: "f", inputMap: { readme: "元" } },
-    },
-  },
-});
-
-/** The banner vnode builder (referenced by the generated cel). */
-const readmeBanner: Fn = (readme: unknown): V =>
-  el("div", { class: "readme-banner" }, [el("pre", { class: "readme" }, [T(readme)])]);
 
 // ── the entry gesture ────────────────────────────────────────────────────────
 
@@ -285,12 +281,11 @@ export const name = "origin" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["originView",     originView],
+  ["dom",            dom],
   ["origin.commit",  commit],
   ["origin.expand",  expand],
   ["origin.key",     key],
   ["origin.noop",    noop],
-  ["readme",         readmeFn],
-  ["readmeBanner",   readmeBanner],
   ["origin.drain",   effectsDrain],
   ["load",           loadFn],
   ["cels",           celsFn],

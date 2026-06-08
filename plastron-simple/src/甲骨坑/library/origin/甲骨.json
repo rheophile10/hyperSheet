@@ -10,7 +10,7 @@
         "name": "元",
         "description": "the origin cel. its v is the readme (plain lowercase text, owner-edited). one artifact, two audiences: humans read it expanded, agents pack it as context."
       },
-      "v": "you are at the origin. everything here is a cel: a key plus a value,\nmaybe computed by a formula. type a formula in the box and press enter\n- it becomes a new cel beside this one. click any cel to open or close\nit. commit an empty box on an open cel to delete it - deleting a\nformula unmakes everything it made.\n\ntry:\n  =1+1\n  =grid(3, 3)                   a small spreadsheet grid\n  =grid(4, 2, \"books\")          a named one (cells books.A1..)\n  =books!A1 & \"!\"               read another grid's cell\n  =sum(books!A1:A4)             or a range of it\n  =js(c1, \"myfn\")               turn source in c1 into myfn(...)\n  =checkpoint(\"before-mess\")    a snapshot you can restore\n  =load(\"sheet\")                load a library segment\n  =cels(\"sheet\")                list what a segment provides\n\nerrors never crash anything: a bad formula shows an error value in its\ncel and the details land in the \"errors\" cel. every loaded segment\ndocuments itself - read its skill before using it."
+      "v": "type a formula below"
     },
     {
       "key": "元.mount",
@@ -65,7 +65,9 @@
         "name": "freespace.index",
         "description": "ordered key list of the visible freespace cels (the view's idx input; commit maintains it alongside the vals array wiring)."
       },
-      "v": []
+      "v": [
+        "readme"
+      ]
     },
     {
       "key": "元.view",
@@ -80,17 +82,17 @@
           "plastron-dom.paint"
         ],
         "inputMap": {
-          "readme": "元",
           "expanded": "元.expanded",
           "draft": "元.draft",
           "mount": "元.mount",
           "idx": "freespace.index",
-          "vals": [],
-          "banner": "freespace.banner"
+          "vals": [
+            "readme"
+          ]
         },
         "description": "the freespace view. UNLOCKED on purpose - minimal, ready to be entirely reworked in place. origin.commit rewires its idx/vals inputMap arrays as cels are made."
       },
-      "f": "(originView readme expanded draft mount idx vals banner)"
+      "f": "(originView expanded draft mount idx vals)"
     },
     {
       "key": "originView",
@@ -206,29 +208,27 @@
       "locked": true
     },
     {
-      "key": "readme",
+      "key": "dom",
       "celType": "LockedLambdaCel",
       "locked": true,
       "metadata": {
-        "key": "readme",
+        "key": "dom",
         "segment": "origin",
-        "name": "readme",
+        "name": "dom",
         "kind": "native",
-        "genesis": true,
-        "description": "() - genesis vocabulary: make the readme a banner div above freespace (freespace.banner). delete the =readme() formula and the sweep removes the div."
+        "description": "(tag ...children) - a presentation vnode value. tag.class emmet sugar. children: strings -> text, nested dom -> elements. A freespace cell whose value is a vnode renders in the stack above; delete the formula and it is gone."
       }
     },
     {
-      "key": "readmeBanner",
-      "celType": "LockedLambdaCel",
-      "locked": true,
+      "key": "readme",
+      "celType": "FormulaCel",
       "metadata": {
-        "key": "readmeBanner",
-        "segment": "origin",
-        "name": "readmeBanner",
-        "kind": "native",
-        "description": "(readme) - vnode builder for the readme banner div."
-      }
+        "key": "readme",
+        "segment": "freespace",
+        "name": "readme",
+        "parser": "f"
+      },
+      "f": "(dom \"div.readme\" (dom \"h2\" \"the origin\") (dom \"p\" \"you are at the origin. type a formula in a cel below and press enter \\u2014 it becomes a new cel beside this one. click any cel's header to open it; open and commit an empty box to delete it (deleting a formula unmakes what it made).\") (dom \"p\" \"try:\") (dom \"pre\" \"  (dom \\\"h2\\\" \\\"hello\\\")     a heading, stacked above\") (dom \"pre\" \"  =grid(3, 3)             a grid of data cels\") (dom \"pre\" \"  =cels(\\\"sheet\\\")          browse a library\") (dom \"pre\" \"  =checkpoint(\\\"safe\\\")     a snapshot to restore\") (dom \"pre\" \"  (ilk)                   recompute — cels interlinked\"))"
     }
   ]
 }
