@@ -147,14 +147,16 @@ test("introspection: inspect / segments / vocab return readable values", async (
   await put(state, root, m, "=42");                 // give A1 a known value first via a grid? no — inspect 元 itself
   await put(state, root, m, '=inspect("元")');
   const ins = String(state.cels.get("元").v);
-  assert.match(ins, /"celType"/, "inspect returns the cel's JSON");
-  assert.match(ins, /"key": "元"/);
+  assert.match(ins, /^name: 元$/m, "inspect returns a readable yaml doc");
+  assert.match(ins, /^type: FormulaCel/m, "shows the cel type");
 
-  // a function cel (mount) inspects to its signature + body + doc, not JSON
+  // a function cel (mount) inspects to signature + about + source (yaml)
   await put(state, root, m, '=inspect("mount")');
   const fnsrc = String(state.cels.get("元").v);
-  assert.match(fnsrc, /LockedLambdaCel/, "shows the cel kind");
-  assert.match(fnsrc, /source:/, "labels the function body");
+  assert.match(fnsrc, /^type: LockedLambdaCel \(locked, native\)$/m, "type with tags");
+  assert.match(fnsrc, /^signature: \(target content\)$/m, "signature split out of the doc");
+  assert.match(fnsrc, /^about: \|$/m, "about is a wrapped literal block");
+  assert.match(fnsrc, /\nsource: /, "source comes last");
   assert.match(fnsrc, /__mount/, "shows the actual fn body");
   assert.match(fnsrc, /selector/, "shows the (updated) description");
 

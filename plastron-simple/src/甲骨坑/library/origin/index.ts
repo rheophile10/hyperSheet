@@ -413,6 +413,29 @@ const key: Fn = async (state: State, payload: unknown, event: unknown) => {
   return state;
 };
 
+// ── inspect rendering — a tiny YAML-ish doc, easiest for a human to read ─────
+
+// `label: value` per field; multi-line strings become a `|` literal block
+// (no escaping, reads top-to-bottom). Empty/undefined fields are dropped.
+const yamlDoc = (fields: [string, unknown][]): string => {
+  const out: string[] = [];
+  for (const [k, v] of fields) {
+    if (v === undefined || v === null || v === "") continue;
+    const s = typeof v === "string" ? v : JSON.stringify(v);
+    if (s.includes("\n")) { out.push(`${k}: |`); for (const ln of s.split("\n")) out.push(`  ${ln}`); }
+    else out.push(`${k}: ${s}`);
+  }
+  return out.join("\n");
+};
+// soft-wrap prose so a long description reads as a paragraph, not one line
+const wrap = (s: string, w = 68): string =>
+  s.split(/\s+/).reduce<string[]>((ls, word) => {
+    const last = ls[ls.length - 1];
+    if (last !== undefined && (last + " " + word).length <= w) ls[ls.length - 1] = last + " " + word;
+    else ls.push(word);
+    return ls;
+  }, []).join("\n");
+
 // ── origin.effects: load / cels requests (effects at drain) ─────────────────
 
 // Introspection vocabulary. Each returns a REQUEST; the effects drain
@@ -464,21 +487,35 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         if (!c) {
           result = `(no cel named "${key}")`;
         } else if (fnTypes.has(c.celType)) {
-          // a lambda/compiler IS a function — show its signature/body and
-          // doc, not bare JSON. An editable lambda shows its authored `f`;
-          // a native/locked one shows the live fn body.
+          // a lambda/compiler IS a function. Foreground the human-readable
+          // bits — signature + about — then the source LAST (it's the live
+          // body, which is minified in the bundle). Split a leading
+          // "(args) - prose" description into signature + about.
           const md = c.metadata as { kind?: string; description?: string; segment?: string };
           const f = (c as { f?: string; _fn?: unknown }).f;
-          result = [
-            `${key}  [${c.celType}${c.locked ? " · locked" : ""}${md.kind ? ` · ${md.kind}` : ""}]`,
-            `segment: ${md.segment ?? "?"}`,
-            md.description ? `\n${md.description}` : "",
-            `\nsource:`,
-            f ?? String((c as { _fn?: unknown })._fn ?? "(native, no source)"),
-          ].filter(Boolean).join("\n");
+          const dm = /^\s*(\([^)]*\))\s*[-—:]?\s*([\s\S]*)$/.exec(md.description ?? "");
+          const tags = [c.locked ? "locked" : "", md.kind ?? ""].filter(Boolean);
+          result = yamlDoc([
+            ["name", key],
+            ["type", `${c.celType}${tags.length ? ` (${tags.join(", ")})` : ""}`],
+            ["segment", md.segment ?? "?"],
+            ["signature", dm?.[1]],
+            ["about", wrap((dm?.[2] ?? md.description ?? "").trim())],
+            ["source", f ?? String((c as { _fn?: unknown })._fn ?? "")],
+          ]);
         } else {
-          result = JSON.stringify({ key: c.metadata.key, celType: c.celType, locked: c.locked ?? false,
-            v: c.v, f: (c as { f?: string }).f, metadata: c.metadata }, null, 2);
+          // value / formula cel — labeled scalars; deps shown if present.
+          const md = c.metadata as { segment?: string; parser?: string; inputMap?: Record<string, unknown> };
+          const inputs = md.inputMap ? Object.values(md.inputMap).flat().filter((x) => typeof x === "string") : [];
+          result = yamlDoc([
+            ["name", c.metadata.key],
+            ["type", `${c.celType}${c.locked ? " (locked)" : ""}`],
+            ["segment", md.segment ?? "?"],
+            ["parser", md.parser],
+            ["formula", (c as { f?: string }).f],
+            ["value", c.v],
+            ["inputs", inputs.length ? inputs.join(", ") : undefined],
+          ]);
         }
       } else if (req.originSegments) {
         const segs: string[] = [];
