@@ -11,7 +11,7 @@
         "parser": "f",
         "description": "cell A1 of the origin spreadsheet. holds a formula/value that executes and renders in place; seeded with the readme. un-deletable (clearing restores the readme); editable."
       },
-      "f": "(mount \"top\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (dom \"h1\" (style \"margin\" \"0 0 .2rem\" \"font-size\" \"1.7rem\" \"font-family\" \"system-ui\") \"plastron 🐢\")\n    (dom \"p\" (style \"margin\" \"0 0 .8rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"a spreadsheet where formulas can also build dom, cels, sheets, and apps. every formula starts with = — try these:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=sheets(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=mount(\\\".sheet\\\", dom(\\\"p\\\", \\\"under the cells\\\"))  pin dom under an element\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"mount\\\")           a function: signature + source\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"this whole page is one index.html — no install, no PWA. the ↓ save button keeps a copy with your sheet baked in; double-click it to run offline from your desktop.\")\n    (dom \"p\" (style \"margin\" \".4rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click 元 to edit this; clear it to bring it back.\")))"
+      "f": "(mount \"top\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (dom \"h1\" (style \"margin\" \"0 0 .2rem\" \"font-size\" \"1.7rem\" \"font-family\" \"system-ui\") \"plastron 🐢\")\n    (dom \"p\" (style \"margin\" \"0 0 .8rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"a spreadsheet where formulas can also build dom, cels, sheets, and apps. every formula starts with = — try these:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")   a function from javascript\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=double(21)                call your function -> 42\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=mount(\\\".sheet\\\", dom(\\\"p\\\", \\\"under the cells\\\"))  pin dom under an element\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"mount\\\")           a function: signature + source\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"this whole page is one index.html — no install, no PWA. the ↓ save button keeps a copy with your sheet baked in; double-click it to run offline from your desktop.\")\n    (dom \"p\" (style \"margin\" \".4rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click 元 to edit this; clear it to bring it back.\")))"
     },
     {
       "key": "元.mount",
@@ -32,17 +32,6 @@
         "segment": "origin",
         "name": "元.editing",
         "description": "key of the cell currently being edited (null = none)."
-      },
-      "v": null
-    },
-    {
-      "key": "元.expanded",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "元.expanded",
-        "segment": "origin",
-        "name": "元.expanded",
-        "description": "key of the cell whose formula is shown in the expanded panel (null = none)."
       },
       "v": null
     },
@@ -95,7 +84,6 @@
         ],
         "inputMap": {
           "editing": "元.editing",
-          "expanded": "元.expanded",
           "draft": "元.draft",
           "mount": "元.mount",
           "error": "元.error",
@@ -106,7 +94,7 @@
         },
         "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place."
       },
-      "f": "(originView editing expanded draft mount error keys vals)"
+      "f": "(originView editing draft mount error keys vals)"
     },
     {
       "key": "originView",
@@ -166,20 +154,7 @@
         "name": "grid",
         "kind": "native",
         "genesis": true,
-        "description": "(rows cols [name]) - genesis: an rows*cols worksheet of editable cels, each like 元. default sheet name g<r>x<c> so different shapes don't collide; same-shape needs a name. delete the formula -> swept."
-      }
-    },
-    {
-      "key": "sheets",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "sheets",
-        "segment": "origin",
-        "name": "sheets",
-        "kind": "native",
-        "genesis": true,
-        "description": "(name1 r1 c1 name2 r2 c2 ...) - genesis: several named grids (a workbook) from one formula; delete the formula and all of them go."
+        "description": "genesis: worksheets of editable cels, each like 元. grid(rows, cols) makes one sheet (auto-named g<r>x<c> so shapes don't collide); grid(rows, cols, \"name\") names it; grid(\"in\", 4, 3, \"out\", 4, 3) — a string first arg — makes a WORKBOOK of named sheets. delete the formula -> swept."
       }
     },
     {
@@ -204,18 +179,6 @@
         "name": "origin.edit",
         "kind": "native",
         "description": "(state, cellKey) - start editing a cell (seed draft with its source); click the active cell's label again to close."
-      }
-    },
-    {
-      "key": "origin.expand",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.expand",
-        "segment": "origin",
-        "name": "origin.expand",
-        "kind": "native",
-        "description": "(state, cellKey) - open/close the expanded formula panel for a cell (shares draft + commit with inline editing)."
       }
     },
     {
@@ -320,6 +283,19 @@
         "kind": "native",
         "emitsTo": "origin.effects",
         "description": "(segment?) - the values + functions usable in formulas (callable lambdas/compilers + value cels) with descriptions; no arg = across all loaded segments."
+      }
+    },
+    {
+      "key": "def",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "def",
+        "segment": "origin",
+        "name": "def",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name, kind, source) - define a callable function from source in a compiler kind (\"js\" works out of the box). =def(\"double\", \"js\", \"x => x * 2\") then call it: =double(21) -> 42."
       }
     }
   ]

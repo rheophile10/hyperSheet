@@ -48,32 +48,14 @@
       /* cell internals */
       .cell-value { display: flex; align-items: flex-start; gap: .25rem; padding: .15rem .4rem; min-height: 1.6rem; font-family: ui-monospace, monospace; font-size: .85rem; }
       .cell-value > :first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      /* just the glyph: char-sized, pinned top-right, revealed on hover */
-      .cell-expand {
-        opacity: 0; border: 0; background: transparent; cursor: pointer; color: inherit;
-        font-size: .9rem; line-height: 1.4; padding: 0 .1rem; flex: none; align-self: flex-start;
-      }
-      .cell:hover .cell-expand, .cell.zhorigin:hover .cell-expand, td.cell:hover .cell-expand { opacity: .55; }
-      .cell-expand:hover { opacity: 1 !important; }
+      .cell-value { cursor: text; }
       .cell-pre { margin: 0; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: .8rem; line-height: 1.4; }
       /* a multi-line value renders formatted in place (beats the grid-cell
-         one-line clip rule below) */
+         one-line clip rule above) */
       .cell-value > pre.cell-pre { white-space: pre-wrap; overflow: visible; text-overflow: clip; }
       .cell-editing { display: flex; flex-direction: column; gap: .2rem; }
       .cell-error { color: #d4453e; background: #d4453e1a; font-family: ui-monospace, monospace; font-size: .76rem; padding: .15rem .45rem; border-radius: .3rem; }
       .cell-edit { width: 100%; font: inherit; font-family: ui-monospace, monospace; font-size: .85rem; padding: .15rem .4rem; border: 0; background: #4a90d922; }
-      .cell-edit.big { min-height: 10rem; resize: vertical; }
-
-      /* expanded formula panel — a centered overlay, visible regardless of scroll */
-      .expand-panel {
-        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100;
-        border: 1px solid #4a90d9aa; border-radius: .6rem; background: Canvas;
-        box-shadow: 0 .5rem 2rem #0006; width: 48rem; max-width: 92vw; max-height: 80vh; overflow: auto;
-      }
-      .expand-head { display: flex; justify-content: space-between; align-items: center; padding: .35rem .7rem; background: #4a90d922; font-family: ui-monospace, monospace; font-weight: 700; color: #888; }
-      .expand-close { border: 0; background: transparent; cursor: pointer; font-size: 1.1rem; color: #888; }
-      .expand-panel .cell-edit.big { display: block; }
-      .expand-value { padding: .5rem .8rem; border-top: 1px solid #8883; font-family: ui-monospace, monospace; font-size: .85rem; }
     </style>
   </head>
   <body>

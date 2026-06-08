@@ -137,41 +137,35 @@ const addrOf = (key: string): { col: number; row: number } | null => {
  *  expanded editor panel for its full formula. A cell's value shows in
  *  place — a number, text, or a live dom object. */
 const originView: Fn = (
-  editing: unknown, expanded: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown,
+  editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown,
 ) => {
   const ks = Array.isArray(keys) ? (keys as string[]) : ["元"];
   const vs = Array.isArray(vals) ? (vals as unknown[]) : [];
   const active = typeof editing === "string" ? editing : null;
-  const open = typeof expanded === "string" ? expanded : null;
   const errMsg = typeof error === "string" ? error : null;
   const valOf = new Map<string, unknown>(); ks.forEach((k, i) => valOf.set(k, vs[i]));
 
-  // the editor input/textarea, plus an error line when its last formula
-  // failed to compile (so a syntax error shows instead of doing nothing)
-  const editor = (key: string, big: boolean): V =>
+  // the editor input, plus an error line when its last formula failed to
+  // compile (so a syntax error shows instead of doing nothing)
+  const editor = (key: string): V =>
     el("div", { class: "cell-editing" }, [
-      el(big ? "textarea" : "input", { class: big ? "cell-edit big" : "cell-edit", value: String(draft ?? "") }, [], {
+      el("input", { class: "cell-edit", value: String(draft ?? "") }, [], {
         input: { set: "元.draft", extract: "value" },
         keydown: { dispatch: "origin.key", payload: key }, // origin.key commits on Enter
       }),
       ...(errMsg ? [el("div", { class: "cell-error" }, [T(errMsg)])] : []),
     ]);
-  const expandBtn = (key: string): V =>
-    el("button", { class: "cell-expand", title: "expand formula (or double-click the cell)" }, [T("⤢")],
-      { click: { dispatch: "origin.expand", payload: key } });
 
-  // the inner of a cell: inline editor when active, else the value + ⤢.
-  // Double-click the value to edit inline (the main path for grid cells,
-  // which have no label); the ⤢ opens the big editor for long formulas.
+  // the inner of a cell: inline editor when active, else the value. CLICK
+  // the value to edit it — the one edit gesture, working for grid cells
+  // (which have no label) and for 元.
   const body = (key: string, value: unknown): V => {
-    if (active === key) return editor(key, false);
-    // wrap the value in an element so IT (not the button) is the flex:1
-    // first child — a bare text value would make the <button> the first
-    // ELEMENT child and stretch it across the cell.
+    if (active === key) return editor(key);
+    // wrap the value in an element so it's the flex:1 child of .cell-value
     const shown = displayCell(value);
     const valEl = shown.type === "text" ? el("span", { class: "cell-val-text" }, [shown]) : shown;
-    return el("div", { class: "cell-value", title: "double-click to edit" }, [valEl, expandBtn(key)],
-      { dblclick: { dispatch: "origin.edit", payload: key } });
+    return el("div", { class: "cell-value", title: "click to edit" }, [valEl],
+      { click: { dispatch: "origin.edit", payload: key } });
   };
 
   // base sheet: 元 as a labelled button-box (the "元 button")
@@ -212,16 +206,6 @@ const originView: Fn = (
 
   const sections: V[] = base.map((k) => baseCell(k, valOf.get(k)));
   for (const [layer, members] of layers) sections.push(gridTable(layer, members));
-
-  // expanded editor panel (full formula for one cell)
-  if (open) {
-    const label = open === "元" ? "元" : open.includes(".") ? open.slice(open.indexOf(".") + 1) : open;
-    sections.push(el("div", { class: "expand-panel" }, [
-      el("div", { class: "expand-head" }, [T(label), el("button", { class: "expand-close", title: "close" }, [T("×")], { click: { dispatch: "origin.expand", payload: open } })]),
-      editor(open, true),
-      el("div", { class: "expand-value" }, [displayCell(valOf.get(open))]),
-    ]));
-  }
 
   // PLACED dom — a cell whose value is mount(target, content). The dom is
   // spliced into the first node of THIS view matching `target` (a node the
@@ -286,31 +270,29 @@ const gridShape = (rows: unknown, cols: unknown, name: string): { layer: string;
   return { layer: name, cels };
 };
 
-/** grid(rows, cols [, name]) — a genesis vocabulary that adds an
- *  rows×cols worksheet of editable cels, each like 元. `=grid(3,3)` in
- *  any cell makes a 3×3 sheet. The default sheet name is `g<r>x<c>`
- *  (e.g. g5x5) so different-shaped grids DON'T collide — a grid in a
- *  cell of another grid just works. Two SAME-shape grids need an
- *  explicit name: `grid(5,5,"budget")`. Delete the formula → swept. */
-const grid: Fn = (rows: unknown, cols: unknown, nameArg?: unknown): unknown => {
+/** grid — a genesis vocabulary that adds worksheets of editable cels,
+ *  each like 元. Two shapes from ONE formula:
+ *    grid(rows, cols)            → one sheet, auto-named g<r>x<c>
+ *    grid(rows, cols, "name")    → one named sheet
+ *    grid("in", 4, 3, "out", 4, 3) → a WORKBOOK of named sheets (a string
+ *                                    first arg switches to name,r,c triples)
+ *  The auto name g<r>x<c> means different-shaped grids never collide — a
+ *  grid in a cell of another grid just works. Delete the formula → swept. */
+const grid: Fn = (...args: unknown[]): unknown => {
+  // string first arg → workbook of (name, rows, cols) triples.
+  if (typeof args[0] === "string") {
+    const cels: Record<string, unknown> = {};
+    for (let i = 0; i + 2 < args.length; i += 3) {
+      const nm = String(args[i] ?? "").trim() || `s${i / 3 + 1}`;
+      Object.assign(cels, gridShape(args[i + 1], args[i + 2], nm).cels);
+    }
+    return { genesis: true, cels };
+  }
+  // numbers → one sheet: (rows, cols [, name]).
+  const [rows, cols, nameArg] = args;
   const name = typeof nameArg === "string" && nameArg !== "" ? nameArg
     : `g${Math.max(1, Math.min(100, Math.floor(Number(rows) || 1)))}x${Math.max(1, Math.min(50, Math.floor(Number(cols) || 1)))}`;
   return { genesis: true, ...gridShape(rows, cols, name) };
-};
-
-/** sheets(name1, r1, c1, name2, r2, c2, …) — a workbook: several named
- *  grids from one formula. `(sheets "budget" 5 5 "actuals" 5 5)` makes
- *  two sheets at once; delete the formula and all of them go. */
-const sheets: Fn = (...args: unknown[]): unknown => {
-  const cels: Record<string, unknown> = {};
-  for (let i = 0; i + 2 < args.length; i += 3) {
-    const nm = String(args[i] ?? "").trim() || `s${i / 3 + 1}`;
-    Object.assign(cels, gridShape(args[i + 1], args[i + 2], nm).cels);
-  }
-  // multi-layer: the cels already carry their own `name.` prefixes; no
-  // single `layer`, so they land in the generator's segment grouping by
-  // key prefix (the view splits them into one table per sheet).
-  return { genesis: true, cels };
 };
 
 // ── the entry gesture ────────────────────────────────────────────────────────
@@ -324,7 +306,7 @@ const sniff = (src: string): { celType: string; f?: string; v?: unknown; parser?
 };
 
 const VIEW_KEY = "元.view";
-const README = "(mount \"top\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (dom \"h1\" (style \"margin\" \"0 0 .2rem\" \"font-size\" \"1.7rem\" \"font-family\" \"system-ui\") \"plastron \ud83d\udc22\")\n    (dom \"p\" (style \"margin\" \"0 0 .8rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"a spreadsheet where formulas can also build dom, cels, sheets, and apps. every formula starts with = — try these:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=sheets(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=mount(\\\".sheet\\\", dom(\\\"p\\\", \\\"under the cells\\\"))  pin dom under an element\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"mount\\\")           a function: signature + source\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"this whole page is one index.html \u2014 no install, no PWA. the \u2193 save button keeps a copy with your sheet baked in; double-click it to run offline from your desktop.\")\n    (dom \"p\" (style \"margin\" \".4rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click \u5143 to edit this; clear it to bring it back.\")))";
+const README = "(mount \"top\"\n  (dom \"div.readme\" (style \"max-width\" \"46rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.55 ui-monospace, monospace\")\n    (dom \"h1\" (style \"margin\" \"0 0 .2rem\" \"font-size\" \"1.7rem\" \"font-family\" \"system-ui\") \"plastron \ud83d\udc22\")\n    (dom \"p\" (style \"margin\" \"0 0 .8rem\" \"color\" \"#888\" \"font-family\" \"system-ui\") \"a spreadsheet where formulas can also build dom, cels, sheets, and apps. every formula starts with = — try these:\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=1 + 1\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(8, 5)              a worksheet of editable cels\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=grid(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)   a workbook of named sheets\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")   a function from javascript\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=double(21)                call your function -> 42\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\" \"color\" \"tomato\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"styled\\\")\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=mount(\\\".sheet\\\", dom(\\\"p\\\", \\\"under the cells\\\"))  pin dom under an element\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=inspect(\\\"mount\\\")           a function: signature + source\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=segments()                loaded libraries\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=vocab(\\\"origin\\\")            what you can call\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=checkpoint(\\\"safe\\\")          a snapshot to restore\")\n    (dom \"pre\" (style \"margin\" \".12rem 0\") \"=load(\\\"sheet\\\")              load a library\")\n    (dom \"p\" (style \"margin\" \".7rem 0 0\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"this whole page is one index.html \u2014 no install, no PWA. the \u2193 save button keeps a copy with your sheet baked in; double-click it to run offline from your desktop.\")\n    (dom \"p\" (style \"margin\" \".4rem 0 0\" \"color\" \"#888\" \"font-size\" \".82rem\" \"font-family\" \"system-ui\") \"click \u5143 to edit this; clear it to bring it back.\")))";
 
 /** The current spreadsheet cell list: 元 (A1) plus every genesis-created
  *  DATA cel (grid cells), sorted. Rebuilt after each commit so new grids
@@ -357,27 +339,13 @@ const cellSource = (state: State, key: string): string => {
 };
 
 /** edit — start INLINE editing a cell (seed the draft with its source);
- *  clicking the active cell's label again closes it. Closes any
- *  expanded panel. */
+ *  clicking the active cell again closes it. */
 const edit: Fn = async (state: State, payload?: unknown) => {
   const key = typeof payload === "string" ? payload : null;
   const cur = state.cels.get("元.editing")?.v;
   const next = cur === key ? null : key;
   await (resolveFn(state, "setValueBatch") as Fn)(state,
-    [["元.editing", next], ["元.expanded", null], ["元.draft", next ? cellSource(state, next) : ""], ["元.error", null]]);
-  await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
-  return state;
-};
-
-/** expand — open the expanded editor PANEL for a cell (the full formula
- *  in a textarea + its value). Toggles; shares the draft + commit with
- *  inline editing. */
-const expand: Fn = async (state: State, payload?: unknown) => {
-  const key = typeof payload === "string" ? payload : null;
-  const cur = state.cels.get("元.expanded")?.v;
-  const next = cur === key ? null : key;
-  await (resolveFn(state, "setValueBatch") as Fn)(state,
-    [["元.expanded", next], ["元.editing", null], ["元.draft", next ? cellSource(state, next) : ""], ["元.error", null]]);
+    [["元.editing", next], ["元.draft", next ? cellSource(state, next) : ""], ["元.error", null]]);
   await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
   return state;
 };
@@ -414,12 +382,12 @@ const commit: Fn = async (state: State, payload?: unknown) => {
     const msg = String((e as { message?: unknown })?.message ?? e).replace(/^setCel:\s*"[^"]*"\s*—\s*/, "");
     // keep the bad draft and force the cell into edit mode so the error
     // line is visible (it renders under the active editor).
-    await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", msg], ["元.editing", key], ["元.expanded", null]]);
+    await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", msg], ["元.editing", key]]);
     await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
     return state;
   }
 
-  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["元.expanded", null], ["元.draft", ""], ["元.error", null]]);
+  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["元.draft", ""], ["元.error", null]]);
   // fire generators so they enqueue, then commit structure + sweep…
   await (resolveFn(state, "runCycle") as Fn)(state);
   const drain = resolveFn(state, "drain") as Fn;
@@ -484,6 +452,12 @@ const segmentsFn: Fn = () => ({ originSegments: true });
  *  (callable lambdas/compilers + value cels), with kind + description.
  *  No arg → across all loaded segments. */
 const vocabFn: Fn = (seg?: unknown) => ({ originVocab: true, segment: seg == null ? "" : String(seg) });
+/** def(name, kind, source) — define a callable function in `kind` (the
+ *  installed compiler: "js" works out of the box; "py"/"wat" need their
+ *  runtime loaded). `=def("double", "js", "x => x * 2")` then call it from
+ *  any formula: `=double(21)` → 42. */
+const defFn: Fn = (name: unknown, kind: unknown, source: unknown) =>
+  ({ originDef: true, name: String(name ?? ""), kind: String(kind ?? "js"), source: String(source ?? "") });
 
 const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<void> => {
   const state = (stateArg ?? items[0]?.state) as State | undefined;
@@ -569,6 +543,16 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         }
         result = [`functions (call as (${"name"} …) or =name(…)):`, ...fns.sort(),
           "", "values (reference by name):", ...vals.sort()].join("\n");
+      } else if (req.originDef && req.name) {
+        // define a callable function from source in some compiler `kind`.
+        // The new lambda lands at `name` (not a spreadsheet cell — it has no
+        // coordinate); the requesting cell becomes the confirmation below.
+        const nm = String(req.name); const kind = String(req.kind || "js");
+        await setCel(state, nm, {
+          celType: "EditableLambdaCel", f: String(req.source ?? ""),
+          metadata: { kind, segment: "origin", name: nm },
+        });
+        result = `defined "${nm}" (${kind}) — call it: =${nm}(…)`;
       } else continue;
       // Carry forward ownership/name stamps — an introspection result lands
       // back IN the requesting cell, and if that's a grid cell, dropping
@@ -598,14 +582,13 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["mount",          mount],
   ["origin.commit",  commit],
   ["origin.edit",    edit],
-  ["origin.expand",  expand],
   ["origin.key",     key],
   ["grid",           grid],
-  ["sheets",         sheets],
   ["origin.drain",   effectsDrain],
   ["load",           loadFn],
   ["cels",           celsFn],
   ["inspect",        inspectFn],
   ["segments",       segmentsFn],
   ["vocab",          vocabFn],
+  ["def",            defFn],
 ]));
