@@ -131,7 +131,7 @@ test("editing a cell label opens an input seeded with its source", async () => {
 
 test("=cels(sheet) lists a segment; unknown symbols show #NAME?", async () => {
   const { state, root, m } = await boot();
-  await put(state, root, m, '=cels("sheet")');
+  await put(state, root, m, '=members("sheet")');
   assert.match(String(state.cels.get("元").v), /infix/, "segment members listed");
   await put(state, root, m, "=nope(1)");
   assert.match(txt(cellByKey(root, "元")), /#NAME\?/, "undefined symbol shows #NAME?");

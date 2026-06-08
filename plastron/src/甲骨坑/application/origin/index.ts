@@ -323,35 +323,49 @@ const gridShape = (rows: unknown, cols: unknown, name: string, values?: Record<s
   return { layer: name, cels };
 };
 
-const isValues = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x);
+const isAt = (x: unknown): x is { __at: string; content: unknown } => !!x && typeof x === "object" && typeof (x as { __at?: unknown }).__at === "string";
+const isValues = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x) && !isAt(x);
+
+// at(addr, content) — one cell's initial content for a cels() grid. A plain
+// function call (no new parser syntax). cels collects trailing at() markers.
+const at: Fn = (addr?: unknown, content?: unknown) => ({ __at: String(addr ?? ""), content: content == null ? "" : String(content) });
+
+// gather a values map from an optional {object} and/or trailing at() markers.
+const collectValues = (args: unknown[], i: number): [Record<string, unknown> | undefined, number] => {
+  const values: Record<string, unknown> = {};
+  if (isValues(args[i])) { Object.assign(values, args[i]); i++; }
+  while (isAt(args[i])) { const a = args[i] as { __at: string; content: unknown }; values[a.__at] = a.content; i++; }
+  return [Object.keys(values).length ? values : undefined, i];
+};
 
 /** cels — a genesis vocabulary that adds worksheets of editable cels, each
  *  like 元. Shapes from ONE formula:
  *    cels(rows, cols)              → one sheet, auto-named g<r>x<c>
  *    cels(rows, cols, "name")      → one named sheet
  *    cels("in", 4, 3, "out", 4, 3) → a WORKBOOK of named sheets
- *    cels("in", 4, 3, {a1:"apple", b2:"cel(\"monkey\")"})  → a sheet with
- *      initial cell contents (a value, or a formula like cel(…) / =1+1).
+ *    cels("in", 4, 3, at("a1","apple"), at("b2","cel(\"monkey\")"))  → a sheet
+ *      with initial cell contents (a value, or a formula like cel(…) / =1+1).
  *  Delete the formula → swept. `grid` is a back-compat alias. */
 const grid: Fn = (...args: unknown[]): unknown => {
   if (typeof args[0] === "string") {
-    // workbook: (name, rows, cols [, {values}])+ triples, optional values each.
+    // workbook: (name, rows, cols [, at()…])+ — at() markers belong to the
+    // preceding grid; the next string starts the next grid.
     const cels: Record<string, unknown> = {};
     let i = 0, n = 0;
-    while (i + 2 < args.length) {
-      const nm = String(args[i] ?? "").trim() || `s${++n}`;
-      const raw = args[i + 3];
-      const vals = isValues(raw) ? raw : undefined;
-      Object.assign(cels, gridShape(args[i + 1], args[i + 2], nm, vals).cels);
-      i += vals ? 4 : 3;
+    while (i < args.length && typeof args[i] === "string") {
+      const nm = String(args[i]).trim() || `s${++n}`;
+      const [values, ni] = collectValues(args, i + 3);
+      Object.assign(cels, gridShape(args[i + 1], args[i + 2], nm, values).cels);
+      i = ni;
     }
     return { genesis: true, cels };
   }
-  // numbers → one sheet: (rows, cols [, name] [, {values}]).
-  const [rows, cols, a3, a4] = args;
-  const name = typeof a3 === "string" && a3 !== "" ? a3
+  // numbers → one sheet: (rows, cols [, name] [, at()…]).
+  const [rows, cols] = args;
+  const named = typeof args[2] === "string" && args[2] !== "";
+  const name = named ? String(args[2])
     : `g${Math.max(1, Math.min(100, Math.floor(Number(rows) || 1)))}x${Math.max(1, Math.min(50, Math.floor(Number(cols) || 1)))}`;
-  const values = isValues(a3) ? a3 : isValues(a4) ? a4 : undefined;
+  const [values] = collectValues(args, named ? 3 : 2);
   return { genesis: true, ...gridShape(rows, cols, name, values) };
 };
 
@@ -772,11 +786,13 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.commit",  commit],
   ["origin.edit",    edit],
   ["origin.key",     key],
+  ["cels",           grid],
   ["grid",           grid],
   ["cel",            celFn],
+  ["at",             at],
   ["origin.drain",   effectsDrain],
   ["load",           loadFn],
-  ["cels",           celsFn],
+  ["members",        celsFn],
   ["inspect",        inspectFn],
   ["segments",       segmentsFn],
   ["vocab",          vocabFn],

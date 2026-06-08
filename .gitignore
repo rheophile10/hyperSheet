@@ -40,3 +40,6 @@ plastron-examples/pictograph/甲骨.json
 /tmp/e2e-*.log
 .claude/
 plastron-examples/*/doom-assets-inline.ts
+
+# legacy kernel, restored locally for bench comparison only
+plastron-old/

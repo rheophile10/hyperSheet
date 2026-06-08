@@ -147,6 +147,24 @@ await withPage("=grid(\"in\",4,3,\"out\",4,3) → workbook", async (page) => {
   eq(await page.evaluate(() => document.querySelectorAll("table.grid").length), 3, "base 元 table + two sheets");
 });
 
+await withPage("=cel(value) + =cel(formula) create new cels beside 元", async (page) => {
+  await put(page, '=cel("monkey")');
+  eq(await cel(page, "c1"), "monkey", 'cel("monkey") → c1 holds the value');
+  ok(await page.evaluate(() => (((globalThis as any).plastron.state.cels.get("元.cells")?.v) ?? []).includes("c1")), "c1 shows in the cell list");
+});
+
+await withPage("=cels is the grid (renamed); =members lists a segment", async (page) => {
+  await put(page, "=cels(4, 3)");
+  ok(await cel(page, "g4x3.A1") !== null, "cels(4,3) made a grid (cels === grid)");
+  ok(String(await put(page, '=members("origin")')).includes("cel"), "members() lists a segment's cels");
+});
+
+await withPage('=cels("in",4,3, at("a1","apple"), at("b2","=1+1")) fills cells', async (page) => {
+  await put(page, '=cels("in", 4, 3, at("a1", "apple"), at("b2", "=1+1"))');
+  eq(await cel(page, "in.A1"), "apple", "in.A1 = the at() value");
+  eq(await cel(page, "in.B2"), 2, "in.B2 = the at() formula, computed");
+});
+
 await withPage("=def + =double(21) → 42", async (page) => {
   await put(page, '=def("double", "js", "x => x * 2")');
   ok(String(await cel(page, "元")).includes('defined "double"'), "def confirms");
