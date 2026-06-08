@@ -171,6 +171,10 @@ const addrOf = (key: string): { col: number; row: number } | null => {
  *  row numbers). Click a cell to edit inline; the ⤢ on a cell opens an
  *  expanded editor panel for its full formula. A cell's value shows in
  *  place — a number, text, or a live dom object. */
+// Per-cell vnode memo: keyed by cell key, reused when (value, src) are
+// unchanged so the painter diffs O(changed cells) instead of O(all cells).
+// Persists across originView fires; self-correcting (a sig mismatch rebuilds).
+const cellCache = new Map<string, { v: unknown; src: string | undefined; vnode: V }>();
 const originView: Fn = (
   editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown, srcs: unknown,
 ) => {
@@ -220,12 +224,24 @@ const originView: Fn = (
       el("tr", {}, [el("th", { class: "rownum", style: SX.th }, [T(String(r + 1))]),
         ...Array.from({ length: maxC + 1 }, (_, c) => {
           const k = at.get(`${c},${r}`);
-          const v = k ? valOf.get(k) : undefined;
+          if (!k) return el("td", { class: "cell", "data-key": "", style: `${SX.td};min-width:4.5rem` }, []);
+          const v = valOf.get(k);
+          const isActive = active === k;
+          const src = isMountVal(v) ? srcOf.get(k) : undefined;
+          // ROW-FRAGMENT MEMO: an unchanged cell returns the SAME vnode object,
+          // so the painter's diff bails out at `prev === next` (O(changed), not
+          // O(all cells)). Never memoize the ACTIVE cell — its editor depends on
+          // draft/error which aren't in the signature.
+          if (!isActive) {
+            const hit = cellCache.get(k);
+            if (hit && hit.v === v && hit.src === src) return hit.vnode;
+          }
           // mount cells (showing a long source) get a roomier min-width;
           // the active cell gets the editing outline — both inline.
-          const tdStyle = `${SX.td};min-width:${isMountVal(v) ? "26rem" : "4.5rem"}${k && active === k ? ";outline:2px solid #4a90d9;outline-offset:-2px" : ""}`;
-          return el("td", { class: k && active === k ? "cell editing" : "cell", "data-key": k ?? "", style: tdStyle },
-            k ? [body(k, v)] : []);
+          const tdStyle = `${SX.td};min-width:${isMountVal(v) ? "26rem" : "4.5rem"}${isActive ? ";outline:2px solid #4a90d9;outline-offset:-2px" : ""}`;
+          const vnode = el("td", { class: isActive ? "cell editing" : "cell", "data-key": k, style: tdStyle }, [body(k, v)]);
+          if (isActive) cellCache.delete(k); else cellCache.set(k, { v, src, vnode });
+          return vnode;
         })]));
     // wrap in a horizontal scroller so a wide grid reaches column A
     // (a centered overflowing table clips its left edge unreachably).

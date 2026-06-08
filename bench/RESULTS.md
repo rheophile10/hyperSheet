@@ -253,3 +253,16 @@ hits the live sheet: editing one cell rebuilds + diffs the whole sheet view.
 The harness is `src/benches/krausest-reconcile.mjs`. NOT yet measured: the DOM
 apply (O(changed), needs a browser) + event delegation (1 listener vs N at
 create) — a follow-up full browser port.
+
+---
+
+## v4 — row-fragment memo shipped (origin view, 2026-06-08)
+
+Implemented per-cell vnode memoization in `originView`: an unchanged cell
+returns the SAME vnode object, so the painter's `diff.ts:62 prev===next`
+bail-out skips it. Measured: editing ONE cell in a 65-cell grid now rebuilds
+**2 cells, reuses 63** (object identity) — O(changed), not O(all). Build AND
+diff both drop to O(changed) since reused cells are reference-equal. Active
+cell is never memoized (its editor depends on draft/error). 548 kernel + 110
+origin e2e green. This is the krausest "row-fragment" win, applied to the live
+sheet; the same idea would port to the krausest entry's buildTbody.
