@@ -7,11 +7,14 @@
     <style>
       :root { color-scheme: light dark; }
       * { box-sizing: border-box; }
-      body { margin: 0; font: 15px/1.5 system-ui, sans-serif; }
+      /* body grows to fit its widest content (a wide canvas / grid), with a
+         100% floor — so anything mounted is reachable via horizontal scroll
+         instead of being clipped off-screen. */
+      body { margin: 0; font: 15px/1.5 system-ui, sans-serif; width: max-content; min-width: 100%; }
       #app { min-height: 100vh; padding: 2rem; }
-      .origin { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; margin: 0 auto; max-width: 100%; }
-      .region { display: flex; flex-direction: column; gap: .75rem; align-items: center; }
-      .region:empty { display: none; }
+      .origin { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; margin: 0 auto; }
+      /* the readme mounts into .origin; float it above the sheet */
+      .origin > .readme { order: -1; }
       .sheet { display: flex; flex-direction: column; gap: 1.25rem; align-items: start; }
       .grid-scroll { overflow-x: auto; max-width: 100%; }
 
@@ -60,10 +63,12 @@
   </head>
   <body>
     <div id="app"></div>
-    <button id="save" title="Download this app as a single index.html — your sheet baked in, runs offline from your desktop"
-      style="position:fixed;top:.7rem;right:.8rem;font:600 .8rem/1 ui-monospace,monospace;padding:.45rem .7rem;border:1px solid #8884;border-radius:.5rem;background:#8881;color:inherit;cursor:pointer">↓ save as index.html</button>
     <a href="./os/" style="position:fixed;bottom:.6rem;right:.8rem;font-size:.75rem;opacity:.5;color:inherit">plastron-os ↗</a>
-    <script>document.getElementById("save").addEventListener("click",function(){var p=globalThis.plastron;if(p&&p.download)p.download();});</script>
+    <!-- Pyodide loader (defer; ~lazy — the 10MB runtime only downloads when a
+         py formula first runs). Sets globalThis.loadPyodide; the py-compiler
+         prefers it over the bundled (external) import. Needs network. -->
+    <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.js"></script>
+    <script>globalThis.__pyodideIndexURL = "https://cdn.jsdelivr.net/pyodide/v0.29.4/full/";</script>
     <script type="module" src="./origin-main.ts"></script>
   </body>
 </html>

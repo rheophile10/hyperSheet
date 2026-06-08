@@ -72,11 +72,21 @@ const isPyProxyLike = (v: unknown): v is PyProxyLike =>
 let _pyodide: Promise<PyodideAPI> | undefined;
 const getPyodide = (): Promise<PyodideAPI> => {
   if (!_pyodide) {
-    _pyodide = import("pyodide").then(
-      (m) => (m as unknown as {
-        loadPyodide: (opts?: Record<string, unknown>) => Promise<PyodideAPI>;
-      }).loadPyodide(),
-    );
+    // Browser hosts can't resolve the bundled (external) "pyodide" import, so
+    // they load pyodide.js from a CDN, which sets globalThis.loadPyodide; an
+    // optional __pyodideIndexURL points it at the CDN's runtime assets. Node/
+    // Bun fall through to the installed package.
+    const g = globalThis as {
+      loadPyodide?: (opts?: Record<string, unknown>) => Promise<PyodideAPI>;
+      __pyodideIndexURL?: string;
+    };
+    _pyodide = typeof g.loadPyodide === "function"
+      ? g.loadPyodide(g.__pyodideIndexURL ? { indexURL: g.__pyodideIndexURL } : undefined)
+      : import("pyodide").then(
+        (m) => (m as unknown as {
+          loadPyodide: (opts?: Record<string, unknown>) => Promise<PyodideAPI>;
+        }).loadPyodide(),
+      );
   }
   return _pyodide;
 };

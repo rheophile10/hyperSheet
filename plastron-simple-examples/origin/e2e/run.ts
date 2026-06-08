@@ -85,7 +85,7 @@ const cel = (page: Page, key: string): Promise<unknown> =>
 
 await withPage("boot — canvas readme renders + draws", async (page) => {
   const mount = await cel(page, "元");
-  eq((mount as { __mount?: string })?.__mount, "top", "元 is a mount placement");
+  eq((mount as { __mount?: string })?.__mount, ".origin", "元 mounts into .origin");
   ok(await page.$(".readme"), "readme card rendered");
   const canvas = await page.$(".readme canvas");
   ok(canvas, "canvas banner element present");
@@ -193,8 +193,35 @@ await withPage("click a cell to edit it", async (page) => {
 await withPage("clearing 元 restores the readme", async (page) => {
   await put(page, "=1 + 1");
   await put(page, "");
-  eq((await cel(page, "元") as { __mount?: string })?.__mount, "top", "readme mount restored");
+  eq((await cel(page, "元") as { __mount?: string })?.__mount, ".origin", "readme mount restored");
   ok(await page.$(".readme canvas"), "canvas banner back");
+});
+
+await withPage("=mount targets existing nodes only (no top/bottom regions)", async (page) => {
+  await put(page, '(mount ".origin" (dom "h3.pinned" "at origin"))');
+  ok(await page.$(".origin h3.pinned"), "mounts to the existing .origin node");
+  await put(page, '(mount "top" (dom "h3.ghost" "x"))');
+  ok(!(await page.$("h3.ghost")), '"top" matches nothing now → not placed');
+});
+
+await withPage("wide mounted content is reachable (body grows to fit)", async (page) => {
+  await put(page, '(mount ".origin" (dom "div.wide" (style "width" "3000px") "wide"))');
+  const fits = await page.evaluate(() => document.body.scrollWidth >= 3000);
+  ok(fits, "body widened to fit a 3000px child (horizontal scroll, not clipped)");
+});
+
+// Python — loads Pyodide from the CDN on first use (needs network; ~slower).
+await withPage("=def(py) + call works via Pyodide", async (page) => {
+  await page.waitForFunction(() => typeof (globalThis as any).loadPyodide === "function", { timeout: 20000 });
+  const out = await page.evaluate(async () => {
+    const { state, resolveFn } = (globalThis as any).plastron;
+    const put = async (s: string) => { await resolveFn(state, "origin.edit")(state, "元"); await resolveFn(state, "setValue")(state, "元.draft", s); await resolveFn(state, "origin.commit")(state, "元"); };
+    await put('=def("sq", "py", "lambda x: x * x")');
+    await put("=sq(6)");
+    return { cel: state.cels.get("sq")?.celType, result: state.cels.get("元")?.v };
+  });
+  eq(out.cel, "EditableLambdaCel", "python function cel created");
+  eq(out.result, 36, "=sq(6) → 36 (python)");
 });
 
 await browser.close();
