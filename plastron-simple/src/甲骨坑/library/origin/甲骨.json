@@ -142,7 +142,20 @@
         "name": "grid",
         "kind": "native",
         "genesis": true,
-        "description": "(rows cols [name]) - genesis: add rows*cols editable cels, each like 元 (name.A1 .. data cels). =grid(3,3) makes a 3x3 worksheet; delete the formula and the sweep removes them."
+        "description": "(rows cols [name]) - genesis: an rows*cols worksheet of editable cels, each like 元. default sheet name g<r>x<c> so different shapes don't collide; same-shape needs a name. delete the formula -> swept."
+      }
+    },
+    {
+      "key": "sheets",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheets",
+        "segment": "origin",
+        "name": "sheets",
+        "kind": "native",
+        "genesis": true,
+        "description": "(name1 r1 c1 name2 r2 c2 ...) - genesis: several named grids (a workbook) from one formula; delete the formula and all of them go."
       }
     },
     {

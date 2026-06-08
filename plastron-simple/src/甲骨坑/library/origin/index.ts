@@ -184,23 +184,47 @@ const originView: Fn = (
 const mount: Fn = (region: unknown, content: unknown): unknown =>
   ({ __at: String(region ?? "top"), vnode: isVnode(content) ? content : T(content) });
 
-/** grid(rows, cols [, name]) — a genesis vocabulary that adds rows×cols
- *  editable cels, each identical to 元. `=grid(3,3)` in any cell makes a
- *  3×3 worksheet; the cels are real (name.A1 … data ValueCels), each a
- *  spreadsheet cell you type formulas/values into. Delete the formula
- *  and the genesis sweep removes them. */
-const grid: Fn = (rows: unknown, cols: unknown, nameArg?: unknown): unknown => {
+// Build the genesis request for ONE named grid (rows×cols of empty
+// infix cels under `name.A1` …). Shared by grid() and sheets().
+const gridShape = (rows: unknown, cols: unknown, name: string): { layer: string; cels: Record<string, unknown> } => {
   const r = Math.max(1, Math.min(100, Math.floor(Number(rows) || 1))); // capped — true million-scale needs virtualization (excel-scale roadmap)
   const c = Math.max(1, Math.min(50, Math.floor(Number(cols) || 1)));
-  const name = typeof nameArg === "string" && nameArg !== "" ? nameArg : "g";
+  const colLetter = (n: number): string => { let s = "", x = n + 1; while (x > 0) { s = String.fromCharCode(65 + (x - 1) % 26) + s; x = Math.floor((x - 1) / 26); } return s; };
   const cels: Record<string, unknown> = {};
   for (let row = 0; row < r; row++) {
     for (let col = 0; col < c; col++) {
-      const addr = `${String.fromCharCode(65 + col)}${row + 1}`;
+      const addr = `${colLetter(col)}${row + 1}`;
       cels[`${name}.${addr}`] = { celType: "ValueCel", v: "", metadata: { name: addr, parser: "infix" } };
     }
   }
-  return { genesis: true, layer: name, cels };
+  return { layer: name, cels };
+};
+
+/** grid(rows, cols [, name]) — a genesis vocabulary that adds an
+ *  rows×cols worksheet of editable cels, each like 元. `=grid(3,3)` in
+ *  any cell makes a 3×3 sheet. The default sheet name is `g<r>x<c>`
+ *  (e.g. g5x5) so different-shaped grids DON'T collide — a grid in a
+ *  cell of another grid just works. Two SAME-shape grids need an
+ *  explicit name: `grid(5,5,"budget")`. Delete the formula → swept. */
+const grid: Fn = (rows: unknown, cols: unknown, nameArg?: unknown): unknown => {
+  const name = typeof nameArg === "string" && nameArg !== "" ? nameArg
+    : `g${Math.max(1, Math.min(100, Math.floor(Number(rows) || 1)))}x${Math.max(1, Math.min(50, Math.floor(Number(cols) || 1)))}`;
+  return { genesis: true, ...gridShape(rows, cols, name) };
+};
+
+/** sheets(name1, r1, c1, name2, r2, c2, …) — a workbook: several named
+ *  grids from one formula. `(sheets "budget" 5 5 "actuals" 5 5)` makes
+ *  two sheets at once; delete the formula and all of them go. */
+const sheets: Fn = (...args: unknown[]): unknown => {
+  const cels: Record<string, unknown> = {};
+  for (let i = 0; i + 2 < args.length; i += 3) {
+    const nm = String(args[i] ?? "").trim() || `s${i / 3 + 1}`;
+    Object.assign(cels, gridShape(args[i + 1], args[i + 2], nm).cels);
+  }
+  // multi-layer: the cels already carry their own `name.` prefixes; no
+  // single `layer`, so they land in the generator's segment grouping by
+  // key prefix (the view splits them into one table per sheet).
+  return { genesis: true, cels };
 };
 
 // ── the entry gesture ────────────────────────────────────────────────────────
@@ -420,6 +444,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.expand",  expand],
   ["origin.key",     key],
   ["grid",           grid],
+  ["sheets",         sheets],
   ["origin.drain",   effectsDrain],
   ["load",           loadFn],
   ["cels",           celsFn],
