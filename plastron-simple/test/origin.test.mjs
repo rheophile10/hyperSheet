@@ -126,3 +126,21 @@ test("mount(region, content) places a dom in a region; deleting removes it", asy
   await put(state, root, m, "");
   assert.equal(walk(root, (n) => String(n.attrs?.class ?? "").includes("region-top")).length, 0, "region gone with the formula");
 });
+
+test("introspection: inspect / segments / vocab return readable values", async () => {
+  const { state, root, m } = await boot();
+  await put(state, root, m, "=42");                 // give A1 a known value first via a grid? no — inspect 元 itself
+  await put(state, root, m, '=inspect("元")');
+  const ins = String(state.cels.get("元").v);
+  assert.match(ins, /"celType"/, "inspect returns the cel's JSON");
+  assert.match(ins, /"key": "元"/);
+
+  await put(state, root, m, "=segments()");
+  assert.match(String(state.cels.get("元").v), /origin/, "segments lists loaded segments");
+
+  await put(state, root, m, '=vocab("origin")');
+  const v = String(state.cels.get("元").v);
+  assert.match(v, /functions/, "vocab lists functions");
+  assert.match(v, /\bdom\b/, "dom is listed as usable");
+  assert.match(v, /\bgrid\b/, "grid is listed as usable");
+});

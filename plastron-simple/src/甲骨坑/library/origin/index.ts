@@ -328,25 +328,37 @@ const key: Fn = async (state: State, payload: unknown, event: unknown) => {
 
 // ── origin.effects: load / cels requests (effects at drain) ─────────────────
 
+// Introspection vocabulary. Each returns a REQUEST; the effects drain
+// (which has `state`) does the read — formula fns only get input values,
+// not state, so a graph read can't be a plain fn. The drain replaces
+// the requesting cell with a ValueCel holding the result.
 const loadFn: Fn = (name: unknown) => ({ originLoad: true, name: String(name ?? "") });
 const celsFn: Fn = (name: unknown) => ({ originCels: true, segment: String(name ?? "") });
+/** inspect(key) — the cel's full definition (celType, value, formula,
+ *  metadata) as readable JSON. */
+const inspectFn: Fn = (key: unknown) => ({ originInspect: true, key: String(key ?? "") });
+/** segments() — every loaded segment with role/version/dependencies. */
+const segmentsFn: Fn = () => ({ originSegments: true });
+/** vocab(segment?) — the values + functions you can USE in formulas
+ *  (callable lambdas/compilers + value cels), with kind + description.
+ *  No arg → across all loaded segments. */
+const vocabFn: Fn = (seg?: unknown) => ({ originVocab: true, segment: seg == null ? "" : String(seg) });
 
 const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<void> => {
   const state = (stateArg ?? items[0]?.state) as State | undefined;
   if (!state) return;
   const setCel = resolveFn(state, "setCel") as Fn;
+  const desc = (c: Cel): string => String((c.metadata as { description?: unknown }).description ?? "");
   for (const { cel } of items) {
-    const req = cel.v as { originLoad?: boolean; originCels?: boolean; name?: string; segment?: string } | undefined;
+    const req = cel.v as Record<string, unknown> | undefined;
     if (!req || typeof req !== "object") continue;
-    // load/cels are ACTIONS: the result is plain text. Replace the
-    // requesting FORMULA cel with a ValueCel holding the result —
-    // otherwise the next runCycle re-evaluates the formula and clobbers
-    // the result with the request object again. (defn/genesis differ:
-    // their generator's value STAYS the request; they create OTHER cels.)
+    // load/cels/inspect/segments/vocab are ACTIONS — the result is data.
+    // Replace the requesting FORMULA cel with a ValueCel holding it, so
+    // the next runCycle can't re-evaluate the formula over the result.
     let result: unknown;
     try {
       if (req.originLoad && req.name) {
-        await ensureSegments(state, [req.name]);
+        await ensureSegments(state, [String(req.name)]);
         result = `loaded "${req.name}" - its vocabulary is callable now`;
       } else if (req.originCels && req.segment) {
         const lines: string[] = [];
@@ -358,6 +370,33 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
           lines.push(`${k}  [${c.celType}${c.locked ? ", locked" : ""}]${f ? `  f: ${f.slice(0, 60)}` : ""}`);
         }
         result = lines.length ? lines.join("\n") : `(no segment named "${req.segment}" is loaded - try =load("${req.segment}"))`;
+      } else if (req.originInspect && req.key) {
+        const c = state.cels.get(String(req.key));
+        result = c
+          ? JSON.stringify({ key: c.metadata.key, celType: c.celType, locked: c.locked ?? false,
+              v: c.v, f: (c as { f?: string }).f, metadata: c.metadata }, null, 2)
+          : `(no cel named "${req.key}")`;
+      } else if (req.originSegments) {
+        const segs: string[] = [];
+        const segMap = (state as { segments?: Map<string, { name: string; role?: string; version?: string; dependencies?: string[] }> }).segments;
+        for (const m of (segMap ? segMap.values() : [])) {
+          segs.push(`${m.name}  [${m.role ?? "?"}] v${m.version ?? "?"}${m.dependencies?.length ? `  ← ${m.dependencies.join(", ")}` : ""}`);
+        }
+        result = segs.sort().join("\n") || "(no segments)";
+      } else if (req.originVocab) {
+        const seg = String(req.segment ?? "");
+        const fns: string[] = []; const vals: string[] = [];
+        for (const [k, c] of state.cels) {
+          if (seg && c.metadata.segment !== seg) continue;
+          if (k.includes(".")) continue; // skip namespaced internals (g.A1, foo.bar)
+          if (c.celType === "LockedLambdaCel" || c.celType === "EditableLambdaCel" || c.celType === "CompilerCel") {
+            fns.push(`  ${k}${desc(c) ? `  — ${desc(c)}` : ""}`);
+          } else if (c.celType === "ValueCel") {
+            vals.push(`  ${k} = ${JSON.stringify(c.v)?.slice(0, 40)}`);
+          }
+        }
+        result = [`functions (call as (${"name"} …) or =name(…)):`, ...fns.sort(),
+          "", "values (reference by name):", ...vals.sort()].join("\n");
       } else continue;
       await setCel(state, cel.metadata.key, {
         celType: "ValueCel", v: result, metadata: { segment: cel.metadata.segment },
@@ -384,4 +423,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.drain",   effectsDrain],
   ["load",           loadFn],
   ["cels",           celsFn],
+  ["inspect",        inspectFn],
+  ["segments",       segmentsFn],
+  ["vocab",          vocabFn],
 ]));

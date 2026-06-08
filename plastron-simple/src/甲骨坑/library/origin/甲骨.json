@@ -245,6 +245,45 @@
         "emitsTo": "origin.effects",
         "description": "(segment) - readable listing of a segment's cels (skill first; locked marked)."
       }
+    },
+    {
+      "key": "inspect",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "inspect",
+        "segment": "origin",
+        "name": "inspect",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(key) - the cel's full definition (celType, value, formula, metadata) as readable JSON."
+      }
+    },
+    {
+      "key": "segments",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "segments",
+        "segment": "origin",
+        "name": "segments",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "() - every loaded segment with role, version, dependencies."
+      }
+    },
+    {
+      "key": "vocab",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "vocab",
+        "segment": "origin",
+        "name": "vocab",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(segment?) - the values + functions usable in formulas (callable lambdas/compilers + value cels) with descriptions; no arg = across all loaded segments."
+      }
     }
   ]
 }
