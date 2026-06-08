@@ -227,3 +227,29 @@ equivalent; 548 kernel + 107 origin e2e green. Recovers ~55% — new kernel now
 cascade of the de-classed kernel. Next lever: memoize `celDependencies` per cel.
 
 TODO: port life (grid) + cellx (wide-fan) for the full picture; then krausest.
+
+---
+
+## v3 — krausest reconcile path on the NEW plastron-dom (2026-06-08)
+
+Drove the js-framework-benchmark (krausest) keyed workload through the real
+`diffVNodes` (keyed reconcile) + the buildTbody vnode rebuild, on the new
+plastron-dom. Node, no DOM (the build + reconcile are the plastron-specific
+cost; the apply is O(changed) + standard). p50 of 30:
+
+| op | build (rebuild 1000 vnodes) | diff (keyed reconcile) |
+|---|---|---|
+| create 1000   | 1.04ms | 0.72ms |
+| update 10th   | 0.96ms | 2.11ms |
+| swap 2 rows   | 0.71ms | 1.29ms |
+| remove 1 row  | 0.70ms | 1.26ms |
+
+**Finding:** both `build` and `diff` are **O(total rows), not O(changed rows)**.
+Removing ONE row or updating 100 still rebuilds + reconciles all 1000. That is
+exactly the waste **row-fragment rendering** removes (rebuild + diff only the
+changed rows → O(changed)), a 10–100× cut on the small-delta ops. Same waste
+hits the live sheet: editing one cell rebuilds + diffs the whole sheet view.
+
+The harness is `src/benches/krausest-reconcile.mjs`. NOT yet measured: the DOM
+apply (O(changed), needs a browser) + event delegation (1 listener vs N at
+create) — a follow-up full browser port.
