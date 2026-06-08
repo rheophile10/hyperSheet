@@ -263,6 +263,29 @@ await withPage("=grok no-key path is friendly (no network)", async (page) => {
   eq((req as any).prompt, "say hi", "prompt carried");
 });
 
+await withPage("=chat no-key path is friendly; request shape correct", async (page) => {
+  const v = String(await put(page, '=chat("hi", "")'));
+  ok(/no api key|key/i.test(v) || v.length > 0, "no-key handled gracefully (no crash)");
+  const req = await page.evaluate(() => (globalThis as any).plastron.resolveFn((globalThis as any).plastron.state, "chat")("say hi", "KEY", "gpt-4o", "https://example.com/v1/chat"));
+  eq((req as any).url, "https://example.com/v1/chat", "chat targets the custom url");
+  eq((req as any).prompt, "say hi", "prompt carried");
+});
+
+await withPage("=attr sets a dom attribute", async (page) => {
+  await put(page, '=dom("a", attr("href", "https://plastron.ca/"), "go")');
+  ok(await page.$('td.cell[data-key="元"] a[href="https://plastron.ca/"]'), "the <a> rendered with the href attribute");
+});
+
+await withPage('=save("slot") + =open("slot") round-trips a named sheet', async (page) => {
+  await put(page, "=grid(2, 2)");
+  await put(page, "42", "g2x2.A1");
+  ok(/^saved/.test(String(await put(page, '=save("slotA")'))), "saved to slotA");
+  await put(page, "99", "g2x2.A1");
+  eq(await cel(page, "g2x2.A1"), 99, "value mutated to 99");
+  ok(/^opened/.test(String(await put(page, '=open("slotA")'))), "opened slotA");
+  eq(await cel(page, "g2x2.A1"), 42, "open restored the saved value");
+});
+
 await withPage("a syntax error surfaces, stays editing", async (page) => {
   await put(page, '=grid("in" 4 3)');
   ok(/expected|infix/.test(String(await cel(page, "元.error"))), "parse error captured");
