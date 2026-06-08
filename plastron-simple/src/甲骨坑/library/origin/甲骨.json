@@ -141,7 +141,7 @@
         "segment": "origin",
         "name": "mount",
         "kind": "native",
-        "description": "(region content) - place a dom object in a named region the origin lays out around the sheet (\"top\", \"bottom\", ...), not in the cell that holds it. Deleting the formula removes it."
+        "description": "(target content) - pin a dom under another element of the sheet instead of in the cell that holds it. target is a selector matched against the view: \".sheet\" pins under the cells, \"div.cell\" under the first cell, \"#id\" by id; a bare word (\"top\"/\"bottom\") is a region anchor laid out around the sheet. Deleting the formula removes it."
       }
     },
     {

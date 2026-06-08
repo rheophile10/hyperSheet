@@ -150,6 +150,14 @@ test("introspection: inspect / segments / vocab return readable values", async (
   assert.match(ins, /"celType"/, "inspect returns the cel's JSON");
   assert.match(ins, /"key": "元"/);
 
+  // a function cel (mount) inspects to its signature + body + doc, not JSON
+  await put(state, root, m, '=inspect("mount")');
+  const fnsrc = String(state.cels.get("元").v);
+  assert.match(fnsrc, /LockedLambdaCel/, "shows the cel kind");
+  assert.match(fnsrc, /source:/, "labels the function body");
+  assert.match(fnsrc, /__mount/, "shows the actual fn body");
+  assert.match(fnsrc, /selector/, "shows the (updated) description");
+
   await put(state, root, m, "=segments()");
   assert.match(String(state.cels.get("元").v), /origin/, "segments lists loaded segments");
 

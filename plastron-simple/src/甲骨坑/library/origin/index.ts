@@ -458,11 +458,28 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         }
         result = lines.length ? lines.join("\n") : `(no segment named "${req.segment}" is loaded - try =load("${req.segment}"))`;
       } else if (req.originInspect && req.key) {
-        const c = state.cels.get(String(req.key));
-        result = c
-          ? JSON.stringify({ key: c.metadata.key, celType: c.celType, locked: c.locked ?? false,
-              v: c.v, f: (c as { f?: string }).f, metadata: c.metadata }, null, 2)
-          : `(no cel named "${req.key}")`;
+        const key = String(req.key);
+        const c = state.cels.get(key);
+        const fnTypes = new Set(["LockedLambdaCel", "EditableLambdaCel", "CompilerCel"]);
+        if (!c) {
+          result = `(no cel named "${key}")`;
+        } else if (fnTypes.has(c.celType)) {
+          // a lambda/compiler IS a function — show its signature/body and
+          // doc, not bare JSON. An editable lambda shows its authored `f`;
+          // a native/locked one shows the live fn body.
+          const md = c.metadata as { kind?: string; description?: string; segment?: string };
+          const f = (c as { f?: string; _fn?: unknown }).f;
+          result = [
+            `${key}  [${c.celType}${c.locked ? " · locked" : ""}${md.kind ? ` · ${md.kind}` : ""}]`,
+            `segment: ${md.segment ?? "?"}`,
+            md.description ? `\n${md.description}` : "",
+            `\nsource:`,
+            f ?? String((c as { _fn?: unknown })._fn ?? "(native, no source)"),
+          ].filter(Boolean).join("\n");
+        } else {
+          result = JSON.stringify({ key: c.metadata.key, celType: c.celType, locked: c.locked ?? false,
+            v: c.v, f: (c as { f?: string }).f, metadata: c.metadata }, null, 2);
+        }
       } else if (req.originSegments) {
         const segs: string[] = [];
         const segMap = (state as { segments?: Map<string, { name: string; role?: string; version?: string; dependencies?: string[] }> }).segments;
