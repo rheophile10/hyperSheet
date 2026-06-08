@@ -81,6 +81,29 @@ const attr: Fn = (...pairs: unknown[]): { __attr: Record<string, unknown> } => {
   return { __attr: a };
 };
 
+// ── view styles, INLINE ──────────────────────────────────────────────────────
+// The view carries all its own CSS as inline `style` attributes (the painter
+// writes them straight onto the element) — the host HTML keeps only :root / *
+// / body / #app. Pseudo-classes can't be inline: :first-child is handled by
+// styling the element directly; :has() by computing per-cell here; :hover is
+// dropped (cosmetic).
+const SX = {
+  origin: "display:flex;flex-direction:column;gap:1.25rem;align-items:center;margin:0 auto",
+  sheet: "display:flex;flex-direction:column;gap:1.25rem;align-items:center",
+  scroll: "overflow-x:auto;max-width:100%",
+  table: "border-collapse:collapse;font-variant-numeric:tabular-nums",
+  th: "border:1px solid #8883;background:#8881;text-align:center;color:#888;font-weight:600;font-size:.8rem;font-family:ui-monospace,monospace;min-width:1.8rem;padding:0 .35rem;height:1.9rem",
+  corner: "border:1px solid #8883;background:#8881;text-align:center;color:#aaa;font-weight:700;font-size:.8rem;font-family:ui-monospace,monospace;padding:0 .35rem;height:1.9rem",
+  td: "border:1px solid #8883;padding:0;height:1.9rem;text-align:left;vertical-align:top;cursor:cell",
+  cellValue: "display:flex;align-items:flex-start;gap:.25rem;padding:.15rem .4rem;min-height:1.6rem;font-family:ui-monospace,monospace;font-size:.85rem;resize:both;overflow:auto;cursor:text",
+  valFirst: "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
+  pre: "margin:0;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:.8rem;line-height:1.4;flex:1;min-width:0;overflow:visible",
+  src: "margin:0;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:.8rem;line-height:1.4;color:#8ab4f8;max-height:16rem;overflow:auto;flex:1;min-width:0",
+  editing: "display:flex;flex-direction:column;gap:.2rem;min-width:18rem",
+  error: "color:#d4453e;background:#d4453e1a;font-family:ui-monospace,monospace;font-size:.76rem;padding:.15rem .45rem;border-radius:.3rem",
+  edit: "width:100%;min-height:2.6rem;resize:both;font-family:ui-monospace,monospace;font-size:.85rem;padding:.15rem .4rem;border:0;background:#4a90d922;white-space:pre-wrap;line-height:1.4",
+} as const;
+
 /** How a cell's VALUE shows when not being edited: a dom vnode renders
  *  live; a number/string shows as text; a structure request (genesis /
  *  defn) shows a ƒ marker (it made cels/functions elsewhere); errors
@@ -99,7 +122,7 @@ const displayCell = (v: unknown): V => {
   // a multi-line string (inspect output, a paragraph) keeps its shape in a
   // <pre>; inline it stays a one-line preview (.cell-value clips it), but
   // the ⤢ expand panel shows it formatted top-to-bottom.
-  if (typeof v === "string" && v.includes("\n")) return el("pre", { class: "cell-pre" }, [T(v)]);
+  if (typeof v === "string" && v.includes("\n")) return el("pre", { class: "cell-pre", style: SX.pre }, [T(v)]);
   return T(String(v));
 };
 
@@ -162,23 +185,24 @@ const originView: Fn = (
   // the editor — a resizable textarea (the SAME for every cell), plus an
   // error line when its last formula failed to compile.
   const editor = (key: string): V =>
-    el("div", { class: "cell-editing" }, [
-      el("textarea", { class: "cell-edit", value: String(draft ?? "") }, [], {
+    el("div", { class: "cell-editing", style: SX.editing }, [
+      el("textarea", { class: "cell-edit", style: SX.edit, value: String(draft ?? "") }, [], {
         input: { set: "元.draft", extract: "value" },
         keydown: { dispatch: "origin.key", payload: key }, // origin.key commits on Enter
       }),
-      ...(errMsg ? [el("div", { class: "cell-error" }, [T(errMsg)])] : []),
+      ...(errMsg ? [el("div", { class: "cell-error", style: SX.error }, [T(errMsg)])] : []),
     ]);
+
+  const isMountVal = (v: unknown): boolean => !!v && typeof v === "object" && typeof (v as { __mount?: unknown }).__mount === "string";
 
   // the inner of a cell: inline editor when active, else the value. A cell
   // whose value renders ELSEWHERE (a mount — e.g. the readme in 元) shows its
   // SOURCE here, so the formula is visible + editable. Click to edit.
   const body = (key: string, value: unknown): V => {
     if (active === key) return editor(key);
-    const isMount = !!value && typeof value === "object" && typeof (value as { __mount?: unknown }).__mount === "string";
-    const shown = isMount ? el("pre", { class: "cell-pre cell-src" }, [T(srcOf.get(key) ?? "")]) : displayCell(value);
-    const valEl = shown.type === "text" ? el("span", { class: "cell-val-text" }, [shown]) : shown;
-    return el("div", { class: "cell-value", title: "click to edit" }, [valEl],
+    const shown = isMountVal(value) ? el("pre", { class: "cell-pre cell-src", style: SX.src }, [T(srcOf.get(key) ?? "")]) : displayCell(value);
+    const valEl = shown.type === "text" ? el("span", { class: "cell-val-text", style: SX.valFirst }, [shown]) : shown;
+    return el("div", { class: "cell-value", title: "click to edit", style: SX.cellValue }, [valEl],
       { click: { dispatch: "origin.edit", payload: key } });
   };
 
@@ -190,18 +214,22 @@ const originView: Fn = (
     let maxC = 0, maxR = 0;
     const at = new Map<string, string>();
     for (const e of entries) { at.set(`${e.col},${e.row}`, e.key); maxC = Math.max(maxC, e.col); maxR = Math.max(maxR, e.row); }
-    const head = el("tr", {}, [el("th", { class: "corner" }, [T(label)]),
-      ...Array.from({ length: maxC + 1 }, (_, c) => el("th", {}, [T(colLetter(c))]))]);
+    const head = el("tr", {}, [el("th", { class: "corner", style: SX.corner }, [T(label)]),
+      ...Array.from({ length: maxC + 1 }, (_, c) => el("th", { style: SX.th }, [T(colLetter(c))]))]);
     const rows = Array.from({ length: maxR + 1 }, (_, r) =>
-      el("tr", {}, [el("th", { class: "rownum" }, [T(String(r + 1))]),
+      el("tr", {}, [el("th", { class: "rownum", style: SX.th }, [T(String(r + 1))]),
         ...Array.from({ length: maxC + 1 }, (_, c) => {
           const k = at.get(`${c},${r}`);
-          return el("td", { class: k && active === k ? "cell editing" : "cell", "data-key": k ?? "" },
-            k ? [body(k, valOf.get(k))] : []);
+          const v = k ? valOf.get(k) : undefined;
+          // mount cells (showing a long source) get a roomier min-width;
+          // the active cell gets the editing outline — both inline.
+          const tdStyle = `${SX.td};min-width:${isMountVal(v) ? "26rem" : "4.5rem"}${k && active === k ? ";outline:2px solid #4a90d9;outline-offset:-2px" : ""}`;
+          return el("td", { class: k && active === k ? "cell editing" : "cell", "data-key": k ?? "", style: tdStyle },
+            k ? [body(k, v)] : []);
         })]));
     // wrap in a horizontal scroller so a wide grid reaches column A
     // (a centered overflowing table clips its left edge unreachably).
-    return el("div", { class: "grid-scroll" }, [el("table", { class: "grid" }, [el("thead", {}, [head]), el("tbody", {}, rows)])]);
+    return el("div", { class: "grid-scroll", style: SX.scroll }, [el("table", { class: "grid", style: SX.table }, [el("thead", {}, [head]), el("tbody", {}, rows)])]);
   };
 
   // group: base cels (no dot) vs grid layers (segment before the dot)
@@ -234,8 +262,8 @@ const originView: Fn = (
   const placements: { sel: string; vnode: V }[] = [];
   for (const k of ks) { const p = asPlacement(valOf.get(k)); if (p) placements.push(p); }
 
-  const sheetNode = el("div", { class: "sheet" }, sections);
-  const originNode = el("div", { class: "origin" }, [sheetNode]);
+  const sheetNode = el("div", { class: "sheet", style: SX.sheet }, sections);
+  const originNode = el("div", { class: "origin", style: SX.origin }, [sheetNode]);
 
   // Splice each placement into the FIRST view node matching its selector.
   // No magic regions: the target must be an element the view actually renders
