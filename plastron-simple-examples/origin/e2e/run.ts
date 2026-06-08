@@ -183,6 +183,27 @@ await withPage("=inspect(\"mount\") → yaml", async (page) => {
   ok(/^name: mount/m.test(v) && /signature:/.test(v) && /source:/.test(v), "yaml with name/signature/source");
 });
 
+await withPage("editor: Shift+Enter newline, Tab indents (focus kept)", async (page) => {
+  await put(page, "=1"); // give 元 a short value so the editor isn't the giant readme
+  await page.click('td.cell[data-key="元"] .cell-value'); await page.waitForTimeout(80);
+  const ta = 'td.cell[data-key="元"] textarea.cell-edit';
+  await page.evaluate((s) => { const t = document.querySelector(s) as HTMLTextAreaElement; t.value = ""; t.focus(); t.selectionStart = t.selectionEnd = 0; }, ta);
+  await page.type(ta, "ab");
+  await page.keyboard.down("Shift"); await page.keyboard.press("Enter"); await page.keyboard.up("Shift");
+  await page.type(ta, "cd"); await page.keyboard.press("Tab");
+  const r = await page.evaluate((s) => { const t = document.querySelector(s) as HTMLTextAreaElement | null; return { val: t?.value, editing: !!t }; }, ta);
+  ok(r.val?.includes("\n"), "Shift+Enter inserted a newline");
+  ok(r.val?.includes("\t"), "Tab inserted a tab character");
+  ok(r.editing, "Tab kept focus in the editor (didn't move away)");
+});
+
+await withPage("readme formula text is black (CanvasText), not blue", async (page) => {
+  const code = await page.evaluate(() => getComputedStyle(document.querySelector(".readme td.fx-code")!).color);
+  const src = await page.evaluate(() => getComputedStyle(document.querySelector('td.cell[data-key="元"] pre.cell-src')!).color);
+  ok(code === "rgb(0, 0, 0)" || /^rgb\(2[0-9]{2}/.test(code), `readme code is black/white not blue (${code})`);
+  ok(src === "rgb(0, 0, 0)" || /^rgb\(2[0-9]{2}/.test(src), `元 source is black/white not blue (${src})`);
+});
+
 await withPage("=segments() lists origin", async (page) => ok(String(await put(page, "=segments()")).includes("origin"), "origin listed"));
 
 await withPage("=vocab(\"origin\") lists the vocabulary", async (page) => {

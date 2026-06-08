@@ -98,7 +98,7 @@ const SX = {
   cellValue: "display:flex;align-items:flex-start;gap:.25rem;padding:.15rem .4rem;min-height:1.6rem;max-width:min(56rem,88vw);font-family:ui-monospace,monospace;font-size:.85rem;resize:both;overflow:auto;cursor:text",
   valFirst: "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
   pre: "margin:0;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:.8rem;line-height:1.4;flex:1;min-width:0;overflow:visible",
-  src: "margin:0;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:.8rem;line-height:1.4;color:LinkText;max-height:16rem;overflow:auto;flex:1;min-width:0",
+  src: "margin:0;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:.8rem;line-height:1.4;color:CanvasText;max-height:16rem;overflow:auto;flex:1;min-width:0",
   editing: "display:flex;flex-direction:column;gap:.2rem;min-width:18rem",
   error: "color:#d4453e;background:#d4453e1a;font-family:ui-monospace,monospace;font-size:.76rem;padding:.15rem .45rem;border-radius:.3rem",
   edit: "width:100%;min-height:2.6rem;resize:both;font-family:ui-monospace,monospace;font-size:.85rem;padding:.15rem .4rem;border:0;background:#4a90d922;white-space:pre-wrap;line-height:1.4",
@@ -441,12 +441,32 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   return state;
 };
 
+// Editor keys: Enter commits; Shift+Enter inserts a newline (default); Tab /
+// Shift+Tab indent / outdent at the cursor (a tab char) instead of moving
+// focus. Multi-line + tabs make hand-written formulas readable (the parser
+// ignores whitespace).
 const key: Fn = async (state: State, payload: unknown, event: unknown) => {
-  const e = event as { key?: string; preventDefault?: () => void } | undefined;
-  if (e?.key === "Enter") {
-    e.preventDefault?.();
-    await commit(state, payload);
+  const e = event as {
+    key?: string; shiftKey?: boolean; preventDefault?: () => void;
+    target?: { value: string; selectionStart: number; selectionEnd: number };
+  } | undefined;
+  if (!e) return state;
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault?.(); await commit(state, payload); return state; }
+  if (e.key === "Tab") {
+    e.preventDefault?.(); // don't move focus — indent in place
+    const ta = e.target;
+    if (ta && typeof ta.selectionStart === "number" && typeof ta.value === "string") {
+      const s = ta.selectionStart, en = ta.selectionEnd, val = ta.value;
+      let next = val, caret = s;
+      if (e.shiftKey) { // outdent: drop a leading tab on the cursor's line
+        const ls = val.lastIndexOf("\n", s - 1) + 1;
+        if (val[ls] === "\t") { next = val.slice(0, ls) + val.slice(ls + 1); caret = Math.max(ls, s - 1); }
+      } else { next = val.slice(0, s) + "\t" + val.slice(en); caret = s + 1; }
+      ta.value = next; ta.selectionStart = ta.selectionEnd = caret;
+      await (resolveFn(state, "setValue") as Fn)(state, "元.draft", next);
+    }
   }
+  // Shift+Enter falls through → the textarea inserts a newline itself.
   return state;
 };
 
