@@ -75,7 +75,10 @@
   </head>
   <body>
     <div id="app"></div>
+    <button id="save" title="Download this app as a single index.html — your sheet baked in, runs offline from your desktop"
+      style="position:fixed;top:.7rem;right:.8rem;font:600 .8rem/1 ui-monospace,monospace;padding:.45rem .7rem;border:1px solid #8884;border-radius:.5rem;background:#8881;color:inherit;cursor:pointer">↓ save as index.html</button>
     <a href="./os/" style="position:fixed;bottom:.6rem;right:.8rem;font-size:.75rem;opacity:.5;color:inherit">plastron-os ↗</a>
+    <script>document.getElementById("save").addEventListener("click",function(){var p=globalThis.plastron;if(p&&p.download)p.download();});</script>
     <script type="module" src="./origin-main.ts"></script>
   </body>
 </html>
