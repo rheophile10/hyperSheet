@@ -151,12 +151,35 @@ const originView: Fn = (
     ]));
   }
 
+  // PLACED dom — a cell whose value is mount(region, content). The dom
+  // renders in that REGION (the origin lays it out around the sheet),
+  // not in its cell; delete the formula and it's gone. Region "bottom"
+  // renders below the sheet, anything else above (in name order).
+  const placed = new Map<string, V[]>();
+  for (const k of ks) {
+    const v = valOf.get(k) as { __at?: unknown; vnode?: unknown } | undefined;
+    if (v && typeof v === "object" && typeof v.__at === "string" && isVnode(v.vnode)) {
+      const r = v.__at; (placed.get(r) ?? placed.set(r, []).get(r))!.push(v.vnode as V);
+    }
+  }
+  const region = (name: string): V => el("div", { class: `region region-${name}` }, placed.get(name)!);
+  const above = [...placed.keys()].filter((r) => r !== "bottom").sort().map(region);
+  const below = placed.has("bottom") ? [region("bottom")] : [];
+
   return {
-    vnode: el("div", { class: "sheet" }, sections),
+    vnode: el("div", { class: "origin" }, [...above, el("div", { class: "sheet" }, sections), ...below]),
     mount: typeof mount === "string" ? mount : null,
     listeners: [],
   };
 };
+
+/** mount(region, content) — PLACE a dom object in a named region the
+ *  origin lays out around the sheet (e.g. "top", "bottom"), instead of
+ *  inside the cell that holds the formula. Composes cleanly (the origin
+ *  view owns #app and renders the region), and vanishes when the
+ *  formula is deleted — no painter-target conflict. */
+const mount: Fn = (region: unknown, content: unknown): unknown =>
+  ({ __at: String(region ?? "top"), vnode: isVnode(content) ? content : T(content) });
 
 /** grid(rows, cols [, name]) — a genesis vocabulary that adds rows×cols
  *  editable cels, each identical to 元. `=grid(3,3)` in any cell makes a
@@ -349,6 +372,7 @@ export const name = "origin" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["originView",     originView],
   ["dom",            dom],
+  ["mount",          mount],
   ["origin.commit",  commit],
   ["origin.edit",    edit],
   ["origin.expand",  expand],

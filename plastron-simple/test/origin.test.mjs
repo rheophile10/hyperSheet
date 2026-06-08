@@ -115,3 +115,14 @@ test("=cels(sheet) lists a segment; unknown symbols show #NAME?", async () => {
   await put(state, root, m, "=nope(1)");
   assert.match(txt(cellByKey(root, "元")), /#NAME\?/, "undefined symbol shows #NAME?");
 });
+
+test("mount(region, content) places a dom in a region; deleting removes it", async () => {
+  const { state, root, m } = await boot();
+  await put(state, root, m, '(mount "top" (dom "h2.hello" "pinned"))');
+  const region = () => walk(root, (n) => String(n.attrs?.class ?? "").includes("region-top"))[0];
+  assert.ok(region(), "top region rendered");
+  assert.ok(walk(region(), (n) => n.tag === "h2").length > 0, "dom placed in the region, not the cell");
+  assert.match(txt(region()), /pinned/);
+  await put(state, root, m, "");
+  assert.equal(walk(root, (n) => String(n.attrs?.class ?? "").includes("region-top")).length, 0, "region gone with the formula");
+});

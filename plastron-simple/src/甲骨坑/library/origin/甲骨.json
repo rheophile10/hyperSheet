@@ -121,6 +121,18 @@
       }
     },
     {
+      "key": "mount",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "mount",
+        "segment": "origin",
+        "name": "mount",
+        "kind": "native",
+        "description": "(region content) - place a dom object in a named region the origin lays out around the sheet (\"top\", \"bottom\", ...), not in the cell that holds it. Deleting the formula removes it."
+      }
+    },
+    {
       "key": "grid",
       "celType": "LockedLambdaCel",
       "locked": true,
