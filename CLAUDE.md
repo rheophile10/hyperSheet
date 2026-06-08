@@ -1,22 +1,22 @@
 # CLAUDE.md — plastron repo
 
-This monorepo is in transition. **`plastron-simple/` is the live kernel.** The original `plastron/`, the segment ecosystem under `segments/`, and the apps under `examples/` are deprecated and will be deleted as plastron-simple absorbs their use cases.
+**`plastron/` is the kernel** (the reactive cel substrate). **`plastron-examples/`** holds the example hosts — `origin` (the landing page, deployed at **plastron.ca**) and `plastron-os`. The original kernel and the old `segments/`/`examples/` ecosystem have been **removed**; everything lives under `plastron/` + `plastron-examples/` now.
 
-The eventual product is a polyglot reactive substrate that can be a web app, a CLI utility, or a spreadsheet — all deployable as a single `index.html`. See `README.md` for the full pitch and roadmap.
+The product is a polyglot reactive substrate that can be a web app, a CLI utility, or a spreadsheet — all deployable as a single `index.html`. See `README.md`.
 
-## Default to plastron-simple
+## Default to plastron
 
-When asked to build, fix, or extend something in this repo, work in `plastron-simple/` (and `plastron-simple-examples/`) unless the user explicitly names one of the deprecated directories. Don't refactor or "improve" code under `plastron/`, `segments/`, or `examples/` — it's going to be deleted. If a deprecated file is the only thing that does what you need, surface that to the user instead of porting fixes back into doomed code.
+When asked to build, fix, or extend something, work in `plastron/` (the kernel) and `plastron-examples/` (the hosts). The landing page / live app is `plastron-examples/origin` (the `元` spreadsheet); the full desktop shell is `plastron-examples/plastron-os`.
 
 ## Cels mark reactivity boundaries
 
 Plastron-first ≠ everything-is-a-cel. Make something a cel only when reactivity buys you something: independent observation, channel binding, partial invalidation, per-slot persistence. Inner compute — loop accumulators, scratch values, things only read in aggregate — stays inside a native fn. Measured: collapsing N intermediate cels into one native-fn cel beats both per-cel plastron AND react-memo (`bench/RESULTS.md`).
 
-The benches were run against the original kernel; the design lesson (cel granularity) carries over to plastron-simple unchanged.
+The benches were run against the original kernel; the design lesson (cel granularity) carries over to plastron unchanged.
 
-## API anchors (plastron-simple)
+## API anchors (plastron)
 
-Public surface from `plastron-simple/src/index.ts`:
+Public surface from `plastron/src/index.ts`:
 
 ```ts
 import { createInitialState, precompute, precomputeOptional, resolveFn } from "plastron";
@@ -40,7 +40,7 @@ Notes:
 
 ## Documentation flow — how docs and code move together
 
-`plastron-simple/docs/` is organized as a development pipeline. Every doc has a place; placement encodes status. Before writing or moving docs, **read the meta-docs in `plastron-simple/docs/4-current/documentation/`** — they define the conventions for each stage:
+`plastron/docs/` is organized as a development pipeline. Every doc has a place; placement encodes status. Before writing or moving docs, **read the meta-docs in `plastron/docs/4-current/documentation/`** — they define the conventions for each stage:
 
 - `design-folder-design.md` — how `1-design/` is organized (proposed ideas under `1-under-consideration/`, evolving under `2-in-evaluation/`, committed under `3-accepted/`; rejection is in-place via `status: rejected` — there is no `4-rejected/` folder). Only `3-accepted/` uses area subfolders matching `4-current/`'s NN-name pattern (plus a `documentation/` subfolder for meta-docs); `1-under-consideration/` and `2-in-evaluation/` are flat, with the design's area in frontmatter.
 - `roadmap-design.md` — how `2-roadmap/` is organized (critical-path numbered `.md`s + `parallel/` + `completed/`; YAML frontmatter on every task).
@@ -68,21 +68,21 @@ This file and the README are synthesized from a snapshot. Before relying on a sp
 
 Sources of truth:
 
-- `plastron-simple/src/` — the kernel itself.
-- `plastron-simple/docs/4-current/` — what's actually shipped, organized by lifecycle stage (boot → hydration → caching → precompute → runCycle → mutations → wasm → dehydration → storage). Anchored in tests.
-- `plastron-simple/docs/2-roadmap/` — committed in-flight work.
-- `plastron-simple/docs/1-design/3-accepted/` — designs accepted but not yet shipped.
-- `plastron-simple/docs/1-design/{1-under-consideration,2-in-evaluation}/` — ideas in motion; treat as proposals, not contracts.
-- `plastron-simple/test/` — executable contract for the kernel surface.
+- `plastron/src/` — the kernel itself.
+- `plastron/docs/4-current/` — what's actually shipped, organized by lifecycle stage (boot → hydration → caching → precompute → runCycle → mutations → wasm → dehydration → storage). Anchored in tests.
+- `plastron/docs/2-roadmap/` — committed in-flight work.
+- `plastron/docs/1-design/3-accepted/` — designs accepted but not yet shipped.
+- `plastron/docs/1-design/{1-under-consideration,2-in-evaluation}/` — ideas in motion; treat as proposals, not contracts.
+- `plastron/test/` — executable contract for the kernel surface.
 - `bench/RESULTS.md` — bench numbers (measured on the original kernel; design lessons still apply).
-- `git log` on `plastron-simple/src/` — recent moves.
+- `git log` on `plastron/src/` — recent moves.
 
 ## Repo conventions
 
 - **Naming.** The on-disk archive format is `.甲`. Keep the kanji (甲骨, 卜, 契, 兆, 譜, 元, 連鎖, …) as opaque identifiers; do NOT add English prose explaining their origin or etymology in READMEs or comments — leave it for readers to infer from the code.
 - **Cel keys in formulas:** ASCII `[\w.-]+`. Unicode is fine elsewhere.
-- **Code that touches deprecated directories** (`plastron/`, `segments/`, `examples/`) requires explicit user opt-in. If asked to fix something there, double-check the user actually wants the fix rather than a port forward to plastron-simple.
-- **Prefer Bun built-ins when they're available in both CLI and browser.** `bun:sqlite` (with `sqlite-wasm + OPFS` as the browser twin), `Bun.password`, `Bun.hash`, `WebSocket`, `fetch`, `Worker`, `HTMLRewriter`, etc. — reach for them before pulling npm packages or rolling our own. See `plastron-simple/docs/BUN-FEATURES.md` for the full survey and which APIs cross both runtimes.
+- **The kernel surface is small and the cel registry is the dispatch surface.** Don't add a `state.fns` map or parallel registries; every fn is a cel.
+- **Prefer Bun built-ins when they're available in both CLI and browser.** `bun:sqlite` (with `sqlite-wasm + OPFS` as the browser twin), `Bun.password`, `Bun.hash`, `WebSocket`, `fetch`, `Worker`, `HTMLRewriter`, etc. — reach for them before pulling npm packages or rolling our own. See `plastron/docs/BUN-FEATURES.md` for the full survey and which APIs cross both runtimes.
 
 ## When the user asks for "an app"
 

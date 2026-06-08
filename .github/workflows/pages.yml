@@ -36,26 +36,26 @@ jobs:
           bun-version: latest
 
       - name: Install kernel deps
-        working-directory: plastron-simple
+        working-directory: plastron
         run: bun install --frozen-lockfile || bun install
 
       - name: Build kernel (tsc → dist/)
-        working-directory: plastron-simple
+        working-directory: plastron
         run: bun run build
 
       - name: Bundle origin host (landing page)
-        working-directory: plastron-simple-examples/origin
+        working-directory: plastron-examples/origin
         run: bun bundle.ts
 
       - name: Bundle plastron-OS (full demo)
-        working-directory: plastron-simple-examples/plastron-os
+        working-directory: plastron-examples/plastron-os
         run: bun bundle.ts
 
       - name: Assemble deploy dir (origin at /, OS at /os/)
         run: |
           mkdir -p deploy/os
-          cp plastron-simple-examples/origin/dist/index.html deploy/index.html
-          cp plastron-simple-examples/plastron-os/dist/index.html deploy/os/index.html
+          cp plastron-examples/origin/dist/index.html deploy/index.html
+          cp plastron-examples/plastron-os/dist/index.html deploy/os/index.html
           # custom domain — tells GitHub Pages to serve + provision a cert for plastron.ca
           echo 'plastron.ca' > deploy/CNAME
 

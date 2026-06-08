@@ -3,7 +3,7 @@
     "docs-mcp": {
       "command": "uv",
       "args": ["run", "python", "server.py"],
-      "cwd": "/home/rheophile/projects/plastron/plastron-simple/docs/mcp"
+      "cwd": "/home/rheophile/projects/plastron/plastron/docs/mcp"
     }
   }
 }

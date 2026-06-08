@@ -6,6 +6,7 @@
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
+    "resolveJsonModule": true,
     "outDir": "dist",
     "declaration": true,
     "strict": true,

@@ -1,0 +1,405 @@
+{
+  "name": "origin",
+  "cels": [
+    {
+      "key": "元",
+      "celType": "FormulaCel",
+      "metadata": {
+        "key": "元",
+        "segment": "origin",
+        "name": "元",
+        "description": "cell A1 — the origin cell. holds the readme formula at boot (its rendered output mounts below); a cell whose output renders elsewhere shows its SOURCE here. editable; clear it to restore the readme.",
+        "parser": "f"
+      },
+      "f": "(mount \".origin\"\n  (dom \"div.readme\" (style \"max-width\" \"47rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.5 ui-monospace, monospace\")\n    (canvas 560 92 (style \"display\" \"block\" \"border-radius\" \".4rem\" \"margin\" \"0 auto .35rem\") (rect 0 0 560 92 \"#16161f\") (text 18 42 \"plastron 🐢\" \"#f5f5f7\" \"bold 25px system-ui\") (text 18 70 \"a spreadsheet tool on an index.html — steal and use this anywhere\" \"#8a8a99\" \"12px system-ui\"))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"this readme is the formula in the cel above. drag that cell's corner to resize it, or replace its contents with your own formulas. for more cels, use a grid formula:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=grid(8, 5)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a worksheet of editable cels\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=grid(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a workbook of named sheets\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"you can make your own functions and use them in formulas after:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"define a function — js, or py (first py use downloads pyodide, ~10MB)\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=double(21)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"call it → 42\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"you can make dom objects with formulas — and a little universe running on canvas:\")\n    (canvas 300 170 (style \"display\" \"block\" \"border-radius\" \".4rem\" \"margin\" \"0 auto .35rem\") (rect 0 0 300 170 \"#0a0a18\") (circle 150 85 12 \"#ffd34e\") (orbit 150 85 34 4 3 \"#7fd0ff\") (orbit 150 85 58 6 6 \"#e6677a\") (orbit 150 85 84 5 11 \"#9fe89f\"))\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"hi\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a styled dom element\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=canvas(300,170, rect(0,0,300,170,\\\"#0a0a18\\\"), circle(150,85,12,\\\"#ffd34e\\\"), orbit(150,85,34,4,3,\\\"#7fd0ff\\\"), orbit(150,85,58,6,6,\\\"#e6677a\\\"), orbit(150,85,84,5,11,\\\"#9fe89f\\\"))\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"↑ that animated solar system\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"inspect functions and the plastron segments they came from:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=inspect(\\\"mount\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a function's signature + source\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=segments()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"the plastron segments loaded\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"talk to grok — with an api key:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=grok(\\\"say hi in 5 words\\\", key)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a chat completion (key = a cel holding your api key)\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"save your work:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=save()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"persist this sheet to your browser — reload and it's back\"))))\n    (dom \"p.fx-repo\" (style \"margin\" \".9rem 0 0\") (dom \"a\" (attr \"href\" \"https://github.com/rheophile10/plastron\" \"target\" \"_blank\") (style \"color\" \"LinkText\") \"github.com/rheophile10/plastron →\"))))"
+    },
+    {
+      "key": "元.mount",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.mount",
+        "segment": "origin",
+        "name": "元.mount",
+        "description": "where the sheet view mounts. the host's one knob; null hides it."
+      },
+      "v": "#app"
+    },
+    {
+      "key": "元.editing",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.editing",
+        "segment": "origin",
+        "name": "元.editing",
+        "description": "key of the cell currently being edited (null = none)."
+      },
+      "v": null
+    },
+    {
+      "key": "元.draft",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.draft",
+        "segment": "origin",
+        "name": "元.draft",
+        "description": "the edit input's in-progress text."
+      },
+      "v": ""
+    },
+    {
+      "key": "元.error",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.error",
+        "segment": "origin",
+        "name": "元.error",
+        "description": "compile/parse error for the cell being edited (null = none); shown under the active editor so a bad formula doesn't fail silently."
+      },
+      "v": null
+    },
+    {
+      "key": "元.cells",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.cells",
+        "segment": "origin",
+        "name": "元.cells",
+        "description": "ordered spreadsheet cell keys: 元 (A1) + genesis-created grid cels."
+      },
+      "v": [
+        "元"
+      ]
+    },
+    {
+      "key": "元.srcs",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.srcs",
+        "segment": "origin",
+        "name": "元.srcs",
+        "description": "cell SOURCES parallel to 元.cells — the view shows a cell's source when its value renders elsewhere (a mount)."
+      },
+      "v": [
+        "(mount \".origin\"\n  (dom \"div.readme\" (style \"max-width\" \"47rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.5 ui-monospace, monospace\")\n    (canvas 560 92 (style \"display\" \"block\" \"border-radius\" \".4rem\" \"margin\" \"0 auto .35rem\") (rect 0 0 560 92 \"#16161f\") (text 18 42 \"plastron 🐢\" \"#f5f5f7\" \"bold 25px system-ui\") (text 18 70 \"a spreadsheet tool on an index.html — steal and use this anywhere\" \"#8a8a99\" \"12px system-ui\"))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"this readme is the formula in the cel above. drag that cell's corner to resize it, or replace its contents with your own formulas. for more cels, use a grid formula:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=grid(8, 5)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a worksheet of editable cels\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=grid(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a workbook of named sheets\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"you can make your own functions and use them in formulas after:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"define a function — js, or py (first py use downloads pyodide, ~10MB)\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=double(21)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"call it → 42\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"you can make dom objects with formulas — and a little universe running on canvas:\")\n    (canvas 300 170 (style \"display\" \"block\" \"border-radius\" \".4rem\" \"margin\" \"0 auto .35rem\") (rect 0 0 300 170 \"#0a0a18\") (circle 150 85 12 \"#ffd34e\") (orbit 150 85 34 4 3 \"#7fd0ff\") (orbit 150 85 58 6 6 \"#e6677a\") (orbit 150 85 84 5 11 \"#9fe89f\"))\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"hi\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a styled dom element\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=canvas(300,170, rect(0,0,300,170,\\\"#0a0a18\\\"), circle(150,85,12,\\\"#ffd34e\\\"), orbit(150,85,34,4,3,\\\"#7fd0ff\\\"), orbit(150,85,58,6,6,\\\"#e6677a\\\"), orbit(150,85,84,5,11,\\\"#9fe89f\\\"))\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"↑ that animated solar system\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"inspect functions and the plastron segments they came from:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=inspect(\\\"mount\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a function's signature + source\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=segments()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"the plastron segments loaded\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"talk to grok — with an api key:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=grok(\\\"say hi in 5 words\\\", key)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a chat completion (key = a cel holding your api key)\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"save your work:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=save()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"persist this sheet to your browser — reload and it's back\"))))\n    (dom \"p.fx-repo\" (style \"margin\" \".9rem 0 0\") (dom \"a\" (attr \"href\" \"https://github.com/rheophile10/plastron\" \"target\" \"_blank\") (style \"color\" \"LinkText\") \"github.com/rheophile10/plastron →\"))))"
+      ]
+    },
+    {
+      "key": "元.view",
+      "celType": "FormulaCel",
+      "metadata": {
+        "key": "元.view",
+        "segment": "origin",
+        "name": "元.view",
+        "parser": "f",
+        "schema": "render-spec",
+        "channel": [
+          "plastron-dom.paint"
+        ],
+        "inputMap": {
+          "editing": "元.editing",
+          "draft": "元.draft",
+          "mount": "元.mount",
+          "error": "元.error",
+          "keys": "元.cells",
+          "vals": [
+            "元"
+          ],
+          "srcs": "元.srcs"
+        },
+        "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place."
+      },
+      "f": "(originView editing draft mount error keys vals srcs)"
+    },
+    {
+      "key": "originView",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "originView",
+        "segment": "origin",
+        "name": "originView",
+        "kind": "native",
+        "description": "(editing expanded draft mount keys vals) - spreadsheet RenderSpec producer: 元 button + grid() layers as Excel tables + expanded formula panel."
+      }
+    },
+    {
+      "key": "dom",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "dom",
+        "segment": "origin",
+        "name": "dom",
+        "kind": "native",
+        "description": "(tag ...children) - a presentation vnode value. tag.class emmet sugar; string children -> text, nested dom -> elements. Renders in the cell that holds it."
+      }
+    },
+    {
+      "key": "style",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "style",
+        "segment": "origin",
+        "name": "style",
+        "kind": "native",
+        "description": "(prop value ...) - inline styles for a dom element; pass as a child of dom."
+      }
+    },
+    {
+      "key": "attr",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "attr",
+        "segment": "origin",
+        "name": "attr",
+        "kind": "native",
+        "description": "(name value ...) - HTML attributes for a dom element (href, target, id, ...); pass as a child of dom: (dom \"a\" (attr \"href\" \"https://...\") \"link\")."
+      }
+    },
+    {
+      "key": "mount",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "mount",
+        "segment": "origin",
+        "name": "mount",
+        "kind": "native",
+        "description": "(target content) - pin a dom under another element of the sheet instead of in the cell that holds it. target is a selector matched against the view: \".sheet\" pins under the cells, \"div.cell\" under the first cell, \"#id\" by id; a bare word (\"top\"/\"bottom\") is a region anchor laid out around the sheet. Deleting the formula removes it."
+      }
+    },
+    {
+      "key": "grid",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "grid",
+        "segment": "origin",
+        "name": "grid",
+        "kind": "native",
+        "genesis": true,
+        "description": "genesis: worksheets of editable cels, each like 元. grid(rows, cols) makes one sheet (auto-named g<r>x<c> so shapes don't collide); grid(rows, cols, \"name\") names it; grid(\"in\", 4, 3, \"out\", 4, 3) — a string first arg — makes a WORKBOOK of named sheets. delete the formula -> swept."
+      }
+    },
+    {
+      "key": "origin.commit",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.commit",
+        "segment": "origin",
+        "name": "origin.commit",
+        "kind": "native",
+        "description": "(state, cellKey) - set the cell's content from the draft and re-evaluate; rebuild the cell list (new grids in, swept out); 元 un-deletable (empty restores readme)."
+      }
+    },
+    {
+      "key": "origin.edit",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.edit",
+        "segment": "origin",
+        "name": "origin.edit",
+        "kind": "native",
+        "description": "(state, cellKey) - start editing a cell (seed draft with its source); click the active cell's label again to close."
+      }
+    },
+    {
+      "key": "origin.key",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.key",
+        "segment": "origin",
+        "name": "origin.key",
+        "kind": "native",
+        "description": "(state, cellKey, event) - Enter commits the draft."
+      }
+    },
+    {
+      "key": "origin.effects",
+      "celType": "ChannelCel",
+      "metadata": {
+        "key": "origin.effects",
+        "segment": "origin",
+        "name": "origin.effects",
+        "drain": "origin.drain",
+        "description": "load/cels requests commit here (effects at drain)."
+      },
+      "v": {
+        "drain": "origin.drain"
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.drain",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.drain",
+        "segment": "origin",
+        "name": "origin.drain",
+        "kind": "native",
+        "description": "(items) - execute load (ensureSegments) and cels (segment listing) requests; result text replaces the request as the cel's value."
+      }
+    },
+    {
+      "key": "load",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "load",
+        "segment": "origin",
+        "name": "load",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name) - load a library segment (lazy loaders + store)."
+      }
+    },
+    {
+      "key": "cels",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "cels",
+        "segment": "origin",
+        "name": "cels",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(segment) - readable listing of a segment's cels (skill first; locked marked)."
+      }
+    },
+    {
+      "key": "inspect",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "inspect",
+        "segment": "origin",
+        "name": "inspect",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(key) - the cel's full definition (celType, value, formula, metadata) as readable JSON."
+      }
+    },
+    {
+      "key": "segments",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "segments",
+        "segment": "origin",
+        "name": "segments",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "() - every loaded segment with role, version, dependencies."
+      }
+    },
+    {
+      "key": "vocab",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "vocab",
+        "segment": "origin",
+        "name": "vocab",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(segment?) - the values + functions usable in formulas (callable lambdas/compilers + value cels) with descriptions; no arg = across all loaded segments."
+      }
+    },
+    {
+      "key": "def",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "def",
+        "segment": "origin",
+        "name": "def",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name, kind, source) - define a callable function from source in a compiler kind (\"js\" works out of the box). =def(\"double\", \"js\", \"x => x * 2\") then call it: =double(21) -> 42."
+      }
+    },
+    {
+      "key": "chat",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "chat",
+        "segment": "origin",
+        "name": "chat",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(prompt, apiKey [, model] [, url]) - a chat-completion request to an OpenAI-shaped endpoint; the reply text lands in the cell. apiKey is the value - a literal string or a cel reference holding the key."
+      }
+    },
+    {
+      "key": "grok",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "grok",
+        "segment": "origin",
+        "name": "grok",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(prompt, apiKey [, model]) - chat() pinned to xAI Grok. =grok(\"say hi\", apiKeyCel) or =grok(\"say hi\", \"xai-...\"). browser CORS may block direct calls; works from a CLI/Bun host."
+      }
+    },
+    {
+      "key": "cdn",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "cdn",
+        "segment": "origin",
+        "name": "cdn",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(url) - load an external script/library from a URL via the kernel loadScript primitive. =cdn(\"https://cdn.jsdelivr.net/npm/canvas-confetti\") then call what it exposes."
+      }
+    },
+    {
+      "key": "save",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "save",
+        "segment": "origin",
+        "name": "save",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name?) - persist your sheet (cell sources + def'd functions) to this browser's localStorage. =save() then reload and it's back; =save(\"v2\") for a named slot."
+      }
+    },
+    {
+      "key": "open",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "open",
+        "segment": "origin",
+        "name": "open",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name?) - restore a saved sheet from localStorage. =open() loads the default slot; =open(\"v2\") a named one."
+      }
+    },
+    {
+      "key": "origin.autoload",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.autoload",
+        "segment": "origin",
+        "name": "origin.autoload",
+        "kind": "native",
+        "description": "(state) - restore the default saved sheet on boot; the host calls this after hydrate."
+      }
+    }
+  ]
+}
