@@ -790,6 +790,50 @@ const fsTree = async (state: State, path: string, prefix = ""): Promise<string> 
   return out.filter(Boolean).join("\n");
 };
 
+// --- sqlite — lazy sql.js (CDN, like pyodide) + in-memory dbs persisted to
+//     OPFS bytes at /plastron/dbs/<name>.db. db()/sql()/tables() vocabulary.
+//     (A dedicated `sqlite` segment is the cleaner long-term host; the MVP
+//     lives here alongside opfs, lazy-loading sql.js on first db() use.) ---
+interface SqlDb { exec(q: string): { columns: string[]; values: unknown[][] }[]; export(): Uint8Array; }
+interface SqlJs { Database: new (bytes?: Uint8Array) => SqlDb; }
+let _sqlJs: SqlJs | null = null;
+const _dbs = new Map<string, SqlDb>();
+const sqliteCdn = (): string => (globalThis as { __sqliteCdn?: string }).__sqliteCdn ?? "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.11.0/";
+const dbFile = (name: string): string => `/plastron/dbs/${name}.db`;
+const loadSqlJs = async (state: State): Promise<SqlJs> => {
+  if (_sqlJs) return _sqlJs;
+  const base = sqliteCdn();
+  await (resolveFn(state, "loadScript") as Fn)(state, `${base}sql-wasm.js`);
+  const init = (globalThis as { initSqlJs?: (o: { locateFile: (f: string) => string }) => Promise<SqlJs> }).initSqlJs;
+  if (!init) throw new Error("sqlite: sql.js failed to load from CDN");
+  _sqlJs = await init({ locateFile: (f: string) => base + f });
+  return _sqlJs;
+};
+const openDb = async (state: State, name: string): Promise<SqlDb> => {
+  const cached = _dbs.get(name);
+  if (cached) return cached;
+  const SQL = await loadSqlJs(state);
+  await ensureSegments(state, ["file-store"]);
+  let bytes: Uint8Array | undefined;
+  try { bytes = (await (resolveFn(state, "fs.read") as Fn)(dbFile(name))) as Uint8Array; } catch { /* new db */ }
+  const db = bytes && bytes.length ? new SQL.Database(bytes) : new SQL.Database();
+  _dbs.set(name, db);
+  return db;
+};
+const persistDb = async (state: State, name: string, db: SqlDb): Promise<void> => {
+  await ensureSegments(state, ["file-store"]);
+  await (resolveFn(state, "fs.mkdir") as Fn)("/plastron/dbs");
+  await (resolveFn(state, "fs.write") as Fn)(dbFile(name), db.export());
+};
+const dbHandleName = (h: unknown): string =>
+  (h && typeof h === "object" && typeof (h as { __db?: unknown }).__db === "string")
+    ? (h as { __db: string }).__db : String(h ?? "main");
+const WRITE_SQL = /^\s*(insert|update|delete|create|drop|alter|replace|begin|commit|vacuum)\b/i;
+
+const dbFn:     Fn = (name: unknown) => ({ originDb: "open", name: String(name ?? "main") });
+const sqlFn:    Fn = (handle: unknown, query: unknown) => ({ originDb: "sql", name: dbHandleName(handle), query: String(query ?? "") });
+const tablesFn: Fn = (handle: unknown) => ({ originDb: "sql", name: dbHandleName(handle), query: "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name" });
+
 const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<void> => {
   const state = (stateArg ?? items[0]?.state) as State | undefined;
   if (!state) return;
@@ -984,6 +1028,23 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         } else if (op === "del") {
           await call("fs.delete", file); result = `deleted sheet "${nm}"`;
         } else result = `(unknown seg op: ${op})`;
+      } else if (req.originDb) {
+        // sqlite — open a db (sql.js, OPFS-backed) or run a query.
+        const op = String(req.originDb);
+        const name = String(req.name ?? "main");
+        if (op === "open") {
+          await openDb(state, name);
+          result = { __db: name };                 // a handle sql()/tables() accept
+        } else if (op === "sql") {
+          const db = await openDb(state, name);
+          const query = String(req.query ?? "");
+          const res = db.exec(query);
+          if (WRITE_SQL.test(query)) await persistDb(state, name, db);
+          if (res.length && res[0]!.values.length) {
+            const { columns, values } = res[0]!;
+            result = values.map((row) => Object.fromEntries(columns.map((c, i) => [c, row[i]])));
+          } else result = res.length ? [] : "ok";
+        } else result = `(unknown db op: ${op})`;
       } else continue;
       // Carry forward ownership/name stamps — an introspection result lands
       // back IN the requesting cell, and if that's a grid cell, dropping
@@ -1049,6 +1110,9 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["upload",         uploadFn],
   ["origin.download", downloadHandler],
   ["origin.upload",   uploadHandler],
+  ["db",             dbFn],
+  ["sql",            sqlFn],
+  ["tables",         tablesFn],
   ["save",           saveFn],
   ["open",           openFn],
   ["origin.autoload", autoload],

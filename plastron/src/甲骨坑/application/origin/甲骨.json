@@ -633,6 +633,45 @@
       }
     },
     {
+      "key": "db",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "db",
+        "segment": "origin",
+        "name": "db",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name?) - open/create a sqlite database in OPFS (default main). returns a handle for sql()/tables()."
+      }
+    },
+    {
+      "key": "sql",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sql",
+        "segment": "origin",
+        "name": "sql",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(db, query) - run SQL against a db handle; SELECT returns rows, writes persist to OPFS."
+      }
+    },
+    {
+      "key": "tables",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "tables",
+        "segment": "origin",
+        "name": "tables",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(db) - list the tables in a db."
+      }
+    },
+    {
       "key": "origin.download",
       "celType": "LockedLambdaCel",
       "locked": true,
