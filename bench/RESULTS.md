@@ -289,3 +289,36 @@ Krausest diff WITH `memo: [row, selected]` on each <tr> (was, from v3):
 
 Same lever serves the live sheet (origin cells carry the memo). 548 kernel +
 3 diff-memo unit + 110 origin e2e green.
+
+---
+
+## v6 — krausest ported to the NEW kernel (2026-06-08)
+
+Full port: rows array cel + selectedIdx cel + a tbody view FormulaCel
+`(buildTbody rows sel)` (keyed <tr>, `memo:[row,selected]`), painter mount at
+#tbody, click→dispatch handlers. Idiomatic shape (few cels), so the cascade
+regression doesn't bite. Harness: a queued mock-raf painter, each op timed as
+setValue + paint flush (≈ but not identical to the official js-framework-
+benchmark). Median of 5, this machine:
+
+| op | new plastron-dom |
+|---|---|
+| create 1,000   | 22.0ms |
+| create 10,000  | 216ms  |
+| update 10th    | 6.1ms  |
+| swap rows      | 5.0ms  |
+| select row     | 5.1ms  |
+| remove row     | 5.3ms  |
+| clear          | 5.9ms  |
+
+Row counts verified correct after each op. These land in the same ballpark as
+React/Svelte/Solid — plastron-dom is **competitive**, so a krausest PR is
+worthwhile. Harness: bench/krausest/new-harness.mjs (run from
+plastron-examples/origin via bun, needs playwright there).
+
+Gotchas found porting: (1) must call precomputeOptional after creating the view
+cel or setValue(rows) won't invalidate it; (2) a synchronous raf:cb=>cb() breaks
+the painter's re-paint flush — use the queued mock-raf (enqueue then flush).
+
+NOT done: old-vs-new (needs segments/plastron-dom restored, like plastron-old);
+the official js-framework-benchmark harness (this is an approximation).

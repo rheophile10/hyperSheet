@@ -23,5 +23,6 @@ await (resolve(state, "drain"))(state, "plastron-dom.paint");
 await (resolve(state, "origin.autoload"))(state);
 await (resolve(state, "drain"))(state, "plastron-dom.paint");
 
-// expose for console tinkering + the Playwright suite
-(globalThis as { plastron?: unknown }).plastron = { state, resolveFn };
+// expose for console tinkering + the Playwright suite (createPainter/setPainter
+// let harnesses swap in a synchronous painter for measurement)
+(globalThis as { plastron?: unknown }).plastron = { state, resolveFn, createPainter, setPainter, precomputeOptional };
