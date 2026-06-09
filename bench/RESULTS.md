@@ -322,3 +322,38 @@ the painter's re-paint flush — use the queued mock-raf (enqueue then flush).
 
 NOT done: old-vs-new (needs segments/plastron-dom restored, like plastron-old);
 the official js-framework-benchmark harness (this is an approximation).
+
+---
+
+## v7 — reconcile old-vs-new (honest apples-to-apples, 2026-06-08)
+
+Restored the OLD plastron-dom (segments-old/, gitignored) and ran its
+`diffVNodes(prev,next)` vs the new one on IDENTICAL 1000-row keyed trees. The
+old krausest entry uses the SAME few-cel shape as the new port (one rows cel +
+one selectedIdx cel + one tbody view cel), so this is fair.
+
+| op (1000 rows) | OLD | NEW (no memo) | NEW (memo) |
+|---|---|---|---|
+| update 10th | 4.48ms | 5.00ms | 2.59ms |
+| swap        | 4.17ms | 4.24ms | 1.80ms |
+| remove      | 3.96ms | 3.96ms | 1.69ms |
+
+Findings:
+- **New diff ALGORITHM ≈ old** (no-memo column ~on par, ~10% slower on update,
+  equal otherwise) — no reconcile regression.
+- **New WITH memo is 1.7–2.5× faster than old** — net improvement for krausest.
+- krausest uses FEW cels, so the per-cel cascade regression (v2) doesn't bite.
+
+So new ≥ old on the framework path. BUT honesty caveats on v6's absolute numbers:
+1. v6 measures setValue + applyPatch (script + DOM mutation), NOT the browser's
+   layout/reflow/paint. The OFFICIAL js-framework-benchmark measures click→pixels,
+   so v6 is OPTIMISTIC — official numbers would be higher. The vs-React/Svelte
+   claim needs the real harness, not this approximation.
+2. The krausest shape is the framework-idiomatic FEW-cel shape (rows array + one
+   view cel) — same as Solid's signals, fair for the benchmark — and is NOT the
+   origin spreadsheet's per-cell shape. The view RENDERING path is identical
+   (FormulaCel → paint channel → painter diff/apply + memo); the data granularity
+   differs by design.
+
+For a PR: plastron is NOT on npm (404, v0.0.0) — must publish (or github dep) +
+version bump. And run the OFFICIAL harness for the headline numbers.
