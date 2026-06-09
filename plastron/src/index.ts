@@ -294,4 +294,4 @@ export { isCelError, makeCelError } from "./kernel/index.js";
 export { buildSheet } from "./甲骨坑/library/sheet/index.js";
 export { buildNotepad, installNotepadActions } from "./甲骨坑/application/notepad/index.js";
 export { buildWebEditor, installWebEditorActions, COUNTER_EXAMPLE, WEATHER_EXAMPLE } from "./甲骨坑/application/web-editor/index.js";
-export { createPainter, getPainter, setPainter } from "./甲骨坑/library/plastron-dom/index.js";
+export { createPainter, getPainter, setPainter, el, text, memo } from "./甲骨坑/library/plastron-dom/index.js";

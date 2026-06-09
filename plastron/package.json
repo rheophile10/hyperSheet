@@ -1,9 +1,12 @@
 {
   "name": "plastron",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "exports": {
-    ".": "./dist/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
   "scripts": {
     "build": "tsc",
@@ -19,5 +22,17 @@
   "devDependencies": {
     "@types/node": "^22.19.19",
     "typescript": "~5.9.3"
-  }
+  },
+  "description": "A polyglot reactive cel substrate that self-hosts as a spreadsheet \u2014 deployable as a single index.html.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rheophile10/plastron",
+    "directory": "plastron"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "license": "MIT"
 }
