@@ -23,10 +23,10 @@
     "@types/node": "^22.19.19",
     "typescript": "~5.9.3"
   },
-  "description": "A polyglot reactive cel substrate that self-hosts as a spreadsheet \u2014 deployable as a single index.html.",
+  "description": "A polyglot reactive cel substrate that self-hosts as a spreadsheet — deployable as a single index.html.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rheophile10/plastron",
+    "url": "git+https://github.com/rheophile10/plastron.git",
     "directory": "plastron"
   },
   "types": "./dist/index.d.ts",
