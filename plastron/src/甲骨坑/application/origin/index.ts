@@ -834,6 +834,43 @@ const dbFn:     Fn = (name: unknown) => ({ originDb: "open", name: String(name ?
 const sqlFn:    Fn = (handle: unknown, query: unknown) => ({ originDb: "sql", name: dbHandleName(handle), query: String(query ?? "") });
 const tablesFn: Fn = (handle: unknown) => ({ originDb: "sql", name: dbHandleName(handle), query: "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name" });
 
+// --- interlinked(seg) — the cel graph as a force-directed canvas. Nodes = the
+//     segment's coordinate cels; edges = their inputMap deps. The layout is
+//     plain JS (a small force sim), NOT a kernel primitive; the drain composes
+//     a canvas spec (lines + circles + labels) from it. ---
+const forceLayout = (n: number, edges: [number, number][], w: number, h: number): { x: number; y: number }[] => {
+  const pos = Array.from({ length: n }, (_, i) => {
+    const a = (i / Math.max(1, n)) * Math.PI * 2;
+    return { x: w / 2 + Math.cos(a) * w * 0.3, y: h / 2 + Math.sin(a) * h * 0.3 };
+  });
+  for (let it = 0; it < 150; it++) {
+    const fx = new Array<number>(n).fill(0), fy = new Array<number>(n).fill(0);
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      let dx = pos[i]!.x - pos[j]!.x, dy = pos[i]!.y - pos[j]!.y;
+      const d2 = dx * dx + dy * dy + 0.01, d = Math.sqrt(d2), f = 1600 / d2;
+      dx /= d; dy /= d; fx[i]! += dx * f; fy[i]! += dy * f; fx[j]! -= dx * f; fy[j]! -= dy * f;
+    }
+    for (const [i, j] of edges) {
+      let dx = pos[j]!.x - pos[i]!.x, dy = pos[j]!.y - pos[i]!.y;
+      const d = Math.sqrt(dx * dx + dy * dy) + 0.01, f = d * 0.02;
+      dx /= d; dy /= d; fx[i]! += dx * f; fy[i]! += dy * f; fx[j]! -= dx * f; fy[j]! -= dy * f;
+    }
+    for (let i = 0; i < n; i++) {
+      pos[i]!.x = Math.max(26, Math.min(w - 26, pos[i]!.x + Math.max(-6, Math.min(6, fx[i]!))));
+      pos[i]!.y = Math.max(26, Math.min(h - 26, pos[i]!.y + Math.max(-6, Math.min(6, fy[i]!))));
+    }
+  }
+  return pos;
+};
+const interlinkedFn: Fn = (seg: unknown) => ({ originGraph: String(seg ?? "") });
+
+// --- simulate(fnName, n?) — def-driven animation. Runs a def'd frame fn
+//     (i → [x, y]) n times in the drain, then plays the trajectory on an
+//     animated canvas. The physics lives in the def'd JS fn; this only runs
+//     it + schedules frames (shared shape with interlinked's animated mode). ---
+const simulateFn: Fn = (fnName: unknown, n: unknown, r: unknown) =>
+  ({ originSim: true, fn: String(fnName ?? ""), n: Math.max(2, Math.min(2000, Math.floor(Number(n)) || 120)), r: Math.max(2, Math.floor(Number(r)) || 12) });
+
 const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<void> => {
   const state = (stateArg ?? items[0]?.state) as State | undefined;
   if (!state) return;
@@ -1045,6 +1082,57 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
             result = values.map((row) => Object.fromEntries(columns.map((c, i) => [c, row[i]])));
           } else result = res.length ? [] : "ok";
         } else result = `(unknown db op: ${op})`;
+      } else if (req.originGraph !== undefined) {
+        // force-directed graph of a segment's cels (nodes) + inputMap deps (edges)
+        const seg = String(req.originGraph);
+        const prefix = `${seg}.`;
+        const nodeKeys: string[] = [];
+        for (const [k, c] of state.cels) {
+          if (!k.startsWith(prefix) || !/[A-Z]+\d+$/.test(k)) continue;
+          if (c.celType !== "ValueCel" && c.celType !== "FormulaCel") continue;
+          nodeKeys.push(k);
+        }
+        nodeKeys.sort();
+        if (!nodeKeys.length) { result = `(no grid cels in "${seg}" — interlinked graphs a grid segment, e.g. =interlinked("g3x1"))`; }
+        else {
+          const idx = new Map(nodeKeys.map((k, i) => [k, i]));
+          const edges: [number, number][] = [];
+          for (let i = 0; i < nodeKeys.length; i++) {
+            const im = state.cels.get(nodeKeys[i]!)?.metadata.inputMap as Record<string, Key | Key[]> | undefined;
+            if (!im) continue;
+            for (const dep of Object.values(im).flat()) {
+              const j = idx.get(String(dep));
+              if (j !== undefined && j !== i) edges.push([i, j]);
+            }
+          }
+          const w = 440, h = 320;
+          const pos = forceLayout(nodeKeys.length, edges, w, h);
+          const ops: unknown[] = [];
+          for (const [i, j] of edges) ops.push({ op: "line", points: [[pos[i]!.x, pos[i]!.y], [pos[j]!.x, pos[j]!.y]], stroke: "rgba(120,120,150,.6)", lineWidth: 1 });
+          for (let i = 0; i < nodeKeys.length; i++) {
+            ops.push({ op: "circle", x: pos[i]!.x, y: pos[i]!.y, r: 14, fill: "#4a90d9", stroke: "#fff", lineWidth: 2 });
+            const label = nodeKeys[i]!.slice(prefix.length);
+            ops.push({ op: "text", x: pos[i]!.x - label.length * 3, y: pos[i]!.y + 4, text: label, fill: "#fff", font: "11px sans-serif" });
+          }
+          result = { type: "el", tag: "canvas", attrs: { width: w, height: h, "data-ops": JSON.stringify(ops) }, children: [] };
+        }
+      } else if (req.originSim) {
+        // run a def'd frame fn (i → [x, y]) n times, play it back on canvas.
+        const fnName = String(req.fn ?? "");
+        const frameFn = resolveFn(state, fnName) as Fn | undefined;
+        if (!frameFn) { result = `(simulate: no function "${fnName}" — =def("ball","js","i => [x, y]") first, then =simulate("ball", 120))`; }
+        else {
+          const count = Number(req.n) || 120;
+          const frames: [number, number][] = [];
+          for (let i = 0; i < count; i++) {
+            const p = (await frameFn(i)) as number[] | { x?: unknown; y?: unknown };
+            if (Array.isArray(p)) frames.push([Number(p[0]) || 0, Number(p[1]) || 0]);
+            else frames.push([Number((p as { x?: unknown })?.x) || 0, Number((p as { y?: unknown })?.y) || 0]);
+          }
+          const w = 360, h = 280;
+          const ops = [{ op: "frames", frames, r: Number(req.r) || 12, fill: "#e91e63", period: 4, box: "rgba(255,255,255,.25)" }];
+          result = { type: "el", tag: "canvas", attrs: { width: w, height: h, "data-ops": JSON.stringify(ops) }, children: [] };
+        }
       } else continue;
       // Carry forward ownership/name stamps — an introspection result lands
       // back IN the requesting cell, and if that's a grid cell, dropping
@@ -1113,6 +1201,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["db",             dbFn],
   ["sql",            sqlFn],
   ["tables",         tablesFn],
+  ["interlinked",    interlinkedFn],
+  ["simulate",       simulateFn],
   ["save",           saveFn],
   ["open",           openFn],
   ["origin.autoload", autoload],

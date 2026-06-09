@@ -34,7 +34,7 @@ interface Ctx2D {
 const n = (v: unknown, d = 0): number => { const x = Number(v); return Number.isFinite(x) ? x : d; };
 
 // an op that depends on `t` → the canvas must redraw each frame (rAF loop)
-const isAnimated = (o: Op): boolean => o?.op === "orbit";
+const isAnimated = (o: Op): boolean => o?.op === "orbit" || o?.op === "frames";
 
 const replay = (ctx: Ctx2D, ops: Op[], w: number, h: number, t = 0): void => {
   ctx.clearRect(0, 0, w, h);
@@ -79,6 +79,20 @@ const replay = (ctx: Ctx2D, ops: Op[], w: number, h: number, t = 0): void => {
         if (o.fill) { ctx.fillStyle = String(o.fill); ctx.fill(); }
         if (o.stroke) { ctx.strokeStyle = String(o.stroke); ctx.lineWidth = n(o.lineWidth, 1); ctx.stroke(); }
         break;
+      case "frames": {
+        // play a precomputed trajectory (a def-driven sim) — a circle at the
+        // frame the time `t` lands on. The physics that made the frames lives
+        // in the def'd JS fn; this op only schedules + draws.
+        const fr = (o.frames as number[][]) ?? [];
+        if (!fr.length) break;
+        const period = Math.max(0.1, n(o.period, 4));
+        const idx = ((Math.floor((t / 1000 / period) * fr.length) % fr.length) + fr.length) % fr.length;
+        const p = fr[idx]!;
+        if (o.box) { ctx.strokeStyle = String(o.box); ctx.lineWidth = 1; ctx.strokeRect(0.5, 0.5, w - 1, h - 1); }
+        ctx.beginPath(); ctx.arc(n(p[0]), n(p[1]), n(o.r, 10), 0, Math.PI * 2);
+        ctx.fillStyle = String(o.fill ?? "#e91e63"); ctx.fill();
+        break;
+      }
     }
   }
 };

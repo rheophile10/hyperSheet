@@ -672,6 +672,32 @@
       }
     },
     {
+      "key": "interlinked",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "interlinked",
+        "segment": "origin",
+        "name": "interlinked",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(seg) - force-directed graph of a grid segment's cels (nodes) + their inputMap deps (edges), drawn on canvas."
+      }
+    },
+    {
+      "key": "simulate",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "simulate",
+        "segment": "origin",
+        "name": "simulate",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(fnName, n?) - def-driven animation: run a def'd frame fn (i -> [x, y]) n times and play the trajectory on an animated canvas."
+      }
+    },
+    {
       "key": "origin.download",
       "celType": "LockedLambdaCel",
       "locked": true,
