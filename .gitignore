@@ -42,3 +42,7 @@ plastron-examples/pictograph/甲骨.json
 plastron-examples/*/doom-assets-inline.ts
 
 
+
+# local AI-assistant config — not part of the product
+CLAUDE.md
+.mcp.json
