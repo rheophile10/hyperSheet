@@ -871,6 +871,20 @@ const interlinkedFn: Fn = (seg: unknown) => ({ originGraph: String(seg ?? "") })
 const simulateFn: Fn = (fnName: unknown, n: unknown, r: unknown) =>
   ({ originSim: true, fn: String(fnName ?? ""), n: Math.max(2, Math.min(2000, Math.floor(Number(n)) || 120)), r: Math.max(2, Math.floor(Number(r)) || 12) });
 
+// dragdrop(w?, h?) — two drop zones (A, B) + a draggable rect that snaps to the
+// nearest zone on release. A VALUE vnode (like dom/canvas); the interactivity
+// lives in plastron-dom's canvas renderer (the `draggable`/`zone` ops).
+const dragdropFn: Fn = (w: unknown, h: unknown) => {
+  const W = Math.max(220, Math.floor(Number(w)) || 420), H = Math.max(120, Math.floor(Number(h)) || 200);
+  const zw = W * 0.4, zh = H * 0.66, zy = (H - zh) / 2, ax = W * 0.04, bx = W - W * 0.04 - zw, rw = 64, rh = 40;
+  const ops = [
+    { op: "zone", x: ax, y: zy, w: zw, h: zh, label: "A" },
+    { op: "zone", x: bx, y: zy, w: zw, h: zh, label: "B" },
+    { op: "draggable", x: ax + zw / 2 - rw / 2, y: zy + zh / 2 - rh / 2, w: rw, h: rh, fill: "#e91e63" },
+  ];
+  return { type: "el", tag: "canvas", attrs: { width: W, height: H, "data-ops": JSON.stringify(ops) }, children: [] };
+};
+
 const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<void> => {
   const state = (stateArg ?? items[0]?.state) as State | undefined;
   if (!state) return;
@@ -1203,6 +1217,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["tables",         tablesFn],
   ["interlinked",    interlinkedFn],
   ["simulate",       simulateFn],
+  ["dragdrop",       dragdropFn],
   ["save",           saveFn],
   ["open",           openFn],
   ["origin.autoload", autoload],

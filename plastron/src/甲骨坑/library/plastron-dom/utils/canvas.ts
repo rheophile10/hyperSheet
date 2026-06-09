@@ -29,12 +29,55 @@ interface Ctx2D {
   fillText(t: string, x: number, y: number): void;
   beginPath(): void; moveTo(x: number, y: number): void; lineTo(x: number, y: number): void;
   arc(x: number, y: number, r: number, a0: number, a1: number): void; stroke(): void; fill(): void;
+  save(): void; restore(): void; setLineDash(d: number[]): void;
 }
 
 const n = (v: unknown, d = 0): number => { const x = Number(v); return Number.isFinite(x) ? x : d; };
 
 // an op that depends on `t` → the canvas must redraw each frame (rAF loop)
-const isAnimated = (o: Op): boolean => o?.op === "orbit" || o?.op === "frames";
+const isAnimated = (o: Op): boolean => o?.op === "orbit" || o?.op === "frames" || o?.op === "draggable";
+
+// drag state for a draggable canvas: the live rect box + whether it's grabbed.
+type Drag = { x: number; y: number; w: number; h: number; dragging: boolean; ox: number; oy: number };
+type DragCanvas = CanvasLike & {
+  addEventListener?(t: string, h: (e: { clientX: number; clientY: number }) => void): void;
+  getBoundingClientRect?(): { left: number; top: number };
+};
+// attach mouse handlers ONCE per draggable canvas. mousemove/mouseup live on
+// window (a drag travels outside the canvas); both no-op once the canvas leaves
+// the DOM. mouseup snaps the rect to the nearest `zone` center.
+const attachDrag = (cv: CanvasLike, st: { ops: Op[]; drag: Drag }): void => {
+  const dc = cv as DragCanvas;
+  const win = globalThis as { addEventListener?: (t: string, h: (e: { clientX: number; clientY: number }) => void) => void };
+  const at = (e: { clientX: number; clientY: number }): { x: number; y: number } => {
+    const r = dc.getBoundingClientRect ? dc.getBoundingClientRect() : { left: 0, top: 0 };
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+  let grabbed = false;
+  dc.addEventListener?.("mousedown", (e) => {
+    const d = st.drag, p = at(e);
+    if (p.x >= d.x && p.x <= d.x + d.w && p.y >= d.y && p.y <= d.y + d.h) { d.dragging = true; d.ox = p.x - d.x; d.oy = p.y - d.y; grabbed = true; }
+  });
+  // a grab → swallow the click it produces, so it doesn't reach the cell's
+  // edit handler (which would swap the canvas out). Clicking elsewhere on the
+  // canvas still propagates (so the cell stays editable).
+  dc.addEventListener?.("click", (e) => { if (grabbed) { (e as { stopPropagation?: () => void }).stopPropagation?.(); grabbed = false; } });
+  win.addEventListener?.("mousemove", (e) => {
+    const d = st.drag; if (!d.dragging || cv.isConnected === false) return;
+    const p = at(e); d.x = p.x - d.ox; d.y = p.y - d.oy;
+  });
+  win.addEventListener?.("mouseup", () => {
+    const d = st.drag; if (!d.dragging) return; d.dragging = false;
+    const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
+    let best: Op | null = null, bd = Infinity;
+    for (const z of st.ops) {
+      if (z?.op !== "zone") continue;
+      const zx = n(z.x) + n(z.w) / 2, zy = n(z.y) + n(z.h) / 2, dd = (zx - cx) ** 2 + (zy - cy) ** 2;
+      if (dd < bd) { bd = dd; best = z; }
+    }
+    if (best) { d.x = n(best.x) + n(best.w) / 2 - d.w / 2; d.y = n(best.y) + n(best.h) / 2 - d.h / 2; }
+  });
+};
 
 const replay = (ctx: Ctx2D, ops: Op[], w: number, h: number, t = 0): void => {
   ctx.clearRect(0, 0, w, h);
@@ -93,6 +136,22 @@ const replay = (ctx: Ctx2D, ops: Op[], w: number, h: number, t = 0): void => {
         ctx.fillStyle = String(o.fill ?? "#e91e63"); ctx.fill();
         break;
       }
+      case "zone": {
+        // a drop target — dashed box + optional label
+        ctx.save(); ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = String(o.stroke ?? "rgba(150,150,175,.7)"); ctx.lineWidth = 2;
+        ctx.strokeRect(n(o.x), n(o.y), n(o.w), n(o.h)); ctx.restore();
+        if (o.label) { ctx.fillStyle = String(o.stroke ?? "rgba(150,150,175,.8)"); ctx.font = "13px system-ui"; ctx.fillText(String(o.label), n(o.x) + 7, n(o.y) + 19); }
+        break;
+      }
+      case "draggable": {
+        // a movable rect (position updated by the drag handlers each frame)
+        ctx.fillStyle = String(o.fill ?? "#e91e63");
+        ctx.fillRect(n(o.x), n(o.y), n(o.w), n(o.h));
+        ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 2;
+        ctx.strokeRect(n(o.x), n(o.y), n(o.w), n(o.h));
+        break;
+      }
     }
   }
 };
@@ -108,7 +167,7 @@ const collect = (node: CanvasLike, out: CanvasLike[]): void => {
 // per-canvas animation state — one rAF loop per animated canvas; the loop
 // reads the latest ops from here (so a re-paint just updates `ops`), and
 // self-cancels when the element leaves the DOM.
-const anim = new WeakMap<object, { ops: Op[] }>();
+const anim = new WeakMap<object, { ops: Op[]; drag?: Drag }>();
 const raf: ((cb: () => void) => number) | null =
   typeof (globalThis as { requestAnimationFrame?: unknown }).requestAnimationFrame === "function"
     ? (globalThis as unknown as { requestAnimationFrame: (cb: () => void) => number }).requestAnimationFrame
@@ -136,12 +195,22 @@ export const drawCanvases = (root: unknown): void => {
       if (!ctx) continue;
 
       if (ops.some(isAnimated) && raf) {
+        const dragOp = ops.find((o) => o?.op === "draggable");
+        const newDrag = (): Drag => ({ x: n(dragOp!.x), y: n(dragOp!.y), w: n(dragOp!.w), h: n(dragOp!.h), dragging: false, ox: 0, oy: 0 });
         const existing = anim.get(cv as object);
-        if (existing) { existing.ops = ops; continue; } // loop already running — just swap ops
-        const state = { ops };
+        if (existing) {
+          existing.ops = ops; // loop already running — swap ops
+          // element reused (e.g. an animated canvas became a draggable one):
+          // wire up drag now, since the loop won't be re-created.
+          if (dragOp && !existing.drag) { existing.drag = newDrag(); attachDrag(cv, existing as { ops: Op[]; drag: Drag }); }
+          continue;
+        }
+        const state: { ops: Op[]; drag?: Drag } = { ops };
+        if (dragOp) { state.drag = newDrag(); attachDrag(cv, state as { ops: Op[]; drag: Drag }); }
         anim.set(cv as object, state);
         const frame = (): void => {
           if (cv.isConnected === false) { anim.delete(cv as object); return; } // gone from DOM → stop
+          if (state.drag) for (const o of state.ops) if (o?.op === "draggable") { o.x = state.drag.x; o.y = state.drag.y; }
           try { replay(cv.getContext!("2d") as Ctx2D, state.ops, n(cv.width, 0), n(cv.height, 0), clock()); } catch { /* keep looping */ }
           raf(frame);
         };
