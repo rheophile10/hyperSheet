@@ -1,6 +1,18 @@
 # 🐢 plastron
 
-*This is the same readme you see on **[plastron.ca](https://plastron.ca)** — where it is itself a formula in cell 元 (A1). Type formulas into the sheet and an application grows out of it: compute, render, draw, store files, run a database, animate — then share the whole thing as one formula or a single `index.html`.*
+Excel was probably the most useful piece of software ever written. Its reactivity model is fantastic. You get the power of a dag and function composition without knowing what those things even are. If you have to use spreadsheets a lot for your job though, you'll start to want more powerful tools and a lot of the time you'll run into IT departments who are more interested in accounting and machines that go ping than they are in letting you do what you need to do. There are so many apps that could be spreadsheets that nobody will let you have licenses for and yet everyone has a browser that will run local javascript, wasm binaries, sqlite databases and even a filesystem api on local storage.
+
+An index.html should be all you need for anything. Plastron lets the excel jockey unlock the power of their browser locally, offline, for free and without permission. They can make spreadsheets or spreadsheet apps. They can write python if they want to with Pyodide. If their boss isn't looking they can play freedoom with wasm.
+
+I think AI will probably get rid of a lot of the kinds of jobs excel jockeys used to do but with plastron, these workers can be retreaded and pushed out into new domains from a familiar one. Even if AI eventually does everything for us, people will need to understand to some extent what is happening and excel users with plastron or tools like it will be able to explore connections in data, create new ways of knowing and connecting with one another to get work done and just enjoy the rich always-sunny-in-philadelphia-pepe-silvia experience of a rich yarnwall.
+
+**Everything is a dag.**
+
+**[Try it live → plastron.ca](https://plastron.ca)**
+
+## What you can type
+
+*The rest of this README is the same readme you see on plastron.ca — where it is itself a formula in cell 元 (A1). Type formulas into the sheet and an application grows out of it: compute, render, draw, store files, run a database, animate — then share the whole thing as one formula or a single `index.html`.*
 
 this readme is the formula in the cel above. drag that cell's corner to resize it, or replace its contents with your own formulas. for more cels, use a cels formula:
 
@@ -82,5 +94,11 @@ share your whole app as one formula — paste a friend's doc(...) into the cel a
 | formula | does |
 |---|---|
 | `=seed()` | serialize this ENTIRE document to one doc(...) formula you can save or send |
+
+## Future directions
+
+Plastron is not finished and it's meant to be built upon. There needs to be version control. I really admire xit and I'll probably try to bake it into plastron again. All the traditional excel formulas will have to be written in here (or maybe only the ones we like) and this will need to export and ingest traditional .xlsx documents which it doesn't yet do. I intend to build on it and improve it for the projects I am doing and I hope other people will be interested in helping me do this as well.
+
+We will have won when some new spreadsheet jockey or a buck private under a shelter half with a toughbook almost a brick for the quality of the software on it implements a better version of vlookup in wat for fun.
 
 [github.com/rheophile10/plastron →](https://github.com/rheophile10/plastron)
