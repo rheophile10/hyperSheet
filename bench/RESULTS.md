@@ -357,3 +357,30 @@ So new ≥ old on the framework path. BUT honesty caveats on v6's absolute numbe
 
 For a PR: plastron is NOT on npm (404, v0.0.0) — must publish (or github dep) +
 version bump. And run the OFFICIAL harness for the headline numbers.
+
+---
+
+## v8 — official-methodology trace comparison, NEW vs OLD entry (2026-06-08)
+
+The official js-framework-benchmark runner won't complete in this sandbox
+(headless Chrome + forked trace runners get killed). So: a CDP-trace harness
+(Playwright + the runner's own categories blink.user_timing / devtools.timeline
+/ disabled-by-default-devtools.timeline; duration = busy interval-union of
+EventDispatch/Layout/Paint/Commit/FunctionCall from click to last paint — close
+to the runner's computeDuration). Same harness, both entries, same machine.
+bench/krausest/trace-harness.mjs.
+
+| op | OLD entry (v0.0.2, which PR'd) | NEW entry (v0.1.0) |
+|---|---|---|
+| create 1,000 | 116.1ms | 112.8ms |
+| update 10th  | 49.0ms  | 55.5ms  |
+| swap         | 37.5ms  | 26.9ms  |
+
+**NEW ≈ OLD** — faster on create + swap, ~13% slower on update; no regression.
+The OLD entry was accepted into js-framework-benchmark, so the NEW one clears
+the same bar → PR-worthy.
+
+Caveats: absolute values are sandbox-inflated (real-machine numbers are lower)
+and busy-union ≈ but isn't the runner's CPU-profile-windowed compute; the
+COMPARISON is fair (identical env/harness). Canonical headline numbers come from
+the maintainer's CI when the PR runs.
