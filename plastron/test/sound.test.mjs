@@ -6,7 +6,7 @@ import { _resetSoundForTests } from "../dist/甲骨坑/library/sound/index.js";
 // The sound segment is browser-only at runtime — Bun has no AudioContext,
 // so every play call is a silent no-op. These tests assert the *shape*
 // (cels seeded, fns reachable, no-op safely) so we know the segment is
-// portable. Audible verification lives in plastron-examples/keyboard.
+// portable.
 
 // ── boot ────────────────────────────────────────────────────────────────────
 

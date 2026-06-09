@@ -41,8 +41,4 @@ plastron-examples/pictograph/甲骨.json
 .claude/
 plastron-examples/*/doom-assets-inline.ts
 
-# legacy kernel, restored locally for bench comparison only
-plastron-old/
 
-# old plastron-dom, restored locally for bench comparison
-segments-old/
