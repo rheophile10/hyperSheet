@@ -56,32 +56,29 @@ talk to grok — with an api key:
 |---|---|
 | `=grok("say hi in 5 words", key)` | a chat completion (key = a cel holding your api key) |
 
-files in OPFS — a filesystem in formulas:
+files in OPFS — a filesystem in formulas. paste this to make a folder, write a file, and read it back:
 
-| formula | does |
-|---|---|
-| `=mkdir("/x")` | make a folder in OPFS (your browser's private filesystem) |
-| `=write("/x/a.txt", "hi")` | write a file; =cat("/x/a.txt") reads it back |
-| `=ls("/x")` | list a folder; =tree("/") shows the whole tree |
-| `=upload("/x")` | a file picker — the chosen file lands in OPFS |
-| `=download("/x/a.txt")` | a button that saves an OPFS file to your disk |
+```
+=cels("files", 3, 1, at("a1", "=mkdir(\"/x\")"), at("a2", "=write(\"/x/a.txt\", \"hi\")"), at("a3", "=cat(\"/x/a.txt\")"))
+```
 
-a sqlite database, persisted in OPFS:
+the formulas: `mkdir(path)`, `write(path, text)`, `cat(path)`, `ls(path)`, `tree(path)`, `rm(path)`, `mv(from, to)`, `stat(path)`, and two buttons — `upload(dir)` and `download(path)`.
 
-| formula | does |
-|---|---|
-| `=db("app")` | open/create a sqlite database (app = a cel holding the handle) |
-| `=sql(app, "create table t(a, b)")` | run SQL; writes persist to OPFS |
-| `=sql(app, "select * from t")` | a query → rows; survives reload |
+a sqlite database, persisted in OPFS. paste this to make a table, insert rows, and query them back:
 
-canvas — animate and interact:
+```
+=cels("data", 2, 1, at("a1", "=db(\"app\")"), at("a2", "=sql(\"app\", \"create table t(a,b); insert into t values (1,2),(3,4); select * from t\")"))
+```
 
-| formula | does |
-|---|---|
-| `=def("ball", "js", "i => [30+280*Math.abs((i/20)%2-1), 30+200*Math.abs((i/14)%2-1)]")` | a bouncing ball's motion, as a JS function |
-| `=simulate("ball", 120)` | play the def'd motion on an animated canvas |
-| `=interlinked("g3x1")` | a grid's cels + their dependencies as a force graph |
-| `=dragdrop()` | drag a rectangle between two zones (it snaps on release) |
+the formulas: `db(name)`, `sql(name_or_handle, query)`, `tables(db)`. the database survives reload.
+
+a bouncing ball whose motion is a JS function — paste this to define the physics and play it on canvas:
+
+```
+=cels("anim", 2, 1, at("a1", "=def(\"ball\", \"js\", \"i => [30+280*Math.abs((i/20)%2-1), 30+200*Math.abs((i/14)%2-1)]\")"), at("a2", "=simulate(\"ball\", 120)"))
+```
+
+more canvas: `=interlinked("g3x1")` (a grid's cels + dependencies as a force-directed graph) · `=dragdrop()` (drag a rectangle between two zones — it snaps on release).
 
 save your work:
 
