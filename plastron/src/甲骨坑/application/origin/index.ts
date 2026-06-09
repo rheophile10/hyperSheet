@@ -702,6 +702,94 @@ const grokFn: Fn = (prompt: unknown, key: unknown, model: unknown) =>
  *  (e.g. a charting lib, or a self-hosted Pyodide build). */
 const cdnFn: Fn = (url: unknown) => ({ originCdn: true, url: String(url ?? "") });
 
+// --- OPFS filesystem vocabulary (Ubuntu-style) — thin over file-store's fs.*
+//     cels. Each returns an effect descriptor; the drain lazy-loads file-store,
+//     runs the async op, and lands the result back in the cell. ---
+const lsFn:      Fn = (path?: unknown) => ({ originFs: "ls",    path: path == null || path === "" ? "/" : String(path) });
+const treeFn:    Fn = (path?: unknown) => ({ originFs: "tree",  path: path == null || path === "" ? "/" : String(path) });
+const mkdirFn:   Fn = (path: unknown)  => ({ originFs: "mkdir", path: String(path ?? "") });
+const rmFn:      Fn = (path: unknown)  => ({ originFs: "rm",    path: String(path ?? "") });
+const mvFn:      Fn = (a: unknown, b: unknown) => ({ originFs: "mv", path: String(a ?? ""), to: String(b ?? "") });
+const catFn:     Fn = (path: unknown)  => ({ originFs: "cat",   path: String(path ?? "") });
+const fsWriteFn: Fn = (path: unknown, text?: unknown) => ({ originFs: "write", path: String(path ?? ""), text: text == null ? "" : String(text) });
+const touchFn:   Fn = (path: unknown)  => ({ originFs: "touch", path: String(path ?? "") });
+const statFn:    Fn = (path: unknown)  => ({ originFs: "stat",  path: String(path ?? "") });
+
+// --- segment/sheet manager — persist the WHOLE sheet (the collectArchive
+//     form save()/open() use) to OPFS files under /plastron/sheets, so work
+//     survives across machines as real files (vs save()'s localStorage). ---
+const segsFn:    Fn = () => ({ originSeg: "list" });
+const saveSegFn: Fn = (name: unknown) => ({ originSeg: "save", name: String(name ?? "") });
+const openSegFn: Fn = (name: unknown) => ({ originSeg: "open", name: String(name ?? "") });
+const delSegFn:  Fn = (name: unknown) => ({ originSeg: "del",  name: String(name ?? "") });
+
+// --- upload / download — a cel becomes a button / file input that moves bytes
+//     between OPFS and the user's disk. The formula returns a vnode VALUE (like
+//     dom()); its dispatch handler runs in the browser (click/change), where
+//     Blob/File/URL exist. The genuinely new plumbing for opfs-formulas. ---
+const downloadFn: Fn = (path: unknown): V => {
+  const p = String(path ?? "");
+  return el("button", { class: "opfs-btn", type: "button", title: `download ${p}` },
+    [T(`⬇ ${p.split("/").pop() || p}`)], { click: { dispatch: "origin.download", payload: p } });
+};
+const downloadSegFn: Fn = (name: unknown): V => downloadFn(`/plastron/sheets/${String(name ?? "")}.json`) as V;
+const uploadFn: Fn = (path?: unknown): V => {
+  const dir = path == null || path === "" ? "/" : String(path);
+  return el("input", { class: "opfs-upload", type: "file", title: `upload into ${dir}` },
+    [], { change: { dispatch: "origin.upload", payload: dir } });
+};
+
+// dispatch targets — called (state, payload, event) on click/change.
+type DomDownload = {
+  document?: { createElement(t: string): { href: string; download: string; click(): void; remove(): void }; body: { appendChild(n: unknown): void } };
+  URL?: { createObjectURL(b: unknown): string; revokeObjectURL(u: string): void };
+  Blob?: new (parts: unknown[]) => unknown;
+};
+const downloadHandler: Fn = async (stateArg: unknown, path: unknown) => {
+  const state = stateArg as State;
+  const g = globalThis as DomDownload;
+  if (!g.document || !g.URL || !g.Blob) return state;
+  await ensureSegments(state, ["file-store"]);
+  const p = String(path ?? "");
+  const bytes = (await (resolveFn(state, "fs.read") as Fn)(p)) as Uint8Array;
+  const url = g.URL.createObjectURL(new g.Blob([bytes]));
+  const a = g.document.createElement("a");
+  a.href = url; a.download = p.split("/").pop() || "download";
+  g.document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => g.URL!.revokeObjectURL(url), 1000);
+  return state;
+};
+const uploadHandler: Fn = async (stateArg: unknown, dir: unknown, event: unknown) => {
+  const state = stateArg as State;
+  await ensureSegments(state, ["file-store"]);
+  const file = (event as { target?: { files?: ArrayLike<{ name: string; arrayBuffer(): Promise<ArrayBuffer> }> } })?.target?.files?.[0];
+  if (!file) return state;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const d = String(dir ?? "/");
+  const dest = (d === "/" ? "" : d.replace(/\/+$/, "")) + "/" + file.name;
+  await (resolveFn(state, "fs.write") as Fn)(dest, bytes);
+  await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
+  return state;
+};
+
+// join a dir path and an entry name into an absolute OPFS path.
+const fsJoin = (dir: string, name: string): string =>
+  (dir === "/" ? "" : dir.replace(/\/+$/, "")) + "/" + name;
+
+// recursive listing, indented — `tree(path)`.
+const fsTree = async (state: State, path: string, prefix = ""): Promise<string> => {
+  const call = (k: string, ...a: unknown[]) => (resolveFn(state, k) as Fn)(...a);
+  const names = ((await call("fs.list", path)) as string[]).slice().sort();
+  const out: string[] = [];
+  for (const n of names) {
+    const full = fsJoin(path, n);
+    const st = await (call("fs.stat", full) as Promise<{ isDir?: boolean }>).catch(() => null);
+    if (st?.isDir) { out.push(`${prefix}${n}/`); out.push(await fsTree(state, full, `${prefix}  `)); }
+    else out.push(`${prefix}${n}`);
+  }
+  return out.filter(Boolean).join("\n");
+};
+
 const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<void> => {
   const state = (stateArg ?? items[0]?.state) as State | undefined;
   if (!state) return;
@@ -840,6 +928,62 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
             result = j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
           }
         }
+      } else if (req.originFs) {
+        // OPFS filesystem op — lazy-load file-store, then run the fs.* cel.
+        await ensureSegments(state, ["file-store"]);
+        const call = (k: string, ...a: unknown[]) => (resolveFn(state, k) as Fn)(...a);
+        const op = String(req.originFs);
+        const p = String(req.path ?? "");
+        if (op === "ls") {
+          const names = ((await call("fs.list", p)) as string[]).slice().sort();
+          const lines = await Promise.all(names.map(async (n) => {
+            const st = await (call("fs.stat", fsJoin(p, n)) as Promise<{ isDir?: boolean }>).catch(() => null);
+            return st?.isDir ? `${n}/` : n;
+          }));
+          result = lines.length ? lines.join("\n") : "(empty)";
+        } else if (op === "tree") {
+          result = await fsTree(state, p) || "(empty)";
+        } else if (op === "mkdir") {
+          await call("fs.mkdir", p); result = `mkdir ${p}`;
+        } else if (op === "rm") {
+          const st = await (call("fs.stat", p) as Promise<{ isDir?: boolean }>).catch(() => null);
+          if (st?.isDir) await call("fs.rmdir", p); else await call("fs.delete", p);
+          result = `rm ${p}`;
+        } else if (op === "mv") {
+          await call("fs.rename", p, String(req.to)); result = `mv ${p} → ${req.to}`;
+        } else if (op === "cat") {
+          result = await call("fs.readText", p);
+        } else if (op === "write") {
+          await call("fs.writeText", p, String(req.text ?? "")); result = `wrote ${p}`;
+        } else if (op === "touch") {
+          if (!(await call("fs.exists", p))) await call("fs.writeText", p, "");
+          result = `touch ${p}`;
+        } else if (op === "stat") {
+          const st = (await call("fs.stat", p)) as { size?: number; isDir?: boolean; mtime?: unknown };
+          result = yamlDoc([["path", p], ["isDir", st.isDir], ["size", st.size], ["mtime", st.mtime != null ? String(st.mtime) : undefined]]);
+        } else result = `(unknown fs op: ${op})`;
+      } else if (req.originSeg) {
+        // sheet manager — collectArchive ⇄ OPFS files under /plastron/sheets.
+        await ensureSegments(state, ["file-store"]);
+        const call = (k: string, ...a: unknown[]) => (resolveFn(state, k) as Fn)(...a);
+        const DIR = "/plastron/sheets";
+        const op = String(req.originSeg);
+        const nm = String(req.name ?? "");
+        const file = `${DIR}/${nm}.json`;
+        if (op === "list") {
+          const names = ((await (call("fs.list", DIR) as Promise<string[]>).catch(() => [])) as string[])
+            .filter((n) => n.endsWith(".json")).map((n) => n.slice(0, -5)).sort();
+          result = names.length ? names.join("\n") : `(no saved sheets — =saveSeg("name") to store one)`;
+        } else if (op === "save") {
+          if (!nm) result = `(saveSeg: give it a name, e.g. =saveSeg("budget"))`;
+          else { await call("fs.mkdir", DIR); await call("fs.writeText", file, JSON.stringify(collectArchive(state))); result = `saved sheet "${nm}" → OPFS ${file}`; }
+        } else if (op === "open") {
+          const raw = await (call("fs.readText", file) as Promise<string>).catch(() => null);
+          if (!raw) result = `(no saved sheet "${nm}" — =segs() to list)`;
+          else { await restoreArchive(state, JSON.parse(raw)); result = `opened sheet "${nm}"`; }
+        } else if (op === "del") {
+          await call("fs.delete", file); result = `deleted sheet "${nm}"`;
+        } else result = `(unknown seg op: ${op})`;
       } else continue;
       // Carry forward ownership/name stamps — an introspection result lands
       // back IN the requesting cell, and if that's a grid cell, dropping
@@ -887,6 +1031,24 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["chat",           chatFn],
   ["grok",           grokFn],
   ["cdn",            cdnFn],
+  ["ls",             lsFn],
+  ["tree",           treeFn],
+  ["mkdir",          mkdirFn],
+  ["rm",             rmFn],
+  ["mv",             mvFn],
+  ["cat",            catFn],
+  ["write",          fsWriteFn],
+  ["touch",          touchFn],
+  ["stat",           statFn],
+  ["segs",           segsFn],
+  ["saveSeg",        saveSegFn],
+  ["openSeg",        openSegFn],
+  ["delSeg",         delSegFn],
+  ["download",       downloadFn],
+  ["downloadSeg",    downloadSegFn],
+  ["upload",         uploadFn],
+  ["origin.download", downloadHandler],
+  ["origin.upload",   uploadHandler],
   ["save",           saveFn],
   ["open",           openFn],
   ["origin.autoload", autoload],

@@ -428,6 +428,235 @@
       }
     },
     {
+      "key": "ls",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "ls",
+        "segment": "origin",
+        "name": "ls",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path?) - list a directory in OPFS (default /). dirs show a trailing /."
+      }
+    },
+    {
+      "key": "tree",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "tree",
+        "segment": "origin",
+        "name": "tree",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path?) - recursive directory tree in OPFS (default /)."
+      }
+    },
+    {
+      "key": "mkdir",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "mkdir",
+        "segment": "origin",
+        "name": "mkdir",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path) - make a directory in OPFS (recursive)."
+      }
+    },
+    {
+      "key": "rm",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "rm",
+        "segment": "origin",
+        "name": "rm",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path) - remove a file or directory from OPFS (auto file-vs-dir)."
+      }
+    },
+    {
+      "key": "mv",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "mv",
+        "segment": "origin",
+        "name": "mv",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(from, to) - move/rename a file or directory in OPFS."
+      }
+    },
+    {
+      "key": "cat",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "cat",
+        "segment": "origin",
+        "name": "cat",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path) - read a text file from OPFS into the cell."
+      }
+    },
+    {
+      "key": "write",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "write",
+        "segment": "origin",
+        "name": "write",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path, text) - write text to a file in OPFS (create/overwrite)."
+      }
+    },
+    {
+      "key": "touch",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "touch",
+        "segment": "origin",
+        "name": "touch",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path) - create an empty file in OPFS if it does not exist."
+      }
+    },
+    {
+      "key": "stat",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "stat",
+        "segment": "origin",
+        "name": "stat",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path) - size / isDir / mtime of an OPFS path."
+      }
+    },
+    {
+      "key": "segs",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "segs",
+        "segment": "origin",
+        "name": "segs",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "() - list sheets saved to OPFS (=saveSeg/openSeg/delSeg manage them)."
+      }
+    },
+    {
+      "key": "saveSeg",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "saveSeg",
+        "segment": "origin",
+        "name": "saveSeg",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name) - save the whole current sheet to an OPFS file under /plastron/sheets."
+      }
+    },
+    {
+      "key": "openSeg",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "openSeg",
+        "segment": "origin",
+        "name": "openSeg",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name) - restore a sheet previously saved with saveSeg from OPFS."
+      }
+    },
+    {
+      "key": "delSeg",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "delSeg",
+        "segment": "origin",
+        "name": "delSeg",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name) - delete a saved sheet from OPFS."
+      }
+    },
+    {
+      "key": "download",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "download",
+        "segment": "origin",
+        "name": "download",
+        "kind": "native",
+        "description": "(path) - a button that downloads an OPFS file to your disk."
+      }
+    },
+    {
+      "key": "downloadSeg",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "downloadSeg",
+        "segment": "origin",
+        "name": "downloadSeg",
+        "kind": "native",
+        "description": "(name) - a button that downloads a saved sheet (.json) from OPFS."
+      }
+    },
+    {
+      "key": "upload",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "upload",
+        "segment": "origin",
+        "name": "upload",
+        "kind": "native",
+        "description": "(dir?) - a file picker; the chosen file is written into OPFS (default /)."
+      }
+    },
+    {
+      "key": "origin.download",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.download",
+        "segment": "origin",
+        "name": "origin.download",
+        "kind": "native",
+        "description": "(state, path, event) - dispatch target: read OPFS bytes → browser download."
+      }
+    },
+    {
+      "key": "origin.upload",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.upload",
+        "segment": "origin",
+        "name": "origin.upload",
+        "kind": "native",
+        "description": "(state, dir, event) - dispatch target: write the picked file's bytes into OPFS."
+      }
+    },
+    {
       "key": "save",
       "celType": "LockedLambdaCel",
       "locked": true,
