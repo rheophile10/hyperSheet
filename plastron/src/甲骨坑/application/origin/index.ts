@@ -798,15 +798,24 @@ interface SqlDb { exec(q: string): { columns: string[]; values: unknown[][] }[];
 interface SqlJs { Database: new (bytes?: Uint8Array) => SqlDb; }
 let _sqlJs: SqlJs | null = null;
 const _dbs = new Map<string, SqlDb>();
-const sqliteCdn = (): string => (globalThis as { __sqliteCdn?: string }).__sqliteCdn ?? "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.11.0/";
+const sqliteCdn = (): string => (globalThis as { __sqliteCdn?: string }).__sqliteCdn ?? "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.1/";
 const dbFile = (name: string): string => `/plastron/dbs/${name}.db`;
 const loadSqlJs = async (state: State): Promise<SqlJs> => {
   if (_sqlJs) return _sqlJs;
+  // bundled path (origin's bundle inlines sql-wasm.js + the wasm bytes) → fully
+  // offline, no network. Falls back to the CDN when not bundled.
+  const g = globalThis as {
+    initSqlJs?: (o: { locateFile?: (f: string) => string; wasmBinary?: Uint8Array }) => Promise<SqlJs>;
+    __sqliteWasm?: Uint8Array;
+  };
+  if (g.initSqlJs && g.__sqliteWasm) {
+    _sqlJs = await g.initSqlJs({ wasmBinary: g.__sqliteWasm });
+    return _sqlJs;
+  }
   const base = sqliteCdn();
   await (resolveFn(state, "loadScript") as Fn)(state, `${base}sql-wasm.js`);
-  const init = (globalThis as { initSqlJs?: (o: { locateFile: (f: string) => string }) => Promise<SqlJs> }).initSqlJs;
-  if (!init) throw new Error("sqlite: sql.js failed to load from CDN");
-  _sqlJs = await init({ locateFile: (f: string) => base + f });
+  if (!g.initSqlJs) throw new Error("sqlite: sql.js failed to load");
+  _sqlJs = await g.initSqlJs({ locateFile: (f: string) => base + f });
   return _sqlJs;
 };
 const openDb = async (state: State, name: string): Promise<SqlDb> => {
