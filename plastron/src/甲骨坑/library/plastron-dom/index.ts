@@ -24,3 +24,4 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
 ]));
 
 export { createPainter, getPainter, setPainter } from "./utils/paint.js";
+export { el, text, memo } from "./utils/build.js";

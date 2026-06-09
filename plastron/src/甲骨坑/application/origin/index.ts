@@ -1,9 +1,13 @@
 import type {
-  甲骨, Cel, ChannelEnqueue, Fn, Key, State,
+  甲骨, Cel, ChannelEnqueue, Fn, Key, State, VNode, VElement, AttrValue, EventBinding,
 } from "../../../types/index.js";
 import {
   bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError,
 } from "../../../kernel/index.js";
+// Core rendering comes from the plastron-dom LIBRARY — the app doesn't re-roll
+// vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
+// `memo` attaches the diff's O(changed) short-circuit hint (see plastron-dom).
+import { el as makeEl, text as T, memo } from "../../library/plastron-dom/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -23,10 +27,13 @@ import seed from "./甲骨.json" with { type: "json" };
 // built to be reworked in place.
 // ============================================================================
 
-type V = { type: "el" | "text"; tag?: string; key?: string; attrs?: Record<string, unknown>; events?: Record<string, unknown>; children?: V[]; text?: string };
-const T = (s: unknown): V => ({ type: "text", text: String(s ?? "") });
+// loose view alias for ergonomic in-app access (.children / raw splicing); the
+// canonical VNode the painter sees is built by the library `el`/`text` below.
+type V = { type: "el" | "text"; tag?: string; key?: string; memo?: unknown; attrs?: Record<string, unknown>; events?: Record<string, unknown>; children?: V[]; text?: string };
+// loose-typed adapter over the LIBRARY builder — origin's call sites pass plain
+// records; the painter stringifies, so the cast is safe.
 const el = (tag: string, attrs: Record<string, unknown>, children: V[], events?: Record<string, unknown>): V =>
-  ({ type: "el", tag, attrs, children, ...(events ? { events } : {}) });
+  makeEl(tag, attrs as Record<string, AttrValue>, children as VNode[], events as Record<string, EventBinding> | undefined) as V;
 
 const isVnode = (v: unknown): v is V =>
   !!v && typeof v === "object" && ((v as V).type === "el" || (v as V).type === "text");
@@ -171,10 +178,6 @@ const addrOf = (key: string): { col: number; row: number } | null => {
  *  row numbers). Click a cell to edit inline; the ⤢ on a cell opens an
  *  expanded editor panel for its full formula. A cell's value shows in
  *  place — a number, text, or a live dom object. */
-// Per-cell vnode memo: keyed by cell key, reused when (value, src) are
-// unchanged so the painter diffs O(changed cells) instead of O(all cells).
-// Persists across originView fires; self-correcting (a sig mismatch rebuilds).
-const cellCache = new Map<string, { v: unknown; src: string | undefined; vnode: V }>();
 const originView: Fn = (
   editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown, srcs: unknown,
 ) => {
@@ -227,21 +230,14 @@ const originView: Fn = (
           if (!k) return el("td", { class: "cell", "data-key": "", style: `${SX.td};min-width:4.5rem` }, []);
           const v = valOf.get(k);
           const isActive = active === k;
-          const src = isMountVal(v) ? srcOf.get(k) : undefined;
-          // ROW-FRAGMENT MEMO: an unchanged cell returns the SAME vnode object,
-          // so the painter's diff bails out at `prev === next` (O(changed), not
-          // O(all cells)). Never memoize the ACTIVE cell — its editor depends on
-          // draft/error which aren't in the signature.
-          if (!isActive) {
-            const hit = cellCache.get(k);
-            if (hit && hit.v === v && hit.src === src) return hit.vnode;
-          }
           // mount cells (showing a long source) get a roomier min-width;
           // the active cell gets the editing outline — both inline.
           const tdStyle = `${SX.td};min-width:${isMountVal(v) ? "26rem" : "4.5rem"}${isActive ? ";outline:2px solid #4a90d9;outline-offset:-2px" : ""}`;
-          const vnode = el("td", { class: isActive ? "cell editing" : "cell", "data-key": k, style: tdStyle }, [body(k, v)]);
-          if (isActive) cellCache.delete(k); else cellCache.set(k, { v, src, vnode });
-          return vnode;
+          const td = el("td", { class: isActive ? "cell editing" : "cell", "data-key": k, style: tdStyle }, [body(k, v)]);
+          // memo hint → plastron-dom's diff skips an unchanged cell's deep compare
+          // (O(changed), library-level). The ACTIVE cell gets NO memo — its editor
+          // depends on draft/error — so it's always deep-diffed.
+          return isActive ? td : (memo(td as unknown as VElement, [v, isMountVal(v) ? srcOf.get(k) : undefined]) as unknown as V);
         })]));
     // wrap in a horizontal scroller so a wide grid reaches column A
     // (a centered overflowing table clips its left edge unreachably).

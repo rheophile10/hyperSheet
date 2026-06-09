@@ -266,3 +266,26 @@ diff both drop to O(changed) since reused cells are reference-equal. Active
 cell is never memoized (its editor depends on draft/error). 548 kernel + 110
 origin e2e green. This is the krausest "row-fragment" win, applied to the live
 sheet; the same idea would port to the krausest entry's buildTbody.
+
+---
+
+## v5 — memo moved to plastron-dom (the LIBRARY), correcting v4 (2026-06-08)
+
+v4 put the per-cell memo in the origin APPLICATION — wrong layer: krausest talks
+to plastron-dom directly, so an app cache does nothing for it. Moved the
+mechanism into the library:
+- `VElement.memo` (a cheap signature) + a `memoEq` short-circuit in
+  `diffVNodes` — matching memo ⇒ NOOP without the deep compare. Any app opts in
+  by setting `memo` like it sets `key`.
+- vnode builders `el` / `text` / `memo` now live in plastron-dom; the origin
+  app USES them instead of re-rolling its own.
+
+Krausest diff WITH `memo: [row, selected]` on each <tr> (was, from v3):
+| op | diff before | diff after |
+|---|---|---|
+| update 10th | 2.11ms | **0.85ms** (2.5×) |
+| swap rows   | 1.29ms | **0.38ms** (3.4×) |
+| remove 1    | 1.26ms | **0.27ms** (4.7×) |
+
+Same lever serves the live sheet (origin cells carry the memo). 548 kernel +
+3 diff-memo unit + 110 origin e2e green.

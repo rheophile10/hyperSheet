@@ -56,10 +56,27 @@ const NOOP: PatchNoop = { kind: "noop" };
 
 export const isNoop = (p: Patch): boolean => p.kind === "noop";
 
+// Memo equality: identical reference, or shallow-equal arrays (so a view can
+// pass `memo: [value, …]` without allocating a stable object). undefined memo
+// never matches — the cell is then always deep-diffed.
+const memoEq = (a: unknown, b: unknown): boolean => {
+  if (a === undefined || b === undefined) return false;
+  if (a === b) return true;
+  if (Array.isArray(a) && Array.isArray(b) && a.length === b.length) {
+    for (let i = 0; i < a.length; i++) if (!Object.is(a[i], b[i])) return false;
+    return true;
+  }
+  return false;
+};
+
 export const diffVNodes = (prev: VNode | null, next: VNode, eq: DiffEq): Patch => {
   bump("diffVisits");
   if (prev === null) return { kind: "init", node: next };
   if (prev === next) return NOOP;                 // ref-eq subtree bail-out
+  // Memo bail-out: matching memo hints ⇒ unchanged subtree, skip the deep
+  // compare. This is the O(changed) reconcile lever — a library capability any
+  // app opts into by setting `memo` on a vnode (like `key`).
+  if (memoEq((prev as VElement).memo, (next as VElement).memo)) return NOOP;
   if (eq.vnodeEquals(prev, next)) return NOOP;
   if (prev.type !== next.type) return { kind: "replace", node: next };
 

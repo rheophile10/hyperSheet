@@ -183,25 +183,15 @@ await withPage("seed() serializes the whole document into one paste-able formula
   eq(await put(page, "=double(21)", "in.B1"), 42, "recreated def is callable");
 });
 
-await withPage("editing one cell rebuilds O(changed), not the whole sheet (row-fragment memo)", async (page) => {
+await withPage("cells carry plastron-dom memo hints + editing stays correct", async (page) => {
   await put(page, "=cels(8, 8)");
-  const r = await page.evaluate(async () => {
-    const { state, resolveFn } = (globalThis as any).plastron;
-    const tds = () => {
-      const m = new Map<string, unknown>();
-      const walk = (n: any) => { if (!n || typeof n !== "object") return; if (n.tag === "td" && n.attrs?.["data-key"]) m.set(n.attrs["data-key"], n); (n.children || []).forEach(walk); };
-      const v = state.cels.get("元.view")?.v; walk(v?.vnode ?? v); return m;
-    };
-    const before = tds();
-    await resolveFn(state, "origin.edit")(state, "g8x8.D4");
-    await resolveFn(state, "setValue")(state, "元.draft", "99");
-    await resolveFn(state, "origin.commit")(state, "g8x8.D4");
-    const after = tds();
-    let reused = 0; for (const [k, node] of after) if (before.get(k) === node) reused++;
-    return { total: after.size, rebuilt: after.size - reused, reused };
+  const m = await page.evaluate(() => {
+    let n = 0, t = 0; const walk = (x: any) => { if (!x || typeof x !== "object") return; if (x.tag === "td" && x.attrs?.["data-key"]) { t++; if (Array.isArray(x.memo)) n++; } (x.children || []).forEach(walk); };
+    const v = (globalThis as any).plastron.state.cels.get("元.view")?.v; walk(v?.vnode ?? v); return { n, t };
   });
-  ok(r.total > 50, `the grid has many cells (${r.total})`);
-  ok(r.rebuilt <= 4, `editing one cell rebuilt only ${r.rebuilt}/${r.total} cells (reused ${r.reused} vnode objects)`);
+  ok(m.t > 50 && m.n >= m.t - 2, `cells carry the library memo hint (${m.n}/${m.t}; active cell excluded)`);
+  await put(page, "99", "g8x8.D4");
+  eq(await cel(page, "g8x8.D4"), 99, "editing a cell still updates its value");
 });
 
 await withPage("=def + =double(21) → 42", async (page) => {

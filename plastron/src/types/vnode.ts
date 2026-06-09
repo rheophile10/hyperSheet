@@ -54,6 +54,12 @@ export interface VElement {
    *  UNRELATED to `cel.key`. When every child in both the old and new
    *  lists is a keyed VElement, the diff reconciles by key. */
   key?: string;
+  /** Memo hint — a cheap signature the diff compares (=== or shallow-array) to
+   *  skip an unchanged subtree's deep compare. A view sets it like `key`; the
+   *  diff (plastron-dom) does the work, so O(changed) reconcile is a LIBRARY
+   *  capability every app gets, not app-specific code. undefined → always
+   *  deep-diffed. */
+  memo?: unknown;
   attrs?: Record<string, AttrValue>;
   /** Inline styles, diffed and applied per-property at paint time. */
   style?: Record<string, AttrValue>;
