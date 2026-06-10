@@ -14,6 +14,7 @@
     "test": "tsc && bun test"
   },
   "dependencies": {
+    "@jitl/quickjs-singlefile-cjs-release-sync": "^0.32.0",
     "pyodide": "^0.29.4",
     "quickjs-emscripten": "^0.32.0",
     "wabt": "^1.0.39",

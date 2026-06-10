@@ -177,3 +177,30 @@ test("a quickjs lambda integrates with the runCycle cascade", { timeout: 60000 }
 
   assert.equal(state.cels.get("product").v, 56);
 });
+
+// ── sandbox proof (wasm-only-functions) ──────────────────────────────────────
+// The whole point of compiling user functions through QuickJS-wasm: the VM has
+// no ambient globals, so a def'd function cannot reach the network / DOM /
+// effect surface. These assert the sandbox holds.
+
+test("a quickjs lambda cannot see fetch — the VM has no ambient globals", async () => {
+  const state = createInitialState();
+  const register = (st, a) => resolveFn(st, "setCel")(st, a.key, {
+    celType: "EditableLambdaCel", f: a.source,
+    metadata: { segment: "user", kind: a.kind },
+  });
+  // fetch / XMLHttpRequest / globalThis / document are all absent inside the VM
+  await register(state, { key: "probe", kind: "quickjs", source: "() => typeof fetch + ',' + typeof XMLHttpRequest + ',' + typeof globalThis.document" });
+  const probe = resolveFn(state, "probe");
+  assert.equal(probe(), "undefined,undefined,undefined");
+});
+
+test("kind \"js\" inherits the same sandbox (it aliases quickjs) — no fetch", async () => {
+  const state = createInitialState();
+  const register = (st, a) => resolveFn(st, "setCel")(st, a.key, {
+    celType: "EditableLambdaCel", f: a.source,
+    metadata: { segment: "user", kind: a.kind },
+  });
+  await register(state, { key: "jsprobe", kind: "js", source: "() => typeof fetch" });
+  assert.equal(resolveFn(state, "jsprobe")(), "undefined");
+});

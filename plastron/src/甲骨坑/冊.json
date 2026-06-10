@@ -34,7 +34,8 @@
     "version": "1.0.0",
     "description": "The 'js' compiler cel — `new Function`-backed JS source → Fn. Gated on csp.eval-available.",
     "dependencies": [
-      "csp"
+      "csp",
+      "quickjs-compiler"
     ]
   },
   {

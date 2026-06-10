@@ -20,7 +20,10 @@ const result = await Bun.build({
   target: "browser",
   minify: true,
   sourcemap: "none",
-  external: ["pyodide", "quickjs-emscripten", "wabt", "node:fs/promises", "node:path"],
+  // quickjs is NOT external — the singlefile variant (embedded wasm) bundles
+  // inline so kind "js"/"quickjs" works offline in one index.html (wasm-only-
+  // functions). pyodide/wabt stay external (CDN-loaded, lazy).
+  external: ["pyodide", "wabt", "node:fs/promises", "node:path"],
 });
 if (!result.success) {
   for (const log of result.logs) console.error(log);

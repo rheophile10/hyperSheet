@@ -76,10 +76,20 @@ interface QuickJSModule {
 let _ctx: Promise<QuickJSContext> | undefined;
 const getCtx = (): Promise<QuickJSContext> => {
   if (!_ctx) {
-    _ctx = import("quickjs-emscripten").then(async (m) => {
-      const QuickJS = await (m as unknown as {
-        getQuickJS: () => Promise<QuickJSModule>;
-      }).getQuickJS();
+    // The SINGLEFILE variant embeds the wasm as base64 in the JS, so when
+    // origin bundles to one index.html the wasm rides inline — no separate
+    // .wasm fetch (the 404 that broke wasm-only's first attempt). Works
+    // identically under Bun (CLI), no network. (getQuickJS() used the wasmfile
+    // variant, which fetched a sibling .wasm.) newQuickJSWASMModule(variant)
+    // builds the module from the embedded bytes.
+    _ctx = Promise.all([
+      import("quickjs-emscripten-core"),
+      import("@jitl/quickjs-singlefile-cjs-release-sync"),
+    ]).then(async ([core, variant]) => {
+      const newModule = (core as unknown as {
+        newQuickJSWASMModuleFromVariant: (v: unknown) => Promise<QuickJSModule>;
+      }).newQuickJSWASMModuleFromVariant;
+      const QuickJS = await newModule((variant as { default: unknown }).default);
       return QuickJS.newContext();
     });
   }

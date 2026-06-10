@@ -87,24 +87,24 @@ test("with csp.eval-available = true (default), formula _evaluate still produces
   assert.equal(sumCel._evaluate(), 18);
 });
 
-// ── js compiler gate ──────────────────────────────────────────────────────
+// ── js compiler gate (wasm-only-functions: kind "js" is now QuickJS) ───────
 
-test("forcing csp.eval-available = false makes the JS lambda compiler throw with a CSP-aware message", async () => {
+test("kind \"js\" runs even with csp.eval-available = false — it compiles via QuickJS-wasm, no unsafe-eval needed", async () => {
   const state = createInitialState();
   // Replace (not mutate) — the csp seed cels are module-level objects
-  // shared across createInitialState() calls; mutating the .v field
-  // would leak the override into every subsequent test.
+  // shared across createInitialState() calls.
   state.cels.set("csp.eval-available", {
     ...state.cels.get("csp.eval-available"), v: false,
   });
   const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
-  // registerLambda is async (compilers can return Promises for lazy-
-  // loaded runtimes); the throw fires inside the awaited compiler call,
-  // so this is a rejected Promise rather than a sync throw.
-  await assert.rejects(
-    () => register(state, { key: "doubler", source: "(x) => x * 2", kind: "js" }),
-    /csp\.eval-available = false|unsafe-eval|precompiled bytes/i,
-  );
+  // The OLD behavior (new Function refused when eval-available was false) is
+  // GONE — wasm-only-functions removed new Function; "js" delegates to quickjs
+  // (wasm), which needs csp.wasm-available, not unsafe-eval. So strict-CSP
+  // pages that block eval now run "js" lambdas fine. This is the security win.
+  await register(state, { key: "doubler", source: "(x) => x * 2", kind: "js" });
+  const doubler = resolveFn(state, "doubler");
+  assert.equal(typeof doubler, "function");
+  assert.equal(doubler(21), 42);
 });
 
 test("with csp.eval-available = true, the JS lambda compiler runs and produces a working fn", async () => {
