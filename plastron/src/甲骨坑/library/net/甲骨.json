@@ -1,0 +1,41 @@
+{
+  "name": "net",
+  "cels": [
+    {
+      "key": "fetch",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "fetch",
+        "segment": "net",
+        "name": "fetch",
+        "kind": "native",
+        "description": "(url [, method] [, body]) - the network verb. Async; returns the response body text. Goes through the net gate (logged + allowlist-checked). The single sanctioned way a formula reaches the network. =fetch(\"https://example.com\")"
+      },
+      "locked": true
+    },
+    {
+      "key": "netlog",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "netlog",
+        "segment": "net",
+        "name": "netlog",
+        "kind": "native",
+        "description": "() - the traffic wiretap, surfaced. Snapshot of every network request through the gate (method, host, status / BLOCKED / ERR). Re-evaluate to refresh. =netlog()"
+      },
+      "locked": true
+    },
+    {
+      "key": "netallow",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "netallow",
+        "segment": "net",
+        "name": "netallow",
+        "kind": "native",
+        "description": "([host, ...]) - the whitelist, surfaced + edited. No args shows the current policy; with args DECLARES the allowlist as exactly those hosts (off-list fetches are blocked + logged). Default is allow-all. =netallow(\"api.anthropic.com\")"
+      },
+      "locked": true
+    }
+  ]
+}

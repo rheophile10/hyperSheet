@@ -39,6 +39,7 @@ export type { CelError } from "./cel-error.js";
 // through this barrel.
 export { bindNativeFns } from "./native-fn.js";
 export { loadScript, loadScriptFn } from "./loadScript.js";
+export { netFetch, netFetchFn } from "./fetch.js";
 
 // ── 1. hydrate ── 甲骨 archive → live State. Installs cels, compiles
 // fireables (async, in topo layers), resolves schemas, installs

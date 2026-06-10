@@ -38,6 +38,7 @@ import * as genesis         from "./甲骨坑/library/genesis/index.js";
 import * as checkpoint      from "./甲骨坑/library/checkpoint/index.js";
 import * as plastronCanvas  from "./甲骨坑/library/plastron-canvas/index.js";
 import * as unsafeWallet    from "./甲骨坑/library/unsafe-wallet/index.js";
+import * as net             from "./甲骨坑/library/net/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
 import * as sound           from "./甲骨坑/library/sound/index.js";
 
@@ -92,6 +93,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "checkpoint":       () => [...checkpoint.cels],
   "plastron-canvas":  () => [...plastronCanvas.cels],
   "unsafe-wallet":    () => [...unsafeWallet.cels],
+  "net":              () => [...net.cels],
 };
 
 // application/ segments. notepad + web-editor boot via host-called builders

@@ -206,5 +206,11 @@
       "unsafe-wallet"
     ],
     "role": "application"
+  },
+  {
+    "name": "net",
+    "version": "0.0.1",
+    "description": "network governance gate — wraps fetch, logs traffic (netlog), enforces the host allowlist (netallow); the =fetch verb",
+    "dependencies": []
   }
 ]
