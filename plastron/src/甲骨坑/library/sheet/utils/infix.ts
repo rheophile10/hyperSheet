@@ -1,4 +1,6 @@
 import type { CompiledEnvelope, CompiledLambda, Fn, Key, ResolvedInputs, State } from "../../../../types/index.js";
+import type { CelError } from "../../../../kernel/index.js";
+import { isCelError } from "../../../../kernel/index.js";
 import { cellKey, expandRange, indexToCol, parseRef } from "./address.js";
 
 // ============================================================================
@@ -13,9 +15,25 @@ import { cellKey, expandRange, indexToCol, parseRef } from "./address.js";
 //
 // Supported: + - * / (arithmetic), & (string concat), = <> < > <= >=
 // (comparison), unary -, parentheses, cell refs (A1), ranges (A1:B2, in
-// function args), numbers, "strings", and the functions SUM / MIN / MAX /
-// AVG / IF. Functions are evaluated inline (not cel calls), so the only
-// dependencies are cell references.
+// function args), numbers, "strings", and the Excel v1 builtin function
+// set (BUILTIN_CALLS below): SUM/MIN/MAX/AVG/IF plus math/rounding,
+// predicate aggregation (COUNTIF/SUMIF/…), lookup (VLOOKUP/HLOOKUP/INDEX/
+// MATCH), logical (AND/OR/NOT/IFS/IFERROR), text (LEFT/MID/CONCAT/…) and
+// the pure DATE(y,m,d). Functions are evaluated INLINE (not cel calls),
+// so the only dependencies are the cell references inside their args —
+// collectDeps skips every BUILTIN_CALLS name (no phantom function-cel
+// edge). Excel error VALUES (#N/A, #DIV/0!, #REF!, #VALUE!, #NUM!) are
+// produced as the kernel's CelError (trap codes na/div0/ref/value/num)
+// so they propagate and render like every other cel error.
+//
+// DELIBERATELY EXCLUDED — volatile clock fns TODAY()/NOW(): they read the
+// wall clock, making a "pure" inline formula depend on invisible ambient
+// state. The value would never recompute when the day rolls over (no dep
+// fires) and any replay/reproducibility story breaks. They are NOT
+// builtins; `=TODAY()` falls through to the undefined-symbol path and
+// surfaces as #NAME?. A future clock-cel (`=A1 - clock`) keeps the
+// dependency visible and reactive; see excel-formulas-segment.md. DATE
+// from literal args is pure, so it stays.
 // ============================================================================
 
 type Node =
@@ -111,15 +129,22 @@ const parseToks = (toks: Tok[]): Node => {
     }
     return l;
   }
+  // Operator dispatch must check k === "op": a STRING literal whose value
+  // happens to be an operator char (e.g. the TEXTJOIN delimiter "-", or
+  // "&"/"+") tokenizes as { k: "str" } and must NOT be mistaken for the
+  // operator. (Pre-existing latent bug: `=SUM("-", 1)` parsed the str as a
+  // unary minus and threw "unexpected token ,". Surfaced by the Excel text
+  // builtins, which pass operator-char delimiters.)
+  const opv = (): string | undefined => { const t = peek(); return t?.k === "op" ? t.v : undefined; }
   const concat = (): Node => {
     let l = additive();
-    while (peek()?.v === "&") { next(); l = { t: "bin", op: "&", l, r: additive() }; }
+    while (opv() === "&") { next(); l = { t: "bin", op: "&", l, r: additive() }; }
     return l;
   }
   const additive = (): Node => {
     let l = multiplicative();
     for (;;) {
-      const v = peek()?.v;
+      const v = opv();
       if (v === "+" || v === "-") { next(); l = { t: "bin", op: v, l, r: multiplicative() }; }
       else break;
     }
@@ -128,14 +153,14 @@ const parseToks = (toks: Tok[]): Node => {
   const multiplicative = (): Node => {
     let l = unary();
     for (;;) {
-      const v = peek()?.v;
+      const v = opv();
       if (v === "*" || v === "/") { next(); l = { t: "bin", op: v, l, r: unary() }; }
       else break;
     }
     return l;
   }
   const unary = (): Node => {
-    const v = peek()?.v;
+    const v = opv();
     if (v === "-" || v === "+") { next(); return { t: "un", op: v!, e: unary() }; }
     return primary();
   }
@@ -229,14 +254,20 @@ const evalNode = (node: Node, lookup: Lookup): unknown => {
     case "un": return node.op === "-" ? -num(evalNode(node.e, lookup)) : num(evalNode(node.e, lookup));
     case "bin": {
       const op = node.op;
-      if (op === "&") return String(scalar(evalNode(node.l, lookup))) + String(scalar(evalNode(node.r, lookup)));
-      const l = evalNode(node.l, lookup);
-      const r = evalNode(node.r, lookup);
+      const lraw = evalNode(node.l, lookup);
+      const rraw = evalNode(node.r, lookup);
+      // First-error-wins propagation (Excel): a CelError operand makes the
+      // whole expression that error, so IFERROR can catch it.
+      if (isCelError(scalar(lraw))) return scalar(lraw);
+      if (isCelError(scalar(rraw))) return scalar(rraw);
+      if (op === "&") return String(scalar(lraw)) + String(scalar(rraw));
+      const l = lraw;
+      const r = rraw;
       switch (op) {
         case "+": return num(l) + num(r);
         case "-": return num(l) - num(r);
         case "*": return num(l) * num(r);
-        case "/": return num(l) / num(r);
+        case "/": return num(r) === 0 ? DIV0() : num(l) / num(r);
         case "=": return scalar(l) === scalar(r);
         case "<>": return scalar(l) !== scalar(r);
         case "<": return num(l) < num(r);
@@ -264,18 +295,346 @@ const flatNums = (args: Node[], lookup: Lookup): number[] => {
   return out;
 };
 
-const BUILTIN_CALLS: ReadonlySet<string> = new Set(["SUM", "MIN", "MAX", "AVG", "AVERAGE", "IF"]);
+// ── Excel-error helpers ─────────────────────────────────────────────────────
+// A builtin that can't produce a value RETURNS a CelError whose `trap` is
+// the kernel trap code (na/div0/ref/value/num) and whose `message` is the
+// Excel sentinel (#N/A, #DIV/0!, …). Returning (rather than throwing) keeps
+// the trap precise — the kernel's catch site stamps every throw as
+// `RuntimeError`, which would erase the Excel code. The error then
+// propagates as a normal cel value: arithmetic coerces it through num()
+// (→ NaN→0) and IFERROR detects it via isCelError(). The error's `at` is
+// filled in by the kernel's per-cel trap if it ever does escape via throw;
+// here we own a stable, location-free CelError instead.
+const xlError = (trap: string, code: string): CelError =>
+  ({ kind: "error", at: [], trap, message: code });
+const NA    = (): CelError => xlError("na",    "#N/A");
+const DIV0  = (): CelError => xlError("div0",  "#DIV/0!");
+const REF   = (): CelError => xlError("ref",   "#REF!");
+const VALUE = (): CelError => xlError("value", "#VALUE!");
+const NUM   = (): CelError => xlError("num",   "#NUM!");
+
+// Flatten a list of arg nodes into scalar values, expanding ranges.
+const flatVals = (args: Node[], lookup: Lookup): unknown[] => {
+  const out: unknown[] = [];
+  for (const a of args) {
+    if (a.t === "range") {
+      const vs = a.keys ? a.keys.map(lookup) : rangeValues(a.range, lookup);
+      for (const v of vs) out.push(v);
+    } else out.push(evalNode(a, lookup));
+  }
+  return out;
+};
+
+// Evaluate a single arg node to its flat value array (a range → its
+// members; a scalar → a one-element list).
+const argVals = (a: Node | undefined, lookup: Lookup): unknown[] => {
+  if (!a) return [];
+  if (a.t === "range") return a.keys ? a.keys.map(lookup) : rangeValues(a.range, lookup);
+  return [evalNode(a, lookup)];
+};
+
+const str = (v: unknown): string => {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+  return String(v);
+};
+const truthy = (v: unknown): boolean => {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return v !== 0;
+  if (v === null || v === undefined || v === "") return false;
+  const s = String(v).toUpperCase();
+  if (s === "TRUE") return true;
+  if (s === "FALSE") return false;
+  return num(v) !== 0;
+};
+
+// Round x to n decimal places with a chosen rounding mode.
+const roundTo = (x: number, n: number, mode: "round" | "up" | "down"): number => {
+  const f = Math.pow(10, n);
+  const scaled = x * f;
+  const r = mode === "up"   ? (scaled < 0 ? Math.floor(scaled) : Math.ceil(scaled))
+          : mode === "down" ? (scaled < 0 ? Math.ceil(scaled)  : Math.floor(scaled))
+          : Math.round(scaled);
+  return r / f;
+};
+
+// ── criterion matcher (COUNTIF/SUMIF/AVERAGEIF) ─────────────────────────────
+// A criterion is a number/boolean (equality), or a string that may carry a
+// leading comparison operator (">5", "<>x", "<=0") and/or `*`/`?` wildcards
+// ("*ple", "a?c"). Returns a predicate over a candidate value.
+const wildcardToRegExp = (pat: string): RegExp => {
+  let re = "";
+  for (const ch of pat) {
+    if (ch === "*") re += ".*";
+    else if (ch === "?") re += ".";
+    else re += ch.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  }
+  return new RegExp(`^${re}$`, "i");
+};
+const makePredicate = (crit: unknown): ((v: unknown) => boolean) => {
+  if (typeof crit === "number" || typeof crit === "boolean") {
+    return (v) => num(v) === num(crit);
+  }
+  let s = String(crit ?? "");
+  let op = "=";
+  const m = /^(<=|>=|<>|<|>|=)/.exec(s);
+  if (m) { op = m[1]!; s = s.slice(m[1]!.length); }
+  const asNum = Number(s);
+  const numeric = s !== "" && !Number.isNaN(asNum);
+  switch (op) {
+    case ">":  return (v) => num(v) > asNum;
+    case "<":  return (v) => num(v) < asNum;
+    case ">=": return (v) => num(v) >= asNum;
+    case "<=": return (v) => num(v) <= asNum;
+    case "<>":
+      if (numeric) return (v) => num(v) !== asNum;
+      if (/[*?]/.test(s)) { const re = wildcardToRegExp(s); return (v) => !re.test(str(v)); }
+      return (v) => str(v).toUpperCase() !== s.toUpperCase();
+    default: // "="
+      if (numeric) return (v) => num(v) === asNum;
+      if (/[*?]/.test(s)) { const re = wildcardToRegExp(s); return (v) => re.test(str(v)); }
+      return (v) => str(v).toUpperCase() === s.toUpperCase();
+  }
+};
+
+// ── range shape (VLOOKUP/HLOOKUP/INDEX/MATCH) ───────────────────────────────
+// Re-grid a range arg's flat (row-major) value list back into rows×cols.
+// Direct A1:B3 literals carry their span in `range`; cross-sheet ranges
+// keep the A1 span in `range` too. Named-range cels carry only `keys` with
+// no A1 span — those fall back to a single column (Nx1), which is the
+// common MATCH/lookup-key shape; multi-column named ranges aren't shape-
+// recoverable inline in v1 (noted; consumers can pass the literal A1:B3).
+interface Grid { rows: number; cols: number; values: unknown[]; }
+const rangeGrid = (a: Node | undefined, lookup: Lookup): Grid | CelError => {
+  if (!a || a.t !== "range") return VALUE();
+  const node = a;
+  const values = node.keys ? node.keys.map(lookup) : rangeValues(node.range, lookup);
+  const colon = node.range.indexOf(":");
+  if (colon !== -1) {
+    const from = parseRef(node.range.slice(0, colon));
+    const to = parseRef(node.range.slice(colon + 1));
+    if (from && to) {
+      const cols = Math.abs(to.col - from.col) + 1;
+      const rows = Math.abs(to.row - from.row) + 1;
+      if (rows * cols === values.length) return { rows, cols, values };
+    }
+  }
+  // No recoverable A1 span (named range): treat as a single column.
+  return { rows: values.length, cols: 1, values };
+};
+const gridAt = (g: Grid, r: number, c: number): unknown => g.values[r * g.cols + c];
+
+// Excel match: exact (string-insensitive / numeric), used by VLOOKUP/HLOOKUP
+// /MATCH with matchType 0. Returns the 0-based index in `col` or -1.
+const exactIndex = (col: unknown[], key: unknown): number => {
+  const numericKey = typeof key === "number" || (typeof key === "string" && key !== "" && !Number.isNaN(Number(key)));
+  for (let i = 0; i < col.length; i++) {
+    const v = col[i];
+    if (numericKey && typeof v === "number") { if (num(v) === num(key)) return i; }
+    else if (str(v).toUpperCase() === str(key).toUpperCase()) return i;
+  }
+  return -1;
+};
+// Approximate match (Excel default, ASSUMES ascending sort): the largest
+// value <= key. Numeric when both sides are numbers; otherwise a
+// case-insensitive string comparison (Excel approx-matches text too).
+const lte = (v: unknown, key: unknown): boolean => {
+  const vn = typeof v === "number", kn = typeof key === "number"
+    || (typeof key === "string" && key !== "" && !Number.isNaN(Number(key)));
+  if (vn && kn) return num(v) <= num(key);
+  return str(v).toUpperCase() <= str(key).toUpperCase();
+};
+const approxIndex = (col: unknown[], key: unknown): number => {
+  let best = -1;
+  for (let i = 0; i < col.length; i++) {
+    if (lte(col[i], key)) best = i; else break;
+  }
+  return best;
+};
+
+const BUILTIN_CALLS: ReadonlySet<string> = new Set([
+  "SUM", "MIN", "MAX", "AVG", "AVERAGE", "IF",
+  // math / rounding
+  "ROUND", "ROUNDUP", "ROUNDDOWN", "ABS", "INT", "MOD",
+  // predicate aggregation
+  "COUNT", "COUNTA", "COUNTIF", "SUMIF", "AVERAGEIF",
+  // lookup / reference
+  "VLOOKUP", "HLOOKUP", "INDEX", "MATCH",
+  // logical
+  "AND", "OR", "NOT", "IFS", "IFERROR",
+  // text
+  "CONCAT", "CONCATENATE", "TEXTJOIN", "LEFT", "RIGHT", "MID", "LEN",
+  "TRIM", "UPPER", "LOWER",
+  // date (pure, literal args only)
+  "DATE",
+]);
 
 const evalCall = (node: { name: string; args: Node[] }, lookup: Lookup): unknown => {
+  const A = node.args;
   switch (node.name.toUpperCase()) {
-    case "SUM": return flatNums(node.args, lookup).reduce((a, b) => a + b, 0);
-    case "MIN": { const xs = flatNums(node.args, lookup); return xs.length ? Math.min(...xs) : 0; }
-    case "MAX": { const xs = flatNums(node.args, lookup); return xs.length ? Math.max(...xs) : 0; }
-    case "AVG": case "AVERAGE": { const xs = flatNums(node.args, lookup); return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0; }
+    case "SUM": return flatNums(A, lookup).reduce((a, b) => a + b, 0);
+    case "MIN": { const xs = flatNums(A, lookup); return xs.length ? Math.min(...xs) : 0; }
+    case "MAX": { const xs = flatNums(A, lookup); return xs.length ? Math.max(...xs) : 0; }
+    case "AVG": case "AVERAGE": { const xs = flatNums(A, lookup); return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : DIV0(); }
     case "IF": {
-      const cond = evalNode(node.args[0]!, lookup);
-      return cond ? evalNode(node.args[1]!, lookup) : (node.args[2] ? evalNode(node.args[2], lookup) : false);
+      const cond = evalNode(A[0]!, lookup);
+      return truthy(cond) ? evalNode(A[1]!, lookup) : (A[2] ? evalNode(A[2], lookup) : false);
     }
+
+    // ── math / rounding ──────────────────────────────────────────────────
+    case "ROUND":     return roundTo(num(evalNode(A[0]!, lookup)), A[1] ? Math.trunc(num(evalNode(A[1], lookup))) : 0, "round");
+    case "ROUNDUP":   return roundTo(num(evalNode(A[0]!, lookup)), A[1] ? Math.trunc(num(evalNode(A[1], lookup))) : 0, "up");
+    case "ROUNDDOWN": return roundTo(num(evalNode(A[0]!, lookup)), A[1] ? Math.trunc(num(evalNode(A[1], lookup))) : 0, "down");
+    case "ABS":       return Math.abs(num(evalNode(A[0]!, lookup)));
+    case "INT":       return Math.floor(num(evalNode(A[0]!, lookup)));
+    case "MOD": {
+      const a = num(evalNode(A[0]!, lookup)), b = num(evalNode(A[1]!, lookup));
+      if (b === 0) return DIV0();
+      return a - b * Math.floor(a / b); // Excel MOD takes the divisor's sign
+    }
+
+    // ── predicate aggregation ────────────────────────────────────────────
+    case "COUNT":  return flatVals(A, lookup).filter((v) => typeof v === "number" || (v !== null && v !== undefined && v !== "" && !Number.isNaN(Number(v)))).length;
+    case "COUNTA": return flatVals(A, lookup).filter((v) => v !== null && v !== undefined && v !== "").length;
+    case "COUNTIF": {
+      const range = argVals(A[0], lookup);
+      const pred = makePredicate(scalar(evalNode(A[1]!, lookup)));
+      return range.filter(pred).length;
+    }
+    case "SUMIF": {
+      const range = argVals(A[0], lookup);
+      const pred = makePredicate(scalar(evalNode(A[1]!, lookup)));
+      const sumRange = A[2] ? argVals(A[2], lookup) : range;
+      let total = 0;
+      for (let i = 0; i < range.length; i++) if (pred(range[i])) total += num(sumRange[i]);
+      return total;
+    }
+    case "AVERAGEIF": {
+      const range = argVals(A[0], lookup);
+      const pred = makePredicate(scalar(evalNode(A[1]!, lookup)));
+      const avgRange = A[2] ? argVals(A[2], lookup) : range;
+      let total = 0, count = 0;
+      for (let i = 0; i < range.length; i++) if (pred(range[i])) { total += num(avgRange[i]); count++; }
+      return count ? total / count : DIV0();
+    }
+
+    // ── lookup / reference (1-based at the boundary) ─────────────────────
+    case "VLOOKUP": {
+      const key = scalar(evalNode(A[0]!, lookup));
+      const g = rangeGrid(A[1], lookup);
+      if (isCelError(g)) return g;
+      const colIndex = Math.trunc(num(evalNode(A[2]!, lookup))); // 1-based
+      const exact = A[3] ? !truthy(evalNode(A[3], lookup)) : false; // FALSE → exact
+      if (colIndex < 1 || colIndex > g.cols) return REF();
+      const firstCol: unknown[] = [];
+      for (let r = 0; r < g.rows; r++) firstCol.push(gridAt(g, r, 0));
+      const row = exact ? exactIndex(firstCol, key) : approxIndex(firstCol, key);
+      if (row < 0) return NA();
+      return gridAt(g, row, colIndex - 1);
+    }
+    case "HLOOKUP": {
+      const key = scalar(evalNode(A[0]!, lookup));
+      const g = rangeGrid(A[1], lookup);
+      if (isCelError(g)) return g;
+      const rowIndex = Math.trunc(num(evalNode(A[2]!, lookup))); // 1-based
+      const exact = A[3] ? !truthy(evalNode(A[3], lookup)) : false;
+      if (rowIndex < 1 || rowIndex > g.rows) return REF();
+      const firstRow: unknown[] = [];
+      for (let c = 0; c < g.cols; c++) firstRow.push(gridAt(g, 0, c));
+      const col = exact ? exactIndex(firstRow, key) : approxIndex(firstRow, key);
+      if (col < 0) return NA();
+      return gridAt(g, rowIndex - 1, col);
+    }
+    case "INDEX": {
+      const g = rangeGrid(A[0], lookup);
+      if (isCelError(g)) return g;
+      const rowNum = Math.trunc(num(evalNode(A[1]!, lookup))); // 1-based
+      // For a single row/col, the second index is optional.
+      let r = rowNum, c = A[2] ? Math.trunc(num(evalNode(A[2], lookup))) : 1;
+      if (!A[2] && g.rows === 1) { c = rowNum; r = 1; }
+      if (r < 1 || r > g.rows || c < 1 || c > g.cols) return REF();
+      return gridAt(g, r - 1, c - 1);
+    }
+    case "MATCH": {
+      const key = scalar(evalNode(A[0]!, lookup));
+      const col = argVals(A[1], lookup);
+      const matchType = A[2] ? Math.trunc(num(evalNode(A[2], lookup))) : 1;
+      let idx: number;
+      if (matchType === 0) idx = exactIndex(col, key);
+      else if (matchType === 1) idx = approxIndex(col, key);       // largest <= key (asc)
+      else { // -1: smallest >= key (desc)
+        idx = -1;
+        for (let i = 0; i < col.length; i++) { if (num(col[i]) >= num(key)) idx = i; else break; }
+      }
+      if (idx < 0) return NA();
+      return idx + 1; // 1-based
+    }
+
+    // ── logical ──────────────────────────────────────────────────────────
+    case "AND": return flatVals(A, lookup).every(truthy);
+    case "OR":  return flatVals(A, lookup).some(truthy);
+    case "NOT": return !truthy(evalNode(A[0]!, lookup));
+    case "IFS": {
+      for (let i = 0; i + 1 < A.length; i += 2) {
+        if (truthy(evalNode(A[i]!, lookup))) return evalNode(A[i + 1]!, lookup);
+      }
+      return NA(); // no condition matched
+    }
+    case "IFERROR": {
+      try {
+        const v = evalNode(A[0]!, lookup);
+        if (isCelError(v)) return evalNode(A[1]!, lookup);
+        return v;
+      } catch {
+        return evalNode(A[1]!, lookup);
+      }
+    }
+
+    // ── text ─────────────────────────────────────────────────────────────
+    case "CONCAT": case "CONCATENATE":
+      return flatVals(A, lookup).map(str).join("");
+    case "TEXTJOIN": {
+      const delim = str(scalar(evalNode(A[0]!, lookup)));
+      const ignoreEmpty = truthy(evalNode(A[1]!, lookup));
+      const parts = flatVals(A.slice(2), lookup).map(str);
+      return (ignoreEmpty ? parts.filter((p) => p !== "") : parts).join(delim);
+    }
+    case "LEFT": {
+      const s = str(scalar(evalNode(A[0]!, lookup)));
+      const n = A[1] ? Math.trunc(num(evalNode(A[1], lookup))) : 1;
+      if (n < 0) return VALUE();
+      return s.slice(0, n);
+    }
+    case "RIGHT": {
+      const s = str(scalar(evalNode(A[0]!, lookup)));
+      const n = A[1] ? Math.trunc(num(evalNode(A[1], lookup))) : 1;
+      if (n < 0) return VALUE();
+      return n === 0 ? "" : s.slice(-n);
+    }
+    case "MID": {
+      const s = str(scalar(evalNode(A[0]!, lookup)));
+      const start = Math.trunc(num(evalNode(A[1]!, lookup))); // 1-based
+      const len = Math.trunc(num(evalNode(A[2]!, lookup)));
+      if (start < 1 || len < 0) return VALUE();
+      return s.slice(start - 1, start - 1 + len);
+    }
+    case "LEN":   return str(scalar(evalNode(A[0]!, lookup))).length;
+    case "TRIM":  return str(scalar(evalNode(A[0]!, lookup))).replace(/\s+/g, " ").trim();
+    case "UPPER": return str(scalar(evalNode(A[0]!, lookup))).toUpperCase();
+    case "LOWER": return str(scalar(evalNode(A[0]!, lookup))).toLowerCase();
+
+    // ── date (pure; literal/computed args only — NO wall clock) ──────────
+    case "DATE": {
+      const y = Math.trunc(num(evalNode(A[0]!, lookup)));
+      const m = Math.trunc(num(evalNode(A[1]!, lookup)));
+      const d = Math.trunc(num(evalNode(A[2]!, lookup)));
+      // Normalize via UTC so overflow (month 13, day 0) rolls like Excel.
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      if (Number.isNaN(dt.getTime())) return NUM();
+      const iso = dt.toISOString().slice(0, 10); // YYYY-MM-DD (NOT an Excel serial)
+      return iso;
+    }
+
     default: {
       // USER SYMBOL — the name is a cel key (named-function-cels). The
       // lookup resolves a lambda cel's callable; anything else is an
