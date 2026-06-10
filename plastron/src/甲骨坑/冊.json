@@ -194,6 +194,15 @@
     ]
   },
   {
+    "name": "dom-wallet",
+    "version": "1.0.0",
+    "description": "The unsafe-wallet panel authored as dom() formulas — a showcase that interactive UI can be a formula. domWallet(lock, names?) returns a vnode tree built through the dom()/style()/attr()/on() vocabulary instead of hand-rolled el()/t() vnodes, wiring buttons/inputs to the SAME unsafe-wallet dispatch handlers (wallet.unlock/.lock/.setNamed/.del). Compose from the wallet's own readers: =domWallet(locked(walletNote), apiKeys()). Pure render — owns no secrets, no IO, no module state.",
+    "dependencies": [
+      "dom",
+      "unsafe-wallet"
+    ]
+  },
+  {
     "name": "origin",
     "version": "1.0.0",
     "description": "The starting point: the origin cel (readme as value), the freespace view + entry gesture, load/cels effects. Boot contract: createInitialState + hydrate paints one visible cel.",

@@ -1,0 +1,17 @@
+{
+  "name": "dom-wallet",
+  "cels": [
+    {
+      "key": "domWallet",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "domWallet",
+        "segment": "dom-wallet",
+        "name": "domWallet",
+        "kind": "native",
+        "description": "(lock, names?) - the unsafe-wallet panel authored as a dom() formula (a showcase that interactive UI can be a formula). Compose it from the wallet's own readers: =domWallet(locked(walletNote), apiKeys()). Locked -> status + an unlock password box (wallet.unlock). Unlocked -> status + a lock button (wallet.lock) + a delete chip per key (wallet.del) + an add-a-key row (name -> wallet.newName, secret -> wallet.setNamed). Wires the SAME wallet.* handlers via on(); no new handlers, no secrets."
+      }
+    }
+  ]
+}
