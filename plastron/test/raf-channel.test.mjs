@@ -1,7 +1,7 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, precomputeOptional, resolveFn } from "../dist/index.js";
-import { diffVNodes as diffVNodesRaw } from "../dist/甲骨坑/library/plastron-dom/utils/diff.js";
+import { diffVNodes as diffVNodesRaw } from "../dist/甲骨坑/library/dom/utils/diff.js";
 import { vnode_isChanged } from "../dist/甲骨坑/library/html-template-parser/utils/schema-fns.js";
 import { vnodeEquals, bindingsEqual } from "../dist/甲骨坑/library/html-template-parser/utils/vnode.js";
 
@@ -11,7 +11,7 @@ import { vnodeEquals, bindingsEqual } from "../dist/甲骨坑/library/html-templ
 const EQ = { vnodeEquals, bindingsEqual };
 const diffVNodes = (a, b) => diffVNodesRaw(a, b, EQ);
 void vnode_isChanged;
-import { createPainter, setPainter, getPainter } from "../dist/甲骨坑/library/plastron-dom/utils/paint.js";
+import { createPainter, setPainter, getPainter } from "../dist/甲骨坑/library/dom/utils/paint.js";
 
 // raf-channel — the painter consumes render-specs through a RAF-batched
 // ChannelCel, diffs vnode trees to JSON patches, applies them to the DOM
@@ -203,7 +203,7 @@ test("global listeners are reconciled each flush against the resolved target", a
 
 // ── channel wiring: a view cel's fire reaches the painter via drain ─────────
 
-test("plastron-dom.paint ChannelCel forwards fired render-specs to the painter", async () => {
+test("dom.paint ChannelCel forwards fired render-specs to the painter", async () => {
   const state = createInitialState();
   const m = mockRaf();
   setPainter(state, createPainter(state, { raf: m.raf, caf: m.caf, isBrowser: false }));
@@ -213,7 +213,7 @@ test("plastron-dom.paint ChannelCel forwards fired render-specs to the painter",
     { key: "msg", celType: "ValueCel", metadata: { key: "msg", segment: "user" }, v: "hi" },
     {
       key: "view", celType: "FormulaCel",
-      metadata: { key: "view", segment: "user", parser: "html-template", schema: "render-spec", channel: ["plastron-dom.paint"], inputMap: { msg: "msg" } },
+      metadata: { key: "view", segment: "user", parser: "html-template", schema: "render-spec", channel: ["dom.paint"], inputMap: { msg: "msg" } },
       f: "<div>{{msg}}</div>",
     },
   ] }], [userManifest]);
@@ -222,7 +222,7 @@ test("plastron-dom.paint ChannelCel forwards fired render-specs to the painter",
   const runCycle = resolveFn(state, "runCycle");
   const drain = resolveFn(state, "drain");
   await runCycle(state);          // view fires → enqueued on the paint channel
-  await drain(state, "plastron-dom.paint"); // → paintDrain → painter.enqueue
+  await drain(state, "dom.paint"); // → paintDrain → painter.enqueue
 
   const painter = getPainter(state);
   assert.equal(painter.pending(), true, "painter scheduled a frame from the forwarded render-spec");

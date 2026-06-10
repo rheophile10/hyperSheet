@@ -556,7 +556,7 @@ export const forget: Fn = async (
  *  but skips DOM mutation when no document is present (tests inspect via
  *  lastPatch). Best-effort: silently skips cels with no paint channel, no
  *  RenderSpec value, or a null mount. */
-const PAINT_CHANNEL = "plastron-dom.paint" as const;
+const PAINT_CHANNEL = "dom.paint" as const;
 
 const tearDownViewMounts = (state: State, liveCels: Cel[]): void => {
   for (const cel of liveCels) {

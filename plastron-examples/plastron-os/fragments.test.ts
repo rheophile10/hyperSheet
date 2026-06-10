@@ -50,9 +50,9 @@ const boot = async (monolithicToolbar) => {
   await precomputeOptional(state);
   await resolveFn(state, "setValue")(state, "os.active", "sheets");
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  await resolveFn(state, "drain")(state, "dom.paint");
   m.run();
-  const drain = async () => { await resolveFn(state, "drain")(state, "plastron-dom.paint"); m.run(); };
+  const drain = async () => { await resolveFn(state, "drain")(state, "dom.paint"); m.run(); };
   return { root, state, drain };
 };
 

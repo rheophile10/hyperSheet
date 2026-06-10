@@ -1,4 +1,4 @@
-// vnode builders — the canonical way to author plastron-dom render specs, so
+// vnode builders — the canonical way to author dom render specs, so
 // apps (origin, krausest, …) don't re-roll their own. `el`/`text` produce the
 // shared VElement/VText; `memo` attaches the diff's memo hint (see diff.ts).
 

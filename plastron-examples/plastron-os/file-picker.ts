@@ -199,7 +199,7 @@ export const setupFilePicker = async (state: State): Promise<void> => {
   // layering rule.
   const seg = {
     name: "file-picker", version: "0.1.0",
-    dependencies: ["app-host", "html-template-parser", "plastron-dom"],
+    dependencies: ["app-host", "html-template-parser", "dom"],
     role: "library",
     cels: [
       { key: "picker.app", celType: "ValueCel", metadata: { key: "picker.app", segment: "file-picker" }, v: null },
@@ -211,7 +211,7 @@ export const setupFilePicker = async (state: State): Promise<void> => {
         key: "picker.view", celType: "FormulaCel",
         metadata: {
           key: "picker.view", segment: "file-picker", parser: "html-template", schema: "render-spec",
-          channel: ["plastron-dom.paint"],
+          channel: ["dom.paint"],
           inputMap: {
             mount: "picker.mount",
             app: "picker.app",

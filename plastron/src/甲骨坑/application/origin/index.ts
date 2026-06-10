@@ -3,11 +3,12 @@ import type {
 } from "../../../types/index.js";
 import {
   bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError,
+  isSecretHandle, isSecretHandleRef,
 } from "../../../kernel/index.js";
-// Core rendering comes from the plastron-dom LIBRARY — the app doesn't re-roll
+// Core rendering comes from the dom LIBRARY — the app doesn't re-roll
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
-// `memo` attaches the diff's O(changed) short-circuit hint (see plastron-dom).
-import { el as makeEl, text as T, memo } from "../../library/plastron-dom/index.js";
+// `memo` attaches the diff's O(changed) short-circuit hint (see dom).
+import { el as makeEl, text as T, memo } from "../../library/dom/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -23,7 +24,7 @@ import seed from "./甲骨.json" with { type: "json" };
 //   =1+1          → 2
 //   =grid(3,3)    → a 3×3 worksheet of cels, each like 元
 //   =dom("h2"…)   → a heading rendered in the cell
-// 元.view is UNLOCKED — it renders through plastron-dom like any view,
+// 元.view is UNLOCKED — it renders through dom like any view,
 // built to be reworked in place.
 // ============================================================================
 
@@ -38,55 +39,10 @@ const el = (tag: string, attrs: Record<string, unknown>, children: V[], events?:
 const isVnode = (v: unknown): v is V =>
   !!v && typeof v === "object" && ((v as V).type === "el" || (v as V).type === "text");
 
-/** dom(tag, ...children) — a presentation vnode VALUE (not a mounted
- *  view; 元.view composes it). `tag` accepts an emmet-ish class:
- *  "div.readme" → <div class="readme">. Children: strings → text nodes,
- *  nested dom(...) → child elements. A freespace cell whose value is a
- *  vnode renders in the STACK above the cels; delete the formula and it
- *  is gone — composed by value, nothing to unmount. */
-const isStyle = (c: unknown): c is { __style: Record<string, unknown> } =>
-  !!c && typeof c === "object" && typeof (c as { __style?: unknown }).__style === "object";
-const isAttr = (c: unknown): c is { __attr: Record<string, unknown> } =>
-  !!c && typeof c === "object" && typeof (c as { __attr?: unknown }).__attr === "object";
-
-const dom: Fn = (tag: unknown, ...children: unknown[]): V => {
-  const spec = String(tag ?? "div");
-  const dot = spec.indexOf(".");
-  const name = dot === -1 ? spec : spec.slice(0, dot);
-  const cls = dot === -1 ? undefined : spec.slice(dot + 1).replace(/\./g, " ");
-  // (style …) children set inline style; (attr …) children set attributes
-  // (href, target, …); the rest are child nodes.
-  let style: Record<string, unknown> | undefined;
-  const attrs: Record<string, unknown> = cls ? { class: cls } : {};
-  const kids: V[] = [];
-  for (const c of children) {
-    if (isStyle(c)) { style = { ...style, ...c.__style }; continue; }
-    if (isAttr(c)) { Object.assign(attrs, c.__attr); continue; }
-    kids.push(isVnode(c) ? c : T(c));
-  }
-  return {
-    type: "el", tag: name || "div",
-    ...(Object.keys(attrs).length ? { attrs } : {}),
-    ...(style ? { style: style as Record<string, string | number | boolean | null> } : {}),
-    children: kids,
-  };
-};
-
-/** style(prop, value, prop, value, …) — inline styles for a dom element.
- *  Pass as a child: (dom "h1" (style "color" "tomato" "font-size" "2rem") "hi"). */
-const style: Fn = (...pairs: unknown[]): { __style: Record<string, unknown> } => {
-  const s: Record<string, unknown> = {};
-  for (let i = 0; i + 1 < pairs.length; i += 2) s[String(pairs[i])] = pairs[i + 1];
-  return { __style: s };
-};
-
-/** attr(name, value, …) — HTML attributes for a dom element (href, target,
- *  id, …). Pass as a child: (dom "a" (attr "href" "https://…") "link"). */
-const attr: Fn = (...pairs: unknown[]): { __attr: Record<string, unknown> } => {
-  const a: Record<string, unknown> = {};
-  for (let i = 0; i + 1 < pairs.length; i += 2) a[String(pairs[i])] = pairs[i + 1];
-  return { __attr: a };
-};
+// dom/style/attr/on — the vnode-authoring vocabulary — moved to the `dom`
+// LIBRARY segment (tier-boundary doctrine). origin depends on `dom`, so those
+// verbs resolve from the registry; origin's TS uses the el/text builders
+// directly (imported above) and no longer registers the formula verbs.
 
 // ── view styles, INLINE ──────────────────────────────────────────────────────
 // The view carries all its own CSS as inline `style` attributes (the painter
@@ -115,14 +71,42 @@ const SX = {
  *  live; a number/string shows as text; a structure request (genesis /
  *  defn) shows a ƒ marker (it made cels/functions elsewhere); errors
  *  show Excel-style. Empty shows nothing. */
+// A genesis request's value, shown as a compact YAML-ish tree of what it
+// built: one line per layer (rows×cols), and the seeded cells under it
+// (address: source). The cell is resizable; long trees scroll. Beats the
+// old "ƒ grid" glyph — the formula's OUTPUT becomes readable documentation.
+const genesisSummary = (cels: Record<string, unknown> | undefined): string => {
+  if (!cels) return "ƒ cels";
+  const layers = new Map<string, { rows: number; cols: number; filled: [string, string][] }>();
+  const colIdx = (a: string): number => { const m = a.match(/^([A-Z]+)/); if (!m) return 0; let n = 0; for (const ch of m[1]!) n = n * 26 + (ch.charCodeAt(0) - 64); return n; };
+  const rowIdx = (a: string): number => Number((a.match(/(\d+)$/) ?? [])[1] ?? 0);
+  for (const [k, spec] of Object.entries(cels)) {
+    const dot = k.lastIndexOf("."); if (dot < 0) continue;
+    const layer = k.slice(0, dot), addr = k.slice(dot + 1);
+    const e = layers.get(layer) ?? { rows: 0, cols: 0, filled: [] };
+    e.rows = Math.max(e.rows, rowIdx(addr)); e.cols = Math.max(e.cols, colIdx(addr));
+    const s = spec as { f?: string; v?: unknown };
+    const src = s.f ?? (s.v === "" || s.v == null ? "" : String(s.v));
+    if (src !== "") e.filled.push([addr, src]);
+    layers.set(layer, e);
+  }
+  const lines: string[] = [];
+  for (const [layer, e] of layers) {
+    lines.push(`${layer}: ${e.rows}×${e.cols}`);
+    for (const [addr, src] of e.filled) lines.push(`  ${addr}: ${src.length > 48 ? src.slice(0, 47) + "…" : src}`);
+  }
+  return lines.length ? lines.join("\n") : "ƒ cels";
+};
+
 const displayCell = (v: unknown): V => {
   if (isVnode(v)) return v as V;
   if (v === null || v === undefined || v === "") return T("");
   if (typeof v === "object") {
-    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; defn?: unknown; name?: unknown; __mount?: unknown };
+    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; cels?: unknown; defn?: unknown; name?: unknown; __mount?: unknown };
     if (o.kind === "error") return T(/undefined symbol|not a function/.test(String(o.message)) ? "#NAME?" : "#ERR!");
-    if (o.genesis === true) return T("ƒ grid");
+    if (o.genesis === true) return el("pre", { class: "cell-pre", style: SX.pre }, [T(genesisSummary(o.cels as Record<string, unknown> | undefined))]);
     if (o.defn === true) return T(`ƒ ${String(o.name ?? "")}`);
+    if (isSecretHandleRef(v)) return T(`🔑 ${(v as { name: string }).name}`); // wallet handle (or persisted ref) — never the secret
     if (typeof o.__mount === "string") return T(""); // content renders elsewhere (mounted) — the cell stays clean
     try { return T(JSON.stringify(v).slice(0, 60)); } catch { return T("#ERR!"); }
   }
@@ -191,14 +175,26 @@ const originView: Fn = (
 
   // the editor — a resizable textarea (the SAME for every cell), plus an
   // error line when its last formula failed to compile.
-  const editor = (key: string): V =>
-    el("div", { class: "cell-editing", style: SX.editing }, [
-      el("textarea", { class: "cell-edit", style: SX.edit, value: String(draft ?? "") }, [], {
+  const editor = (key: string): V => {
+    // Open the editor at roughly the footprint of what was on screen, so a
+    // big cell (the readme, a multi-line formula) doesn't collapse to a tiny
+    // box the moment you click it. Size from the draft: rows from line count,
+    // width from the longest line — both clamped, and resize:both still lets
+    // you adjust by hand.
+    const txt = String(draft ?? "");
+    const lines = txt.split("\n");
+    const rows = Math.min(Math.max(lines.length + 1, 4), 30);
+    const longest = lines.reduce((m, l) => Math.max(m, l.length), 0);
+    const widthCh = Math.min(Math.max(longest + 2, 28), 96);
+    const editingStyle = `${SX.editing};width:${widthCh}ch;max-width:min(56rem,88vw)`;
+    return el("div", { class: "cell-editing", style: editingStyle }, [
+      el("textarea", { class: "cell-edit", style: SX.edit, rows, value: txt }, [], {
         input: { set: "元.draft", extract: "value" },
         keydown: { dispatch: "origin.key", payload: key }, // origin.key commits on Enter
       }),
       ...(errMsg ? [el("div", { class: "cell-error", style: SX.error }, [T(errMsg)])] : []),
     ]);
+  };
 
   const isMountVal = (v: unknown): boolean => !!v && typeof v === "object" && typeof (v as { __mount?: unknown }).__mount === "string";
 
@@ -234,7 +230,7 @@ const originView: Fn = (
           // the active cell gets the editing outline — both inline.
           const tdStyle = `${SX.td};min-width:${isMountVal(v) ? "26rem" : "4.5rem"}${isActive ? ";outline:2px solid #4a90d9;outline-offset:-2px" : ""}`;
           const td = el("td", { class: isActive ? "cell editing" : "cell", "data-key": k, style: tdStyle }, [body(k, v)]);
-          // memo hint → plastron-dom's diff skips an unchanged cell's deep compare
+          // memo hint → dom's diff skips an unchanged cell's deep compare
           // (O(changed), library-level). The ACTIVE cell gets NO memo — its editor
           // depends on draft/error — so it's always deep-diffed.
           return isActive ? td : (memo(td as unknown as VElement, [v, isMountVal(v) ? srcOf.get(k) : undefined]) as unknown as V);
@@ -456,15 +452,32 @@ const cellSource = (state: State, key: string): string => {
   return f ?? (c?.v === undefined || c?.v === null ? "" : String(c.v));
 };
 
+// A click that lands on a form control a formula rendered INSIDE a cell (a
+// password box from =unlockWallet(), a file picker from =upload(), a button)
+// must reach the control — not hijack into editing the cell's formula. The
+// cell-value wrapper carries the click→edit binding, so without this guard
+// every click on the input bubbles up and swaps the input out for the editor
+// textarea before you can type. Editing such a cell: click its padding/label,
+// or the ⤢ expand affordance.
+const isFormControl = (event: unknown): boolean => {
+  const target = (event as { target?: { tagName?: string; closest?: (s: string) => unknown } } | undefined)?.target;
+  if (!target) return false;
+  const SEL = "input,textarea,select,button,label,option";
+  if (/^(INPUT|TEXTAREA|SELECT|BUTTON|LABEL|OPTION)$/.test(String(target.tagName ?? "").toUpperCase())) return true;
+  return typeof target.closest === "function" && !!target.closest(SEL);
+};
+
 /** edit — start INLINE editing a cell (seed the draft with its source);
- *  clicking the active cell again closes it. */
-const edit: Fn = async (state: State, payload?: unknown) => {
+ *  clicking the active cell again closes it. A click on a form control the
+ *  cell's formula rendered is left alone (so password/upload inputs work). */
+const edit: Fn = async (state: State, payload?: unknown, event?: unknown) => {
+  if (isFormControl(event)) return state;
   const key = typeof payload === "string" ? payload : null;
   const cur = state.cels.get("元.editing")?.v;
   const next = cur === key ? null : key;
   await (resolveFn(state, "setValueBatch") as Fn)(state,
     [["元.editing", next], ["元.draft", next ? cellSource(state, next) : ""], ["元.error", null]]);
-  await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
   return state;
 };
 
@@ -501,7 +514,7 @@ const commit: Fn = async (state: State, payload?: unknown) => {
     // keep the bad draft and force the cell into edit mode so the error
     // line is visible (it renders under the active editor).
     await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", msg], ["元.editing", key]]);
-    await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
+    await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
     return state;
   }
 
@@ -526,7 +539,7 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   // …rebuild the cell list (new grids in, swept cels out), re-fire, paint.
   await rewireView(state, cellKeys(state));
   await (resolveFn(state, "runCycle") as Fn)(state);
-  await drain(state, "plastron-dom.paint");
+  await drain(state, "dom.paint");
   return state;
 };
 
@@ -697,6 +710,39 @@ const grokFn: Fn = (prompt: unknown, key: unknown, model: unknown) =>
   ({ originChat: true, provider: "grok", prompt: String(prompt ?? ""), key: String(key ?? ""),
      model: model == null || model === "" ? "grok-3-mini" : String(model),
      url: "https://api.x.ai/v1/chat/completions" });
+/** claude(prompt, apiKey [, model]) — ask Anthropic Claude, reactively.
+ *  Unlike chat()/grok() (drain requests — the cell becomes a one-shot
+ *  confirmation), this is a direct async fn: the kernel awaits the
+ *  Promise and the reply becomes the cell's VALUE while the formula
+ *  stays put — edit the prompt cel and it asks again. Works straight
+ *  from the browser via Anthropic's OpenAI-compatible endpoint + the
+ *  CORS opt-in header. Empty prompt/key short-circuit without fetching. */
+const claudeFn: Fn = async (prompt: unknown, key: unknown, model: unknown): Promise<string> => {
+  const p = String(prompt ?? "").trim();
+  // accept a kernel SecretHandle (from apiKey("…")) OR a literal key string /
+  // cel value. The handle keeps the secret out of the graph — resolution
+  // happens HERE, at the effect site, and the secret is never stored.
+  const isHandle = isSecretHandle(key);
+  const k = (isHandle ? String(key.resolve() ?? "") : String(key ?? "")).trim();
+  if (!p) return "(ask something — the reply lands here when the prompt cel has text)";
+  if (isHandle && !k) return `(wallet has no usable "${key.name}" — =unlockWallet(), then =apiKeys())`;
+  if (!k) return "(no api key — put an sk-ant-… key in the key cel, or use key(\"anthropic\") with the wallet)";
+  const res = await fetch("https://api.anthropic.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${k}`,
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: model == null || model === "" ? "claude-fable-5" : String(model),
+      messages: [{ role: "user", content: p }],
+    }),
+  });
+  if (!res.ok) return `(claude ${res.status}: ${(await res.text()).slice(0, 200)})`;
+  const j = await res.json() as { choices?: { message?: { content?: string } }[] };
+  return j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
+};
 /** cdn(url) — load an external script/library from a URL via the kernel's
  *  loadScript primitive. The explicit way external resources enter the page
  *  (e.g. a charting lib, or a self-hosted Pyodide build). */
@@ -768,7 +814,7 @@ const uploadHandler: Fn = async (stateArg: unknown, dir: unknown, event: unknown
   const d = String(dir ?? "/");
   const dest = (d === "/" ? "" : d.replace(/\/+$/, "")) + "/" + file.name;
   await (resolveFn(state, "fs.write") as Fn)(dest, bytes);
-  await (resolveFn(state, "drain") as Fn)(state, "plastron-dom.paint");
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
   return state;
 };
 
@@ -882,7 +928,7 @@ const simulateFn: Fn = (fnName: unknown, n: unknown, r: unknown) =>
 
 // dragdrop(w?, h?) — two drop zones (A, B) + a draggable rect that snaps to the
 // nearest zone on release. A VALUE vnode (like dom/canvas); the interactivity
-// lives in plastron-dom's canvas renderer (the `draggable`/`zone` ops).
+// lives in dom's canvas renderer (the `draggable`/`zone` ops).
 const dragdropFn: Fn = (w: unknown, h: unknown) => {
   const W = Math.max(220, Math.floor(Number(w)) || 420), H = Math.max(120, Math.floor(Number(h)) || 200);
   const zw = W * 0.4, zh = H * 0.66, zy = (H - zh) / 2, ax = W * 0.04, bx = W - W * 0.04 - zw, rw = 64, rh = 40;
@@ -953,7 +999,12 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
             ["segment", md.segment ?? "?"],
             ["parser", md.parser],
             ["formula", (c as { f?: string }).f],
-            ["value", c.v],
+            // a genesis value is a big request object — show the readable
+            // grid tree (same summary the cell renders) as a block scalar
+            // (yamlDoc indents multi-line strings), not raw JSON.
+            ["value", (c.v && typeof c.v === "object" && (c.v as { genesis?: unknown }).genesis === true)
+              ? genesisSummary((c.v as { cels?: Record<string, unknown> }).cels)
+              : c.v],
             ["inputs", inputs.length ? inputs.join(", ") : undefined],
           ]);
         }
@@ -1019,11 +1070,14 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const model = String(req.model ?? "grok-3-mini");
         const key = String(req.key ?? "");
         if (!key) {
-          result = `(no api key — pass one: =grok("hi", "xai-…") or =grok("hi", apiKeyCel))`;
+          result = `(no api key — pass one: =claude("hi", "sk-ant-…") / =grok("hi", "xai-…") or a cel holding it)`;
         } else {
+          const headers: Record<string, string> = { "content-type": "application/json", authorization: `Bearer ${key}` };
+          // Anthropic gates browser CORS behind an explicit opt-in header.
+          if (url.includes("api.anthropic.com")) headers["anthropic-dangerous-direct-browser-access"] = "true";
           const res = await fetch(url, {
             method: "POST",
-            headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+            headers,
             body: JSON.stringify({ model, messages: [{ role: "user", content: String(req.prompt ?? "") }] }),
           });
           if (!res.ok) result = `(chat ${res.status}: ${(await res.text()).slice(0, 200)})`;
@@ -1180,9 +1234,6 @@ export const name = "origin" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["originView",     originView],
-  ["dom",            dom],
-  ["style",          style],
-  ["attr",           attr],
   ["mount",          mount],
   ["origin.commit",  commit],
   ["origin.edit",    edit],
@@ -1202,6 +1253,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["def",            defFn],
   ["chat",           chatFn],
   ["grok",           grokFn],
+  ["claude",         claudeFn],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],

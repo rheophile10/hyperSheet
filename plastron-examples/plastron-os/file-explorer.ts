@@ -354,7 +354,7 @@ export const setupFileExplorer = async (state: State): Promise<void> => {
 
   const seg = {
     name: "file-explorer", version: "0.2.0",
-    dependencies: ["app-host", "html-template-parser", "plastron-dom", "segment-store", "user-space-ops"],
+    dependencies: ["app-host", "html-template-parser", "dom", "segment-store", "user-space-ops"],
     role: "application",
     cels: [
       // Placeholder fs-tree cels — initial empty defaults, retargeted to the
@@ -377,7 +377,7 @@ export const setupFileExplorer = async (state: State): Promise<void> => {
         key: "file-explorer.view", celType: "FormulaCel",
         metadata: {
           key: "file-explorer.view", segment: "file-explorer", parser: "html-template", schema: "render-spec",
-          channel: ["plastron-dom.paint"],
+          channel: ["dom.paint"],
           inputMap: {
             mount: "file-explorer.mount",
             items: "file-explorer.items",

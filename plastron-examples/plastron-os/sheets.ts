@@ -115,7 +115,7 @@ const commit = async (state: any): Promise<void> => {
   const addr = addrFrom(sel.col, sel.row);
   const input = String(((s: never, k: never) => (resolveFn(s, "getCel") as (s: never, k: never) => { v?: unknown } | undefined)(s, k)?.v)(state, "sheet.formula-bar") ?? "");
   await resolveFn(state, "sheet.commit-cell")(state, { addr, input });
-  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  await resolveFn(state, "drain")(state, "dom.paint");
 };
 
 // ── keyboard navigation (document|keydown global listener) ──────────────────
@@ -132,7 +132,7 @@ const keyNav = async (state: any, _p: unknown, event: any): Promise<void> => {
   const inBar = tag === "INPUT" || tag === "TEXTAREA";
   const move = async (dr: number, dc: number): Promise<void> => {
     await resolveFn(state, "sheet.move-selection")(state, { dr, dc });
-    await resolveFn(state, "drain")(state, "plastron-dom.paint");
+    await resolveFn(state, "drain")(state, "dom.paint");
   };
   if (k === "Enter") {
     event?.preventDefault?.();
@@ -278,7 +278,7 @@ export const buildSheetsApp = async (
     key: "sheet.view", celType: "FormulaCel",
     metadata: {
       key: "sheet.view", segment: "sheets", parser: "html-template", schema: "render-spec",
-      channel: ["plastron-dom.paint"],
+      channel: ["dom.paint"],
       inputMap: monolithic
         ? { mount: "sheet.mount", listeners: "sheet.listeners", sel: "sheet.selection", formulaBar: "sheet.formula-bar", doc: "os.doc", cellViews: cellViewKeys, dims: "sheet.dims" }
         : { mount: "sheet.mount", listeners: "sheet.listeners", sel: "sheet.selection", formulaBar: "sheet.formula-bar", cellViews: cellViewKeys, dims: "sheet.dims" },
@@ -288,7 +288,7 @@ export const buildSheetsApp = async (
       : SHEET_TEMPLATE,
   });
 
-  const deps = ["sheet", "app-host", "html-template-parser", "plastron-dom", "segment-store", "user-space-ops"];
+  const deps = ["sheet", "app-host", "html-template-parser", "dom", "segment-store", "user-space-ops"];
   const hydrate = resolveFn(state, "hydrate") as (s: unknown, segs: unknown, m: unknown) => Promise<unknown>;
   await hydrate(state, [{ ...seg, dependencies: deps, role: "application" }], [{ name: "sheets", version: "0.1.0", dependencies: deps, role: "application" }]);
   // Register with the file-explorer's app-type registry (a no-op if

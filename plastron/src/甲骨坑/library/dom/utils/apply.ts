@@ -9,7 +9,7 @@ import {
 // ============================================================================
 // applyPatch — consume a Patch and mutate the DOM. The only DOM-touching code
 // in the segment, gated by the painter on isBrowser. Carried forward from the
-// legacy segments/plastron-dom/src/apply.ts, adapted for plastron:
+// legacy segments/dom/src/apply.ts, adapted for plastron:
 //   • the document is injected (DocLike) rather than a global, so tests can
 //     drive it with a structural fake and the kernel keeps its no-DOM lib;
 //   • per-element listener bookkeeping delegates to dom/events.ts (which owns

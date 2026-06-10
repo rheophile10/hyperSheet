@@ -1,6 +1,6 @@
 ---
 name: notepad
-description: The simplest non-spreadsheet application — a <textarea> bound to a text cel, rendered through html-template + plastron-dom. "An application is just cels + a view."
+description: The simplest non-spreadsheet application — a <textarea> bound to a text cel, rendered through html-template + dom. "An application is just cels + a view."
 ---
 
 ## Cels provided

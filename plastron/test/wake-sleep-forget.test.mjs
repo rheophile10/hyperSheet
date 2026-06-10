@@ -4,7 +4,7 @@ import {
   createInitialState, resolveFn, installDormant, getPrecomputedIndexes,
   dormantSegmentOf, isSegmentPending,
 } from "../dist/index.js";
-import { createPainter, setPainter, getPainter } from "../dist/甲骨坑/library/plastron-dom/utils/paint.js";
+import { createPainter, setPainter, getPainter } from "../dist/甲骨坑/library/dom/utils/paint.js";
 
 // ============================================================================
 // wake / sleep / forget — the three lifecycle verbs (design phase 3).
@@ -200,9 +200,9 @@ test("sleep: { cascade: true } sleeps dependents first (leaves-first)", async ()
 
 test("sleep: refuses a segment containing a native-bodied (code-seed) cel", async () => {
   const { state, sleep } = boot();
-  // 'plastron-dom' is a bundled library full of native-bodied LockedLambda
+  // 'dom' is a bundled library full of native-bodied LockedLambda
   // cels (bound fns, no `f` source) plus the paint ChannelCel.
-  await assert.rejects(() => sleep(state, "plastron-dom"), /native-bodied/);
+  await assert.rejects(() => sleep(state, "dom"), /native-bodied/);
 });
 
 // ── user-space SCC ───────────────────────────────────────────────────────────
@@ -367,13 +367,13 @@ test("sleep: tears down a view cel's mounted DOM via an empty paint spec", async
     {
       key: "ui.view", celType: "FormulaCel",
       metadata: { key: "ui.view", segment: "ui", parser: "html-template", schema: "render-spec",
-        channel: ["plastron-dom.paint"], inputMap: { msg: "ui.msg", mount: "ui.mount" } },
+        channel: ["dom.paint"], inputMap: { msg: "ui.msg", mount: "ui.mount" } },
       f: "<div>{{msg}}</div>",
     },
-  ] }], [lib("ui", ["plastron-dom", "html-template-parser", "builtins"])]);
+  ] }], [lib("ui", ["dom", "html-template-parser", "builtins"])]);
 
   await runCycle(state);
-  await drain(state, "plastron-dom.paint");
+  await drain(state, "dom.paint");
   mockRaf.run();
   const painter = getPainter(state);
   assert.equal(painter.lastPatch("#app").kind, "init", "view painted at #app");

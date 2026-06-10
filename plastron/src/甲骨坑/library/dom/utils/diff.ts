@@ -15,7 +15,7 @@ export interface DiffEq {
 // ============================================================================
 // VNode diff — produces a JSON-shaped Patch describing what would change if
 // `next` replaced `prev`. Pure data: no DOM, no closures. Carried forward
-// from the legacy segments/plastron-dom/src/diff.ts (per raf-channel.md),
+// from the legacy segments/dom/src/diff.ts (per raf-channel.md),
 // reading the plastron vnode types.
 //
 // Children diff is positional by default; when BOTH lists are entirely keyed

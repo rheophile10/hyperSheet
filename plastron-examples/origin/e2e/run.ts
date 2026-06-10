@@ -183,7 +183,7 @@ await withPage("seed() serializes the whole document into one paste-able formula
   eq(await put(page, "=double(21)", "in.B1"), 42, "recreated def is callable");
 });
 
-await withPage("cells carry plastron-dom memo hints + editing stays correct", async (page) => {
+await withPage("cells carry dom memo hints + editing stays correct", async (page) => {
   await put(page, "=cels(8, 8)");
   const m = await page.evaluate(() => {
     let n = 0, t = 0; const walk = (x: any) => { if (!x || typeof x !== "object") return; if (x.tag === "td" && x.attrs?.["data-key"]) { t++; if (Array.isArray(x.memo)) n++; } (x.children || []).forEach(walk); };

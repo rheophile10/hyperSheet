@@ -4,7 +4,7 @@ import notepadSeed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
 // notepad — the simplest non-spreadsheet application: a <textarea> bound to a
-// text cel, rendered through html-template + plastron-dom. A clean
+// text cel, rendered through html-template + dom. A clean
 // demonstration that "an application is just cels + a view".
 //
 // The canonical default segment is pure data — the text/mount/path/binding

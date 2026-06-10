@@ -60,7 +60,7 @@ test("Sheets renders the grid, selects into the formula bar, commits a formula",
   await precomputeOptional(state);
   await resolveFn(state, "setValue")(state, "os.active", "sheets"); // gate the sheet view onto #app
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  await resolveFn(state, "drain")(state, "dom.paint");
   m.run();
 
   // Grid rendered: A1 = 10, B1 = =A1*2 = 20.
@@ -108,7 +108,7 @@ test("Pictograph emoji sequence — define a person, create two, wave at each ot
   await precomputeOptional(state);
   await resolveFn(state, "setValue")(state, "os.active", "sheets");
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  await resolveFn(state, "drain")(state, "dom.paint");
   m.run();
 
   // The formulas compute through the cascade.
@@ -133,7 +133,7 @@ test("keyboard: arrows move selection, Enter commits the bar and moves down", as
   await precomputeOptional(state);
   await resolveFn(state, "setValue")(state, "os.active", "sheets");
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  await resolveFn(state, "drain")(state, "dom.paint");
   m.run();
 
   globalThis.document.fire("keydown", { key: "ArrowRight", target: { tagName: "TD" } });
@@ -170,7 +170,7 @@ test("display kinds: binder shows ƒ name, undefined symbol shows #NAME? with ti
   await resolveFn(state, "setValue")(state, "os.active", "sheets");
   await resolveFn(state, "runCycle")(state);
   await resolveFn(state, "drain")(state, "defn.commit");
-  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  await resolveFn(state, "drain")(state, "dom.paint");
   m.run();
 
   assert.equal(txt(cell(root, "B1")), "ƒ times100", "binder cell displays its definition");

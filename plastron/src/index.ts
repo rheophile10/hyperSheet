@@ -25,7 +25,7 @@ import * as pyCompiler      from "./甲骨坑/library/py-compiler/index.js";
 import * as quickjsCompiler from "./甲骨坑/library/quickjs-compiler/index.js";
 import * as fileStore       from "./甲骨坑/library/file-store/index.js";
 import * as htmlTemplate    from "./甲骨坑/library/html-template-parser/index.js";
-import * as plastronDom     from "./甲骨坑/library/plastron-dom/index.js";
+import * as plastronDom     from "./甲骨坑/library/dom/index.js";
 import * as segmentStore    from "./甲骨坑/library/segment-store/index.js";
 import * as opfsSeeding     from "./甲骨坑/library/opfs-seeding/index.js";
 import * as cliSegmentExport from "./甲骨坑/library/cli-segment-export/index.js";
@@ -37,6 +37,7 @@ import * as defn            from "./甲骨坑/library/defn/index.js";
 import * as genesis         from "./甲骨坑/library/genesis/index.js";
 import * as checkpoint      from "./甲骨坑/library/checkpoint/index.js";
 import * as plastronCanvas  from "./甲骨坑/library/plastron-canvas/index.js";
+import * as unsafeWallet    from "./甲骨坑/library/unsafe-wallet/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
 import * as sound           from "./甲骨坑/library/sound/index.js";
 
@@ -77,7 +78,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "quickjs-compiler": () => [...quickjsCompiler.cels],
   "file-store":       () => [...fileStore.cels],
   "html-template-parser": () => [...htmlTemplate.cels],
-  "plastron-dom":     () => [...plastronDom.cels],
+  "dom":     () => [...plastronDom.cels],
   "segment-store":    () => [...segmentStore.cels],
   "opfs-seeding":     () => [...opfsSeeding.cels],
   "cli-segment-export": () => [...cliSegmentExport.cels],
@@ -90,6 +91,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "genesis":          () => [...genesis.cels],
   "checkpoint":       () => [...checkpoint.cels],
   "plastron-canvas":  () => [...plastronCanvas.cels],
+  "unsafe-wallet":    () => [...unsafeWallet.cels],
 };
 
 // application/ segments. notepad + web-editor boot via host-called builders
@@ -294,4 +296,4 @@ export { isCelError, makeCelError } from "./kernel/index.js";
 export { buildSheet } from "./甲骨坑/library/sheet/index.js";
 export { buildNotepad, installNotepadActions } from "./甲骨坑/application/notepad/index.js";
 export { buildWebEditor, installWebEditorActions, COUNTER_EXAMPLE, WEATHER_EXAMPLE } from "./甲骨坑/application/web-editor/index.js";
-export { createPainter, getPainter, setPainter, el, text, memo } from "./甲骨坑/library/plastron-dom/index.js";
+export { createPainter, getPainter, setPainter, el, text, memo } from "./甲骨坑/library/dom/index.js";

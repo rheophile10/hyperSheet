@@ -21,6 +21,7 @@ export {
   isFireable, kindOf, isDataCel, isDefinitionCel, coordinatesFromKey,
 } from "./cels.js";
 export { isWitPrimitive, isWasmHandle } from "./wit.js";
+export { secretHandle, isSecretHandle, isSecretHandleRef, sanitizeSecretHandle } from "./secret.js";
 
 // ── trap-as-value error machinery ── when a fireable cel's evaluator
 // throws, the kernel stores a tagged CelError on the cel rather than

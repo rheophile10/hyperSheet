@@ -35,7 +35,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["render-spec_isChanged", renderSpec_isChanged],
   ["string-list_isChanged", stringList_isChanged],
   // Node-level comparators for painters: resolved once per paint drain
-  // (plastron-dom), threaded into the diff — never imported.
+  // (dom), threaded into the diff — never imported.
   ["vnode.equals",         vnodeEquals as Fn],
   ["vnode.bindings-equal", bindingsEqual as Fn],
 ]));

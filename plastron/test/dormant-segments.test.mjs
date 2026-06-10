@@ -296,7 +296,7 @@ test("W5: the SegmentCel key (冊.<name>) of a dormant segment is NOT itself dor
 
 test("X1: a dispatch-path dormant write is logged via reportError, not an unhandled rejection", async () => {
   const { state } = dormantWriteState();
-  const { compileAction } = await import("../dist/甲骨坑/library/plastron-dom/utils/events.js");
+  const { compileAction } = await import("../dist/甲骨坑/library/dom/utils/events.js");
 
   const origError = console.error;
   let logged = null;
@@ -311,7 +311,7 @@ test("X1: a dispatch-path dormant write is logged via reportError, not an unhand
     console.error = origError;
   }
   assert.ok(logged, "reportError logged the dormant write failure");
-  assert.ok(String(logged.join(" ")).includes("plastron-dom"), "logged through reportError path");
+  assert.ok(String(logged.join(" ")).includes("dom"), "logged through reportError path");
 });
 
 // ── Cascade never fires a dormant cel ────────────────────────────────────────

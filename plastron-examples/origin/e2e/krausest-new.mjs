@@ -20,13 +20,13 @@ const out = await p.evaluate(async () => {
   await R("setCel")(state, "buildTbody", { celType: "LockedLambdaCel", fn: buildTbody, metadata: { kind: "native", segment: "krausest" } });
   await R("setCel")(state, "krausest:select", { celType: "LockedLambdaCel", fn: (st, id) => resolveFn(st, "setValue")(st, "krausest:selectedIdx", id), metadata: { kind: "native", segment: "krausest" } });
   await R("setCelBatch")(state, { "krausest:rows": { celType: "ValueCel", v: [], metadata: { segment: "krausest" } }, "krausest:selectedIdx": { celType: "ValueCel", v: null, metadata: { segment: "krausest" } } });
-  await R("setCel")(state, "krausest:tbody", { celType: "FormulaCel", f: "(buildTbody rows sel)", metadata: { segment: "krausest", parser: "f", schema: "render-spec", channel: ["plastron-dom.paint"], inputMap: { rows: "krausest:rows", sel: "krausest:selectedIdx" } } });
+  await R("setCel")(state, "krausest:tbody", { celType: "FormulaCel", f: "(buildTbody rows sel)", metadata: { segment: "krausest", parser: "f", schema: "render-spec", channel: ["dom.paint"], inputMap: { rows: "krausest:rows", sel: "krausest:selectedIdx" } } });
   await R("runCycle")(state); await precomputeOptional(state); flush();
   const A=["pretty","large","big","small","tall","short"],C=["red","yellow","blue","green"],N=["table","chair","house","car"];
   let id=1; const rnd=(a)=>a[(Math.random()*a.length)|0]; const data=(n)=>Array.from({length:n},()=>({id:id++,label:rnd(A)+" "+rnd(C)+" "+rnd(N)}));
   const rows=()=>state.cels.get("krausest:rows").v; const dom=()=>document.querySelectorAll("#tbody tr").length;
-  const op=async(nx)=>{const t0=performance.now();await R("setValue")(state,"krausest:rows",nx);await R("drain")(state,"plastron-dom.paint");flush();return performance.now()-t0;};
-  const sel=async(i)=>{const t0=performance.now();await R("setValue")(state,"krausest:selectedIdx",i);await R("drain")(state,"plastron-dom.paint");flush();return performance.now()-t0;};
+  const op=async(nx)=>{const t0=performance.now();await R("setValue")(state,"krausest:rows",nx);await R("drain")(state,"dom.paint");flush();return performance.now()-t0;};
+  const sel=async(i)=>{const t0=performance.now();await R("setValue")(state,"krausest:selectedIdx",i);await R("drain")(state,"dom.paint");flush();return performance.now()-t0;};
   const m=(arr)=>arr.sort((a,b)=>a-b)[Math.floor(arr.length/2)];
   const res={};
   let xs=[]; for(let i=0;i<5;i++){await op([]);xs.push(await op(data(1000)));} res.create=[m(xs),dom()];

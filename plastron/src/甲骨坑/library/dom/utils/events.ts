@@ -101,7 +101,7 @@ const buildRecord = (deps: Key[], state: State, event: DomEvent): Record<string,
 
 const reportError = (label: string, err: unknown): void => {
   const c = (globalThis as { console?: { error?: (...a: unknown[]) => void } }).console;
-  c?.error?.(`[plastron-dom] ${label} failed:`, err);
+  c?.error?.(`[dom] ${label} failed:`, err);
 };
 
 /** Compile an action-formula source into a dispatch handler. The compile
@@ -200,7 +200,7 @@ export const attachEvents = (
 };
 
 /** Apply an events delta (upsert / remove) to one element's listeners,
- *  swapping fns in place. Mirrors the legacy plastron-dom applyEventDelta. */
+ *  swapping fns in place. Mirrors the legacy dom applyEventDelta. */
 export const applyEventDelta = (
   el: Listenable,
   delta: { upsert?: Record<string, EventBinding>; remove?: string[] },

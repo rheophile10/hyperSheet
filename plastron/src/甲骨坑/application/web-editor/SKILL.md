@@ -12,4 +12,4 @@ No 冊 manifest and no eager loader — the application segment is generated at 
 
 `buildWebEditor(...)`, `installWebEditorActions(state, ...)`, and the `COUNTER_EXAMPLE` /
 `WEATHER_EXAMPLE` seed strings are re-exported from the package root. The host hydrates the
-generated segment and renders through plastron-dom.
+generated segment and renders through dom.

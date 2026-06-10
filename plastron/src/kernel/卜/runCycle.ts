@@ -31,13 +31,26 @@ const enqueueChannels = (cel: FireableCel, state: State): void => {
 const readIndexes = (state: State): PrecomputedIndexes | undefined =>
   state.cels.get(PRECOMPUTED_STATES_KEY)?.v as PrecomputedIndexes | undefined;
 
+// Head rule — shared with the formula parsers' input lookup (see the
+// infix parser's lookupFromInputs): a lambda/compiler cel contributes
+// its CALLABLE, a FormulaCel its computed value, everything else its v.
+// This keeps the fast value-record path semantically equal to the
+// _evaluate path: a cel's FIRST fire (genesis installs fire in the
+// same cascade that created them, before precomputeOptional has built
+// _evaluate) must resolve function symbols the same way later fires do.
+const inputValue = (c: Cel | undefined): unknown => {
+  if (c === undefined) return undefined;
+  if (c.celType === "FormulaCel") return c.v;
+  return (c as { _fn?: unknown })._fn ?? c.v;
+};
+
 const resolveInputs = (cel: FireableCel, state: State): Record<string, unknown> => {
   const inputs: Record<string, unknown> = {};
   if (cel._inputEntries) {
     for (const [name, cs] of cel._inputEntries) {
       if (cs === undefined) inputs[name] = undefined;
-      else if (Array.isArray(cs)) inputs[name] = cs.map((c) => c?.v);
-      else inputs[name] = cs.v;
+      else if (Array.isArray(cs)) inputs[name] = cs.map((c) => inputValue(c));
+      else inputs[name] = inputValue(cs);
     }
     return inputs;
   }
@@ -46,11 +59,11 @@ const resolveInputs = (cel: FireableCel, state: State): Record<string, unknown> 
       if (Array.isArray(refKey)) {
         const arr: unknown[] = new Array(refKey.length);
         for (let i = 0; i < refKey.length; i++) {
-          arr[i] = state.cels.get(refKey[i])?.v;
+          arr[i] = inputValue(state.cels.get(refKey[i]));
         }
         inputs[name] = arr;
       } else {
-        inputs[name] = state.cels.get(refKey)?.v;
+        inputs[name] = inputValue(state.cels.get(refKey));
       }
     }
   }

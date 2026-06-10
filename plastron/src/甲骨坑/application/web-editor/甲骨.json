@@ -2,7 +2,7 @@
   "name": "web-editor",
   "version": "0.0.1",
   "role": "application",
-  "dependencies": ["html-template-parser", "plastron-dom"],
+  "dependencies": ["html-template-parser", "dom"],
   "cels": [
     {
       "key": "webedit.source",
@@ -42,7 +42,7 @@
         "segment": "web-editor",
         "parser": "html-template",
         "schema": "render-spec",
-        "channel": ["plastron-dom.paint"],
+        "channel": ["dom.paint"],
         "inputMap": {
           "source": "webedit.source",
           "mount": "webedit.mount",

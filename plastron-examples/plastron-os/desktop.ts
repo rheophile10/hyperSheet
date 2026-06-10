@@ -1,7 +1,7 @@
 // ============================================================================
 // plastron-OS desktop — the home-screen application, composed entirely on
 // shipped segments: app-host (launcher mechanism) + html-template-parser +
-// plastron-dom + event-registries. No new kernel work.
+// dom + event-registries. No new kernel work.
 //
 // Per-view mount gating: every view's `mount` is a formula
 // `(if (eq active "<id>") root null)`, so only the view whose id matches
@@ -58,7 +58,7 @@ const viewCel = (id: string, f: string) => ({
   celType: "FormulaCel" as const,
   metadata: {
     key: `${id}.view`, segment: "desktop", parser: "html-template", schema: "render-spec",
-    channel: ["plastron-dom.paint"], inputMap: { mount: `${id}.mount` },
+    channel: ["dom.paint"], inputMap: { mount: `${id}.mount` },
   },
   f,
 });
@@ -74,7 +74,7 @@ export const desktopSegment = (apps: DesktopApp[]) => {
       ...viewCel("home", `<div class="home"><h1>plastron OS</h1><div class="icons">{{(renderIcons apps)}}</div></div>`),
       metadata: {
         key: "home.view", segment: "desktop", parser: "html-template", schema: "render-spec",
-        channel: ["plastron-dom.paint"], inputMap: { mount: "home.mount", apps: "os.apps" },
+        channel: ["dom.paint"], inputMap: { mount: "home.mount", apps: "os.apps" },
       },
     },
   ];
@@ -89,7 +89,7 @@ export const desktopSegment = (apps: DesktopApp[]) => {
   }
   return {
     name: "desktop", version: "0.1.0",
-    dependencies: ["app-host", "html-template-parser", "plastron-dom"], role: "application",
+    dependencies: ["app-host", "html-template-parser", "dom"], role: "application",
     cels,
   };
 };
@@ -100,7 +100,7 @@ export const setupDesktop = async (state: unknown, apps: DesktopApp[]): Promise<
   await registerDesktopHelpers(state);
   const seg = desktopSegment(apps);
   const hydrate = resolveFn(state as never, "hydrate") as (s: unknown, segs: unknown, m: unknown) => Promise<unknown>;
-  await hydrate(state, [seg], [{ name: "desktop", version: "0.1.0", dependencies: ["app-host", "html-template-parser", "plastron-dom"], role: "application" }]);
+  await hydrate(state, [seg], [{ name: "desktop", version: "0.1.0", dependencies: ["app-host", "html-template-parser", "dom"], role: "application" }]);
   const register = resolveFn(state as never, "os.register-app") as (s: unknown, a: unknown) => Promise<unknown>;
   for (const a of apps) await register(state, { id: a.id, title: a.title, icon: a.icon, application: a.application ?? a.id });
 };

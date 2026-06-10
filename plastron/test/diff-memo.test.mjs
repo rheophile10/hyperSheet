@@ -1,8 +1,8 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
-import { diffVNodes } from "../dist/甲骨坑/library/plastron-dom/utils/diff.js";
+import { diffVNodes } from "../dist/甲骨坑/library/dom/utils/diff.js";
 
-// The `memo` hint lets a view make plastron-dom's diff O(changed): when two
+// The `memo` hint lets a view make dom's diff O(changed): when two
 // keyed/positional vnodes carry matching memo, the diff bails to NOOP WITHOUT a
 // deep compare. This is the library-level lever both origin (cells) and the
 // krausest entry (rows) opt into by setting `memo` — no app-specific cache.

@@ -7,7 +7,7 @@
 // segment (segment-isolation class D). The comparators stay with their
 // owning segment (html-template-parser) and are reached through cels.
 //
-// Carried forward from the legacy `segments/plastron-dom/src/vnode.ts`
+// Carried forward from the legacy `segments/dom/src/vnode.ts`
 // (per the htm-view-layers / raf-channel designs) and trimmed to the core
 // the plastron kernel surface needs. The one substantive addition
 // is the `{ f: string }` form on EventBinding — a formula-source binding
@@ -56,7 +56,7 @@ export interface VElement {
   key?: string;
   /** Memo hint — a cheap signature the diff compares (=== or shallow-array) to
    *  skip an unchanged subtree's deep compare. A view sets it like `key`; the
-   *  diff (plastron-dom) does the work, so O(changed) reconcile is a LIBRARY
+   *  diff (dom) does the work, so O(changed) reconcile is a LIBRARY
    *  capability every app gets, not app-specific code. undefined → always
    *  deep-diffed. */
   memo?: unknown;

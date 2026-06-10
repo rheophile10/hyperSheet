@@ -48,11 +48,11 @@ test("export-all packs every non-kernel segment into role folders; kernel exclud
   assert.ok(p.includes("user/doc2@1.0.0/segment.json"));
   // Honest closure (roadmap 02): only the kernel segment is excluded.
   // Bundled libraries are no longer kernel-closure members, so those
-  // carrying dehydratable cels (e.g. plastron-dom's ValueCels) now pack
+  // carrying dehydratable cels (e.g. dom's ValueCels) now pack
   // too. Libraries whose cels are all native husks (builtins, sheet, …)
   // still produce no segment.json — the husk-skip drops every cel.
   assert.ok(!p.some((x) => x.includes("/kernel@")), "the kernel segment is excluded");
-  assert.ok(p.some((x) => x.includes("plastron-dom")), "bundled library plastron-dom now packs (left the kernel closure)");
+  assert.ok(p.some((x) => x.includes("dom")), "bundled library dom now packs (left the kernel closure)");
 });
 
 test("export-all → import into a fresh kernel restores segments + cel values", async () => {

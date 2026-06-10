@@ -38,6 +38,9 @@ export type {
   PrecomputedIndexes, SegmentLoader,
 } from "./state.js";
 
+// SecretHandle — graph-safe reference to a secret (name only; never the value).
+export type { SecretHandle, SecretHandleRef } from "./secret.js";
+
 // Kernel operation options/results.
 export type {
   CompileCelBodyOpts, TopoLevelsOptions,

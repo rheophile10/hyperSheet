@@ -64,7 +64,7 @@ test("plastron-OS boots from a 函 (hydrate函 + boot record): the screen comes 
   // Paint (host-side, as always).
   await precomputeOptional(state);
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  await resolveFn(state, "drain")(state, "dom.paint");
   m.run();
 
   // Home screen up: title + an icon per app, no app content yet.

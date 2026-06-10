@@ -23,7 +23,7 @@ import { registerDesktopHelpers, desktopSegment, type DesktopApp } from "./deskt
 
 /** Build the plastron-OS application 函: the desktop segment as an inline
  *  payload, boot.wake = ["desktop"], boot.set = os.active → "home". The
- *  desktop's deps (app-host / html-template-parser / plastron-dom) are bundled
+ *  desktop's deps (app-host / html-template-parser / dom) are bundled
  *  and already awake, so they need no 函 entry — they're in scope by name for
  *  validateManifests, and waking "desktop" finds them live. */
 export const osBoot函 = (apps: DesktopApp[]) => {

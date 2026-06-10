@@ -91,9 +91,9 @@
     "dependencies": []
   },
   {
-    "name": "plastron-dom",
+    "name": "dom",
     "version": "1.0.0",
-    "description": "Painter. The RAF-batched plastron-dom.paint ChannelCel (per-state painter coalesces N render-spec enqueues into one frame), the pure plastron-dom.diffVNodes (vnode → JSON Patch, keyed reconciliation), plastron-dom.applyPatch (DOM mutation, browser-gated, document-injectable), plastron-dom.applyListenerDelta (global-listener reconciliation), and the patch schema. Off-browser the patch is produced and observable but DOM mutation is skipped. Consumes the vnode/render-spec schemas from html-template-parser and the registry mechanisms from dom/events.ts.",
+    "description": "Painter. The RAF-batched dom.paint ChannelCel (per-state painter coalesces N render-spec enqueues into one frame), the pure dom.diffVNodes (vnode → JSON Patch, keyed reconciliation), dom.applyPatch (DOM mutation, browser-gated, document-injectable), dom.applyListenerDelta (global-listener reconciliation), and the patch schema. Off-browser the patch is produced and observable but DOM mutation is skipped. Consumes the vnode/render-spec schemas from html-template-parser and the registry mechanisms from dom/events.ts.",
     "dependencies": [
       "html-template-parser"
     ]
@@ -180,9 +180,17 @@
   {
     "name": "plastron-canvas",
     "version": "1.0.0",
-    "description": "Formula-authored 2d graphics: rect/text/line/circle ops and canvas(w,h,…ops) → a <canvas> VNODE carrying a data-ops draw-spec; the plastron-dom painter replays it onto the 2d context after each paint.",
+    "description": "Formula-authored 2d graphics: rect/text/line/circle ops and canvas(w,h,…ops) → a <canvas> VNODE carrying a data-ops draw-spec; the dom painter replays it onto the 2d context after each paint.",
     "dependencies": [],
     "role": "library"
+  },
+  {
+    "name": "unsafe-wallet",
+    "version": "1.0.0",
+    "description": "API keys out of the graph: module-held Map once unlocked, PBKDF2-SHA-256(600k)+AES-256-GCM encrypted file at /plastron/wallet.json otherwise (WebCrypto, no deps). key(name) returns a resolver HANDLE — consumers call resolve() at the effect site, so cel values / saves / seeds / LLM-bound ranges only carry the name. Secrets and the password enter via password-input dispatch handlers (wallet.*), never formula source. UNSAFE is honest: after unlock, same-page code can resolve handles — protects at-rest + accidental graph leakage; active malice is the review gate's job (agent-bridge Q3/Q4).",
+    "dependencies": [
+      "genesis"
+    ]
   },
   {
     "name": "origin",
@@ -191,9 +199,10 @@
     "dependencies": [
       "genesis",
       "html-template-parser",
-      "plastron-dom",
+      "dom",
       "plastron-canvas",
-      "checkpoint"
+      "checkpoint",
+      "unsafe-wallet"
     ],
     "role": "application"
   }

@@ -47,7 +47,7 @@ const boot = async () => {
   await resolveFn(state, "hydrate")(state, [], []);
   await precomputeOptional(state);
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  await resolveFn(state, "drain")(state, "dom.paint");
   m.run();
   return { state, root, m };
 };

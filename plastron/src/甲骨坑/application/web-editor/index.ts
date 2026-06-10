@@ -43,17 +43,17 @@ export interface BuildWebEditorOpts {
 //
 // Each example is a JSON document of shape { manifest, segment } that
 // webedit.run hydrates as the "userapp" segment. The shared rules:
-//   • role: "application", deps html-template-parser + plastron-dom
+//   • role: "application", deps html-template-parser + dom
 //   • a `mount` ValueCel with v: "#webedit-preview" — the cel that attaches
 //     the rendered DOM to the editor's preview pane
-//   • a `view` FormulaCel (parser html-template, channel plastron-dom.paint,
+//   • a `view` FormulaCel (parser html-template, channel dom.paint,
 //     schema render-spec) whose template references the other cels by
 //     ASCII-aliased inputMap entries
 //   • interactivity via (dispatch <stdlib-key> <argKey>?) action slots
 
 export const COUNTER_EXAMPLE = JSON.stringify({
   manifest: { name: "userapp", version: "0.0.1",
-              dependencies: ["html-template-parser", "plastron-dom"], role: "application" },
+              dependencies: ["html-template-parser", "dom"], role: "application" },
   segment: {
     name: "userapp",
     cels: [
@@ -65,7 +65,7 @@ export const COUNTER_EXAMPLE = JSON.stringify({
       { key: "view", celType: "FormulaCel",
         metadata: { key: "view", segment: "userapp",
                     parser: "html-template", schema: "render-spec",
-                    channel: ["plastron-dom.paint"],
+                    channel: ["dom.paint"],
                     inputMap: { mount: "mount", count: "count" } },
         f: '<div class="counter"><h2>Counter</h2>'
          + '<button onClick={{(dispatch "stdlib.inc" "count")}}>+1</button>'
@@ -77,7 +77,7 @@ export const COUNTER_EXAMPLE = JSON.stringify({
 
 export const WEATHER_EXAMPLE = JSON.stringify({
   manifest: { name: "userapp", version: "0.0.1",
-              dependencies: ["html-template-parser", "plastron-dom"], role: "application" },
+              dependencies: ["html-template-parser", "dom"], role: "application" },
   segment: {
     name: "userapp",
     cels: [
@@ -95,7 +95,7 @@ export const WEATHER_EXAMPLE = JSON.stringify({
       { key: "view", celType: "FormulaCel",
         metadata: { key: "view", segment: "userapp",
                     parser: "html-template", schema: "render-spec",
-                    channel: ["plastron-dom.paint"],
+                    channel: ["dom.paint"],
                     inputMap: { mount: "mount", city: "city", weather: "weather",
                                 binding: "city-binding" } },
         f: '<div class="weather"><h2>Weather</h2>'
@@ -183,7 +183,7 @@ const makeRun = (): Fn => async (state: State) => {
     if (hasSegment(state, "userapp") && flush) await flush(state, "userapp");
     await hydrate(state, [doc.segment], [doc.manifest]);
     await runCycle(state);
-    if (drain) await drain(state, "plastron-dom.paint");
+    if (drain) await drain(state, "dom.paint");
     await setFn(state, "webedit.status", "ran ✓");
   } catch (e) {
     await setFn(state, "webedit.status", `error: ${(e as Error).message}`);

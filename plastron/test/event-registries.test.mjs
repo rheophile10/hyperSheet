@@ -4,7 +4,7 @@ import { createInitialState, precomputeOptional, resolveFn } from "../dist/index
 import {
   makeListener, attachEvents, applyEventDelta, detachAllListeners,
   applyListenerDelta, diffListenerSpecs, parseSpec,
-} from "../dist/甲骨坑/library/plastron-dom/utils/events.js";
+} from "../dist/甲骨坑/library/dom/utils/events.js";
 
 // event-registries — per-element + global listener registries and the
 // makeListener closure that turns declarative bindings (incl. the new

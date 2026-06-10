@@ -55,7 +55,7 @@ const setupNotepad = async (): Promise<void> => {
   });
   const seg = {
     name: "notepad", version: "0.1.0",
-    dependencies: ["app-host", "html-template-parser", "plastron-dom", "segment-store", "user-space-ops"],
+    dependencies: ["app-host", "html-template-parser", "dom", "segment-store", "user-space-ops"],
     role: "application",
     cels: [
       { key: "notepad.text", celType: "ValueCel", metadata: { key: "notepad.text", segment: "notepad" }, v: "" },
@@ -66,7 +66,7 @@ const setupNotepad = async (): Promise<void> => {
       { key: "notepad.mount", celType: "FormulaCel", metadata: { key: "notepad.mount", segment: "notepad", parser: "f", inputMap: { active: "os.active" } }, f: `(if (eq active "notepad") "#app" null)` },
       {
         key: "notepad.view", celType: "FormulaCel",
-        metadata: { key: "notepad.view", segment: "notepad", parser: "html-template", schema: "render-spec", channel: ["plastron-dom.paint"], inputMap: { mount: "notepad.mount", text: "notepad.text", doc: "os.doc" } },
+        metadata: { key: "notepad.view", segment: "notepad", parser: "html-template", schema: "render-spec", channel: ["dom.paint"], inputMap: { mount: "notepad.mount", text: "notepad.text", doc: "os.doc" } },
         f: `<div class="np">{{(renderFileToolbar doc)}}<div class="toolbar"><button class="close" onClick={{(dispatch "os.exit")}}>×</button><span>Notepad</span></div><textarea class="pad" value={{text}} onInput={{(dispatch "notepad.input")}}></textarea></div>`,
       },
     ],
@@ -147,7 +147,7 @@ const setupDoom = async (): Promise<void> => {
 
   const seg = {
     name: "doom", version: "0.0.1",
-    dependencies: ["app-host", "html-template-parser", "plastron-dom"], role: "application",
+    dependencies: ["app-host", "html-template-parser", "dom"], role: "application",
     cels: [
       { key: "doom.mount", celType: "FormulaCel",
         metadata: { key: "doom.mount", segment: "doom", parser: "f", inputMap: { active: "os.active" } },
@@ -161,7 +161,7 @@ const setupDoom = async (): Promise<void> => {
       {
         key: "doom.view", celType: "FormulaCel",
         metadata: { key: "doom.view", segment: "doom", parser: "html-template",
-                    schema: "render-spec", channel: ["plastron-dom.paint"],
+                    schema: "render-spec", channel: ["dom.paint"],
                     inputMap: { mount: "doom.mount", status: "doom.status" } },
         f: `<div class="doom">
   <div class="toolbar">
@@ -481,7 +481,7 @@ await r("setValue")(state, "os.doc", null);
 if (typeof document !== "undefined") {
   setPainter(state, createPainter(state)); // host defaults: rAF + document
   await r("runCycle")(state);
-  await r("drain")(state, "plastron-dom.paint");
+  await r("drain")(state, "dom.paint");
   getPainter(state).drain(); // initial synchronous paint of the home screen
 }
 

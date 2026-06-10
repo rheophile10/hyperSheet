@@ -12,4 +12,4 @@ floor. everything else is made by typing formulas.
   commit an empty box to delete the cel (and sweep its bloom).
 - `=load("name")` loads a library; `=cels("name")` lists one.
 - the view (元.view) is UNLOCKED and minimal by design — rework it in
-  place; it is just another formula cel painting through plastron-dom.
+  place; it is just another formula cel painting through dom.

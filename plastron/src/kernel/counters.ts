@@ -11,7 +11,7 @@
 //   suppressed       — finishFireSync kept the old reference (isChanged false)
 //   precomputeCount  — full precompute() runs
 //   precomputeMs     — cumulative wall ms inside precompute()
-//   diffVisits       — diffVNodes node comparisons (plastron-dom)
+//   diffVisits       — diffVNodes node comparisons (dom)
 //   templateEvalMs   — cumulative ms in html-template buildEvaluate bodies
 // ============================================================================
 

@@ -8,8 +8,8 @@ import seed from "./甲骨.json" with { type: "json" };
 // VNode : DOM :: draw-spec : canvas. The vocabulary here are PURE fns that
 // return op objects (rect/text/line/circle); `canvas(w, h, …ops)` returns a
 // <canvas> VNODE that carries the op list as a `data-ops` JSON attribute.
-// The painter (plastron-dom) replays those ops onto the element's 2d context
-// after each paint — see plastron-dom/utils/canvas.ts. No closures; the spec
+// The painter (dom) replays those ops onto the element's 2d context
+// after each paint — see dom/utils/canvas.ts. No closures; the spec
 // is pure JSON, so it dehydrates and composes by array concat.
 // ============================================================================
 
@@ -37,7 +37,7 @@ const circle: Fn = (x, y, r, fill, stroke, lineWidth) =>
 
 /** orbit(cx, cy, orbitR, planetR, period [, color] [, phase]) — an ANIMATED
  *  op: a planet circling (cx,cy) at radius orbitR, once every `period` seconds.
- *  A canvas with any orbit op runs a rAF loop (see plastron-dom). Stack a few
+ *  A canvas with any orbit op runs a rAF loop (see dom). Stack a few
  *  around a central circle() for a heliocentric system. */
 const orbit: Fn = (cx, cy, orbitR, planetR, period, color, phase) =>
   ({ op: "orbit", cx: num(cx), cy: num(cy), orbitR: num(orbitR), planetR: num(planetR), period: num(period, 8), color: str(color), phase: num(phase) });

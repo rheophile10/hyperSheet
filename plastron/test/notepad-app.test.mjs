@@ -4,7 +4,7 @@ import * as path from "node:path";
 import * as fs from "node:fs/promises";
 
 // notepad-app — the minimal text-editor application built on shipped segments
-// (html-template + plastron-dom + the {set,extract} event binding + file-store).
+// (html-template + dom + the {set,extract} event binding + file-store).
 // buildNotepad generates the application segment; installNotepadActions wires
 // the fs-backed save/load. See docs/3-test-design/05-runCycle/notepad-app.md.
 
@@ -14,7 +14,7 @@ const {
   createInitialState, precomputeOptional, resolveFn,
   buildNotepad, installNotepadActions, createPainter, setPainter,
 } = await import("../dist/index.js");
-const { makeListener } = await import("../dist/甲骨坑/library/plastron-dom/utils/events.js");
+const { makeListener } = await import("../dist/甲骨坑/library/dom/utils/events.js");
 
 // ── file-store cleanup (node-fs backend, env-rooted) ────────────────────────
 const activeRoot = createInitialState().cels.get("file-store.root").v;
@@ -151,7 +151,7 @@ test("notepad.load is a no-op when nothing was saved", async () => {
 
 // ── 4. standalone: paints the textarea into its mount target ─────────────────
 
-test("standalone: the view paints into its mount via the plastron-dom.paint channel", async () => {
+test("standalone: the view paints into its mount via the dom.paint channel", async () => {
   const state = await bootNotepad({ text: "mounted", mount: "#root" });
   const m = mockRaf();
   const doc = makeDoc();
@@ -159,7 +159,7 @@ test("standalone: the view paints into its mount via the plastron-dom.paint chan
   setPainter(state, createPainter(state, { raf: m.raf, caf: m.caf, isBrowser: true, doc, resolveMount: () => root }));
 
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  await resolveFn(state, "drain")(state, "dom.paint");
   m.run();
 
   assert.equal(root.childNodes.length, 1, "the view tree mounted into the target");

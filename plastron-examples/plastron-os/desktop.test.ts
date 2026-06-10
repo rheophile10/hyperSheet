@@ -7,7 +7,7 @@ import { setupDesktop } from "./desktop.ts";
 
 // plastron-OS desktop — fake-DOM smoke of the launcher shell: boot to a home
 // screen of icons, click one to launch its app, exit back home. Composes
-// app-host + html-template + plastron-dom; no Chrome.
+// app-host + html-template + dom; no Chrome.
 
 // ── compact fake DOM (same shape as the pictograph/css smokes) ──────────────
 const mkEl = (tag) => {
@@ -53,7 +53,7 @@ test("desktop boots to a home screen, launches an app on click, and exits home",
   await setupDesktop(state, APPS);
   await precomputeOptional(state);
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  await resolveFn(state, "drain")(state, "dom.paint");
   m.run();
 
   // Home screen: title + an icon per app.

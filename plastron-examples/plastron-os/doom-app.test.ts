@@ -66,7 +66,7 @@ test("setupDoom hydrates the doom segment with a #doom-screen canvas + a registe
   // "doom-screen" (the element the harness will draw frames into).
   await resolveFn(state, "setValue")(state, "os.active", "doom");
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  await resolveFn(state, "drain")(state, "dom.paint");
   getPainter(state).drain();
   const canvas = byId(root, "doom-screen");
   assert.ok(canvas, "view should render a #doom-screen canvas");
@@ -88,7 +88,7 @@ test("doom.boot reports a recoverable error when the WAD/wasm aren't served (pro
 
   await resolveFn(state, "setValue")(state, "os.active", "doom");
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "drain")(state, "plastron-dom.paint");
+  await resolveFn(state, "drain")(state, "dom.paint");
   getPainter(state).drain();
 
   // Stub fetch so the test is hermetic. With the new boot flow, doom.boot

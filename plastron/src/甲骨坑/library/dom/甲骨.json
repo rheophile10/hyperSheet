@@ -1,0 +1,123 @@
+{
+  "name": "dom",
+  "cels": [
+    {
+      "key": "dom.paint",
+      "celType": "ChannelCel",
+      "metadata": {
+        "key": "dom.paint",
+        "segment": "dom",
+        "drain": "dom.paint.drain",
+        "description": "RAF-batched paint channel. View FormulaCels declare metadata.channel: [\"dom.paint\"]; the cascade buffers their render-specs here, and draining forwards them to the per-state painter which coalesces into one rAF flush."
+      },
+      "v": {
+        "drain": "dom.paint.drain"
+      }
+    },
+    {
+      "key": "dom.paint.drain",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "dom.paint.drain",
+        "segment": "dom",
+        "kind": "native",
+        "description": "Channel drain: forwards each buffered view cel's render-spec to the painter's batched enqueue."
+      },
+      "locked": true
+    },
+    {
+      "key": "dom.diffVNodes",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "dom.diffVNodes",
+        "segment": "dom",
+        "kind": "native",
+        "description": "Pure vnode diff: (prev, next) → JSON Patch. Positional children by default; keyed reconciliation when both lists are fully keyed."
+      },
+      "locked": true
+    },
+    {
+      "key": "dom.applyPatch",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "dom.applyPatch",
+        "segment": "dom",
+        "kind": "native",
+        "description": "DOM-mutating patch applier (browser only): (target, mounted, patch, reg, state, doc) → new mounted node. Maintains the per-element listener registry."
+      },
+      "locked": true
+    },
+    {
+      "key": "dom.applyListenerDelta",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "dom.applyListenerDelta",
+        "segment": "dom",
+        "kind": "native",
+        "description": "Global-listener reconciliation: diff prev vs next listener-spec arrays and add/remove on the named global targets."
+      },
+      "locked": true
+    },
+    {
+      "key": "patch",
+      "celType": "SchemaCel",
+      "metadata": {
+        "key": "patch",
+        "segment": "dom"
+      },
+      "v": {
+        "key": "patch",
+        "zod": {},
+        "protocols": {}
+      }
+    },
+    {
+      "key": "dom",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "dom",
+        "segment": "dom",
+        "name": "dom",
+        "kind": "native",
+        "description": "(tag, ...children) - a presentation vnode value. tag.class is emmet sugar; string children → text, nested dom(…) → elements, (style …)/(attr …)/(on …) → that element's style/attributes/events."
+      }
+    },
+    {
+      "key": "style",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "style",
+        "segment": "dom",
+        "name": "style",
+        "kind": "native",
+        "description": "(prop value …) - inline styles for a dom element; pass as a child of dom()."
+      }
+    },
+    {
+      "key": "attr",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "attr",
+        "segment": "dom",
+        "name": "attr",
+        "kind": "native",
+        "description": "(name value …) - HTML attributes (href, target, type, id, …); pass as a child of dom()."
+      }
+    },
+    {
+      "key": "on",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "on",
+        "segment": "dom",
+        "name": "on",
+        "kind": "native",
+        "description": "(event handlerKey [payload]) - bind a dom event to a handler cel; pass as a child of dom(). =dom(\"button\", on(\"click\", \"wallet.lock\"), \"lock\"). The handler runs (state, payload, event)."
+      }
+    }
+  ]
+}

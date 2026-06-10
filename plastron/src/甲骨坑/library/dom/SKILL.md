@@ -1,14 +1,14 @@
 ---
-name: plastron-dom
+name: dom
 description: Painter. RAF-batched paint ChannelCel, pure diffVNodes (vnode → JSON Patch, keyed reconciliation), applyPatch (browser-gated DOM mutation), listener reconciliation.
 ---
 
 ## Cels provided
 
-- `plastron-dom.paint` / `plastron-dom.paint.drain` — the RAF-batched painter ChannelCel + drain.
-- `plastron-dom.diffVNodes` — vnode → JSON Patch.
-- `plastron-dom.applyPatch` — DOM mutation (browser-gated, document-injectable).
-- `plastron-dom.applyListenerDelta` — global-listener reconciliation.
+- `dom.paint` / `dom.paint.drain` — the RAF-batched painter ChannelCel + drain.
+- `dom.diffVNodes` — vnode → JSON Patch.
+- `dom.applyPatch` — DOM mutation (browser-gated, document-injectable).
+- `dom.applyListenerDelta` — global-listener reconciliation.
 - `patch` — the patch SchemaCel.
 
 ## Usage

@@ -63,7 +63,7 @@ const resolveDiffEq = (state: State): DiffEq => {
   const bindingsEqual = resolveFn(state, "vnode.bindings-equal") as DiffEq["bindingsEqual"] | undefined;
   if (!vnodeEquals || !bindingsEqual) {
     throw new Error(
-      "plastron-dom: comparator cels (vnode.equals / vnode.bindings-equal) are not installed — the html-template-parser segment must be loaded.",
+      "dom: comparator cels (vnode.equals / vnode.bindings-equal) are not installed — the html-template-parser segment must be loaded.",
     );
   }
   return { vnodeEquals, bindingsEqual };
@@ -167,7 +167,7 @@ export const getPainter = (state: State): Painter => {
   return p;
 };
 
-/** Drain handler for the `plastron-dom.paint` ChannelCel: forward each
+/** Drain handler for the `dom.paint` ChannelCel: forward each
  *  buffered view cel's render-spec to the painter's (batched) enqueue. */
 export const paintDrain = (items: ChannelEnqueue[], state: State): void => {
   const painter = getPainter(state);

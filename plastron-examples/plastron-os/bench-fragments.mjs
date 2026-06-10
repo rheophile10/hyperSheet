@@ -28,10 +28,10 @@ const run = async (monolithic) => {
   await precomputeOptional(state);
   await resolveFn(state, "setValue")(state, "os.active", "sheets");
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "drain")(state, "plastron-dom.paint"); m.run();
+  await resolveFn(state, "drain")(state, "dom.paint"); m.run();
   const commit = resolveFn(state, "sheet.commit-cell");
   const click = resolveFn(state, "sheet.click");
-  const drain = async () => { await resolveFn(state, "drain")(state, "plastron-dom.paint"); m.run(); };
+  const drain = async () => { await resolveFn(state, "drain")(state, "dom.paint"); m.run(); };
   const phase = async (n, fn) => { const t0 = performance.now(); for (let i = 0; i < n; i++) await fn(i); return +(performance.now() - t0).toFixed(1); };
   return {
     edit:   await phase(100, async (i) => { await commit(state, { addr: "B2", input: String(i + 1) }); await drain(); }),
