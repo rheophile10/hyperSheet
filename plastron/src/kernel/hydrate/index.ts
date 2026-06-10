@@ -7,6 +7,7 @@ import { installCels, validateManifests } from "./segment.js";
 import { applySchemaHydrate } from "./value.js";
 import { setSegmentManifest } from "../segments/cels.js";
 import { assertOneDirection } from "../segments/edge-rule.js";
+import { checkFormatVersion } from "../dehydrate/index.js";
 
 // Re-export the per-entity helpers so other kernel modules (cel-body,
 // flush, host code) can grab them directly without reaching into the
@@ -57,7 +58,14 @@ export { applyManifestDefaults } from "./segment.js";
 // cel._fn (Lambda/Formula) or cel.v (CompilerCel).
 // ============================================================================
 
-export const hydrate: Hydrate = async (state, segments, manifests) => {
+export const hydrate: Hydrate = async (state, segments, manifests, formatVersion?: number) => {
+  // Read-path version gate. Callers that hold the whole dehydrated
+  // archive object pass its top-level `formatVersion` through here;
+  // checkFormatVersion logs a note for a legacy (unmarked) archive and a
+  // warning for one written by a NEWER kernel, but never throws — the
+  // load is always attempted best-effort. Omitting it (most internal
+  // round-trips) is treated as legacy and loads silently-as-is.
+  if (formatVersion !== undefined) checkFormatVersion({ formatVersion });
   validateManifests(state, manifests);
   await installCels(state, segments);
   // Seed FormulaCels: boot-time segments (origin's 元.view is the first)

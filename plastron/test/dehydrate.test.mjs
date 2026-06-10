@@ -120,6 +120,77 @@ test("the manifest list round-trips with the dependencies preserved", async () =
   assert.deepEqual(byName.get("alpha").dependencies, []);
 });
 
+test("a freshly dehydrated archive carries the formatVersion marker and round-trips", async () => {
+  const stateA = createInitialState();
+  const hydrate   = resolveFn(stateA, "hydrate");
+  const dehydrate = resolveFn(stateA, "dehydrate");
+  const seg = {
+    name: "user",
+    cels: [
+      { key: "a", celType: "ValueCel", metadata: { key: "a", segment: "user", v: 5 } },
+    ],
+  };
+  await hydrate(stateA, [seg], [mk("user")]);
+
+  const dehydrated = await dehydrate(stateA);
+  // (a) the marker is present and is the current numeric version.
+  assert.equal(typeof dehydrated.formatVersion, "number", "formatVersion is a number");
+  assert.equal(dehydrated.formatVersion, 1, "formatVersion is the current version (1)");
+
+  // …and the full archive (marker included) round-trips through JSON +
+  // a fresh state, passing the version through hydrate's read-path arg.
+  const json = JSON.parse(JSON.stringify(dehydrated));
+  assert.equal(json.formatVersion, 1, "marker survives JSON serialization");
+
+  const stateB = createInitialState();
+  const hydrateB = resolveFn(stateB, "hydrate");
+  await hydrateB(stateB, json.segments, json.manifests, json.formatVersion);
+  assert.equal(stateB.cels.get("a")?.v, 5, "value round-trips with the marker passed through hydrate");
+});
+
+test("an archive with the marker stripped (a legacy/old archive) still hydrates", async () => {
+  const stateA = createInitialState();
+  const hydrate   = resolveFn(stateA, "hydrate");
+  const dehydrate = resolveFn(stateA, "dehydrate");
+  const seg = {
+    name: "user",
+    cels: [
+      { key: "a", celType: "ValueCel", metadata: { key: "a", segment: "user", v: 7 } },
+    ],
+  };
+  await hydrate(stateA, [seg], [mk("user")]);
+
+  const json = JSON.parse(JSON.stringify(await dehydrate(stateA)));
+  // Simulate a pre-versioning archive: drop the marker entirely.
+  delete json.formatVersion;
+  assert.equal(json.formatVersion, undefined, "marker removed (legacy archive)");
+
+  const stateB = createInitialState();
+  const hydrateB = resolveFn(stateB, "hydrate");
+  // No formatVersion arg — the back-compat (legacy) path. Must not throw.
+  await hydrateB(stateB, json.segments, json.manifests);
+  assert.equal(stateB.cels.get("a")?.v, 7, "legacy (unmarked) archive still hydrates");
+});
+
+test("checkFormatVersion: legacy=0, same=silent, newer=warns, never throws", async () => {
+  const { checkFormatVersion, CURRENT_FORMAT_VERSION } = await import("../dist/kernel/dehydrate/index.js");
+  assert.equal(CURRENT_FORMAT_VERSION, 1, "current version constant exported");
+
+  const notes = [];
+  const log = (m) => notes.push(m);
+
+  // Unmarked → treated as legacy v0, logs a note.
+  assert.equal(checkFormatVersion({}, log), 0, "unmarked archive resolves to v0");
+  assert.equal(checkFormatVersion(undefined, log), 0, "missing archive resolves to v0");
+  // Same version → silent normal path.
+  const before = notes.length;
+  assert.equal(checkFormatVersion({ formatVersion: CURRENT_FORMAT_VERSION }, log), CURRENT_FORMAT_VERSION);
+  assert.equal(notes.length, before, "same-version load is silent");
+  // Newer than ours → warns but returns the version (no throw).
+  assert.equal(checkFormatVersion({ formatVersion: CURRENT_FORMAT_VERSION + 1 }, log), CURRENT_FORMAT_VERSION + 1);
+  assert.ok(notes.some((m) => m.includes("NEWER")), "newer-version load logs a warning");
+});
+
 test("source-bearing registerLambda cels land in 'default' and dehydrate with a synthesized manifest; native husks are skipped", async () => {
   const state = createInitialState();
   const register  = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
