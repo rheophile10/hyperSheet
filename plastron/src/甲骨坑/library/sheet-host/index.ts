@@ -313,7 +313,7 @@ const wsDrop: Fn = (async (state: State, _p: unknown, event?: WEvt & { clientX?:
   const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => { getAttribute?: (a: string) => string | null } | null }> } }).document;
   const els = doc?.elementsFromPoint?.(wnum(event.clientX), wnum(event.clientY)) ?? [];
   let target: string | undefined;
-  for (const e of els) { const w = e.closest?.(".pl-window"); const dw = w?.getAttribute?.("data-win") ?? undefined; if (dw && dw !== d.seg) { target = dw; break; } }
+  for (const e of els) { if (!e.closest?.(".pl-titlebar") && !e.closest?.(".pl-tabs")) continue; const w = e.closest?.(".pl-window"); const dw = (w as { getAttribute?: (a: string) => string | null } | null)?.getAttribute?.("data-win") ?? undefined; if (dw && dw !== d.seg) { target = dw; break; } }
   if (!target) return;                                  // no window under the drop → keep the new position
   const ult = (geomMap(state)[target]?.host as string | undefined) ?? target;   // tab into the target's ultimate host
   const m = geomMap(state);
