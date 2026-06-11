@@ -1,0 +1,86 @@
+{
+  "name": "docgraph",
+  "cels": [
+    {
+      "key": "wikidoc",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wikidoc",
+        "segment": "docgraph",
+        "name": "wikidoc",
+        "kind": "native",
+        "description": "(article) - passthrough for the wiki window's content cel: renders the article vnode wiki.open assembled, or a hint when none is open."
+      }
+    },
+    {
+      "key": "wiki",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wiki",
+        "segment": "docgraph",
+        "name": "wiki",
+        "kind": "native",
+        "description": "(name?) - a button that opens the wiki window on `name` (a cel key, function, segment, or win.<id> layer). =wiki(\"runCycle\"). The article shows summary/doc metadata, the formula source, links to the functions it calls and its input cels (from inputMap), backlinks, a force-directed neighborhood graph, and an editable note saved to metadata.note. Navigation: click any link or graph node."
+      }
+    },
+    {
+      "key": "wiki.open",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wiki.open",
+        "segment": "docgraph",
+        "name": "wiki.open",
+        "kind": "native",
+        "description": "dispatch (state, key) - assemble the wiki article for `key` (a window state ref like win.x.state articles its layer), stash it in wiki.article, lazily create + open + raise the win.wiki window (the frame only when origin's mount resolves), paint. The W titlebar button and every in-article link dispatch this."
+      }
+    },
+    {
+      "key": "wiki.saveNote",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wiki.saveNote",
+        "segment": "docgraph",
+        "name": "wiki.saveNote",
+        "kind": "native",
+        "description": "dispatch (state) - write the wiki.noteDraft buffer to the current entry's metadata.note (metadata-only setCel: merges, never touches structure). Layer-1 set-policy refusals surface in the draft box instead of throwing."
+      }
+    },
+    {
+      "key": "wiki.current",
+      "celType": "ValueCel",
+      "v": "",
+      "metadata": {
+        "key": "wiki.current",
+        "segment": "docgraph",
+        "name": "wiki.current",
+        "description": "the key the wiki window is showing (set by wiki.open)."
+      }
+    },
+    {
+      "key": "wiki.article",
+      "celType": "ValueCel",
+      "v": null,
+      "metadata": {
+        "key": "wiki.article",
+        "segment": "docgraph",
+        "name": "wiki.article",
+        "description": "the assembled article vnode for wiki.current (a snapshot built at open time; navigating refreshes)."
+      }
+    },
+    {
+      "key": "wiki.noteDraft",
+      "celType": "ValueCel",
+      "v": "",
+      "metadata": {
+        "key": "wiki.noteDraft",
+        "segment": "docgraph",
+        "name": "wiki.noteDraft",
+        "description": "the note editor's buffer (set-binding from the textarea; wiki.saveNote commits it)."
+      }
+    }
+  ]
+}

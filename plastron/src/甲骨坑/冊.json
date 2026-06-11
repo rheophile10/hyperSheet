@@ -203,6 +203,15 @@
     ]
   },
   {
+    "name": "docgraph",
+    "version": "0.0.1",
+    "description": "The documentation graph rendered as a wiki window (unified-metadata-model). wiki.open assembles an article for any cel/segment/layer — summary + doc metadata, formula source, links to called functions and input cels (inputMap = the resolved AST edges), backlinks, a force-directed neighborhood graph, an editable note saved to metadata.note. The W titlebar button on every window opens its layer's article; =wiki(name) opens from a formula. Navigation is handler re-entry; the article is a snapshot built at open time.",
+    "dependencies": [
+      "dom",
+      "windows"
+    ]
+  },
+  {
     "name": "origin",
     "version": "1.0.0",
     "description": "The starting point: the origin cel (readme as value), the freespace view + entry gesture, load/cels effects. Boot contract: createInitialState + hydrate paints one visible cel.",
@@ -215,7 +224,8 @@
       "unsafe-wallet",
       "llm",
       "sqlite",
-      "sheet-host"
+      "sheet-host",
+      "docgraph"
     ],
     "role": "application"
   },

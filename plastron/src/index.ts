@@ -49,6 +49,7 @@ import * as cryptoLib       from "./甲骨坑/library/crypto/index.js";
 import * as llm             from "./甲骨坑/library/llm/index.js";
 import * as sqlite          from "./甲骨坑/library/sqlite/index.js";
 import * as domWallet       from "./甲骨坑/library/dom-wallet/index.js";
+import * as docgraph        from "./甲骨坑/library/docgraph/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
 import * as sound           from "./甲骨坑/library/sound/index.js";
 
@@ -114,6 +115,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "llm":              () => [...llm.cels],
   "sqlite":           () => [...sqlite.cels],
   "dom-wallet":       () => [...domWallet.cels],
+  "docgraph":         () => [...docgraph.cels],
 };
 
 // application/ segments. notepad + web-editor boot via host-called builders
