@@ -95,6 +95,77 @@
         "description": "pointerdown handler (dispatch): raise window <key> to the top of the z-order (bumps the reactive key.z cel)"
       },
       "locked": true
+    },
+    {
+      "key": "win.list",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "win.list",
+        "segment": "windows",
+        "name": "win.list",
+        "description": "the open-window registry (array of keys) — winopen/winclose maintain it; wintoolbar renders from it"
+      },
+      "v": []
+    },
+    {
+      "key": "winopen",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winopen",
+        "segment": "windows",
+        "name": "winopen",
+        "kind": "native",
+        "description": "(key, title) - register a window: add to win.list + seed its geometry cels (x/y/w/h/z/min/title) + raise"
+      },
+      "locked": true
+    },
+    {
+      "key": "winclose",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winclose",
+        "segment": "windows",
+        "name": "winclose",
+        "kind": "native",
+        "description": "(key) - remove a window from win.list"
+      },
+      "locked": true
+    },
+    {
+      "key": "win.minimize",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "win.minimize",
+        "segment": "windows",
+        "name": "win.minimize",
+        "kind": "native",
+        "description": "(key) - minimize: set key.min=1 (the window hides; its chip stays in the toolbar)"
+      },
+      "locked": true
+    },
+    {
+      "key": "win.restore",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "win.restore",
+        "segment": "windows",
+        "name": "win.restore",
+        "kind": "native",
+        "description": "(key) - restore a minimized window (key.min=0) + raise it"
+      },
+      "locked": true
+    },
+    {
+      "key": "wintoolbar",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "wintoolbar",
+        "segment": "windows",
+        "name": "wintoolbar",
+        "kind": "native",
+        "description": "(keys, titles) - a taskbar of open windows; click a chip to restore+raise. Pass win.list + the titles."
+      },
+      "locked": true
     }
   ]
 }

@@ -23,14 +23,18 @@ const num = (v: unknown, d = 0): number => { const n = Number(v); return Number.
 // content. Geometry (x,y,w,h) is passed from the host's `${key}.*` cels so the
 // formula re-renders reactively when they change. The titlebar drags; the
 // corner handle resizes; the body scrolls.
-const windowFn: Fn = ((key: unknown, x: unknown, y: unknown, w: unknown, h: unknown, title: unknown, content: unknown, z?: unknown): V => {
+const windowFn: Fn = ((key: unknown, x: unknown, y: unknown, w: unknown, h: unknown, title: unknown, content: unknown, z?: unknown, min?: unknown): V => {
   const k = String(key ?? "win");
+  if (min) return el("div", { class: "pl-window-min", "data-win": k, style: "display:none" }, []);  // minimized → in the toolbar
   const fx = num(x), fy = num(y), fw = num(w, 320), fh = num(h, 200), fz = num(z, 1);
   const body = isVnode(content) ? content : T(content == null ? "" : String(content));
   // any pointerdown in the window raises it (event bubbles up from titlebar /
   // body / resize handle); z-index reads the reactive `${key}.z` cel.
   return el("div", { class: "pl-window", "data-win": k, style: `position:absolute;left:${fx}px;top:${fy}px;width:${fw}px;height:${fh}px;z-index:${fz};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas;box-shadow:0 4px 16px #0004;overflow:hidden` }, [
-    el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [T(String(title ?? k))], {
+    el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
+      el("span", {}, [T(String(title ?? k))]),
+      el("button", { class: "pl-min-btn", style: "border:0;background:transparent;cursor:pointer;font:600 1rem ui-monospace,monospace;padding:0 .3rem;line-height:1" }, [T("–")], { click: { dispatch: "win.minimize", payload: k } }),
+    ], {
       pointerdown: { dispatch: "win.grab", payload: k },
       pointermove: { dispatch: "win.move" },
       pointerup: { dispatch: "win.drop" },
@@ -113,6 +117,33 @@ const raiseFn: Fn = (async (state: State, key: unknown): Promise<void> => {
   else await Promise.resolve((resolveFn(state, "setCel") as Fn)(state, zk, { celType: "ValueCel", v: ++topZ, metadata: { key: zk, segment: "win" } }));
 }) as Fn;
 
+// ── window registry + toolbar (minimize/restore) ────────────────────────────
+const putV = async (state: State, k: string, v: unknown): Promise<void> => {
+  if (state.cels.get(k)) await setV(state, k, v);
+  else await Promise.resolve((resolveFn(state, "setCel") as Fn)(state, k, { celType: "ValueCel", v, metadata: { key: k, segment: "win" } }));
+};
+const listOf = (state: State): string[] => { const v = state.cels.get("win.list")?.v; return Array.isArray(v) ? v.map(String) : []; };
+
+// winopen(key, title) — register a window: add to win.list + seed its geometry cels.
+const openFn: Fn = (async (state: State, key: unknown, title: unknown): Promise<void> => {
+  const k = String(key); const list = listOf(state);
+  if (!list.includes(k)) await putV(state, "win.list", [...list, k]);
+  for (const [suf, dv] of [["x", 60], ["y", 60], ["w", 320], ["h", 200], ["z", 1], ["min", 0]] as [string, number][]) if (!state.cels.get(`${k}.${suf}`)) await putV(state, `${k}.${suf}`, dv);
+  await putV(state, `${k}.title`, title == null ? k : String(title));
+  await (raiseFn as (s: State, key: unknown) => Promise<void>)(state, k);
+}) as Fn;
+const closeFn: Fn = (async (state: State, key: unknown): Promise<void> => { const k = String(key); await putV(state, "win.list", listOf(state).filter((x) => x !== k)); }) as Fn;
+const minimizeFn: Fn = (async (state: State, key: unknown): Promise<void> => { await putV(state, `${String(key)}.min`, 1); }) as Fn;
+const restoreFn: Fn = (async (state: State, key: unknown): Promise<void> => { const k = String(key); await putV(state, `${k}.min`, 0); await (raiseFn as (s: State, key: unknown) => Promise<void>)(state, k); }) as Fn;
+
+// wintoolbar(keys, titles) — a taskbar of open windows; click a chip → restore + raise.
+const toolbarFn: Fn = ((keys: unknown, titles: unknown): V => {
+  const ks = Array.isArray(keys) ? keys.map(String) : [];
+  const ts = Array.isArray(titles) ? titles : [];
+  return el("div", { class: "pl-toolbar", style: "position:fixed;left:0;right:0;bottom:0;display:flex;gap:.4rem;padding:.35rem;background:#8881;border-top:1px solid #8883;z-index:9998" },
+    ks.map((k, i) => el("button", { class: "pl-task", "data-win": k, style: "padding:.25rem .7rem;border:1px solid #8884;border-radius:.3rem;background:Canvas;cursor:pointer;font:600 .78rem ui-monospace,monospace" }, [T(String(ts[i] ?? k))], { click: { dispatch: "win.restore", payload: k } })));
+}) as Fn;
+
 export const name = "windows" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
@@ -123,4 +154,9 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["win.resizeMove", resizeMoveFn],
   ["win.drop", dropFn],
   ["win.raise", raiseFn],
+  ["winopen", openFn],
+  ["winclose", closeFn],
+  ["win.minimize", minimizeFn],
+  ["win.restore", restoreFn],
+  ["wintoolbar", toolbarFn],
 ]));

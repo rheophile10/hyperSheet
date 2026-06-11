@@ -66,3 +66,25 @@ test("snapRegion: edge tiling geometry (half / maximize / quarter / none)", () =
   assert.equal(snapRegion(500, 300, 1000, 600), null, "interior → no snap");
   assert.equal(snapRegion(5, 300, 0, 0), null, "no viewport → no snap");
 });
+
+test("registry + toolbar: winopen registers + seeds geometry; minimize/restore toggle min", async () => {
+  const s = createInitialState();
+  await resolveFn(s, "winopen")(s, "w1", "Sheet");
+  await resolveFn(s, "winopen")(s, "w2", "Canvas");
+  assert.deepEqual(val(s, "win.list"), ["w1", "w2"], "both registered");
+  assert.equal(val(s, "w1.w"), 320, "geometry seeded");
+  assert.equal(val(s, "w1.title"), "Sheet");
+  await resolveFn(s, "win.minimize")(s, "w1");
+  assert.equal(val(s, "w1.min"), 1, "minimized");
+  // a minimized window renders hidden
+  const hidden = resolveFn(s, "window")("w1", 0, 0, 100, 100, "Sheet", "x", 1, 1);
+  assert.match(hidden.attrs.style, /display:none/);
+  await resolveFn(s, "win.restore")(s, "w1");
+  assert.equal(val(s, "w1.min"), 0, "restored");
+  // toolbar renders a chip per window → win.restore
+  const bar = resolveFn(s, "wintoolbar")(["w1", "w2"], ["Sheet", "Canvas"]);
+  assert.equal(bar.children.length, 2);
+  assert.equal(bar.children[0].events.click.dispatch, "win.restore");
+  await resolveFn(s, "winclose")(s, "w1");
+  assert.deepEqual(val(s, "win.list"), ["w2"], "closed");
+});
