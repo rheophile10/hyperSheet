@@ -24,6 +24,30 @@
         "description": "(prompt, key [, model] [, url]) - a generic OpenAI-shaped chat completion; returns the reply text. Host chat()/grok() verbs delegate here."
       },
       "locked": true
+    },
+    {
+      "key": "makeclient",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "makeclient",
+        "segment": "llm",
+        "name": "makeclient",
+        "kind": "native",
+        "description": "(provider, key, model?) — capture an llm client from a key (claude/grok). Returns a CLIENT HANDLE; the key is NEVER in the value (it lives in a keystore). =makeclient(\"claude\", key(\"anthropic\"))"
+      },
+      "locked": true
+    },
+    {
+      "key": "client.send",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "client.send",
+        "segment": "llm",
+        "name": "client.send",
+        "kind": "native",
+        "description": "(client, message) — send a message via a captured client; resolves the key at the effect site"
+      },
+      "locked": true
     }
   ]
 }

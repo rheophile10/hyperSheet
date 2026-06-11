@@ -299,12 +299,17 @@ const chatSend: Fn = (async (state: State, channel: unknown): Promise<void> => {
   await Promise.resolve((resolveFn(state, "setValueBatch") as Fn)(state, [[`chat.${ch}.input`, ""]]));
   await pushMsg(state, ch, { from: "me", text });
   if (ch === "claude" || ch === "grok") {                 // LLM channels — the bot is a user
-    const key = state.cels.get("chat.key")?.v ?? state.cels.get(`chat.${ch}.key`)?.v ?? "";
+    const client = state.cels.get(`chat.${ch}.client`)?.v as { __client?: boolean } | undefined;
     let reply = "";
     try {
-      reply = ch === "claude"
-        ? String(await (resolveFn(state, "claude") as Fn)(text, key, ""))
-        : String(await (resolveFn(state, "llm.chat") as Fn)("", text, key, ""));
+      if (client && client.__client) {                    // a captured CLIENT cel — the chat never touches the key
+        reply = String(await (resolveFn(state, "client.send") as Fn)(client, text));
+      } else {                                            // fallback: a raw key cel (pre-client path)
+        const key = state.cels.get("chat.key")?.v ?? state.cels.get(`chat.${ch}.key`)?.v ?? "";
+        reply = ch === "claude"
+          ? String(await (resolveFn(state, "claude") as Fn)(text, key, ""))
+          : String(await (resolveFn(state, "llm.chat") as Fn)("", text, key, ""));
+      }
     } catch (e) { reply = "⚠ " + String((e as { message?: unknown })?.message ?? e); }
     await pushMsg(state, ch, { from: ch, text: reply });
   } else {                                                // a peer channel — broadcast over shared.*

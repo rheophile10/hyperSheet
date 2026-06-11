@@ -60,9 +60,37 @@ const chatFn: Fn = (async (prompt: unknown, key: unknown, model: unknown, url: u
   return j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
 }) as Fn;
 
+// ── client — a CAPTURED llm client (capability C). makeclient(provider, key,
+// model?) returns a CLIENT HANDLE that captured the key in a module-scope
+// keystore — NEVER in the cel value (mirrors SecretHandle/CryptoKeyHandle).
+// client.send(handle, msg) resolves the key at the effect site. So a chat uses
+// the CLIENT cel, never the key, and the wallet (the key's segment) stays sealed:
+// only the client-maker reads the wallet; downstream sees only the client.
+interface ClientHandle { __client: true; id: string; provider: string; model?: string }
+const clientKeys = new Map<string, unknown>();   // id → key (SecretHandle or literal) — out of the graph
+const makeClientFn: Fn = ((provider: unknown, key: unknown, model: unknown): ClientHandle => {
+  const prov = String(provider ?? "claude");
+  const keyName = isSecretHandle(key) ? (key as { name: string }).name : "key";
+  const id = `${prov}:${keyName}`;                // deterministic — same wallet key → same client id (no re-render churn)
+  clientKeys.set(id, key);
+  const h: ClientHandle = { __client: true, id, provider: prov };
+  if (model != null && model !== "") h.model = String(model);
+  return h;
+}) as Fn;
+const clientSendFn: Fn = (async (client: unknown, message: unknown): Promise<string> => {
+  const c = client as ClientHandle | undefined;
+  if (!c || c.__client !== true) return "(not a client — make one with makeclient(provider, key))";
+  const key = clientKeys.get(c.id);
+  return c.provider === "grok"
+    ? String(await chatFn(message, key, c.model, ""))
+    : String(await claudeFn(message, key, c.model));
+}) as Fn;
+
 export const name = "llm" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["claude", claudeFn],
   ["llm.chat", chatFn],
+  ["makeclient", makeClientFn],
+  ["client.send", clientSendFn],
 ]));
