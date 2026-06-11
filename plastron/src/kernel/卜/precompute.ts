@@ -75,8 +75,42 @@ export const precompute = (state: State): void => {
   bump("precomputeCount"); bump("precomputeMs", performance.now() - t0);
 };
 
+// Registry-query dependencies — the generalization of RangeCels to arbitrary
+// predicates (the sheet-host reactive-view + excel-scale keystone). A cel with
+// `metadata.query = { as, match }` depends on "every cel matching the
+// predicate". We MAINTAIN its inputMap here (re-resolving the matching keys
+// before the index build) so the NORMAL machinery does the rest: the edges feed
+// the cascade, and precompute's _inputEntries identity check recompiles it when
+// the matched set changes. Because precompute re-runs on every structural
+// mutation, a matching cel added/removed/replaced re-fires the query-cel — no
+// imperative rewire. `match` forms: "segment:X", "prefix:X", "generated".
+const matchesQuery = (match: string, key: Key, cel: Cel): boolean => {
+  const colon = match.indexOf(":");
+  const kind = colon === -1 ? match : match.slice(0, colon);
+  const arg = colon === -1 ? "" : match.slice(colon + 1);
+  if (kind === "segment") return (cel.metadata as { segment?: string }).segment === arg;
+  if (kind === "prefix") return key.startsWith(arg);
+  if (kind === "generated") return (cel.metadata as { generatedBy?: unknown }).generatedBy !== undefined;
+  return false;
+};
+const resolveQueries = (cels: Map<Key, Cel>): void => {
+  for (const cel of cels.values()) {
+    const q = (cel.metadata as { query?: { as?: string; match?: string } }).query;
+    if (!q || typeof q.match !== "string") continue;
+    const self = cel.metadata.key;
+    const matched: Key[] = [];
+    for (const [k, c] of cels) { if (k !== self && matchesQuery(q.match, k, c)) matched.push(k); }
+    matched.sort();
+    const im = { ...(cel.metadata.inputMap ?? {}) } as Record<string, Key | Key[]>;
+    im[q.as ?? "members"] = matched;
+    cel.metadata.inputMap = im;
+  }
+};
+
 const precomputeBody = (state: State): void => {
   const cels = state.cels;
+
+  resolveQueries(cels);
 
   const byWave = new Map<number, Key[]>();
   for (const cel of cels.values()) {
