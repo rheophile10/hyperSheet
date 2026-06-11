@@ -31,6 +31,15 @@ const enqueueChannels = (cel: FireableCel, state: State): void => {
 const readIndexes = (state: State): PrecomputedIndexes | undefined =>
   state.cels.get(PRECOMPUTED_STATES_KEY)?.v as PrecomputedIndexes | undefined;
 
+// The cel currently firing — read by host capabilities (the net gate) to
+// attribute a side effect to the cel that caused it. Set around each
+// SYNCHRONOUS fireCel; an async cel's fetch is INITIATED in that sync window
+// (before its first await), so the gate captures the right cel. Cleared after —
+// async continuations run un-attributed (we attribute the REQUEST, not the
+// response).
+let _currentCel: Key | undefined;
+export const getCurrentCel = (): Key | undefined => _currentCel;
+
 // Head rule — shared with the formula parsers' input lookup (see the
 // infix parser's lookupFromInputs): a lambda/compiler cel contributes
 // its CALLABLE, a FormulaCel its computed value, everything else its v.
@@ -328,7 +337,9 @@ const runCascadeInner = async (
       let promises: Promise<void>[] | null = null;
       for (const key of level) {
         if (!affected.has(key)) continue;
+        _currentCel = key;                  // provenance (net gate reads it)
         const r = fireCel(state, key, suppression, changed, recompiled);
+        _currentCel = undefined;
         if (r instanceof Promise) {
           if (!promises) promises = [];
           promises.push(r);

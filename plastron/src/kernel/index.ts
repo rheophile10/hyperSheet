@@ -65,7 +65,7 @@ export {
 // precomputed topology. precompute builds the indexes hydrate/setCel
 // hand it; runCycle fires dirty cels wave by wave.
 export {
-  runCycle, interlinked, ilk, 連鎖, runCascade, affectedFor,
+  runCycle, interlinked, ilk, 連鎖, runCascade, affectedFor, getCurrentCel,
   precompute, precomputeOptional, buildPrecomputedIndexes,
   celDependencies, dependentsOf, downstreamOf, upstreamOf, dependencyCelsOf,
   bfsDownstream, bumpDefGeneration, isDefinitionStale,

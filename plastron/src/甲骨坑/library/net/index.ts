@@ -1,5 +1,5 @@
 import type { 甲骨, Cel, Fn } from "../../../types/index.js";
-import { bindNativeFns } from "../../../kernel/index.js";
+import { bindNativeFns, getCurrentCel } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -16,7 +16,7 @@ import seed from "./甲骨.json" with { type: "json" };
 // the wasm sandbox (formulas have no fetch at all). See the design's layers.
 // ============================================================================
 
-interface LogEntry { seq: number; url: string; method: string; status: number; ok: boolean; via: "fetch" | "blocked" | "error"; }
+interface LogEntry { seq: number; url: string; method: string; status: number; ok: boolean; via: "fetch" | "blocked" | "error"; by?: string; }
 
 // Module-scope governance state (runtime only — never a cel value, never
 // dehydrated). Surfaced into the graph through the verbs below.
@@ -36,16 +36,17 @@ const installGate = (): void => {
   const gated = (async (input: unknown, init?: unknown): Promise<Response> => {
     const url = String(typeof input === "string" ? input : (input as { url?: unknown })?.url ?? input);
     const method = String((init as { method?: unknown })?.method ?? "GET").toUpperCase();
+    const by = getCurrentCel();  // provenance: which cel caused this request
     if (!allowed(url)) {
-      log.push({ seq: seq++, url, method, status: 0, ok: false, via: "blocked" });
+      log.push({ seq: seq++, url, method, status: 0, ok: false, via: "blocked", by });
       throw new Error(`net: blocked ${method} ${hostOf(url)} — not in net.allowlist (=netallow to permit)`);
     }
     try {
       const res = await original(input as Parameters<typeof fetch>[0], init as RequestInit | undefined);
-      log.push({ seq: seq++, url, method, status: res.status, ok: res.ok, via: "fetch" });
+      log.push({ seq: seq++, url, method, status: res.status, ok: res.ok, via: "fetch", by });
       return res;
     } catch (e) {
-      log.push({ seq: seq++, url, method, status: -1, ok: false, via: "error" });
+      log.push({ seq: seq++, url, method, status: -1, ok: false, via: "error", by });
       throw e;
     }
   }) as unknown as typeof fetch & Gatedish;
@@ -73,7 +74,7 @@ const fetchFn: Fn = (async (url: unknown, method?: unknown, body?: unknown): Pro
 // the Layer-5/6 follow-up.)
 const netlogFn: Fn = ((): string => {
   if (!log.length) return "(net: no traffic yet)";
-  return log.map((e) => `#${e.seq} ${e.method} ${e.via === "blocked" ? "BLOCKED " : ""}${hostOf(e.url)}${e.via === "fetch" ? ` → ${e.status}` : e.via === "error" ? " → ERR" : ""}`).join("\n");
+  return log.map((e) => `#${e.seq} ${e.method} ${e.via === "blocked" ? "BLOCKED " : ""}${hostOf(e.url)}${e.via === "fetch" ? ` → ${e.status}` : e.via === "error" ? " → ERR" : ""}${e.by ? ` (${e.by})` : ""}`).join("\n");
 }) as Fn;
 
 // =netallow([host, …]) — the whitelist, surfaced + edited. No args → show the

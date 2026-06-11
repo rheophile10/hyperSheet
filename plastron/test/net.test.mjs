@@ -52,3 +52,17 @@ test("netallow() with no args surfaces the current policy", () => {
   netallow("*"); // ensure allow-all
   assert.match(netallow(), /all hosts allowed/);
 });
+
+// provenance (network-governance Layer 5): the net gate attributes a request to
+// the CEL that caused it (getCurrentCel, stamped around fireCel in runCycle).
+test("net.log attributes a request to the cel that caused it (provenance)", async () => {
+  const s = createInitialState();
+  const netallow = resolveFn(s, "netallow"), netlog = resolveFn(s, "netlog");
+  netallow("api.anthropic.com"); // block example.org
+  await resolveFn(s, "hydrate")(s, [{ name: "u", cels: [
+    { key: "caller", celType: "FormulaCel", metadata: { key: "caller", segment: "u", parser: "f" }, f: '(fetch "https://example.org/x")' },
+  ]}], [{ name: "u", version: "0", description: "", dependencies: [] }]);
+  await resolveFn(s, "runCycle")(s);
+  assert.match(netlog(), /\(caller\)/, "the blocked request is attributed to the caller cel");
+  netallow("*"); // reset
+});
