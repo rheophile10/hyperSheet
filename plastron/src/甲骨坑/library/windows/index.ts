@@ -170,10 +170,74 @@ const winFn: Fn = ((key: unknown, title: unknown, content: unknown, x?: unknown,
   } };
 }) as Fn;
 
+// ── state-cel windows ────────────────────────────────────────────────────────
+// A window's whole state is ONE cel (the source of truth): win.<id> = { ref, x,
+// y, w, h, z, min, max, closed, title }. The FRAME is downstream — winframe(state,
+// content) renders it. Every control (drag, ✕ close, min, max) is an UPSTREAM
+// write to that cel BY ITS REF, so to close/open/move/repaint a window you just
+// modify its state value; the frame re-renders. winmake() genesis-creates the
+// state cel + the frame; sheetView ignores it (no grid cells), so no double-window.
+interface WinState { ref?: string; x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; max?: number; closed?: number; title?: string }
+const stateOf = (state: State, ref: string): WinState => { const v = state.cels.get(ref)?.v; return (v && typeof v === "object" && !Array.isArray(v)) ? { ...(v as WinState) } : {}; };
+const setState = (state: State, ref: string, patch: WinState): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, ref, { ...stateOf(state, ref), ...patch })).then(() => repaint(state));
+const xdrag = (state: State): { ref: string; ox: number; oy: number; resize?: boolean } | null | undefined => state.cels.get("winx.drag")?.v as { ref: string; ox: number; oy: number; resize?: boolean } | null | undefined;
+let xTopZ = 100;
+
+const XBTN = "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .3rem;line-height:1";
+const frameFn: Fn = ((st: unknown, content: unknown): V => {
+  const s = (st && typeof st === "object" && !Array.isArray(st)) ? st as WinState : {};
+  const ref = s.ref ?? "win";
+  if (s.closed) return el("div", { class: "pl-win-closed", "data-win": ref, style: "display:none" }, []);
+  const gg = globalThis as { innerWidth?: number; innerHeight?: number };
+  const x = s.max ? 0 : num(s.x, 80), y = s.max ? 0 : num(s.y, 80), w = s.max ? num(gg.innerWidth, 1200) : num(s.w, 380), h = s.max ? num(gg.innerHeight, 800) - 46 : num(s.h, 260), z = num(s.z, 1);
+  const body = isVnode(content) ? content : T(content == null ? "" : String(content));
+  return el("div", { class: "pl-window", "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas;box-shadow:0 4px 16px #0004;overflow:hidden` }, [
+    el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
+      el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(String(s.title ?? ref))]),
+      el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
+        el("button", { class: "pl-win-btn", title: "minimize", style: XBTN }, [T("–")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "winx.min", payload: ref } }),
+        el("button", { class: "pl-win-btn", title: "maximize", style: XBTN }, [T("⛶")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "winx.max", payload: ref } }),
+        el("button", { class: "pl-close-btn", title: "close", style: XBTN + ";color:#d4453e" }, [T("✕")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "winx.close", payload: ref } }),
+      ]),
+    ], { pointerdown: { dispatch: "winx.grab", payload: ref }, pointermove: { dispatch: "winx.move" }, pointerup: { dispatch: "winx.drop" } }),
+    el("div", { class: "pl-window-body", style: "flex:1 1 auto;overflow:auto;padding:.3rem;min-height:0" }, [body]),
+    ...(s.max ? [] : [el("div", { class: "pl-resize", style: "position:absolute;right:0;bottom:0;width:15px;height:15px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" }, [], { pointerdown: { dispatch: "winx.grabResize", payload: ref }, pointermove: { dispatch: "winx.resizeMove" }, pointerup: { dispatch: "winx.drop" } })]),
+  ], { pointerdown: { dispatch: "winx.raise", payload: ref } });
+}) as Fn;
+
+const xGrab: Fn = (async (state: State, ref: unknown, event?: DomEvt): Promise<void> => { capture(event); const s = stateOf(state, String(ref)); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", { ref: String(ref), ox: num(event?.clientX) - num(s.x, 80), oy: num(event?.clientY) - num(s.y, 80) })); }) as Fn;
+const xMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d || d.resize) return; await setState(state, d.ref, { x: num(event?.clientX) - d.ox, y: num(event?.clientY) - d.oy }); }) as Fn;
+const xGrabResize: Fn = (async (state: State, ref: unknown, event?: DomEvt): Promise<void> => { capture(event); const s = stateOf(state, String(ref)); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", { ref: String(ref), ox: num(event?.clientX) - num(s.w, 380), oy: num(event?.clientY) - num(s.h, 260), resize: true })); }) as Fn;
+const xResizeMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d?.resize) return; await setState(state, d.ref, { w: Math.max(160, num(event?.clientX) - d.ox), h: Math.max(90, num(event?.clientY) - d.oy) }); }) as Fn;
+const xDrop: Fn = (async (state: State): Promise<void> => { await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", null)); }) as Fn;
+const xRaise: Fn = (async (state: State, ref: unknown): Promise<void> => { await setState(state, String(ref), { z: ++xTopZ }); }) as Fn;
+const xMin: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { min: s.min ? 0 : 1 }); }) as Fn;
+const xMax: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { max: s.max ? 0 : 1, z: ++xTopZ }); }) as Fn;
+const xClose: Fn = (async (state: State, ref: unknown): Promise<void> => { await setState(state, String(ref), { closed: 1 }); }) as Fn;
+const xStop: Fn = ((_state: State, _p: unknown, event?: { stopPropagation?: () => void }): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
+
+// winmake(id, title, content) — the formula: genesis a window-STATE cel + its
+// FRAME render (mounted). The state cel is the source of truth; modify it to
+// open/close/move. =winmake("d1", "Window 1", "drag me; close me with ✕")
+const makeFn: Fn = ((id: unknown, title: unknown, content: unknown): unknown => {
+  const lay = `win.${String(id ?? "w")}`;
+  const sref = `${lay}.state`;
+  const t = String(title ?? id ?? "window").replace(/"/g, "'");
+  const c = String(content ?? "").replace(/"/g, "'");
+  return { genesis: true, layer: lay, cels: {
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: 80, y: 80, w: 380, h: 260, z: 1, min: 0, max: 0, closed: 0, title: t }, metadata: { name: "state" } },
+    [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} "${c}"))`, metadata: { name: "frame", parser: "f" } },
+  } };
+}) as Fn;
+
 export const name = "windows" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["win", winFn],
+  ["winmake", makeFn],
+  ["winframe", frameFn],
+  ["winx.grab", xGrab], ["winx.move", xMove], ["winx.grabResize", xGrabResize], ["winx.resizeMove", xResizeMove], ["winx.drop", xDrop],
+  ["winx.raise", xRaise], ["winx.min", xMin], ["winx.max", xMax], ["winx.close", xClose], ["winx.stop", xStop],
   ["window", windowFn],
   ["win.grab", grabFn],
   ["win.move", moveFn],

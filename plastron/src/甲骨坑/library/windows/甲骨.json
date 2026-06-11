@@ -191,6 +191,162 @@
         "description": "pointerdown handler (dispatch): stop a titlebar button press from starting a window drag"
       },
       "locked": true
+    },
+    {
+      "key": "winmake",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winmake",
+        "segment": "windows",
+        "name": "winmake",
+        "kind": "native",
+        "description": "(id, title, content) - the formula: create a window backed by a STATE cel (win.<id>) + its frame. Modify the state cel to open/close/move. =winmake(\"d1\",\"Window 1\",\"hi\")",
+        "genesis": true
+      },
+      "locked": true
+    },
+    {
+      "key": "winframe",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winframe",
+        "segment": "windows",
+        "name": "winframe",
+        "kind": "native",
+        "description": "(state, content) - render a window frame DOWNSTREAM of a state cel; its buttons write the state cel by ref"
+      },
+      "locked": true
+    },
+    {
+      "key": "winx.grab",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winx.grab",
+        "segment": "windows",
+        "name": "winx.grab",
+        "kind": "native",
+        "description": "titlebar drag (state-cel windows)"
+      },
+      "locked": true
+    },
+    {
+      "key": "winx.move",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winx.move",
+        "segment": "windows",
+        "name": "winx.move",
+        "kind": "native",
+        "description": "drag move"
+      },
+      "locked": true
+    },
+    {
+      "key": "winx.grabResize",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winx.grabResize",
+        "segment": "windows",
+        "name": "winx.grabResize",
+        "kind": "native",
+        "description": "start resize"
+      },
+      "locked": true
+    },
+    {
+      "key": "winx.resizeMove",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winx.resizeMove",
+        "segment": "windows",
+        "name": "winx.resizeMove",
+        "kind": "native",
+        "description": "resize"
+      },
+      "locked": true
+    },
+    {
+      "key": "winx.drop",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winx.drop",
+        "segment": "windows",
+        "name": "winx.drop",
+        "kind": "native",
+        "description": "end drag/resize"
+      },
+      "locked": true
+    },
+    {
+      "key": "winx.raise",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winx.raise",
+        "segment": "windows",
+        "name": "winx.raise",
+        "kind": "native",
+        "description": "raise z"
+      },
+      "locked": true
+    },
+    {
+      "key": "winx.min",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winx.min",
+        "segment": "windows",
+        "name": "winx.min",
+        "kind": "native",
+        "description": "toggle minimize in the state cel"
+      },
+      "locked": true
+    },
+    {
+      "key": "winx.max",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winx.max",
+        "segment": "windows",
+        "name": "winx.max",
+        "kind": "native",
+        "description": "toggle maximize in the state cel"
+      },
+      "locked": true
+    },
+    {
+      "key": "winx.close",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winx.close",
+        "segment": "windows",
+        "name": "winx.close",
+        "kind": "native",
+        "description": "set the window state cel to closed"
+      },
+      "locked": true
+    },
+    {
+      "key": "winx.stop",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winx.stop",
+        "segment": "windows",
+        "name": "winx.stop",
+        "kind": "native",
+        "description": "stop a button press starting a drag"
+      },
+      "locked": true
+    },
+    {
+      "key": "winx.drag",
+      "celType": "ValueCel",
+      "v": null,
+      "metadata": {
+        "key": "winx.drag",
+        "segment": "windows",
+        "name": "winx.drag",
+        "description": "transient drag state for state-cel windows"
+      }
     }
   ]
 }
