@@ -124,3 +124,22 @@ The edit-storm (cascade) numbers are unchanged — that path doesn't touch
 precompute. The remaining per-edit cost is the O(N) full precompute rebuild
 (~2.5s @100k diamond struct-edit) — the O2 incremental-precompute target.
 deep-chain's static N=10k cap can be lifted now that it's no longer super-linear.
+
+## After O2 incremental precompute (2026-06-10, commit ef2eba3)
+
+precompute now recodegens a cel's `_evaluate` ONLY when its resolved input
+cel-OBJECTS change identity (local per-cel comparison) — the codegen cost goes
+from O(N) to O(affected). Combined struct-edit numbers (vs original tree):
+
+| shape | struct-add (orig → topo → +O2) | struct-remove |
+|---|---|---|
+| deep-chain 10k | 11377ms → 204ms → **66ms** (172×) | → 0.7ms |
+| diamond 10k    | 485ms → 251ms → **75ms** | → 0.8ms |
+| diamond 100k   | 2532ms → **1031ms** | 962ms → **9ms** |
+| wide-flat 100k | 567ms → **167ms** | 226ms → **4.5ms** |
+
+The remaining struct-add cost is the O(N) index rebuild (topo/children/
+segmentAdjacency/resolveSchemas + the inputEntries comparison sweep) — cheap
+passes, not codegen. Making THOSE incremental is the harder "incremental
+indexes" follow-up. build/edit-storm unchanged (build recodegens all; data
+edits don't precompute).
