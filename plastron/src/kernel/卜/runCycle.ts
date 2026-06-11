@@ -239,7 +239,66 @@ const commitChange = (
   enqueueChannels(cel, state);
 };
 
-export const runCascade = async (
+// ── Cycle queue — one cascade at a time ──────────────────────────────────────
+//
+// runCascadeInner `await`s for ASYNC cels; that await is the only place the
+// event loop can yield to a re-entrant trigger (a timer/event firing
+// mid-cascade and calling setValue/setCel on the SAME state). If that
+// re-entrant cascade interleaved with the in-flight one, a stale async result
+// could land on top of a newer committed value — a lost update (and the
+// re-entrant precompute could swap `indexes` mid-walk). So runCascade
+// SERIALIZES: a re-entrant call ENQUEUES its (affected, changed) request and
+// returns a promise that settles once a follow-up pass has drained it. The
+// running cascade, after it finishes, drains the queue one pass at a time —
+// each pass re-reads current cel values, so an enqueued request re-fires from
+// the LATEST state. Mirrors the `_settling` structural-settle guard's shape.
+//
+// The recompiled follow-up at the end of runCascadeInner intentionally recurses
+// into runCascadeInner (NOT the public runCascade): it's a continuation of the
+// CURRENT cascade, so it must run inline, never enqueue behind itself.
+type CascadeReq = { affected: Set<Key>; changed?: Set<Key>; resolve: () => void; reject: (e: unknown) => void };
+type CascadeGuard = { running: boolean; queue: CascadeReq[] };
+const cascadeGuards = new WeakMap<State, CascadeGuard>();
+const guardFor = (state: State): CascadeGuard => {
+  let g = cascadeGuards.get(state);
+  if (!g) { g = { running: false, queue: [] }; cascadeGuards.set(state, g); }
+  return g;
+};
+
+export const runCascade = (
+  state: State,
+  affected: Set<Key>,
+  changed?: Set<Key>,
+): Promise<void> => {
+  const guard = guardFor(state);
+  if (guard.running) {
+    // A cascade is in flight — enqueue and let the running one drain us.
+    return new Promise<void>((resolve, reject) => {
+      guard.queue.push({ affected, changed, resolve, reject });
+    });
+  }
+  guard.running = true;
+  return (async () => {
+    try {
+      await runCascadeInner(state, affected, changed);
+      // Drain re-entrant requests enqueued while we ran. Each pass re-reads
+      // current cel values, so a queued request fires from the latest state.
+      while (guard.queue.length > 0) {
+        const req = guard.queue.shift()!;
+        try {
+          await runCascadeInner(state, req.affected, req.changed);
+          req.resolve();
+        } catch (e) {
+          req.reject(e);
+        }
+      }
+    } finally {
+      guard.running = false;
+    }
+  })();
+};
+
+const runCascadeInner = async (
   state: State,
   affected: Set<Key>,
   changed?: Set<Key>,
@@ -274,7 +333,8 @@ export const runCascade = async (
   // only re-enter this set if a definition changes again.
   if (recompiled.size > 0) {
     precompute(state);
-    await runCascade(state, affectedFor(state, [...recompiled]), new Set(recompiled));
+    // Continuation of THIS cascade — run inline, never enqueue behind self.
+    await runCascadeInner(state, affectedFor(state, [...recompiled]), new Set(recompiled));
   }
 };
 
