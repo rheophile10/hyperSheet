@@ -144,6 +144,30 @@
         "description": "reset a worksheet window to a mid size"
       },
       "locked": true
+    },
+    {
+      "key": "winsheet.tab",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.tab",
+        "segment": "sheet-host",
+        "name": "winsheet.tab",
+        "kind": "native",
+        "description": "switch the active tab of a host window"
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.tearoff",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.tearoff",
+        "segment": "sheet-host",
+        "name": "winsheet.tearoff",
+        "kind": "native",
+        "description": "tear a tab out of its host into a standalone window"
+      },
+      "locked": true
     }
   ]
 }

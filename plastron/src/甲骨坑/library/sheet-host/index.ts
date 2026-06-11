@@ -115,27 +115,34 @@ const sheetView: Fn = ((
 ) => {
   const c = (cfg ?? {}) as { base?: string; draftCel?: string; editHandler?: string; keyHandler?: string };
   const BASE = c.base ?? "元", DRAFT = c.draftCel ?? "元.draft", EDIT = c.editHandler ?? "origin.edit", KEYH = c.keyHandler ?? "origin.key";
-  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number }> : {};
+  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; host?: string; tab?: string }> : {};
   // wrap a worksheet's table in a draggable window frame, positioned by win.geom
   // (default staggered by index). Drag/resize/raise/minimize dispatch to the
   // winsheet.* handlers; the table inside is unchanged, so cells stay editable.
   const gnum = (v: unknown, d: number): number => { const n = Number(v); return Number.isFinite(n) ? n : d; };
-  const windowed = (seg: string, table: V, i: number): V => {
-    const g = GM[seg] ?? {};
-    if (g.min) return el("div", { class: "pl-window-min", "data-win": seg, style: "display:none" }, []);
+  const BTN = "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .28rem;line-height:1";
+  const titlebar = (host: string): V => el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
+    el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(host)]),
+    el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
+      el("button", { class: "pl-win-btn", title: "mid size", style: BTN }, [T("◱")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.mid", payload: host } }),
+      el("button", { class: "pl-win-btn", title: "maximize", style: BTN }, [T("⛶")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.maximize", payload: host } }),
+      el("button", { class: "pl-min-btn", title: "minimize", style: BTN }, [T("–")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.minimize", payload: host } }),
+    ]),
+  ], { pointerdown: { dispatch: "winsheet.grab", payload: host }, pointermove: { dispatch: "winsheet.move" }, pointerup: { dispatch: "winsheet.drop" } });
+  // a window may HOST others as TABS (win.geom[seg].host === this). It renders a
+  // tab strip + the active tab's table; the others' standalone windows are gone.
+  const windowed = (host: string, tabs: string[], activeTable: V, active: string, i: number): V => {
+    const g = GM[host] ?? {};
+    if (g.min) return el("div", { class: "pl-window-min", "data-win": host, style: "display:none" }, []);
     const x = gnum(g.x, 40 + i * 34), y = gnum(g.y, 40 + i * 34), w = gnum(g.w, 380), h = gnum(g.h, 260), z = gnum(g.z, 1);
-    return el("div", { class: "pl-window", "data-win": seg, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas;box-shadow:0 4px 16px #0004;overflow:hidden` }, [
-      el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
-        el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(seg)]),
-        el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
-          el("button", { class: "pl-win-btn", title: "mid size", style: "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .28rem;line-height:1" }, [T("◱")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.mid", payload: seg } }),
-          el("button", { class: "pl-win-btn", title: "maximize", style: "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .28rem;line-height:1" }, [T("⛶")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.maximize", payload: seg } }),
-          el("button", { class: "pl-min-btn", title: "minimize", style: "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .28rem;line-height:1" }, [T("–")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.minimize", payload: seg } }),
-        ]),
-      ], { pointerdown: { dispatch: "winsheet.grab", payload: seg }, pointermove: { dispatch: "winsheet.move" }, pointerup: { dispatch: "winsheet.drop" } }),
-      el("div", { class: "pl-window-body", style: "flex:1 1 auto;overflow:auto;padding:.25rem;min-height:0" }, [table]),
-      el("div", { class: "pl-resize", style: "position:absolute;right:0;bottom:0;width:15px;height:15px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" }, [], { pointerdown: { dispatch: "winsheet.grabResize", payload: seg }, pointermove: { dispatch: "winsheet.resizeMove" }, pointerup: { dispatch: "winsheet.drop" } }),
-    ], { pointerdown: { dispatch: "winsheet.raise", payload: seg } });
+    const tabStrip = tabs.length > 1 ? el("div", { class: "pl-tabs", style: "flex:0 0 auto;display:flex;gap:.15rem;padding:.25rem .3rem 0;background:#8881;overflow-x:auto" }, tabs.map((seg) =>
+      el("button", { class: "pl-tab" + (seg === active ? " active" : ""), "data-tab": seg, style: `flex:0 0 auto;border:1px solid #8884;border-bottom:0;border-radius:.3rem .3rem 0 0;background:${seg === active ? "Canvas" : "#8882"};color:CanvasText;cursor:pointer;font:600 .74rem ui-monospace,monospace;padding:.18rem .55rem;white-space:nowrap;opacity:${seg === active ? "1" : ".7"}` }, [T(seg)], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.tab", payload: { host, tab: seg } } }))) : null;
+    return el("div", { class: "pl-window", "data-win": host, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas;box-shadow:0 4px 16px #0004;overflow:hidden` }, [
+      titlebar(host),
+      ...(tabStrip ? [tabStrip] : []),
+      el("div", { class: "pl-window-body", style: "flex:1 1 auto;overflow:auto;padding:.25rem;min-height:0" }, [activeTable]),
+      el("div", { class: "pl-resize", style: "position:absolute;right:0;bottom:0;width:15px;height:15px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" }, [], { pointerdown: { dispatch: "winsheet.grabResize", payload: host }, pointermove: { dispatch: "winsheet.resizeMove" }, pointerup: { dispatch: "winsheet.drop" } }),
+    ], { pointerdown: { dispatch: "winsheet.raise", payload: host } });
   };
   const ks = Array.isArray(keys) ? (keys as string[]) : ["元"];
   const vs = Array.isArray(vals) ? (vals as unknown[]) : [];
@@ -220,14 +227,26 @@ const sheetView: Fn = ((
     else { const lr = k.slice(0, dot); (layers.get(lr) ?? layers.set(lr, []).get(lr))!.push(k); }
   }
 
-  const sections: V[] = [];
-  let wi = 0;
-  // the base sheet (元 + base cels) is a window too; each grid layer is a window.
-  if (base.length) sections.push(windowed(BASE, sheetTable(BASE, base.map((k, i) => ({ key: k, col: 0, row: i }))), wi++));
+  // each worksheet's table, then group by host: a hosted worksheet is a TAB.
+  const tableOf = new Map<string, V>();
+  if (base.length) tableOf.set(BASE, sheetTable(BASE, base.map((k, i) => ({ key: k, col: 0, row: i }))));
   for (const [layer, members] of layers) {
     const entries = members.map((k) => { const a = addrOf(k); return a ? { key: k, col: a.col, row: a.row } : null; }).filter((e): e is { key: string; col: number; row: number } => !!e);
-    if (!entries.length) continue;                    // a layer with only window-state cels → no table
-    sections.push(windowed(layer, sheetTable(layer, entries), wi++));
+    if (entries.length) tableOf.set(layer, sheetTable(layer, entries));
+  }
+  const childrenOf = new Map<string, string[]>(); const topLevel: string[] = [];
+  for (const seg of tableOf.keys()) {
+    const host = GM[seg]?.host as string | undefined;
+    if (typeof host === "string" && host !== seg && tableOf.has(host)) (childrenOf.get(host) ?? childrenOf.set(host, []).get(host)!).push(seg);
+    else topLevel.push(seg);
+  }
+  const sections: V[] = [];
+  let wi = 0;
+  for (const H of topLevel) {
+    const tabs = [H, ...(childrenOf.get(H) ?? [])];
+    const tabSel = GM[H]?.tab as string | undefined;
+    const active = (typeof tabSel === "string" && tabs.includes(tabSel)) ? tabSel : H;
+    sections.push(windowed(H, tabs, tableOf.get(active)!, active, wi++));
   }
 
   // PLACED dom — a cell whose value is mount(target, content). The dom is
@@ -271,7 +290,7 @@ const sheetView: Fn = ((
 // {x,y,w,h,z,min} } — so the cell set isn't cluttered with per-axis cels and
 // sheetView gets it as one input. The handlers update that map; the cells inside
 // a window are unchanged, so editing/selection still work as before.
-interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number }
+interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; host?: string; tab?: string }
 interface WEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void }; stopPropagation?: () => void }
 const wrepaint = (state: State): Promise<unknown> => Promise.resolve((resolveFn(state, "drain") as Fn)(state, "dom.paint"));
 const geomMap = (state: State): Record<string, WGeom> => { const v = state.cels.get("win.geom")?.v; return (v && typeof v === "object" && !Array.isArray(v)) ? { ...(v as Record<string, WGeom>) } : {}; };
@@ -286,7 +305,25 @@ const wsGrab: Fn = (async (state: State, seg: unknown, event?: WEvt): Promise<vo
 const wsMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d || d.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), x: wnum(event?.clientX) - d.ox, y: wnum(event?.clientY) - d.oy }; await setGeom(state, m); }) as Fn;
 const wsGrabResize: Fn = (async (state: State, seg: unknown, event?: WEvt): Promise<void> => { wcap(event); const g = geomMap(state)[String(seg)] ?? {}; await setWdrag(state, { seg: String(seg), ox: wnum(event?.clientX) - wnum(g.w, 360), oy: wnum(event?.clientY) - wnum(g.h, 260), resize: true }); }) as Fn;
 const wsResizeMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d?.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), w: Math.max(160, wnum(event?.clientX) - d.ox), h: Math.max(90, wnum(event?.clientY) - d.oy) }; await setGeom(state, m); }) as Fn;
-const wsDrop: Fn = (async (state: State): Promise<void> => { await setWdrag(state, null); }) as Fn;
+// dropping a window ONTO another consolidates it as a tab; a host's own children
+// re-home to the new ultimate host. Dropped in empty space → just repositioned.
+const wsDrop: Fn = (async (state: State, _p: unknown, event?: WEvt & { clientX?: number; clientY?: number }): Promise<void> => {
+  const d = wdrag(state); await setWdrag(state, null);
+  if (!d || d.resize || !event) return;
+  const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => { getAttribute?: (a: string) => string | null } | null }> } }).document;
+  const els = doc?.elementsFromPoint?.(wnum(event.clientX), wnum(event.clientY)) ?? [];
+  let target: string | undefined;
+  for (const e of els) { const w = e.closest?.(".pl-window"); const dw = w?.getAttribute?.("data-win") ?? undefined; if (dw && dw !== d.seg) { target = dw; break; } }
+  if (!target) return;                                  // no window under the drop → keep the new position
+  const ult = (geomMap(state)[target]?.host as string | undefined) ?? target;   // tab into the target's ultimate host
+  const m = geomMap(state);
+  for (const sgk of Object.keys(m)) if (m[sgk]?.host === d.seg) m[sgk] = { ...m[sgk], host: ult };  // d.seg's children re-home
+  m[d.seg] = { ...(m[d.seg] ?? {}), host: ult };
+  m[ult] = { ...(m[ult] ?? {}), tab: d.seg, min: 0 };
+  await setGeom(state, m);
+}) as Fn;
+const wsTab: Fn = (async (state: State, payload: unknown): Promise<void> => { const p = payload as { host?: string; tab?: string }; if (!p?.host || !p?.tab) return; const m = geomMap(state); m[p.host] = { ...(m[p.host] ?? {}), tab: p.tab }; await setGeom(state, m); }) as Fn;
+const wsTearoff: Fn = (async (state: State, seg: unknown): Promise<void> => { const k = String(seg); const m = geomMap(state); const g = m[k] ?? {}; m[k] = { ...g, host: undefined, x: wnum(g.x, 80) + 40, y: wnum(g.y, 80) + 40, z: ++wTopZ }; await setGeom(state, m); }) as Fn;
 const wsRaise: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), z: ++wTopZ }; await setGeom(state, m); }) as Fn;
 const wsMin: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 1 }; await setGeom(state, m); }) as Fn;
 const wsRestore: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 0, z: ++wTopZ }; await setGeom(state, m); }) as Fn;
@@ -299,5 +336,5 @@ export const name = "sheet-host" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["sheetView", sheetView],
   ["winsheet.grab", wsGrab], ["winsheet.move", wsMove], ["winsheet.grabResize", wsGrabResize], ["winsheet.resizeMove", wsResizeMove],
-  ["winsheet.drop", wsDrop], ["winsheet.raise", wsRaise], ["winsheet.minimize", wsMin], ["winsheet.restore", wsRestore], ["winsheet.maximize", wsMax], ["winsheet.mid", wsMid], ["winsheet.stop", wsStop],
+  ["winsheet.drop", wsDrop], ["winsheet.tab", wsTab], ["winsheet.tearoff", wsTearoff], ["winsheet.raise", wsRaise], ["winsheet.minimize", wsMin], ["winsheet.restore", wsRestore], ["winsheet.maximize", wsMax], ["winsheet.mid", wsMid], ["winsheet.stop", wsStop],
 ]));
