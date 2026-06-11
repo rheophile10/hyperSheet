@@ -392,6 +392,16 @@ await withPage("windows — a window renders via mount and drags", async (page) 
   await page.waitForTimeout(120);
   const pos = await page.evaluate(() => { const { state } = (globalThis as any).plastron; return { x: state.cels.get("w1.x")?.v, y: state.cels.get("w1.y")?.v }; });
   ok(pos.x === 100 && pos.y === 100, `window dragged +60/+40 → w1.x/y = ${pos.x}/${pos.y} (expect 100/100)`);
+  // the window VISUALLY moved (the repaint fix — cel AND DOM agree, not just the cel)
+  const visLeft = await page.$eval(".pl-window", (el: HTMLElement) => el.style.left);
+  ok(visLeft === "100px", `window visually moved to ${visLeft} (expect 100px) — repaint on drag works`);
+  // resize from the corner handle → width grows, visually
+  const rh = await (await page.$(".pl-resize"))!.boundingBox();
+  await page.mouse.move(rh!.x + rh!.width / 2, rh!.y + rh!.height / 2); await page.mouse.down();
+  await page.mouse.move(rh!.x + 50, rh!.y + 30, { steps: 5 }); await page.mouse.up();
+  await page.waitForTimeout(120);
+  const sized = await page.evaluate(() => { const { state } = (globalThis as any).plastron; const el = document.querySelector(".pl-window") as HTMLElement; return { w: state.cels.get("w1.w")?.v as number, domW: el?.style.width }; });
+  ok(sized.w >= 260 && sized.domW === `${sized.w}px`, `window resized: w1.w=${sized.w}, dom width=${sized.domW} (cel + DOM agree)`);
 });
 
 // ── peer — TWO browsers share a cel over WebRTC. Manual signaling is brokered

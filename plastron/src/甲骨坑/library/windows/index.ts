@@ -52,8 +52,13 @@ const windowFn: Fn = ((key: unknown, x: unknown, y: unknown, w: unknown, h: unkn
 interface DomEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void }; target?: { setPointerCapture?: (id: number) => void } }
 interface Drag { key: string; ox: number; oy: number; resize?: boolean }
 
-const setV = (state: State, k: string, v: unknown): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, k, v));
-const setBatch = (state: State, pairs: [string, unknown][]): Promise<unknown> => Promise.resolve((resolveFn(state, "setValueBatch") as Fn)(state, pairs));
+// Painting is an explicit effect (the graph owns value propagation; the host's
+// raf does NOT auto-drain). A dispatch handler that changes a window's geometry
+// must repaint — so setV/setBatch drain dom.paint after the write. (A structure
+// CREATE rides settleStructural's view.refresh instead; both end in a paint.)
+const repaint = (state: State): Promise<unknown> => Promise.resolve((resolveFn(state, "drain") as Fn)(state, "dom.paint"));
+const setV = (state: State, k: string, v: unknown): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, k, v)).then(() => repaint(state));
+const setBatch = (state: State, pairs: [string, unknown][]): Promise<unknown> => Promise.resolve((resolveFn(state, "setValueBatch") as Fn)(state, pairs)).then(() => repaint(state));
 const capture = (e?: DomEvt): void => { try { (e?.currentTarget ?? e?.target)?.setPointerCapture?.(num(e?.pointerId)); } catch { /* no pointer capture off-DOM */ } };
 const dragOf = (state: State): Drag | null => (state.cels.get("win.drag")?.v as Drag | null) ?? null;
 
