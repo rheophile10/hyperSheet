@@ -108,3 +108,19 @@ cd ../bench/scale
 bun run.mjs                 # 10k + 100k (this run)
 bun run.mjs 1000            # quick smoke
 ```
+
+## After topoLevels O(V+E) fix (2026-06-10, commit 837530d)
+
+The per-wave topo leveling was O(V·depth) (O(V²) for a chain) — the structural-
+edit / build killer. Replaced with O(V+E) Kahn's. Same machine, N=10k:
+
+| shape | build before→after | struct-edit before→after |
+|---|---|---|
+| wide-flat   | 218ms → 219ms (depth=1, already linear) | 51ms → 50ms |
+| deep-chain  | 11537ms → **364ms** (32×) | 11377ms → **204ms** (56×) |
+| diamond-mesh| 648ms → 409ms | 485ms → 251ms |
+
+The edit-storm (cascade) numbers are unchanged — that path doesn't touch
+precompute. The remaining per-edit cost is the O(N) full precompute rebuild
+(~2.5s @100k diamond struct-edit) — the O2 incremental-precompute target.
+deep-chain's static N=10k cap can be lifted now that it's no longer super-linear.
