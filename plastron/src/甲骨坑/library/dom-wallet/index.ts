@@ -50,6 +50,7 @@ const CAP = "font-size:.75rem;color:GrayText;font-family:system-ui;margin-left:.
 const BTN = "font-family:ui-monospace,monospace;font-size:.8rem;padding:.15rem .55rem;border:1px solid #8884;border-radius:.3rem;background:#8881;cursor:pointer";
 const CHIP = "display:inline-flex;align-items:center;gap:.3rem;font-family:ui-monospace,monospace;font-size:.82rem;padding:.1rem .2rem .1rem .45rem;border:1px solid #8884;border-radius:.4rem;background:#8881";
 const DEL = "font-family:ui-monospace,monospace;font-size:.75rem;padding:.1rem .4rem;border:1px solid #d4453e55;border-radius:.3rem;background:#d4453e1a;color:#d4453e;cursor:pointer";
+const EDIT = "font-family:ui-monospace,monospace;font-size:.75rem;padding:.1rem .4rem;border:1px solid #8884;border-radius:.3rem;background:#8881;color:CanvasText;cursor:pointer";
 
 type StyleChild = ReturnType<typeof style>;
 // expand a "prop:value;prop:value" string into style(prop, value, …).
@@ -115,7 +116,7 @@ const domWalletFn: Fn = (lock?: unknown, names?: unknown): Vnode => {
       `🔑 ${name}`,
       dom("button",
         attr("type", "button", "title", `edit "${name}"`),
-        styleOf(DEL),
+        styleOf(EDIT),
         on("click", "wallet.startEdit", name),
         "✎",
       ),
