@@ -208,7 +208,16 @@
     "description": "The documentation graph rendered as a wiki window (unified-metadata-model). wiki.open assembles an article for any cel/segment/layer — summary + doc metadata, formula source, links to called functions and input cels (inputMap = the resolved AST edges), backlinks, a force-directed neighborhood graph, an editable note saved to metadata.note. The W titlebar button on every window opens its layer's article; =wiki(name) opens from a formula. Navigation is handler re-entry; the article is a snapshot built at open time.",
     "dependencies": [
       "dom",
-      "windows"
+      "windows",
+      "forcegraph"
+    ]
+  },
+  {
+    "name": "forcegraph",
+    "version": "0.0.1",
+    "description": "Force-directed graph simulations as a reusable dom capability. fg.set lays a spec ({nodes:[{key,label?,size?}], edges, pin?, onNode?}) out to OVERLAP-FREE (springs + repulsion + collision separation, pin held at center) then FREEZES — no ticker; the sim runs at set time and during drags. fgview(id, spec, pos, zoom) renders canvas edges under draggable chips in a 100%-width box; positions are cels, so referencing them in a formula makes drags re-render reactively. Drag relaxes neighbors live and settles to no-overlap on drop; wheel zooms; click re-dispatches spec.onNode unless the pointer travelled.",
+    "dependencies": [
+      "dom"
     ]
   },
   {
@@ -233,6 +242,12 @@
     "name": "net",
     "version": "0.0.1",
     "description": "network governance gate — wraps fetch, logs traffic (netlog), enforces the host allowlist (netallow); the =fetch verb",
+    "dependencies": []
+  },
+  {
+    "name": "seal",
+    "version": "0.0.1",
+    "description": "Layer-2 at-rest encryption of SEALED segments. seal.lock(password) derives a data key (PBKDF2-HMAC-SHA-256) and installs the kernel's state.sealCipher / state.sealDecipher hooks: a get-SEALED segment cel encrypts (AES-256-GCM) to a { __sealed: 'ivB64.cipherB64' } marker on dehydrate and decrypts back on hydrate; with no decipher (locked) the marker stays sealed and unreadable. seal.lock() with no arg clears the hooks. Synchronous zero-dep pure-JS AEAD + KDF (the kernel seal hooks run inline in the sync dehydrate/hydrate paths). The password / data key never become cel values and never enter an archive.",
     "dependencies": []
   },
   {

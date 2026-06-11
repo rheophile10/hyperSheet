@@ -67,7 +67,7 @@ test("formula articles link their input cels (inputMap = the AST edges)", async 
   const links = linksOf(article);
   assert.ok(links.includes("wikidoc"), "links the function it calls");
   assert.ok(links.includes("wiki.article"), "links its input cel");
-  assert.match(textOf(article), /\(wikidoc wiki\.article\)/, "formula source shown");
+  assert.match(textOf(article), /\(wikidoc wiki\.article \(fgview/, "formula source shown");
 });
 
 test("backlinks: wikidoc's article lists win.wiki.content as a user", async () => {
@@ -96,36 +96,33 @@ test("segment article: docgraph lists its functions", async () => {
   }
 });
 
-test("graph view renders edge canvas + clickable node chips", async () => {
+test("the graph spec: member-seeded, degree-sized, pinned, navigable", async () => {
   const state = await boot();
   await resolveFn(state, "wiki.open")(state, "x");
   await resolveFn(state, "hydrate")(state, [], []);
   await resolveFn(state, "wiki.open")(state, "win.wiki.content");
-  const article = state.cels.get("wiki.article")?.v;
-  const canvases = find(article, (n) => n.tag === "canvas");
-  assert.equal(canvases.length, 1, "one graph canvas");
-  assert.ok(JSON.parse(canvases[0].attrs["data-ops"]).length >= 1, "edge ops present");
-  const chips = find(article, (n) => String(n.attrs?.class ?? "").startsWith("wk-node"));
-  assert.ok(chips.length >= 2, "node chips present");
-  assert.ok(chips.every((c) => c.events?.click?.dispatch === "wiki.open"), "chips navigate");
-  // the subject is pinned to the box center (50%, 50%)
-  const center = chips.find((c) => c.attrs.class.includes("wk-node-center"));
-  assert.ok(center, "center chip present");
-  assert.match(center.attrs.style, /left:50\.00%;top:50\.00%/, "center pinned at 50%/50%");
-  // node size ∝ degree: at least two distinct scale factors among chips
-  const scales = new Set(chips.map((c) => (c.attrs.style.match(/scale\(([\d.]+)\)/) ?? [])[1]));
-  assert.ok(scales.size >= 2, "degree-proportional sizing produces distinct scales");
+  const spec = state.cels.get("fg.wiki.spec")?.v;
+  assert.ok(spec && spec.nodes.length >= 2, "spec assembled");
+  assert.equal(spec.pin, "win.wiki.content", "subject pinned");
+  assert.equal(spec.onNode?.dispatch, "wiki.open", "clicks navigate the wiki");
+  assert.ok(new Set(spec.nodes.map((n) => n.size.toFixed(2))).size >= 2, "degree-proportional sizes");
+  // article carries the SLOT; wikidoc splices the live fgview in
+  const slot = find(state.cels.get("wiki.article")?.v, (n) => n.attrs?.class === "wk-graph-slot");
+  assert.equal(slot.length, 1, "graph slot in the article");
+  const graph = resolveFn(state, "fgview")("wiki", spec, state.cels.get("fg.wiki.pos")?.v, 1);
+  const composed = resolveFn(state, "wikidoc")(state.cels.get("wiki.article")?.v, graph);
+  assert.ok(find(composed, (n) => String(n.attrs?.class ?? "").startsWith("fg-node")).length >= 2, "live chips composed in");
+  assert.equal(find(composed, (n) => n.attrs?.class === "wk-graph-slot").length, 0, "slot replaced");
 });
 
-test("wheel zoom: wiki.zoomWheel scales wiki.zoom and re-renders", async () => {
+test("zoom is fg-owned: wheel scales fg.wiki.zoom; a new subject resets it", async () => {
   const state = await boot();
   await resolveFn(state, "wiki.open")(state, "wikidoc");
-  assert.equal(state.cels.get("wiki.zoom")?.v, 1);
-  await resolveFn(state, "wiki.zoomWheel")(state, null, { deltaY: -100 });
-  const z = state.cels.get("wiki.zoom")?.v;
-  assert.ok(z > 1 && z <= 3, `zoomed in (${z})`);
+  assert.equal(state.cels.get("fg.wiki.zoom")?.v, 1);
+  await resolveFn(state, "fg.wheel")(state, "wiki", { deltaY: -100 });
+  assert.ok(state.cels.get("fg.wiki.zoom")?.v > 1, "zoomed in");
   await resolveFn(state, "wiki.open")(state, "wiki"); // new subject resets
-  assert.equal(state.cels.get("wiki.zoom")?.v, 1, "zoom resets on a new subject");
+  assert.equal(state.cels.get("fg.wiki.zoom")?.v, 1, "zoom resets on a new subject");
 });
 
 test("the wiki is editable: saveDesc writes metadata.description (unlocked cels)", async () => {
@@ -164,8 +161,8 @@ test("layer articles seed the graph from members (never empty)", async () => {
   await resolveFn(state, "wiki.open")(state, "win.wiki.state"); // creates window cels, articles win.wiki
   await resolveFn(state, "hydrate")(state, [], []);
   await resolveFn(state, "wiki.open")(state, "win.wiki");
-  const chips = find(state.cels.get("wiki.article")?.v, (n) => String(n.attrs?.class ?? "").startsWith("wk-node"));
-  assert.ok(chips.length >= 3, `layer graph has member nodes (${chips.length})`);
+  const spec = state.cels.get("fg.wiki.spec")?.v;
+  assert.ok(spec.nodes.length >= 3, `layer graph has member nodes (${spec.nodes.length})`);
 });
 
 test("saveNote writes metadata.note (merge — inputMap survives) and [[links]] render", async () => {

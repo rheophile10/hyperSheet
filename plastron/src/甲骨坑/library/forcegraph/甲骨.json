@@ -1,0 +1,111 @@
+{
+  "name": "forcegraph",
+  "cels": [
+    {
+      "key": "fgview",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "fgview",
+        "segment": "forcegraph",
+        "name": "fgview",
+        "kind": "native",
+        "description": "(id, spec, pos, zoom) - render a force-directed graph: canvas edges under draggable node chips (drag to move, scroll to zoom, click to act). Use IN A FORMULA with the instance cels as args so interactions re-render reactively: (fgview \"g1\" fg.g1.spec fg.g1.pos fg.g1.zoom). spec = { nodes: [{key,label?,size?}], edges: [[a,b]...], pin?, onNode?: {dispatch} }. Set up an instance with fg.set."
+      }
+    },
+    {
+      "key": "fg.set",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "fg.set",
+        "segment": "forcegraph",
+        "name": "fg.set",
+        "kind": "native",
+        "description": "dispatch (state, {id, spec}) - create the fg.<id> layer cels (spec/pos/zoom) if missing, run the layout to OVERLAP-FREE (springs + repulsion + collision separation; spec.pin held at center), then freeze. Re-set keeps surviving node positions as warm seeds. There is no ticker - the sim runs at set time and during drags only."
+      }
+    },
+    {
+      "key": "fg.grab",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "fg.grab",
+        "segment": "forcegraph",
+        "name": "fg.grab",
+        "kind": "native",
+        "description": "dispatch (state, {id,key}, event) - start dragging a node (pointer capture; the windows pattern)."
+      }
+    },
+    {
+      "key": "fg.move",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "fg.move",
+        "segment": "forcegraph",
+        "name": "fg.move",
+        "kind": "native",
+        "description": "dispatch (state, _, event) - the grabbed node follows the pointer; the rest relax around it live (a few iterations per move). Writes fg.<id>.pos - the formula re-renders."
+      }
+    },
+    {
+      "key": "fg.drop",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "fg.drop",
+        "segment": "forcegraph",
+        "name": "fg.drop",
+        "kind": "native",
+        "description": "dispatch (state) - end the drag: hold the dropped node, relax the rest until no two nodes overlap, then FREEZE."
+      }
+    },
+    {
+      "key": "fg.wheel",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "fg.wheel",
+        "segment": "forcegraph",
+        "name": "fg.wheel",
+        "kind": "native",
+        "description": "dispatch (state, id, wheelEvent) - zoom the instance (0.35-3x) around the box center."
+      }
+    },
+    {
+      "key": "fg.click",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "fg.click",
+        "segment": "forcegraph",
+        "name": "fg.click",
+        "kind": "native",
+        "description": "dispatch (state, {id,key}, event) - a node click re-dispatches spec.onNode.dispatch with the node key, UNLESS the pointer travelled (a drag is not a click)."
+      }
+    },
+    {
+      "key": "fg.drag",
+      "celType": "ValueCel",
+      "v": null,
+      "metadata": {
+        "key": "fg.drag",
+        "segment": "forcegraph",
+        "name": "fg.drag",
+        "description": "the in-flight drag ({id,key,sx,sy,moved} or null) - shared across instances like winx.drag."
+      }
+    },
+    {
+      "key": "fg.lastMoved",
+      "celType": "ValueCel",
+      "v": 0,
+      "metadata": {
+        "key": "fg.lastMoved",
+        "segment": "forcegraph",
+        "name": "fg.lastMoved",
+        "description": "pointer travel of the last completed drag - fg.click reads it to suppress click-after-drag."
+      }
+    }
+  ]
+}

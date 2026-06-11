@@ -103,43 +103,39 @@ const membersOf = (state: State, seg: string): string[] => {
   return out.sort();
 };
 
-// ── deterministic force layout (no Math.random — seeds from index) ──────────
+// ── the graph SPEC (forcegraph renders + simulates it) ───────────────────────
 
-interface LNode { key: string; x: number; y: number }
-/** pinIndex: that node is HELD at the box center every iteration — the
- *  article's subject anchors the layout instead of drifting with it. */
-const forceLayout = (keys: string[], edges: Array<[number, number]>, w: number, h: number, pinIndex = -1): LNode[] => {
-  const n = keys.length;
-  const cx = w / 2, cy = h / 2;
-  const nodes: LNode[] = keys.map((key, i) => {
-    const a = (2 * Math.PI * i) / Math.max(1, n);
-    const r = 0.30 * Math.min(w, h) * (1 + (i % 3) * 0.22);
-    return { key, x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
-  });
-  if (pinIndex >= 0 && pinIndex < n) { nodes[pinIndex]!.x = cx; nodes[pinIndex]!.y = cy; }
-  const K = Math.sqrt((w * h) / Math.max(1, n)) * 0.7;
-  for (let it = 0; it < 120; it++) {
-    const fx = new Array(n).fill(0), fy = new Array(n).fill(0);
-    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
-      const dx = nodes[i]!.x - nodes[j]!.x, dy = nodes[i]!.y - nodes[j]!.y;
-      const d2 = Math.max(64, dx * dx + dy * dy), f = (K * K) / d2;
-      fx[i] += dx * f; fy[i] += dy * f; fx[j] -= dx * f; fy[j] -= dy * f;
+/** Build the neighborhood spec for forcegraph: depth-2 BFS over dep edges
+ *  (both directions, capped), member-seeded for segment/layer subjects so
+ *  the graph is never empty, node size ∝ sqrt(degree), subject pinned,
+ *  clicks re-dispatch wiki.open. */
+const graphSpec = (state: State, center: string): { nodes: Array<{ key: string; size: number }>; edges: Array<[string, string]>; pin: string; onNode: { dispatch: string } } => {
+  const seen = new Set<string>([center]);
+  const memberSeeds = celOf(state, center) ? [] : membersOf(state, center).filter((k) => k !== center).slice(0, 14);
+  for (const m of memberSeeds) seen.add(m);
+  let frontier = memberSeeds.length ? [...memberSeeds] : [center];
+  for (let depth = 0; depth < 2 && seen.size < 36; depth++) {
+    const next: string[] = [];
+    for (const k of frontier) {
+      const fwd = inputKeysOf(celOf(state, k)).filter((d) => state.cels.has(d));
+      for (const d of [...fwd, ...backlinksOf(state, k)]) {
+        if (seen.size >= 36) break;
+        if (!seen.has(d) && !isInternal(d)) { seen.add(d); next.push(d); }
+      }
     }
-    for (const [a, b] of edges) {
-      const dx = nodes[a]!.x - nodes[b]!.x, dy = nodes[a]!.y - nodes[b]!.y;
-      const d = Math.max(8, Math.sqrt(dx * dx + dy * dy)), f = (d - K) / d * 0.12;
-      fx[a] -= dx * f; fy[a] -= dy * f; fx[b] += dx * f; fy[b] += dy * f;
-    }
-    const cool = 1 - it / 120;
-    for (let i = 0; i < n; i++) {
-      if (i === pinIndex) { nodes[i]!.x = cx; nodes[i]!.y = cy; continue; }
-      nodes[i]!.x += Math.max(-12, Math.min(12, fx[i])) * cool + (cx - nodes[i]!.x) * 0.01;
-      nodes[i]!.y += Math.max(-12, Math.min(12, fy[i])) * cool + (cy - nodes[i]!.y) * 0.01;
-      nodes[i]!.x = Math.max(14, Math.min(w - 14, nodes[i]!.x));
-      nodes[i]!.y = Math.max(12, Math.min(h - 12, nodes[i]!.y));
-    }
+    frontier = next;
   }
-  return nodes;
+  const keys = [...seen];
+  const edges: Array<[string, string]> = [];
+  for (const k of keys) {
+    for (const d of inputKeysOf(celOf(state, k))) if (seen.has(d)) edges.push([k, d]);
+  }
+  for (const m of memberSeeds) edges.push([center, m]);
+  const nodes = keys.map((k) => {
+    const deg = inputKeysOf(celOf(state, k)).filter((d) => state.cels.has(d)).length + backlinksOf(state, k).length;
+    return { key: k, size: Math.min(1.9, 0.85 + 0.16 * Math.sqrt(deg)) };
+  });
+  return { nodes, edges, pin: center, onNode: { dispatch: "wiki.open" } };
 };
 
 // ── article rendering ────────────────────────────────────────────────────────
@@ -158,77 +154,6 @@ const linkRow = (keys: string[]): V =>
     keys.length ? keys.map((k) => wlink(k)) : [el("span", { style: "color:GrayText;font-style:italic" }, [T("none")])]);
 
 const section = (title: string, body: V): V[] => [el("div", { style: H2 }, [T(title)]), body];
-
-/** The neighborhood graph: canvas edges under clickable node chips.
- *  - layout runs in a fixed 1000×460 coordinate space; chips position in
- *    PERCENTAGES and the canvas stretches to 100% — so the graph grows with
- *    the window (resize the window, the graph expands with it).
- *  - node size ∝ degree (sqrt-scaled, so hubs read as hubs without eating
- *    the box); the article's subject is PINNED to the center.
- *  - mousewheel dispatches wiki.zoomWheel: zoom spreads positions around the
- *    pinned center (zoom is a cel; the handler re-renders the article). */
-const graphView = (state: State, center: string, zoom = 1): V => {
-  const W = 1000, H = 460;
-  // depth-2 BFS over dep edges (both directions), capped. A segment/layer
-  // center has no cel — seed its neighborhood from MEMBER cels instead so
-  // the graph is never empty for W-button (window-layer) articles.
-  const seen = new Set<string>([center]);
-  const memberSeeds = celOf(state, center) ? [] : membersOf(state, center).filter((k) => k !== center).slice(0, 14);
-  for (const m of memberSeeds) seen.add(m);
-  let frontier = memberSeeds.length ? [...memberSeeds] : [center];
-  for (let depth = 0; depth < 2 && seen.size < 36; depth++) {
-    const next: string[] = [];
-    for (const k of frontier) {
-      const fwd = inputKeysOf(celOf(state, k)).filter((d) => state.cels.has(d));
-      for (const d of [...fwd, ...backlinksOf(state, k)]) {
-        if (seen.size >= 36) break;
-        if (!seen.has(d) && !isInternal(d)) { seen.add(d); next.push(d); }
-      }
-    }
-    frontier = next;
-  }
-  const keys = [...seen];
-  const idx = new Map(keys.map((k, i) => [k, i]));
-  const edges: Array<[number, number]> = [];
-  for (const k of keys) {
-    for (const d of inputKeysOf(celOf(state, k))) {
-      const j = idx.get(d);
-      if (j !== undefined) edges.push([idx.get(k)!, j]);
-    }
-  }
-  // synthetic spokes from a member-seeded center so the layout holds together
-  const ci = idx.get(center)!;
-  for (const m of memberSeeds) edges.push([ci, idx.get(m)!]);
-  // degree (within the doc graph, both directions) → node size
-  const degree = new Map<string, number>(keys.map((k) => [k,
-    inputKeysOf(celOf(state, k)).filter((d) => state.cels.has(d)).length + backlinksOf(state, k).length]));
-  const pos = forceLayout(keys, edges, W, H, ci);
-  // zoom spreads/contracts positions around the pinned center
-  const zx = (x: number): number => Math.max(8, Math.min(W - 8, W / 2 + (x - W / 2) * zoom));
-  const zy = (y: number): number => Math.max(8, Math.min(H - 8, H / 2 + (y - H / 2) * zoom));
-  const ops = edges.map(([a, b]) => ({
-    op: "line", points: [[zx(pos[a]!.x), zy(pos[a]!.y)], [zx(pos[b]!.x), zy(pos[b]!.y)]], stroke: "#8886", lineWidth: 1,
-  }));
-  const chips = pos.map((p) => {
-    const isCenter = p.key === center;
-    const deg = degree.get(p.key) ?? 0;
-    const scale = Math.min(1.9, 0.85 + 0.16 * Math.sqrt(deg)) * (isCenter ? 1.15 : 1);
-    const label = p.key.length > 18 ? p.key.slice(0, 17) + "…" : p.key;
-    const lpct = (zx(p.x) / W * 100).toFixed(2), tpct = (zy(p.y) / H * 100).toFixed(2);
-    return el("button", {
-      class: isCenter ? "wk-node wk-node-center" : "wk-node", title: `${p.key} — ${deg} edge${deg === 1 ? "" : "s"}`,
-      style: `position:absolute;left:${lpct}%;top:${tpct}%;transform:translate(-50%,-50%) scale(${scale.toFixed(2)});font:.66rem ui-monospace,monospace;padding:.06rem .35rem;border-radius:.7rem;cursor:pointer;white-space:nowrap;border:1px solid ${isCenter ? "#4a90d9" : "#8885"};background:${isCenter ? "#4a90d922" : "Canvas"};color:CanvasText`,
-    }, [T(label)], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "wiki.open", payload: p.key } });
-  });
-  return el("div", {
-    class: "wk-graph", title: "scroll to zoom",
-    style: "position:relative;width:100%;height:340px;border:1px solid #8883;border-radius:.5rem;overflow:hidden;background:#8880",
-  }, [
-    { type: "el", tag: "canvas", attrs: { width: W, height: H, "data-ops": JSON.stringify(ops) },
-      style: { width: "100%", height: "100%", display: "block" }, children: [] } as V,
-    ...chips,
-  ], { wheel: { dispatch: "wiki.zoomWheel" } });
-};
 
 /** The wiki is editable: the summary (metadata.description) gets the same
  *  buffer + save treatment as the note. Edits are runtime-local until the
@@ -353,7 +278,8 @@ const articleVnode = (state: State, key: string): V => {
 
   const back = backlinksOf(state, key);
   body.push(...section(`used by (${back.length})`, linkRow(back.slice(0, 40))));
-  body.push(...section("graph (scroll to zoom)", graphView(state, key, Number(celOf(state, "wiki.zoom")?.v) || 1)));
+  body.push(...section("graph (drag nodes · scroll to zoom)",
+    el("div", { class: "wk-graph-slot" }, [T("(live graph)")])));
   const note = noteOf(state, key);
   body.push(...section("note", el("div", {}, [...(note ? [noteBody(note)] : []), noteEditor(note)])));
 
@@ -362,12 +288,22 @@ const articleVnode = (state: State, key: string): V => {
 
 // ── native verbs ─────────────────────────────────────────────────────────────
 
-/** wikidoc(article) — win.wiki.content passthrough. */
-const wikidocFn: Fn = (article?: unknown): V =>
-  isVnode(article) ? article : el("div", { style: "color:GrayText;font:.85rem system-ui;padding:.4rem" }, [
-    T("no entry open — click the W on any window's titlebar, or use "),
-    el("code", {}, [T('=wiki("name")')]),
-  ]);
+/** wikidoc(article, graph) — win.wiki.content composition: the article
+ *  snapshot with the LIVE forcegraph vnode spliced into its graph slot.
+ *  The content formula passes fg.wiki.* cels to fgview, so drags and zooms
+ *  re-render reactively while the prose stays a snapshot. */
+const wikidocFn: Fn = (article?: unknown, graph?: unknown): V => {
+  if (!isVnode(article)) {
+    return el("div", { style: "color:GrayText;font:.85rem system-ui;padding:.4rem" }, [
+      T("no entry open — click the W on any window's titlebar, or use "),
+      el("code", {}, [T('=wiki("name")')]),
+    ]);
+  }
+  if (!isVnode(graph)) return article;
+  const kids = (article.children ?? []).map((c) =>
+    (c as V).attrs?.class === "wk-graph-slot" ? (graph as V) : c);
+  return { ...article, children: kids };
+};
 
 /** wiki(name) — a 📖 affordance; the open happens in the handler. */
 const wikiFn: Fn = (name?: unknown): V => {
@@ -410,9 +346,11 @@ const ensureWikiWindow = async (state: State): Promise<void> => {
       metadata: { segment: "win.wiki", name: "state" },
     });
   }
-  if (!state.cels.has("win.wiki.content")) {
+  const CONTENT_F = '(wikidoc wiki.article (fgview "wiki" fg.wiki.spec fg.wiki.pos fg.wiki.zoom))';
+  const content = state.cels.get("win.wiki.content") as { f?: string } | undefined;
+  if (!content || content.f !== CONTENT_F) {
     await setCel(state, "win.wiki.content", {
-      celType: "FormulaCel", f: "(wikidoc wiki.article)",
+      celType: "FormulaCel", f: CONTENT_F,
       metadata: { segment: "win.wiki", name: "content", parser: "f" },
     });
   }
@@ -429,9 +367,12 @@ const wikiOpen: Fn = (async (state: State, payload?: unknown): Promise<void> => 
   if (!key) key = String(state.cels.get("wiki.current")?.v ?? "") || "origin";
   // the W button passes the window's state ref — article the LAYER it heads.
   if (key.startsWith("win.") && key.endsWith(".state")) key = key.slice(0, -".state".length);
-  // a NEW subject resets the zoom (zoom is per-entry, not per-session)
-  if (key !== String(state.cels.get("wiki.current")?.v ?? "")) {
-    await ((resolveFn(state, "setValue") as Fn)(state, "wiki.zoom", 1));
+  // the graph instance: spec + layout-to-frozen via forcegraph (fg.set);
+  // a NEW subject resets the instance zoom
+  const newSubject = key !== String(state.cels.get("wiki.current")?.v ?? "");
+  await ((resolveFn(state, "fg.set") as Fn)(state, { id: "wiki", spec: graphSpec(state, key) }));
+  if (newSubject && state.cels.has("fg.wiki.zoom")) {
+    await ((resolveFn(state, "setValue") as Fn)(state, "fg.wiki.zoom", 1));
   }
   await ensureWikiWindow(state);
   await refreshArticle(state, key);
@@ -487,18 +428,6 @@ const wikiSaveDesc: Fn = (async (state: State): Promise<void> => {
   await repaint(state);
 }) as Fn;
 
-/** wheel on the graph → zoom around the pinned center and re-render. */
-const wikiZoomWheel: Fn = (async (state: State, _payload: unknown, event?: unknown): Promise<void> => {
-  const dy = Number((event as { deltaY?: number } | undefined)?.deltaY ?? 0);
-  if (!dy) return;
-  const cur = Number(state.cels.get("wiki.zoom")?.v) || 1;
-  const next = Math.max(0.35, Math.min(3, cur * (dy < 0 ? 1.15 : 0.87)));
-  if (next === cur) return;
-  await ((resolveFn(state, "setValue") as Fn)(state, "wiki.zoom", next));
-  const key = String(state.cels.get("wiki.current")?.v ?? "");
-  if (key) { await refreshArticle(state, key); await repaint(state); }
-}) as Fn;
-
 export const name = "docgraph" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
@@ -507,5 +436,4 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["wiki.open", wikiOpen],
   ["wiki.saveNote", wikiSaveNote],
   ["wiki.saveDesc", wikiSaveDesc],
-  ["wiki.zoomWheel", wikiZoomWheel],
 ]));

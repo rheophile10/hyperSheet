@@ -95,29 +95,6 @@
       }
     },
     {
-      "key": "wiki.zoomWheel",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "wiki.zoomWheel",
-        "segment": "docgraph",
-        "name": "wiki.zoomWheel",
-        "kind": "native",
-        "description": "dispatch (state, _, wheelEvent) - mousewheel on the graph: scale wiki.zoom (0.35-3x) around the pinned center node and re-render the article."
-      }
-    },
-    {
-      "key": "wiki.zoom",
-      "celType": "ValueCel",
-      "v": 1,
-      "metadata": {
-        "key": "wiki.zoom",
-        "segment": "docgraph",
-        "name": "wiki.zoom",
-        "description": "the graph view's zoom factor (wheel-driven; resets to 1 on a new subject)."
-      }
-    },
-    {
       "key": "wiki.descDraft",
       "celType": "ValueCel",
       "v": "",
