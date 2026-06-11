@@ -1,5 +1,5 @@
 import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
-import { bindNativeFns, resolveFn, withAccessor } from "../../../kernel/index.js";
+import { bindNativeFns, resolveFn, withAccessor, bundleSegments } from "../../../kernel/index.js";
 import { el as makeEl, text as T } from "../dom/index.js";
 import { BG } from "./bg.js";
 import { README_INNER } from "./readme-content.js";
@@ -179,7 +179,8 @@ const winFn: Fn = ((key: unknown, title: unknown, content: unknown, x?: unknown,
 // write to that cel BY ITS REF, so to close/open/move/repaint a window you just
 // modify its state value; the frame re-renders. winmake() genesis-creates the
 // state cel + the frame; sheetView ignores it (no grid cells), so no double-window.
-interface WinState { ref?: string; x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; max?: number; closed?: number; title?: string }
+interface WinState { ref?: string; x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; max?: number; closed?: number; title?: string; linked?: string[] }
+const segOf = (ref: string): string => ref.replace(/\.state$/, "");
 const stateOf = (state: State, ref: string): WinState => { const v = state.cels.get(ref)?.v; return (v && typeof v === "object" && !Array.isArray(v)) ? { ...(v as WinState) } : {}; };
 const setState = (state: State, ref: string, patch: WinState): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, ref, { ...stateOf(state, ref), ...patch })).then(() => repaint(state));
 const xdrag = (state: State): { ref: string; ox: number; oy: number; resize?: boolean } | null | undefined => state.cels.get("winx.drag")?.v as { ref: string; ox: number; oy: number; resize?: boolean } | null | undefined;
@@ -200,7 +201,7 @@ const frameFn: Fn = ((st: unknown, active: unknown, content: unknown): V => {
   const body = isVnode(content) ? content : T(content == null ? "" : String(content));
   return el("div", { class: "pl-window" + (isActive ? " active" : ""), "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:${isActive ? "2px solid #4a90d9" : "1px solid #8886"};border-radius:6px;background:Canvas;box-shadow:${isActive ? "0 6px 22px #4a90d966" : "0 4px 16px #0004"};overflow:hidden` }, [
     el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
-      el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(String(s.title ?? ref))]),
+      el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(String((s.linked?.length ? "🔗 " : "") + (s.title ?? ref)))]),
       el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
         // W — open this window's wiki article (docgraph's wiki.open). A host
         // without docgraph logs "not registered" on click; nothing breaks.
@@ -219,7 +220,32 @@ const xGrab: Fn = (async (state: State, ref: unknown, event?: DomEvt): Promise<v
 const xMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d || d.resize) return; await setState(state, d.ref, { x: num(event?.clientX) - d.ox, y: num(event?.clientY) - d.oy }); }) as Fn;
 const xGrabResize: Fn = (async (state: State, ref: unknown, event?: DomEvt): Promise<void> => { capture(event); const s = stateOf(state, String(ref)); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", { ref: String(ref), ox: num(event?.clientX) - num(s.w, 380), oy: num(event?.clientY) - num(s.h, 260), resize: true })); }) as Fn;
 const xResizeMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d?.resize) return; await setState(state, d.ref, { w: Math.max(160, num(event?.clientX) - d.ox), h: Math.max(90, num(event?.clientY) - d.oy) }); }) as Fn;
-const xDrop: Fn = (async (state: State): Promise<void> => { await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", null)); }) as Fn;
+// xDrop — release. If a window was dropped ONTO another window's titlebar, STACK
+// them: bundle the two window SEGMENTS (Layer-1 bundleSegments) so each can now
+// read the other's cels — "connecting windows into shared memory". Both titlebars
+// then show 🔗. A SEALED segment still can't be widened (bundling never opens a
+// seal; see segment-minting test) — so stacking a chat onto a sealed secrets
+// window does NOT leak the secret.
+const xDrop: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => {
+  const d = xdrag(state);
+  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", null));
+  if (!d || d.resize || !event) return;
+  const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => { getAttribute?: (a: string) => string | null } | null }> } }).document;
+  const els = doc?.elementsFromPoint?.(num(event.clientX), num(event.clientY)) ?? [];
+  let target: string | undefined;
+  for (const e of els) {
+    if (!e.closest?.(".pl-titlebar")) continue;
+    const w = e.closest?.(".pl-window");
+    const dw = (w as { getAttribute?: (a: string) => string | null } | null)?.getAttribute?.("data-win") ?? undefined;
+    if (dw && dw !== d.ref) { target = dw; break; }
+  }
+  if (!target) return;
+  const a = segOf(d.ref), b = segOf(target);
+  bundleSegments(state, [a, b]);
+  const merge = (st: WinState): string[] => Array.from(new Set([...(st.linked ?? []), a, b]));
+  await setState(state, d.ref, { linked: merge(stateOf(state, d.ref)) });
+  await setState(state, target, { linked: merge(stateOf(state, target)) });
+}) as Fn;
 const xRaise: Fn = (async (state: State, ref: unknown): Promise<void> => { const r = String(ref); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.active", r)); if (state.cels.get("keys.active")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "keys.active", r)); await setState(state, r, { z: ++xTopZ }); }) as Fn;
 const xMin: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { min: s.min ? 0 : 1 }); }) as Fn;
 const xMax: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { max: s.max ? 0 : 1, z: ++xTopZ }); }) as Fn;
