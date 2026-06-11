@@ -25,7 +25,7 @@ const isErr = (x) => !!x && typeof x === "object" && x.kind === "error";
 
 test("a grid generator blooms cells; deleting the formula sweeps them (THE north-star invariant)", async () => {
   const state = createInitialState();
-  await seedUser(state, "maker", { celType: "FormulaCel", f: '(grid 2 2 "gng")' });
+  await seedUser(state, "maker", { celType: "FormulaCel", f: '(cels 2 2 "gng")' });
   await cycleAndFlush(state);
 
   for (const k of ["gng.A1", "gng.A2", "gng.B1", "gng.B2", "gng.dims"]) {
@@ -45,10 +45,10 @@ test("a grid generator blooms cells; deleting the formula sweeps them (THE north
   }
 });
 
-test("infix generators work: =grid(2, 2, \"h\")", async () => {
+test("infix generators work: =cels(2, 2, \"h\")", async () => {
   const state = createInitialState();
   await seedUser(state, "maker", {
-    celType: "FormulaCel", f: '=grid(2, 2, "gnh")', metadata: { parser: "infix" },
+    celType: "FormulaCel", f: '=cels(2, 2, "gnh")', metadata: { parser: "infix" },
   });
   await cycleAndFlush(state);
   assert.ok(state.cels.get("gnh.A1"), "infix-parsed generator bloomed");
@@ -57,7 +57,7 @@ test("infix generators work: =grid(2, 2, \"h\")", async () => {
 
 test("regeneration: user content survives a grow; shrink retires the removed cells", async () => {
   const state = createInitialState();
-  await seedUser(state, "maker", { celType: "FormulaCel", f: '(grid 2 2 "gng")' });
+  await seedUser(state, "maker", { celType: "FormulaCel", f: '(cels 2 2 "gng")' });
   await cycleAndFlush(state);
 
   // the user types into a generated cell — data plane
@@ -65,13 +65,13 @@ test("regeneration: user content survives a grow; shrink retires the removed cel
   assert.equal(v(state, "gng.A1"), 42);
 
   // grow 2×2 → 3×2: A1 untouched (unchanged spec), A3 appears
-  await seedUser(state, "maker", { celType: "FormulaCel", f: '(grid 3 2 "gng")' });
+  await seedUser(state, "maker", { celType: "FormulaCel", f: '(cels 3 2 "gng")' });
   await cycleAndFlush(state);
   assert.equal(v(state, "gng.A1"), 42, "user's value survived regeneration");
   assert.ok(state.cels.get("gng.A3"), "new row bloomed");
 
   // shrink to 1×1: only A1 (+dims) remain
-  await seedUser(state, "maker", { celType: "FormulaCel", f: '(grid 1 1 "gng")' });
+  await seedUser(state, "maker", { celType: "FormulaCel", f: '(cels 1 1 "gng")' });
   await cycleAndFlush(state);
   assert.equal(v(state, "gng.A1"), 42, "survivor keeps user content");
   assert.equal(state.cels.get("gng.A3"), undefined, "removed spec retired");
@@ -80,7 +80,7 @@ test("regeneration: user content survives a grow; shrink retires the removed cel
 
 test("idempotent re-fire: same request leaves everything untouched", async () => {
   const state = createInitialState();
-  await seedUser(state, "maker", { celType: "FormulaCel", f: '(grid 2 1 "gng")' });
+  await seedUser(state, "maker", { celType: "FormulaCel", f: '(cels 2 1 "gng")' });
   await cycleAndFlush(state);
   await resolveFn(state, "setValue")(state, "gng.A2", "kept");
   const a2 = state.cels.get("gng.A2");
@@ -93,9 +93,9 @@ test("idempotent re-fire: same request leaves everything untouched", async () =>
 
 test("foreign keys are refused with ONE aggregated error; locked keys always refused", async () => {
   const state = createInitialState();
-  await seedUser(state, "makerA", { celType: "FormulaCel", f: '(grid 1 1 "gnshared")' });
+  await seedUser(state, "makerA", { celType: "FormulaCel", f: '(cels 1 1 "gnshared")' });
   await cycleAndFlush(state);
-  await seedUser(state, "makerB", { celType: "FormulaCel", f: '(grid 1 2 "gnshared")' });
+  await seedUser(state, "makerB", { celType: "FormulaCel", f: '(cels 1 2 "gnshared")' });
   await cycleAndFlush(state);
   const b = v(state, "makerB");
   assert.ok(isErr(b), "intruding generator traps");
@@ -106,7 +106,7 @@ test("foreign keys are refused with ONE aggregated error; locked keys always ref
 
 test("stale consumers of a swept bloom trap with undefined-symbol", async () => {
   const state = createInitialState();
-  await seedUser(state, "maker", { celType: "FormulaCel", f: '(grid 1 1 "gng")' });
+  await seedUser(state, "maker", { celType: "FormulaCel", f: '(cels 1 1 "gng")' });
   await cycleAndFlush(state);
   await resolveFn(state, "setValue")(state, "gng.A1", 5);
   await seedUser(state, "reader", { celType: "FormulaCel", f: "(* gng.A1 2)" });
@@ -121,7 +121,7 @@ test("stale consumers of a swept bloom trap with undefined-symbol", async () => 
 
 test("ownership joins segment ADJACENCY (dormancy visibility), never the cascade", async () => {
   const state = createInitialState();
-  await seedUser(state, "maker", { celType: "FormulaCel", f: '(grid 1 1 "gng")' });
+  await seedUser(state, "maker", { celType: "FormulaCel", f: '(cels 1 1 "gng")' });
   await cycleAndFlush(state);
   const indexes = state.cels.get("precomputedStates")?.v;
   const adj = indexes?.segmentAdjacency;

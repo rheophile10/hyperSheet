@@ -22,7 +22,7 @@ test("snapshot → mutate → restore brings values AND structure back", async (
   const state = createInitialState();
   await seedUser(state, "a", { celType: "ValueCel", v: 1 });
   await seedUser(state, "b", { celType: "FormulaCel", f: "(* a 10)" });
-  await seedUser(state, "maker", { celType: "FormulaCel", f: '(grid 2 1 "ckg")' });
+  await seedUser(state, "maker", { celType: "FormulaCel", f: '(cels 2 1 "ckg")' });
   await cycleAndFlush(state);
   await resolveFn(state, "setValue")(state, "ckg.A1", "typed");
   assert.equal(v(state, "b"), 10);

@@ -121,7 +121,7 @@ await withPage("the heliocentric canvas is ANIMATED (pixels change over time)", 
 });
 
 await withPage("=save() persists + reload restores the sheet", async (page) => {
-  await put(page, "=grid(2, 2)");
+  await put(page, "=cels(2, 2)");
   await put(page, "42", "g2x2.A1");
   await put(page, "=g2x2!A1 + 8", "g2x2.B1");
   ok(/^saved/.test(String(await put(page, "=save()"))), "save confirms");
@@ -136,15 +136,15 @@ await withPage("=1 + 1 → 2", async (page) => eq(await put(page, "=1 + 1"), 2, 
 
 await withPage("literal 7 → 7", async (page) => eq(await put(page, "7"), 7, "literal number"));
 
-await withPage("=grid(8, 5) → one sheet", async (page) => {
-  await put(page, "=grid(8, 5)");
+await withPage("=cels(8, 5) → one sheet", async (page) => {
+  await put(page, "=cels(8, 5)");
   ok(await cel(page, "g8x5.A1") !== null, "g8x5.A1 created");
   ok(await cel(page, "g8x5.E8") !== null, "g8x5.E8 created");
   eq(await page.evaluate(() => document.querySelectorAll("table.grid").length), 2, "base 元 table + the grid");
 });
 
-await withPage("=grid(\"in\",4,3,\"out\",4,3) → workbook", async (page) => {
-  await put(page, '=grid("in", 4, 3, "out", 4, 3)');
+await withPage("=cels(\"in\",4,3,\"out\",4,3) → workbook", async (page) => {
+  await put(page, '=cels("in", 4, 3, "out", 4, 3)');
   ok(await cel(page, "in.A1") !== null, "in.A1 created");
   ok(await cel(page, "out.C4") !== null, "out.C4 created");
   eq(await page.evaluate(() => document.querySelectorAll("table.grid").length), 3, "base 元 table + two sheets");
@@ -291,7 +291,7 @@ await withPage("=attr sets a dom attribute", async (page) => {
 });
 
 await withPage('=save("slot") + =open("slot") round-trips a named sheet', async (page) => {
-  await put(page, "=grid(2, 2)");
+  await put(page, "=cels(2, 2)");
   await put(page, "42", "g2x2.A1");
   ok(/^saved/.test(String(await put(page, '=save("slotA")'))), "saved to slotA");
   await put(page, "99", "g2x2.A1");
@@ -301,7 +301,7 @@ await withPage('=save("slot") + =open("slot") round-trips a named sheet', async 
 });
 
 await withPage("a syntax error surfaces, stays editing", async (page) => {
-  await put(page, '=grid("in" 4 3)');
+  await put(page, '=cels("in" 4 3)');
   ok(/expected|infix/.test(String(await cel(page, "元.error"))), "parse error captured");
   eq(await cel(page, "元.editing"), "元", "stays in the cell");
   ok(await page.$(".cell-error"), "error line rendered");

@@ -21,7 +21,7 @@ import seed from "./甲骨.json" with { type: "json" };
 // the readme. The ONLY thing past an ordinary spreadsheet — a cell's
 // formula may also build dom objects, more cels, worksheets, toolbars:
 //   =1+1          → 2
-//   =grid(3,3)    → a 3×3 worksheet of cels, each like 元
+//   =cels(3,3)    → a 3×3 worksheet of cels, each like 元
 //   =dom("h2"…)   → a heading rendered in the cell
 // 元.view is UNLOCKED — it renders through dom like any view,
 // built to be reworked in place.
@@ -146,8 +146,8 @@ const collectValues = (args: unknown[], i: number): [Record<string, unknown> | u
  *    cels("in", 4, 3, "out", 4, 3) → a WORKBOOK of named sheets
  *    cels("in", 4, 3, at("a1","apple"), at("b2","cel(\"monkey\")"))  → a sheet
  *      with initial cell contents (a value, or a formula like cel(…) / =1+1).
- *  Delete the formula → swept. `grid` is a back-compat alias. */
-const grid: Fn = (...args: unknown[]): unknown => {
+ *  Delete the formula → swept. */
+const celsGen: Fn = (...args: unknown[]): unknown => {
   if (typeof args[0] === "string") {
     // workbook: (name, rows, cols [, at()…])+ — at() markers belong to the
     // preceding grid; the next string starts the next grid.
@@ -894,8 +894,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.commit",  commit],
   ["origin.edit",    edit],
   ["origin.key",     key],
-  ["cels",           grid],
-  ["grid",           grid],
+  ["cels",           celsGen],
   ["cel",            celFn],
   ["at",             at],
   ["doc",            doc],

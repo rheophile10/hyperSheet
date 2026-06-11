@@ -138,19 +138,6 @@
       }
     },
     {
-      "key": "grid",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "grid",
-        "segment": "origin",
-        "name": "grid",
-        "kind": "native",
-        "genesis": true,
-        "description": "back-compat alias for cels — see cels."
-      }
-    },
-    {
       "key": "at",
       "celType": "LockedLambdaCel",
       "locked": true,

@@ -35,7 +35,7 @@ ok(/rm/.test(await P(`=rm("${D}/b.txt")`)), "rm file");
 ok(/rm/.test(await P(`=rm("${D}")`)), "rm dir (recursive)");
 const cel = (k) => page.evaluate((kk)=>globalThis.plastron.state.cels.get(kk)?.v ?? null, k);
 // --- segment / sheet manager ---
-await P(`=grid(2, 2)`);
+await P(`=cels(2, 2)`);
 await put(`42`, "g2x2.A1");
 ok(/saved sheet/.test(await P(`=saveSeg("mywork")`)), "saveSeg writes to OPFS");
 ok((await P(`=segs()`)).includes("mywork"), "segs lists the saved sheet");

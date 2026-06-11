@@ -22,14 +22,14 @@ const put = (src,key)=>page.evaluate(async([s,k])=>{
 const drained=(v)=>!(v&&typeof v==="object"&&(v.originDb||v.originFs||v.originSeg));
 const run=async(src,key)=>{ await put(src,key); const t0=Date.now(); while(Date.now()-t0<15000){const v=await cel(key); if(drained(v))return v; await page.waitForTimeout(150);} return await cel(key); };
 let pass=0,fail=0,last; const ok=(c,w)=>{if(c){pass++;console.log("  ✔",w);}else{fail++;console.log("  ✘",w,"  got:",JSON.stringify(last).slice(0,110));}};
-await put(`=grid(6, 1)`, "元");
+await put(`=cels(6, 1)`, "元");
 last=await run(`=db("sqltest")`, "g6x1.A1"); ok(last&&last.__db==="sqltest", "db() opens a handle (sql.js from CDN)");
 last=await run(`=sql(g6x1!A1, "create table t(a, b)")`, "g6x1.A2"); ok(last==="ok", "create table");
 last=await run(`=sql(g6x1!A1, "insert into t values (1, 2), (3, 4)")`, "g6x1.A3"); ok(last==="ok", "insert rows");
 last=await run(`=sql(g6x1!A1, "select a, b from t order by a")`, "g6x1.A4"); ok(Array.isArray(last)&&last.length===2&&last[0].a===1&&last[0].b===2, "select → rows of objects");
 last=await run(`=tables(g6x1!A1)`, "g6x1.A5"); ok(Array.isArray(last)&&last.some(t=>t.name==="t"), "tables() lists t");
 await page.reload(); await page.waitForFunction(()=>!!globalThis.plastron,{timeout:8000}); await page.waitForTimeout(300);
-await put(`=grid(2, 1)`, "元");
+await put(`=cels(2, 1)`, "元");
 await run(`=db("sqltest")`, "g2x1.A1");
 last=await run(`=sql(g2x1!A1, "select count(*) c from t")`, "g2x1.A2"); ok(Array.isArray(last)&&Number(last[0].c)===2, "db PERSISTED across reload (2 rows)");
 ok(errs.length===0, "no console/page errors"+(errs.length?": "+errs.slice(0,2).join(" | "):""));

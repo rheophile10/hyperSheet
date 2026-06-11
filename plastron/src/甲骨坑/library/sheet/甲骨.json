@@ -58,15 +58,15 @@
       "locked": true
     },
     {
-      "key": "grid",
+      "key": "cels",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "grid",
+        "key": "cels",
         "segment": "sheet",
-        "name": "grid",
+        "name": "cels",
         "kind": "native",
         "genesis": true,
-        "description": "(rows cols [name]) - genesis vocabulary: structure request for an empty grid of infix cells <name>.A1..; layer segment = name (default \"grid\"). Cells are seeds - user edits survive regeneration."
+        "description": "genesis: worksheets of editable cels, each like 元. cels(rows, cols) makes one sheet (auto-named g<r>x<c>); cels(rows, cols, \"name\") names it; cels(\"in\",4,3,\"out\",4,3) makes a workbook; cels(\"in\",4,3,at(\"a1\",\"apple\")) fills cells."
       },
       "locked": true
     }

@@ -22,7 +22,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["sheet.cancel-edit",    cancelEdit],
   ["sheet.move-selection", moveSelection],
   ["sheet.start-edit",     startEdit],
-  ["grid",                 grid],
+  ["cels",                 grid],
 ]));
 
 export { buildSheet } from "./utils/build.js";

@@ -23,8 +23,8 @@ if (!existsSync(bundle) || statSync(bundle).mtimeMs < statSync(join(repoRoot, ".
 const SYSTEM = `You write a single formula for "plastron", a spreadsheet whose first cell is 元 (A1).
 Syntax (start with = for the infix/Excel form, commas between args):
   =1 + 1                                         arithmetic
-  =grid(8, 5)                                    a sheet of editable cels
-  =grid("in", 4, 3, "out", 4, 3)                 a workbook of named sheets
+  =cels(8, 5)                                    a sheet of editable cels
+  =cels("in", 4, 3, "out", 4, 3)                 a workbook of named sheets
   =def("double", "js", "x => x * 2")             define a JS function
   =double(21)                                    call a defined function
   =dom("h2", style("color", "tomato"), "hi")     a DOM element (style() is a child)

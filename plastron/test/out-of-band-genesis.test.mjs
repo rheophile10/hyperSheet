@@ -10,7 +10,7 @@ test("out-of-band genesis: a generator fired by setValue materializes (no manual
   const s = createInitialState();
   await resolveFn(s, "hydrate")(s, [{ name: "user", cels: [
     { key: "n", celType: "ValueCel", metadata: { key: "n", segment: "user" }, v: 2 },
-    { key: "maker", celType: "FormulaCel", metadata: { key: "maker", segment: "user", parser: "infix" }, f: '=grid(n, 2, "gng")' },
+    { key: "maker", celType: "FormulaCel", metadata: { key: "maker", segment: "user", parser: "infix" }, f: '=cels(n, 2, "gng")' },
   ]}], [{ name: "user", version: "0", description: "", dependencies: [] }]);
 
   const gngCount = () => [...s.cels.keys()].filter((k) => k.startsWith("gng.")).length;
@@ -27,7 +27,7 @@ test("settleStructural fires the view.refresh hook on out-of-band materializatio
   const s = createInitialState();
   await resolveFn(s, "hydrate")(s, [{ name: "user", cels: [
     { key: "n", celType: "ValueCel", metadata: { key: "n", segment: "user" }, v: 2 },
-    { key: "maker", celType: "FormulaCel", metadata: { key: "maker", segment: "user", parser: "infix" }, f: '=grid(n, 1, "gob")' },
+    { key: "maker", celType: "FormulaCel", metadata: { key: "maker", segment: "user", parser: "infix" }, f: '=cels(n, 1, "gob")' },
   ]}], [{ name: "user", version: "0", description: "", dependencies: [] }]);
   let refreshed = 0;
   await resolveFn(s, "setCel")(s, "view.refresh", { celType: "LockedLambdaCel", fn: () => { refreshed++; }, metadata: { segment: "user", kind: "native" } });
