@@ -278,7 +278,7 @@ const articleVnode = (state: State, key: string): V => {
 
   const back = backlinksOf(state, key);
   body.push(...section(`used by (${back.length})`, linkRow(back.slice(0, 40))));
-  body.push(...section("graph (drag nodes · scroll to zoom)",
+  body.push(...section("graph",
     el("div", { class: "wk-graph-slot" }, [T("(live graph)")])));
   const note = noteOf(state, key);
   body.push(...section("note", el("div", {}, [...(note ? [noteBody(note)] : []), noteEditor(note)])));
