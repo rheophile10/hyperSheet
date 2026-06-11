@@ -223,9 +223,9 @@ await withPage("=dom + style renders with the style applied", async (page) => {
   ok(await page.evaluate(() => { const h = document.querySelector(".cell h2") as HTMLElement; return /tomato|rgb\(255, 99, 71\)/.test(getComputedStyle(h).color); }), "color style applied");
 });
 
-await withPage("=mount(\".sheet\", …) splices under .sheet", async (page) => {
-  await put(page, '=mount(".sheet", dom("p.pinned", "under the cells"))');
-  ok(await page.$(".sheet p.pinned"), "pinned under .sheet");
+await withPage("=mount(\".origin\", …) splices onto the desktop", async (page) => {
+  await put(page, '=mount(".origin", dom("p.pinned", "on the desktop"))');
+  ok(await page.$(".origin p.pinned"), "pinned onto .origin");
 });
 
 await withPage("=inspect(\"mount\") → yaml", async (page) => {
@@ -369,40 +369,36 @@ await withPage("xlsx — round-trips + materializes in the browser", async (page
   eq(out.b1, 42, "imported B1 materialized in-browser");
 });
 
-// ── windows — a window renders via mount() + drags with REAL pointer events
-// (the painter wires the vnode events; page.mouse drives a true drag). Proves
-// the windows library end-to-end in a browser, beyond the fake-event unit test.
-await withPage("windows — a window renders via mount and drags", async (page) => {
+// ── windows — every worksheet renders as a draggable/resizable WINDOW
+// (sheetView wraps each table in a frame; geometry in win.geom). The cells
+// inside stay a normal editable grid. Drags drive REAL pointer events.
+await withPage("worksheets render as draggable windows (auto-windowing)", async (page) => {
   await page.evaluate(async () => {
     const { state, resolveFn } = (globalThis as any).plastron;
-    const sc = (k: string, v: unknown) => resolveFn(state, "setCel")(state, k, { celType: "ValueCel", v, metadata: { key: k, segment: "win" } });
-    await sc("w1.x", 40); await sc("w1.y", 60); await sc("w1.w", 220); await sc("w1.h", 140);
-    await resolveFn(state, "origin.edit")(state, "元");
-    await resolveFn(state, "setValue")(state, "元.draft", '(mount ".origin" (window "w1" w1.x w1.y w1.w w1.h "Demo" "hi"))');
-    await resolveFn(state, "origin.commit")(state, "元");
-    await new Promise((r) => setTimeout(r, 120));
+    await resolveFn(state, "origin.edit")(state, "\u5143");
+    await resolveFn(state, "setValue")(state, "\u5143.draft", "=cels(3, 3)");
+    await resolveFn(state, "origin.commit")(state, "\u5143");
+    await new Promise((r) => setTimeout(r, 160));
   });
-  ok(await page.$(".pl-window"), "a window frame rendered");
-  ok(await page.$(".pl-titlebar"), "titlebar present");
-  const box = await (await page.$(".pl-titlebar"))!.boundingBox();
-  const cx = box!.x + box!.width / 2, cy = box!.y + box!.height / 2;
-  await page.mouse.move(cx, cy); await page.mouse.down();
-  await page.mouse.move(cx + 60, cy + 40, { steps: 6 });
-  await page.mouse.up();
-  await page.waitForTimeout(120);
-  const pos = await page.evaluate(() => { const { state } = (globalThis as any).plastron; return { x: state.cels.get("w1.x")?.v, y: state.cels.get("w1.y")?.v }; });
-  ok(pos.x === 100 && pos.y === 100, `window dragged +60/+40 → w1.x/y = ${pos.x}/${pos.y} (expect 100/100)`);
-  // the window VISUALLY moved (the repaint fix — cel AND DOM agree, not just the cel)
-  const visLeft = await page.$eval(".pl-window", (el: HTMLElement) => el.style.left);
-  ok(visLeft === "100px", `window visually moved to ${visLeft} (expect 100px) — repaint on drag works`);
-  // resize from the corner handle → width grows, visually
-  const rh = await (await page.$(".pl-resize"))!.boundingBox();
+  ok(await page.$('.pl-window[data-win="\u5143"]'), "\u5143 is a window");
+  ok(await page.$('.pl-window[data-win="g3x3"]'), "the g3x3 worksheet is a window");
+  ok(await page.$('.pl-window[data-win="g3x3"] table.grid td.cell'), "the sheet inside is a normal editable grid");
+  const wsel = '.pl-window[data-win="g3x3"]';
+  const before = await page.$eval(wsel, (el: HTMLElement) => el.style.left);
+  const box = await (await page.$(`${wsel} .pl-titlebar`))!.boundingBox();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2); await page.mouse.down();
+  await page.mouse.move(box!.x + box!.width / 2 + 70, box!.y + box!.height / 2 + 40, { steps: 6 }); await page.mouse.up();
+  await page.waitForTimeout(140);
+  const after = await page.$eval(wsel, (el: HTMLElement) => el.style.left);
+  ok(parseInt(after) > parseInt(before) + 40, `g3x3 window dragged (left ${before} -> ${after})`);
+  const w0 = await page.$eval(wsel, (el: HTMLElement) => parseInt(el.style.width));
+  const rh = await (await page.$(`${wsel} .pl-resize`))!.boundingBox();
   await page.mouse.move(rh!.x + rh!.width / 2, rh!.y + rh!.height / 2); await page.mouse.down();
-  await page.mouse.move(rh!.x + 50, rh!.y + 30, { steps: 5 }); await page.mouse.up();
-  await page.waitForTimeout(120);
-  const sized = await page.evaluate(() => { const { state } = (globalThis as any).plastron; const el = document.querySelector(".pl-window") as HTMLElement; return { w: state.cels.get("w1.w")?.v as number, domW: el?.style.width }; });
-  ok(sized.w >= 260 && sized.domW === `${sized.w}px`, `window resized: w1.w=${sized.w}, dom width=${sized.domW} (cel + DOM agree)`);
-});
+  await page.mouse.move(rh!.x + 60, rh!.y + 30, { steps: 5 }); await page.mouse.up();
+  await page.waitForTimeout(140);
+  const w1 = await page.$eval(wsel, (el: HTMLElement) => parseInt(el.style.width));
+  ok(w1 > w0 + 30, `g3x3 window resized wider (${w0} -> ${w1})`);
+})
 
 // ── peer — TWO browsers share a cel over WebRTC. Manual signaling is brokered
 // by the test (copy A's offer → B, B's answer → A); ICE uses localhost host

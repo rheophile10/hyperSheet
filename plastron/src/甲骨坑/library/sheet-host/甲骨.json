@@ -12,6 +12,114 @@
         "description": "(editing expanded draft mount keys vals) - spreadsheet RenderSpec producer: 元 button + grid() layers as Excel tables + expanded formula panel."
       },
       "locked": true
+    },
+    {
+      "key": "winsheet.grab",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.grab",
+        "segment": "sheet-host",
+        "name": "winsheet.grab",
+        "kind": "native",
+        "description": "start dragging worksheet window"
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.move",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.move",
+        "segment": "sheet-host",
+        "name": "winsheet.move",
+        "kind": "native",
+        "description": "drag a worksheet window"
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.grabResize",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.grabResize",
+        "segment": "sheet-host",
+        "name": "winsheet.grabResize",
+        "kind": "native",
+        "description": "start resizing"
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.resizeMove",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.resizeMove",
+        "segment": "sheet-host",
+        "name": "winsheet.resizeMove",
+        "kind": "native",
+        "description": "resize"
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.drop",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.drop",
+        "segment": "sheet-host",
+        "name": "winsheet.drop",
+        "kind": "native",
+        "description": "end drag/resize"
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.raise",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.raise",
+        "segment": "sheet-host",
+        "name": "winsheet.raise",
+        "kind": "native",
+        "description": "raise to front"
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.minimize",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.minimize",
+        "segment": "sheet-host",
+        "name": "winsheet.minimize",
+        "kind": "native",
+        "description": "minimize"
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.restore",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.restore",
+        "segment": "sheet-host",
+        "name": "winsheet.restore",
+        "kind": "native",
+        "description": "restore"
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.stop",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.stop",
+        "segment": "sheet-host",
+        "name": "winsheet.stop",
+        "kind": "native",
+        "description": "stop button press starting a drag"
+      },
+      "locked": true
     }
   ]
 }

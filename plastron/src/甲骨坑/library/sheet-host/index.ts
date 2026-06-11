@@ -1,5 +1,5 @@
-import type { 甲骨, Cel, Fn, VElement } from "../../../types/index.js";
-import { bindNativeFns, isSecretHandleRef } from "../../../kernel/index.js";
+import type { 甲骨, Cel, Fn, State, VElement } from "../../../types/index.js";
+import { bindNativeFns, isSecretHandleRef, resolveFn } from "../../../kernel/index.js";
 import { el as makeEl, text as T, memo } from "../dom/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
@@ -111,10 +111,28 @@ const addrOf = (key: string): { col: number; row: number } | null => {
 };
 
 const sheetView: Fn = ((
-  cfg: unknown, editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown, srcs: unknown,
+  cfg: unknown, editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown, srcs: unknown, geom?: unknown,
 ) => {
   const c = (cfg ?? {}) as { base?: string; draftCel?: string; editHandler?: string; keyHandler?: string };
   const BASE = c.base ?? "元", DRAFT = c.draftCel ?? "元.draft", EDIT = c.editHandler ?? "origin.edit", KEYH = c.keyHandler ?? "origin.key";
+  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number }> : {};
+  // wrap a worksheet's table in a draggable window frame, positioned by win.geom
+  // (default staggered by index). Drag/resize/raise/minimize dispatch to the
+  // winsheet.* handlers; the table inside is unchanged, so cells stay editable.
+  const gnum = (v: unknown, d: number): number => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const windowed = (seg: string, table: V, i: number): V => {
+    const g = GM[seg] ?? {};
+    if (g.min) return el("div", { class: "pl-window-min", "data-win": seg, style: "display:none" }, []);
+    const x = gnum(g.x, 40 + i * 34), y = gnum(g.y, 40 + i * 34), w = gnum(g.w, 380), h = gnum(g.h, 260), z = gnum(g.z, 1);
+    return el("div", { class: "pl-window", "data-win": seg, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas;box-shadow:0 4px 16px #0004;overflow:hidden` }, [
+      el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
+        el("span", {}, [T(seg)]),
+        el("button", { class: "pl-min-btn", style: "border:0;background:transparent;cursor:pointer;font:600 1rem ui-monospace,monospace;padding:0 .35rem;line-height:1" }, [T("–")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.minimize", payload: seg } }),
+      ], { pointerdown: { dispatch: "winsheet.grab", payload: seg }, pointermove: { dispatch: "winsheet.move" }, pointerup: { dispatch: "winsheet.drop" } }),
+      el("div", { class: "pl-window-body", style: "flex:1 1 auto;overflow:auto;padding:.25rem;min-height:0" }, [table]),
+      el("div", { class: "pl-resize", style: "position:absolute;right:0;bottom:0;width:15px;height:15px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" }, [], { pointerdown: { dispatch: "winsheet.grabResize", payload: seg }, pointermove: { dispatch: "winsheet.resizeMove" }, pointerup: { dispatch: "winsheet.drop" } }),
+    ], { pointerdown: { dispatch: "winsheet.raise", payload: seg } });
+  };
   const ks = Array.isArray(keys) ? (keys as string[]) : ["元"];
   const vs = Array.isArray(vals) ? (vals as unknown[]) : [];
   const ss = Array.isArray(srcs) ? (srcs as unknown[]) : [];
@@ -199,11 +217,13 @@ const sheetView: Fn = ((
   }
 
   const sections: V[] = [];
-  // the base sheet: 元 at A1, any other base cels down column A.
-  if (base.length) sections.push(sheetTable(BASE, base.map((k, i) => ({ key: k, col: 0, row: i }))));
+  let wi = 0;
+  // the base sheet (元 + base cels) is a window too; each grid layer is a window.
+  if (base.length) sections.push(windowed(BASE, sheetTable(BASE, base.map((k, i) => ({ key: k, col: 0, row: i }))), wi++));
   for (const [layer, members] of layers) {
     const entries = members.map((k) => { const a = addrOf(k); return a ? { key: k, col: a.col, row: a.row } : null; }).filter((e): e is { key: string; col: number; row: number } => !!e);
-    sections.push(sheetTable(layer, entries));
+    if (!entries.length) continue;                    // a layer with only window-state cels → no table
+    sections.push(windowed(layer, sheetTable(layer, entries), wi++));
   }
 
   // PLACED dom — a cell whose value is mount(target, content). The dom is
@@ -220,8 +240,8 @@ const sheetView: Fn = ((
   const placements: { sel: string; vnode: V }[] = [];
   for (const k of ks) { const p = asPlacement(valOf.get(k)); if (p) placements.push(p); }
 
-  const sheetNode = el("div", { class: "sheet", style: SX.sheet }, sections);
-  const originNode = el("div", { class: "origin", style: SX.origin }, [sheetNode]);
+  // .origin is the positioned desktop the windows float on.
+  const originNode = el("div", { class: "origin", style: "position:relative;min-height:90vh;width:100%" }, sections);
 
   // Splice each placement into the FIRST view node matching its selector.
   // No magic regions: the target must be an element the view actually renders
@@ -236,8 +256,37 @@ const sheetView: Fn = ((
   return { vnode: originNode, mount: typeof mount === "string" ? mount : null, listeners: [] };
 }) as Fn;
 
+// ── windowed worksheets ──────────────────────────────────────────────────────
+// Every worksheet renders in a draggable window (sheetView wraps each table in a
+// frame). Geometry for ALL windows lives in ONE map cel — win.geom = { seg:
+// {x,y,w,h,z,min} } — so the cell set isn't cluttered with per-axis cels and
+// sheetView gets it as one input. The handlers update that map; the cells inside
+// a window are unchanged, so editing/selection still work as before.
+interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number }
+interface WEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void }; stopPropagation?: () => void }
+const wrepaint = (state: State): Promise<unknown> => Promise.resolve((resolveFn(state, "drain") as Fn)(state, "dom.paint"));
+const geomMap = (state: State): Record<string, WGeom> => { const v = state.cels.get("win.geom")?.v; return (v && typeof v === "object" && !Array.isArray(v)) ? { ...(v as Record<string, WGeom>) } : {}; };
+const setGeom = (state: State, m: Record<string, WGeom>): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.geom", m)).then(() => wrepaint(state));
+const wdrag = (state: State): { seg: string; ox: number; oy: number; resize?: boolean } | null | undefined => state.cels.get("winsheet.drag")?.v as { seg: string; ox: number; oy: number; resize?: boolean } | null | undefined;
+const setWdrag = (state: State, v: unknown): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winsheet.drag", v));
+const wnum = (v: unknown, d = 0): number => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+const wcap = (e?: WEvt): void => { try { e?.currentTarget?.setPointerCapture?.(wnum(e?.pointerId)); } catch { /* off-DOM */ } };
+let wTopZ = 10;
+
+const wsGrab: Fn = (async (state: State, seg: unknown, event?: WEvt): Promise<void> => { wcap(event); const g = geomMap(state)[String(seg)] ?? {}; await setWdrag(state, { seg: String(seg), ox: wnum(event?.clientX) - wnum(g.x, 60), oy: wnum(event?.clientY) - wnum(g.y, 60) }); }) as Fn;
+const wsMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d || d.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), x: wnum(event?.clientX) - d.ox, y: wnum(event?.clientY) - d.oy }; await setGeom(state, m); }) as Fn;
+const wsGrabResize: Fn = (async (state: State, seg: unknown, event?: WEvt): Promise<void> => { wcap(event); const g = geomMap(state)[String(seg)] ?? {}; await setWdrag(state, { seg: String(seg), ox: wnum(event?.clientX) - wnum(g.w, 360), oy: wnum(event?.clientY) - wnum(g.h, 260), resize: true }); }) as Fn;
+const wsResizeMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d?.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), w: Math.max(160, wnum(event?.clientX) - d.ox), h: Math.max(90, wnum(event?.clientY) - d.oy) }; await setGeom(state, m); }) as Fn;
+const wsDrop: Fn = (async (state: State): Promise<void> => { await setWdrag(state, null); }) as Fn;
+const wsRaise: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), z: ++wTopZ }; await setGeom(state, m); }) as Fn;
+const wsMin: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 1 }; await setGeom(state, m); }) as Fn;
+const wsRestore: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 0, z: ++wTopZ }; await setGeom(state, m); }) as Fn;
+const wsStop: Fn = ((_state: State, _p: unknown, event?: WEvt): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
+
 export const name = "sheet-host" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["sheetView", sheetView],
+  ["winsheet.grab", wsGrab], ["winsheet.move", wsMove], ["winsheet.grabResize", wsGrabResize], ["winsheet.resizeMove", wsResizeMove],
+  ["winsheet.drop", wsDrop], ["winsheet.raise", wsRaise], ["winsheet.minimize", wsMin], ["winsheet.restore", wsRestore], ["winsheet.stop", wsStop],
 ]));

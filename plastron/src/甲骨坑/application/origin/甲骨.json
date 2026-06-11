@@ -105,11 +105,12 @@
             "元"
           ],
           "srcs": "元.srcs",
-          "config": "元.viewConfig"
+          "config": "元.viewConfig",
+          "geom": "win.geom"
         },
         "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place."
       },
-      "f": "(sheetView 元.viewConfig editing draft mount error keys vals srcs)"
+      "f": "(sheetView 元.viewConfig editing draft mount error keys vals srcs geom)"
     },
     {
       "key": "cel",
@@ -737,6 +738,26 @@
         "kind": "native",
         "description": "(target content) - pin a dom under another element of the sheet instead of in the cell that holds it. target is a selector matched against the view: \".sheet\" pins under the cells, \"div.cell\" under the first cell, \"#id\" by id; a bare word (\"top\"/\"bottom\") is a region anchor laid out around the sheet. Deleting the formula removes it."
       }
+    },
+    {
+      "key": "win.geom",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "win.geom",
+        "segment": "origin",
+        "name": "win.geom"
+      },
+      "v": {}
+    },
+    {
+      "key": "winsheet.drag",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "winsheet.drag",
+        "segment": "origin",
+        "name": "winsheet.drag"
+      },
+      "v": null
     }
   ]
 }
