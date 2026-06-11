@@ -10,7 +10,7 @@
         "name": "win",
         "kind": "native",
         "genesis": true,
-        "description": "(key, title, content) - make a draggable/resizable window in ONE step (emits the reactive geometry cels + a mounted view). =win(\"w1\",\"Demo\",\"drag my titlebar!\")"
+        "description": "(key, title, content [, x] [, y]) - make a draggable/resizable window in ONE step. Compose two with doc: =doc(win(\"w1\",\"A\",\"hi\",60,60), win(\"w2\",\"B\",\"yo\",440,180))"
       },
       "locked": true
     },
