@@ -256,5 +256,11 @@
     "dependencies": [
       "dom"
     ]
+  },
+  {
+    "name": "peer",
+    "version": "0.0.1",
+    "description": "WebRTC peer transport — two browsers share a live sheet; remote is setValue-only into an allowlisted namespace, 函 quarantine, no secret exfil",
+    "dependencies": []
   }
 ]
