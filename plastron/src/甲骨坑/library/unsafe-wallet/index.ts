@@ -403,6 +403,16 @@ const setNamedHandler: Fn = async (stateArg: unknown, _payload: unknown, event: 
   return state;
 };
 
+// edit a key (panel ✎): populate the add-key NAME buffer so the next secret
+// entered on the right OVERWRITES this key (re-encrypts). Names aren't secret.
+const startEditHandler: Fn = async (stateArg: unknown, payload: unknown): Promise<unknown> => {
+  const state = stateArg as State;
+  const name = String(payload ?? "").trim();
+  await (resolveFn(state, "setValue") as Fn)(state, "wallet.newName", name);
+  await note(state, `(editing "${name}" — enter the new secret on the right, Enter to save)`);
+  return state;
+};
+
 export const name = "unsafe-wallet" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
@@ -420,6 +430,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["wallet.unlock", unlockHandler],
   ["wallet.set",    setHandler],
   ["wallet.setNamed", setNamedHandler],
+  ["wallet.startEdit", startEditHandler],
   ["wallet.lock",   lockHandler],
   ["wallet.del",    delHandler],
   ["wallet.export", exportHandler],

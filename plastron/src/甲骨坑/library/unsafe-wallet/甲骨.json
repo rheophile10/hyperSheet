@@ -239,6 +239,18 @@
         "kind": "native",
         "description": "dispatch handler for importWallet's file input — writes the picked file to /plastron/wallet.json (locked until unlocked)."
       }
+    },
+    {
+      "key": "wallet.startEdit",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "wallet.startEdit",
+        "segment": "unsafe-wallet",
+        "name": "wallet.startEdit",
+        "kind": "native",
+        "description": "panel ✎: start editing a key — populate the add-key name buffer so the next secret overwrites it"
+      },
+      "locked": true
     }
   ]
 }
