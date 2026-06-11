@@ -481,6 +481,18 @@
         "description": "show + focus a state-cel window (un-close, un-minimize, raise) — taskbar restore"
       },
       "locked": true
+    },
+    {
+      "key": "chat.run",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "chat.run",
+        "segment": "windows",
+        "name": "chat.run",
+        "kind": "native",
+        "description": "(ch, commands) — apply an agent command stream to a chat under withAccessor(chat segment); Layer 1 confines every write to that segment"
+      },
+      "locked": true
     }
   ]
 }

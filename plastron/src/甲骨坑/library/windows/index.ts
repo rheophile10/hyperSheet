@@ -1,5 +1,5 @@
 import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
-import { bindNativeFns, resolveFn } from "../../../kernel/index.js";
+import { bindNativeFns, resolveFn, withAccessor } from "../../../kernel/index.js";
 import { el as makeEl, text as T } from "../dom/index.js";
 import { BG } from "./bg.js";
 import { README_INNER } from "./readme-content.js";
@@ -202,6 +202,9 @@ const frameFn: Fn = ((st: unknown, active: unknown, content: unknown): V => {
     el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
       el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(String(s.title ?? ref))]),
       el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
+        // W — open this window's wiki article (docgraph's wiki.open). A host
+        // without docgraph logs "not registered" on click; nothing breaks.
+        el("button", { class: "pl-wiki-btn", title: "wiki — what is this window?", style: XBTN + ";font-family:Georgia,serif" }, [T("W")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "wiki.open", payload: ref } }),
         el("button", { class: "pl-win-btn", title: "minimize", style: XBTN }, [T("–")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "winx.min", payload: ref } }),
         el("button", { class: "pl-win-btn", title: "maximize", style: XBTN }, [T("⛶")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "winx.max", payload: ref } }),
         el("button", { class: "pl-close-btn", title: "close", style: XBTN + ";color:#d4453e" }, [T("✕")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "winx.close", payload: ref } }),
@@ -292,6 +295,41 @@ const pushMsg = async (state: State, ch: string, m: Msg): Promise<void> => {
   const log = Array.isArray(cur) ? [...cur as Msg[], m] : [m];
   await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, k, log)); await repaint(state);
 };
+// ── agentic loop (capability D) — the LLM may edit ITS chat's segment ─────────
+// The bot can return COMMANDS in a fenced ```plastron block; each runs under
+// withAccessor(<chat segment>), so Layer 1 CONFINES every write to that segment
+// (refused by the kernel, not by trusting the model). The cel KEY is also forced
+// into the chat's prefix — double-confined. Same executor a peer/game would feed.
+const AGENT_PROMPT = "You are in a plastron chat workspace. You MAY edit THIS chat's cels: end your reply with a fenced ```plastron block holding a JSON array of commands — {\"op\":\"cel\",\"key\":\"<name>\",\"value\":<v>} to set a value, {\"op\":\"cel\",\"key\":\"<name>\",\"formula\":\"(+ 1 2)\"} for a formula cel (s-expression: + - * /, cel refs), or {\"op\":\"msg\",\"text\":\"…\"}. Cels are scoped to this chat ONLY. Include the block ONLY when you actually want to change something.\n\n";
+const parseCommands = (reply: string): { clean: string; commands: unknown[] } => {
+  const m = reply.match(/```(?:plastron|cmds|json)?\s*(\[[\s\S]*?\])\s*```/);
+  if (!m) return { clean: reply, commands: [] };
+  let commands: unknown[] = [];
+  try { const j = JSON.parse(m[1]!); if (Array.isArray(j)) commands = j; } catch { /* malformed → ignore */ }
+  return { clean: reply.replace(m[0], "").trim(), commands };
+};
+const chatSegOf = (state: State, ch: string): string => (state.cels.get(`chat.${ch}.log`)?.metadata as { segment?: string } | undefined)?.segment ?? `win.chat-${ch}`;
+const runCommands: Fn = (async (state: State, ch: unknown, commands: unknown): Promise<string[]> => {
+  const channel = String(ch); const seg = chatSegOf(state, channel);
+  const applied: string[] = [];
+  for (const c of (Array.isArray(commands) ? commands : [])) {
+    const cmd = c as { op?: string; key?: string; value?: unknown; formula?: string; text?: string };
+    if (cmd.op === "msg" && cmd.text != null) { await pushMsg(state, channel, { from: channel, text: String(cmd.text) }); applied.push("msg"); continue; }
+    if (cmd.op === "cel" && cmd.key) {
+      const name = String(cmd.key).replace(/[^\w-]/g, "");                  // forced into the chat's prefix — can't escape via the key
+      if (!name) continue;
+      const key = `chat.${channel}.${name}`;
+      const spec = cmd.formula != null
+        ? { celType: "FormulaCel", f: String(cmd.formula), metadata: { segment: seg, name, parser: "f" } }
+        : { celType: "ValueCel", v: cmd.value, metadata: { segment: seg, name } };
+      try { await withAccessor(state, seg, () => Promise.resolve((resolveFn(state, "setCel") as Fn)(state, key, spec))); applied.push(`cel ${name}`); }
+      catch { applied.push(`refused ${name}`); }                            // Layer 1 confined it
+    }
+  }
+  if (applied.length) await repaint(state);
+  return applied;
+}) as Fn;
+
 const chatSend: Fn = (async (state: State, channel: unknown): Promise<void> => {
   const ch = String(channel);
   const text = String(state.cels.get(`chat.${ch}.input`)?.v ?? "").trim();
@@ -300,18 +338,22 @@ const chatSend: Fn = (async (state: State, channel: unknown): Promise<void> => {
   await pushMsg(state, ch, { from: "me", text });
   if (ch === "claude" || ch === "grok") {                 // LLM channels — the bot is a user
     const client = (state.cels.get(`chat.${ch}.client`)?.v ?? state.cels.get(`clients.${ch}`)?.v) as { __client?: boolean } | undefined;  // explicit, else the clients sheet
+    const agentic = !!(state.cels.get(`chat.${ch}.agentic`)?.v);   // opt-in: lets the bot edit this chat's cels
+    const prompt = agentic ? AGENT_PROMPT + text : text;
     let reply = "";
     try {
       if (client && client.__client) {                    // a captured CLIENT cel — the chat never touches the key
-        reply = String(await (resolveFn(state, "client.send") as Fn)(client, text));
+        reply = String(await (resolveFn(state, "client.send") as Fn)(client, prompt));
       } else {                                            // fallback: a raw key cel (pre-client path)
         const key = state.cels.get("chat.key")?.v ?? state.cels.get(`chat.${ch}.key`)?.v ?? "";
         reply = ch === "claude"
-          ? String(await (resolveFn(state, "claude") as Fn)(text, key, ""))
-          : String(await (resolveFn(state, "llm.chat") as Fn)("", text, key, ""));
+          ? String(await (resolveFn(state, "claude") as Fn)(prompt, key, ""))
+          : String(await (resolveFn(state, "llm.chat") as Fn)("", prompt, key, ""));
       }
     } catch (e) { reply = "⚠ " + String((e as { message?: unknown })?.message ?? e); }
-    await pushMsg(state, ch, { from: ch, text: reply });
+    const { clean, commands } = agentic ? parseCommands(reply) : { clean: reply, commands: [] };
+    await pushMsg(state, ch, { from: ch, text: clean });
+    if (commands.length) { const applied = await (runCommands as unknown as (s: State, c: unknown, cmds: unknown) => Promise<string[]>)(state, ch, commands); if (applied.length) await pushMsg(state, ch, { from: "system", text: "✎ " + applied.join("; ") }); }
   } else {                                                // a peer channel — broadcast over shared.*
     try { await (resolveFn(state, "peersend") as Fn)(state, `shared.chat.${ch}`, { from: "me", text }); } catch { /* offline */ }
   }
@@ -373,7 +415,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["winapp", appFn],
   ["readme", readmeFn], ["readmewin", readmewinFn],
   ["desktop", desktopFn], ["desktopbg", desktopbgFn],
-  ["chatui", chatFn], ["chat.send", chatSend], ["chat.key", chatKey], ["chatapp", chatappFn],
+  ["chatui", chatFn], ["chat.send", chatSend], ["chat.key", chatKey], ["chat.run", runCommands], ["chatapp", chatappFn],
   ["winframe", frameFn],
   ["winx.grab", xGrab], ["winx.move", xMove], ["winx.grabResize", xGrabResize], ["winx.resizeMove", xResizeMove], ["winx.drop", xDrop],
   ["winx.raise", xRaise], ["winx.min", xMin], ["winx.max", xMax], ["winx.close", xClose], ["winx.show", xShow], ["winx.stop", xStop],
