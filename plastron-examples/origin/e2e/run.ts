@@ -174,7 +174,7 @@ await withPage('=cels("in",4,3, at("a1","apple"), at("b2","=1+1")) fills cells',
 await withPage("seed() serializes the whole document into one paste-able formula", async (page) => {
   await put(page, '=doc(cels("in",2,2,at("a1","apple"),at("b2","=1+1")), cel("monkey"), def("double","js","x => x * 2"))');
   const seedStr = String(await put(page, "=seed()", "in.A2"));
-  ok(/doc\(/.test(seedStr) && /cels\("in"/.test(seedStr) && /def\("double"/.test(seedStr), `seed() emits a doc(...) (${seedStr.slice(0, 64)}…)`);
+  ok(/segment\(/.test(seedStr) && /cels\("in"/.test(seedStr) && /def\("double"/.test(seedStr), `seed() emits a segment(...) (${seedStr.slice(0, 64)}…)`);
   // paste it into a FRESH page's 元 — the whole app re-materializes
   await page.reload();
   await page.waitForFunction(() => !!(globalThis as { plastron?: unknown }).plastron, { timeout: 8000 });

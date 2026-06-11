@@ -11,7 +11,7 @@
         "description": "cell A1 — the origin cell. holds the readme formula at boot (its rendered output mounts below); a cell whose output renders elsewhere shows its SOURCE here. editable; clear it to restore the readme.",
         "parser": "f"
       },
-      "f": "(甲 (desktop) (readmewin) (chatapp \"claude\" \"Claude\") (winapp \"wallet\" \"Wallet\" \"(domWallet (locked walletNote) (apiKeys))\"))"
+      "f": "(segment (desktop) (readmewin) (chatapp \"claude\" \"Claude\") (winapp \"wallet\" \"Wallet\" \"(domWallet (locked walletNote) (apiKeys))\"))"
     },
     {
       "key": "元.mount",
@@ -760,29 +760,16 @@
       "v": null
     },
     {
-      "key": "seg",
+      "key": "segment",
       "celType": "LockedLambdaCel",
       "locked": true,
       "metadata": {
-        "key": "seg",
+        "key": "segment",
         "segment": "origin",
-        "name": "seg",
+        "name": "segment",
         "kind": "native",
         "genesis": true,
-        "description": "genesis: compose a SEGMENT (document) from cels()/def()/cel()/winapp()/chatapp() parts in one formula. =seg(...) or =甲(...). (was doc.)"
-      }
-    },
-    {
-      "key": "甲",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "甲",
-        "segment": "origin",
-        "name": "甲",
-        "kind": "native",
-        "genesis": true,
-        "description": "genesis: compose a SEGMENT (document) from cels()/def()/cel()/winapp()/chatapp() parts in one formula. =seg(...) or =甲(...). (was doc.)"
+        "description": "genesis: compose a SEGMENT (document) from cels()/winapp()/chatapp()/def()/cel() parts in one formula, e.g. =segment(...). (was doc.)"
       }
     }
   ]
