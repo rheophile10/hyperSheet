@@ -2,6 +2,19 @@
   "name": "windows",
   "cels": [
     {
+      "key": "win",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "win",
+        "segment": "windows",
+        "name": "win",
+        "kind": "native",
+        "genesis": true,
+        "description": "(key, title, content) - make a draggable/resizable window in ONE step (emits the reactive geometry cels + a mounted view). =win(\"w1\",\"Demo\",\"drag my titlebar!\")"
+      },
+      "locked": true
+    },
+    {
       "key": "window",
       "celType": "LockedLambdaCel",
       "metadata": {

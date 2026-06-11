@@ -485,6 +485,24 @@ await withPage("windows — a window renders via mount and drags", async (page) 
   }
 }
 
+// ── windows — one-step =win(...) makes a draggable window (genesis → reactive)
+await withPage("=win(...) makes a draggable window in one step", async (page) => {
+  await page.evaluate(async () => {
+    const { state, resolveFn } = (globalThis as any).plastron;
+    await resolveFn(state, "origin.edit")(state, "\u5143");
+    await resolveFn(state, "setValue")(state, "\u5143.draft", '=win("w1", "Demo", "drag my titlebar")');
+    await resolveFn(state, "origin.commit")(state, "\u5143");
+    await new Promise((r) => setTimeout(r, 160));
+  });
+  ok(await page.$(".pl-window"), "=win rendered a window");
+  const box = await (await page.$(".pl-titlebar"))!.boundingBox();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2); await page.mouse.down();
+  await page.mouse.move(box!.x + box!.width / 2 + 50, box!.y + box!.height / 2 + 30, { steps: 5 }); await page.mouse.up();
+  await page.waitForTimeout(140);
+  const left = await page.$eval(".pl-window", (el: HTMLElement) => el.style.left);
+  ok(left !== "80px", `=win window is draggable (left now ${left}, was 80px)`);
+});
+
 await browser.close();
 console.log(`\n${fails === 0 ? "🟢" : "🔴"} ${passes} passing, ${fails} failing`);
 process.exit(fails === 0 ? 0 : 1);

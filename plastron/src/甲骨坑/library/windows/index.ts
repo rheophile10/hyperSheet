@@ -149,9 +149,26 @@ const toolbarFn: Fn = ((keys: unknown, titles: unknown): V => {
     ks.map((k, i) => el("button", { class: "pl-task", "data-win": k, style: "padding:.25rem .7rem;border:1px solid #8884;border-radius:.3rem;background:Canvas;cursor:pointer;font:600 .78rem ui-monospace,monospace" }, [T(String(ts[i] ?? k))], { click: { dispatch: "win.restore", payload: k } })));
 }) as Fn;
 
+// win(key, title, content) — the ONE-STEP entry: emits a genesis worksheet that
+// seeds the reactive geometry cels (${key}.x/.y/.w/.h/.z/.min) + a mounted view
+// cell whose formula references them — so the window is draggable/resizable out
+// of the box (the geometry must be CELS for the drag to re-render). Origin's
+// drain materializes the {genesis}. =win("w1", "Demo", "drag my titlebar!")
+const winFn: Fn = ((key: unknown, title: unknown, content: unknown): unknown => {
+  const k = String(key ?? "w1");
+  const t = String(title ?? k).replace(/"/g, "'");
+  const c = String(content ?? "").replace(/"/g, "'");
+  const vcel = (name: string, v: unknown): unknown => ({ celType: "ValueCel", v, metadata: { segment: k, name } });
+  return { genesis: true, layer: k, cels: {
+    [`${k}.x`]: vcel("x", 80), [`${k}.y`]: vcel("y", 90), [`${k}.w`]: vcel("w", 340), [`${k}.h`]: vcel("h", 210), [`${k}.z`]: vcel("z", 1), [`${k}.min`]: vcel("min", 0),
+    [`${k}.view`]: { celType: "FormulaCel", f: `(mount ".origin" (window "${k}" ${k}.x ${k}.y ${k}.w ${k}.h "${t}" "${c}" ${k}.z ${k}.min))`, metadata: { segment: k, name: "view", parser: "f" } },
+  } };
+}) as Fn;
+
 export const name = "windows" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
+  ["win", winFn],
   ["window", windowFn],
   ["win.grab", grabFn],
   ["win.move", moveFn],
