@@ -104,35 +104,12 @@
           "vals": [
             "元"
           ],
-          "srcs": "元.srcs"
+          "srcs": "元.srcs",
+          "config": "元.viewConfig"
         },
         "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place."
       },
-      "f": "(originView editing draft mount error keys vals srcs)"
-    },
-    {
-      "key": "originView",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "originView",
-        "segment": "origin",
-        "name": "originView",
-        "kind": "native",
-        "description": "(editing expanded draft mount keys vals) - spreadsheet RenderSpec producer: 元 button + grid() layers as Excel tables + expanded formula panel."
-      }
-    },
-    {
-      "key": "mount",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "mount",
-        "segment": "origin",
-        "name": "mount",
-        "kind": "native",
-        "description": "(target content) - pin a dom under another element of the sheet instead of in the cell that holds it. target is a selector matched against the view: \".sheet\" pins under the cells, \"div.cell\" under the first cell, \"#id\" by id; a bare word (\"top\"/\"bottom\") is a region anchor laid out around the sheet. Deleting the formula removes it."
-      }
+      "f": "(sheetView 元.viewConfig editing draft mount error keys vals srcs)"
     },
     {
       "key": "cel",
@@ -746,6 +723,33 @@
         "description": "host hook called by settleStructural after out-of-band structure materializes — rebuilds 元.cells + repaints"
       },
       "locked": true
+    },
+    {
+      "key": "元.viewConfig",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.viewConfig",
+        "segment": "origin",
+        "name": "元.viewConfig"
+      },
+      "v": {
+        "base": "元",
+        "draftCel": "元.draft",
+        "editHandler": "origin.edit",
+        "keyHandler": "origin.key"
+      }
+    },
+    {
+      "key": "mount",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "mount",
+        "segment": "origin",
+        "name": "mount",
+        "kind": "native",
+        "description": "(target content) - pin a dom under another element of the sheet instead of in the cell that holds it. target is a selector matched against the view: \".sheet\" pins under the cells, \"div.cell\" under the first cell, \"#id\" by id; a bare word (\"top\"/\"bottom\") is a region anchor laid out around the sheet. Deleting the formula removes it."
+      }
     }
   ]
 }

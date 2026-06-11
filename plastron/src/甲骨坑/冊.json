@@ -214,7 +214,8 @@
       "checkpoint",
       "unsafe-wallet",
       "llm",
-      "sqlite"
+      "sqlite",
+      "sheet-host"
     ],
     "role": "application"
   },
@@ -238,6 +239,14 @@
     "description": "in-browser SQLite (sql.js) over OPFS — sqlite.command (open/query, persisted under /plastron/dbs)",
     "dependencies": [
       "file-store"
+    ]
+  },
+  {
+    "name": "sheet-host",
+    "version": "0.0.1",
+    "description": "the spreadsheet view loop (sheetView renderer + mount) as a reusable capability, parameterized over a host view config",
+    "dependencies": [
+      "dom"
     ]
   }
 ]

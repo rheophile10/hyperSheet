@@ -1,0 +1,17 @@
+{
+  "name": "sheet-host",
+  "cels": [
+    {
+      "key": "sheetView",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sheetView",
+        "segment": "sheet-host",
+        "name": "sheetView",
+        "kind": "native",
+        "description": "(editing expanded draft mount keys vals) - spreadsheet RenderSpec producer: 元 button + grid() layers as Excel tables + expanded formula panel."
+      },
+      "locked": true
+    }
+  ]
+}
