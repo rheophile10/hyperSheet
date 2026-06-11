@@ -300,7 +300,7 @@ export {
   hydrate函, dehydrate函,
   wake, sleep, forget,
   registerSegmentLoader, loadSegment, ensureSegments, isSegmentPending,
-  setAccessPolicy, accessPolicyOf, accessPolicyKeyOf,
+  setAccessPolicy, accessPolicyOf, accessPolicyKeyOf, hasDeclaredPolicy,
   canGet, canSet, bundleSegments,
   currentAccessor, withAccessor, isDenied, DENIED,
   validateManifests,

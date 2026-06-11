@@ -4,7 +4,9 @@ import type {
 import {
   bindNativeFns, resolveFn, retireCel, precompute, runCascade, affectedFor,
   appendError, makeCelError, isCelError,
+  setAccessPolicy, hasDeclaredPolicy, DEFAULT_POLICY,
 } from "../../../kernel/index.js";
+import type { AccessPolicy } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -51,6 +53,8 @@ interface GenesisRequest {
   genesis: true;
   layer?: string;
   overwrite?: boolean;
+  access?: Partial<AccessPolicy>;          // minting: the new segment's policy (default public-get/private-set)
+  reassert?: boolean;                      // re-write the policy on every regen (default: write-once)
   cels: Record<Key, CelSpecish>;
 }
 
@@ -84,6 +88,16 @@ const drain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<v
     const owner = generator.metadata.key;
     const segment = req.layer ?? generator.metadata.segment;
     const errors: string[] = [];
+
+    // MINTING: a layer-named genesis mints a SEGMENT — synthesize its access
+    // policy (a 访.<segment> cel) so it's a real closure. Default public-get/
+    // private-set; a generator that knows its boundary (e.g. the wallet) passes
+    // `access`. Write-once (regeneration must not clobber a later-tightened or
+    // bundle-granted policy) unless `reassert`. Undeclared segments stay
+    // unrestricted, so this only adds closures, never breaks existing writers.
+    if (req.layer && (req.reassert || !hasDeclaredPolicy(state, segment))) {
+      setAccessPolicy(state, segment, req.access ?? DEFAULT_POLICY);
+    }
 
     // current owned set
     const owned = new Map<Key, Cel>();
