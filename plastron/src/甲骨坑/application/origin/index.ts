@@ -238,7 +238,9 @@ const cellKeys = (state: State): string[] => {
     const md = c.metadata as { generatedBy?: Key; segment?: string };
     // grid cels (genesis-owned) + cel()-created base cels (c1, c2, …; no dot,
     // origin segment — but not the internal 元.* state cels, which have dots).
-    if (md.generatedBy || (md.segment === "origin" && /^c\d+$/.test(k))) out.push(k);
+    // win.* layer cels (state/content/frame) are first-class desktop cells
+    // even when handler-created (no generatedBy) — e.g. the wiki window.
+    if (md.generatedBy || (md.segment === "origin" && /^c\d+$/.test(k)) || /^win\.[\w-]+\.(state|content|frame)$/.test(k)) out.push(k);
   }
   return [out[0]!, ...out.slice(1).sort()];
 };
