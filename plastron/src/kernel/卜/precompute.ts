@@ -162,12 +162,36 @@ const precomputeBody = (state: State): void => {
   // just walk all cels here than to thread a targeted refresh.
   resolveSchemas(state);
 
-  // Invalidate per-cel runtime caches on fireable cels.
+  // Invalidate per-cel runtime caches. The EXPENSIVE one is _evaluate (a
+  // codegen closure rebuilt by precomputeOptional). A cel's _evaluate captures
+  // its INPUT CEL OBJECTS (via _inputEntries) and reads their VALUES at eval
+  // time — so it stays valid as long as the resolved input objects are the
+  // SAME, even when their values change. The O2 incremental win: recompute
+  // _inputEntries (cheap map lookups), and clear _evaluate ONLY where the
+  // resolved inputs actually changed identity (a cel added/removed/replaced
+  // among this cel's inputs). precomputeOptional then recodegens just those.
+  //
+  // This is a LOCAL per-cel check, not change-analysis — so non-local
+  // structural effects are caught automatically: a range whose member set
+  // shifts re-wires consumers' inputMaps (their _inputEntries then differ), a
+  // binder's new lambda appears in its callers' resolved inputs, cross-segment
+  // edges resolve to new objects. Definition (not input-identity) changes ride
+  // the separate defGeneration recompile. _channelHandlers always clears —
+  // precompute rebuilt the Channel objects above, so cached handlers are dead.
   for (const cel of cels.values()) {
     if (!isFireable(cel)) continue;
-    if (cel._inputEntries    !== undefined) cel._inputEntries    = undefined;
     if (cel._channelHandlers !== undefined) cel._channelHandlers = undefined;
-    if (cel._evaluate        !== undefined) cel._evaluate        = undefined;
+    const inputMap = cel.metadata.inputMap;
+    if (!inputMap) {
+      // No inputs → _evaluate (if any) can't go stale from a graph edit.
+      continue;
+    }
+    const fresh = buildInputEntries(inputMap, cels);
+    if (!inputEntriesEqual(cel._inputEntries, fresh)) {
+      cel._inputEntries = fresh;
+      cel._evaluate = undefined; // resolved inputs changed → recodegen
+    }
+    // else: same input objects → keep _inputEntries AND _evaluate as-is.
   }
 
   state.precomputeGeneration = (state.precomputeGeneration ?? 0) + 1;
@@ -196,6 +220,41 @@ const precomputeBody = (state: State): void => {
 // AND metadata.schema — so definition cels (lambdas, schemas, ranges)
 // are first-class edges and the cascade reaches their consumers with
 // no side-band usage indexes.
+// Resolve an inputMap to its current input cel OBJECTS — the same shape
+// precomputeOptional caches as _inputEntries. Used by precompute's incremental
+// invalidation to compare a cel's resolved inputs against its cached ones.
+type InputEntries = Array<[string, Cel | undefined | Array<Cel | undefined>]>;
+const buildInputEntries = (
+  inputMap: Record<string, Key | Key[]>,
+  cels: Map<Key, Cel>,
+): InputEntries => {
+  const entries: InputEntries = [];
+  for (const [name, ref] of Object.entries(inputMap)) {
+    if (Array.isArray(ref)) entries.push([name, ref.map((k) => cels.get(k))]);
+    else entries.push([name, cels.get(ref)]);
+  }
+  return entries;
+};
+
+// True iff two resolved-input sets capture the SAME cel objects in the same
+// positions (object identity — values are read fresh at eval time, so they
+// don't matter here). Undefined `a` (never built) is never equal.
+const inputEntriesEqual = (a: InputEntries | undefined, b: InputEntries): boolean => {
+  if (a === undefined || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const ai = a[i]!, bi = b[i]!;
+    if (ai[0] !== bi[0]) return false;
+    const av = ai[1], bv = bi[1];
+    const aArr = Array.isArray(av), bArr = Array.isArray(bv);
+    if (aArr !== bArr) return false;
+    if (aArr && bArr) {
+      if (av.length !== bv.length) return false;
+      for (let j = 0; j < av.length; j++) if (av[j] !== bv[j]) return false;
+    } else if (av !== bv) return false;
+  }
+  return true;
+};
+
 const buildChildren = (cels: Map<Key, Cel>): Map<Key, Set<Key>> => {
   const children = new Map<Key, Set<Key>>();
   for (const cel of cels.values()) {

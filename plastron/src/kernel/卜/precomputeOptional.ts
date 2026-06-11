@@ -35,6 +35,14 @@ export const precomputeOptional = async (state: State): Promise<void> => {
       const cel = allCels[j];
       if (!isFireable(cel)) continue;
 
+      // Recodegen only what precompute cleared. precompute keeps a cel's
+      // _inputEntries/_evaluate when its resolved inputs are unchanged, so a
+      // single structural edit re-builds O(affected) closures, not all N.
+      const needsInputs = cel.metadata.inputMap !== undefined && cel._inputEntries === undefined;
+      const needsChannels = (cel.metadata.channel?.length ?? 0) > 0 && cel._channelHandlers === undefined;
+      const needsEval = cel._buildEvaluate !== undefined && cel._evaluate === undefined;
+      if (!needsInputs && !needsChannels && !needsEval) continue;
+
       try {
         const inputMap = cel.metadata.inputMap;
         if (inputMap) {
