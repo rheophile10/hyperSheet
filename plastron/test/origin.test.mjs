@@ -59,20 +59,15 @@ const put = async (state, root, m, src, key = "元") => {
   m.run();
 };
 
-test("boot: 元 holds the readme; it renders below and 元 shows its source", async () => {
-  const { state, root } = await boot();
-  assert.deepEqual(cells(root).map((c) => c.attrs["data-key"]), ["元"], "one cell — 元");
-  assert.equal(state.cels.get("元").v?.__mount, ".origin", "元's value is the readme mount (renders below)");
+test("boot: the desktop renders — the README window + its rich content", async () => {
+  const { state, root, m } = await boot();
+  await resolveFn(state, "origin.commit")(state, "元"); m.run(); // materialize the boot desktop genesis
   const rm = cls(root, "readme");
-  assert.ok(rm, "readme rendered below the sheet");
+  assert.ok(rm, "readme rendered in its window");
   assert.ok(rm.style && Object.keys(rm.style.props).length > 0, "readme carries inline styles");
   assert.match(txt(rm), /this readme is the formula/);
   assert.ok(walk(root, (n) => n.tag === "table" && /(^| )fx( |$)/.test(String(n.attrs?.class ?? "")))[0], "formulas shown in a table");
   assert.ok(walk(root, (n) => n.tag === "a" && String(n.attrs?.href ?? "").includes("github.com"))[0], "repo link present");
-  // 元 (a mounted cell) shows its SOURCE — the readme formula text
-  const src = walk(root, (n) => /(^| )cell-src( |$)/.test(String(n.attrs?.class ?? "")))[0];
-  assert.ok(src, "元 cell shows its source");
-  assert.match(txt(src), /mount/, "the readme formula is visible in 元");
 });
 
 test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restores readme", async () => {
@@ -83,8 +78,7 @@ test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restore
   await put(state, root, m, "7");
   assert.equal(cellVal(root, "元"), "7", "literal renders in A1");
   await put(state, root, m, "");
-  assert.ok(cls(root, "readme"), "empty 元 -> readme back (un-deletable)");
-  assert.equal(state.cels.get("元").v?.__mount, ".origin", "readme restored as a mount");
+  assert.ok(cls(root, "readme"), "empty 元 -> the desktop (readme window) is restored");
 });
 
 test("A1 can render a dom object", async () => {
