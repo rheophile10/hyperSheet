@@ -1,0 +1,95 @@
+{
+  "name": "crypto",
+  "cels": [
+    {
+      "key": "crypto.keygen",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.keygen", "segment": "crypto", "name": "crypto.keygen", "kind": "native", "description": "(kind?) - Tier 1: mint a NON-EXTRACTABLE private key (Ed25519 'sign' default, or P-256 'ecdh' for wrap/unwrap) in the keystore; returns a CryptoKeyHandle (id + public). The private key is never a cel value." },
+      "locked": true
+    },
+    {
+      "key": "crypto.pubkey",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.pubkey", "segment": "crypto", "name": "crypto.pubkey", "kind": "native", "description": "(handle) - the PUBLIC key as a cel-storable base64 string (the keyring's shareable currency)." },
+      "locked": true
+    },
+    {
+      "key": "crypto.sign",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.sign", "segment": "crypto", "name": "crypto.sign", "kind": "native", "description": "(handle, message) - Ed25519 sign; the private key is resolved at the effect site from the keystore, never surfaced. Returns base64 signature." },
+      "locked": true
+    },
+    {
+      "key": "crypto.verify",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.verify", "segment": "crypto", "name": "crypto.verify", "kind": "native", "description": "(publicKeyB64|handle, message, signatureB64) - Ed25519 verify against a public key; returns boolean." },
+      "locked": true
+    },
+    {
+      "key": "crypto.encrypt",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.encrypt", "segment": "crypto", "name": "crypto.encrypt", "kind": "native", "description": "(dataKeyB64, plaintext) - AES-256-GCM encrypt; returns 'ivB64.cipherB64'." },
+      "locked": true
+    },
+    {
+      "key": "crypto.decrypt",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.decrypt", "segment": "crypto", "name": "crypto.decrypt", "kind": "native", "description": "(dataKeyB64, 'ivB64.cipherB64') - AES-256-GCM decrypt; returns the utf8 plaintext." },
+      "locked": true
+    },
+    {
+      "key": "crypto.datakey",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.datakey", "segment": "crypto", "name": "crypto.datakey", "kind": "native", "description": "() - mint a fresh random AES-256-GCM data key (base64 raw bytes) - the per-epoch symmetric key a shared segment wraps to recipients." },
+      "locked": true
+    },
+    {
+      "key": "crypto.wrap",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.wrap", "segment": "crypto", "name": "crypto.wrap", "kind": "native", "description": "(myEcdhHandle, recipientPubB64, dataKeyB64) - ECDH P-256 derive + AES-GCM wrap the data key to a recipient; returns 'ivB64.cipherB64'." },
+      "locked": true
+    },
+    {
+      "key": "crypto.unwrap",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.unwrap", "segment": "crypto", "name": "crypto.unwrap", "kind": "native", "description": "(myEcdhHandle, senderPubB64, 'ivB64.cipherB64') - ECDH P-256 unwrap; returns the data key (base64)." },
+      "locked": true
+    },
+    {
+      "key": "crypto.keys",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.keys", "segment": "crypto", "name": "crypto.keys", "kind": "native", "description": "() - list the keyring as handles (public material only; private keys never surface)." },
+      "locked": true
+    },
+    {
+      "key": "crypto.forget",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.forget", "segment": "crypto", "name": "crypto.forget", "kind": "native", "description": "(handle) - drop a key from the keystore (rotation / revoke); returns whether it existed." },
+      "locked": true
+    },
+    {
+      "key": "crypto.prfAvailable",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.prfAvailable", "segment": "crypto", "name": "crypto.prfAvailable", "kind": "native", "description": "() - Tier 2 probe: is WebAuthn PRF (passkey) available in this host? (browser-only; false in Bun)." },
+      "locked": true
+    },
+    {
+      "key": "crypto.prfWrapKey",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.prfWrapKey", "segment": "crypto", "name": "crypto.prfWrapKey", "kind": "native", "description": "(credentialId?, saltB64?) - Tier 2 SCAFFOLD: derive a wallet-blob wrapping key from a passkey's PRF secret via KDF. Deep integration is a browser e2e follow-up; reports status when PRF is unavailable." },
+      "locked": true
+    },
+    {
+      "key": "crypto.seedExport",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.seedExport", "segment": "crypto", "name": "crypto.seedExport", "kind": "native", "description": "() - Tier 3 RECOVERY ONLY (not login): export a 12-word recovery phrase for account recovery / device migration." },
+      "locked": true
+    },
+    {
+      "key": "crypto.seedImport",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.seedImport", "segment": "crypto", "name": "crypto.seedImport", "kind": "native", "description": "(phrase) - Tier 3 RECOVERY ONLY: validate + import a 12-word recovery phrase (identity re-derivation is the device-migration follow-up)." },
+      "locked": true
+    }
+  ]
+}

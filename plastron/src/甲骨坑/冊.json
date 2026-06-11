@@ -226,6 +226,12 @@
     "dependencies": []
   },
   {
+    "name": "crypto",
+    "version": "0.0.1",
+    "description": "foundational crypto via WebCrypto (zero-dep, Bun + browser): Ed25519 sign/verify, AES-256-GCM encrypt/decrypt, ECDH P-256 wrap/unwrap. The private key is NEVER a cel value — the graph holds a CryptoKeyHandle (id + public); the non-extractable CryptoKey lives in the keystore (IndexedDB in the browser, in-process in Bun) and resolves at the effect site. Tier 2 WebAuthn PRF scaffolded; Tier 3 seed-phrase recovery.",
+    "dependencies": []
+  },
+  {
     "name": "llm",
     "version": "0.0.1",
     "description": "talk to an LLM from a formula — claude() (reactive, wallet-handle keys), over the net gate",
