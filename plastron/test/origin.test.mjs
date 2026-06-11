@@ -153,11 +153,11 @@ test("mount(selector) targets an existing view node (.origin); no match places n
 test("mount(selector, content) splices under any element of the view (e.g. .sheet)", async () => {
   const { state, root, m } = await boot();
   await put(state, root, m, "=cels(3, 3)"); // gives the view a .sheet with cells + a grid
-  await put(state, root, m, '(mount ".sheet" (dom "div.under" "below the cells"))', "g3x3.A1");
-  const sheet = walk(root, (n) => String(n.attrs?.class ?? "") === "sheet")[0];
-  assert.ok(sheet, "the .sheet node rendered");
+  await put(state, root, m, '(mount ".origin" (dom "div.under" "below the cells"))', "g3x3.A1");
+  const sheet = walk(root, (n) => String(n.attrs?.class ?? "") === "origin")[0];
+  assert.ok(sheet, "the .origin desktop rendered");
   const under = walk(sheet, (n) => String(n.attrs?.class ?? "") === "under")[0];
-  assert.ok(under, "the dom is spliced UNDER .sheet, not appended to a region");
+  assert.ok(under, "the dom is spliced UNDER .origin");
   assert.match(txt(under), /below the cells/);
   await put(state, root, m, "", "g3x3.A1"); // clear the formula
   assert.equal(walk(root, (n) => String(n.attrs?.class ?? "") === "under")[0], undefined, "gone with its formula");
@@ -200,9 +200,9 @@ test("inspect into a grid cell keeps its generator stamp; another cell can pin i
   await put(state, root, m, '=inspect("mount")', "g3x3.A1");      // result lands back in A1
   assert.ok(state.cels.get("g3x3.A1").metadata.generatedBy, "A1 still owned by the grid generator");
   // reference A1's yaml from B1 and pin it under .sheet as a <pre>
-  await put(state, root, m, '(mount ".sheet" (dom "pre.pinned" g3x3.A1))', "g3x3.B1");
+  await put(state, root, m, '(mount ".origin" (dom "pre.pinned" g3x3.A1))', "g3x3.B1");
   assert.equal((state.cels.get("errors")?.v ?? []).filter((e) => /generator/.test(String(e.message))).length, 0, "no genesis ownership refusal");
-  const sheet = walk(root, (n) => String(n.attrs?.class ?? "") === "sheet")[0];
+  const sheet = walk(root, (n) => String(n.attrs?.class ?? "") === "origin")[0];
   const pin = walk(sheet, (n) => n.tag === "pre" && /pinned/.test(String(n.attrs?.class ?? "")))[0];
   assert.ok(pin, "the inspect yaml is pinned under .sheet as a <pre>");
   assert.match(txt(pin), /name: mount/, "the pinned pre holds the referenced cell's yaml");
