@@ -31,35 +31,61 @@ export const topoLevels = <T>(
 ): T[][] => {
   const memberSet = options?.memberSet;
   const prefix = options?.cycleMessagePrefix ?? "Dependency cycle";
-  const remaining = new Set<T>(nodes);
-  const upstream = new Map<T, Set<T>>();
-  for (const k of remaining) {
-    const deps = new Set<T>();
+
+  // Kahn's algorithm, level-grouped, O(V+E). A node's in-degree is its count
+  // of DISTINCT in-set upstreams (an upstream outside the node set — or
+  // filtered out by memberSet — is treated as already resolved, matching the
+  // old `remaining.has` semantics; duplicate upstreams collapse via the Set,
+  // as the old `deps` Set did). We process all currently-ready nodes as one
+  // level, decrement each dependent's in-degree, and the dependents that hit
+  // zero form the next level. A node's level is thus 1 + max(level of its
+  // in-set upstreams) — identical leveling to the old O(V·depth) rescan,
+  // without the quadratic.
+  const nodeList: T[] = [...nodes];
+  const inDegree = new Map<T, number>();
+  for (const k of nodeList) inDegree.set(k, 0);
+  const dependents = new Map<T, T[]>(); // upstream → its in-set dependents
+  for (const k of nodeList) {
+    const ups = new Set<T>();
     for (const u of upstreamsOf(k)) {
-      if (memberSet === undefined || memberSet.has(u)) deps.add(u);
+      if (memberSet !== undefined && !memberSet.has(u)) continue;
+      if (!inDegree.has(u)) continue; // upstream not in the node set → resolved
+      ups.add(u);
     }
-    upstream.set(k, deps);
+    inDegree.set(k, ups.size);
+    for (const u of ups) {
+      let dep = dependents.get(u);
+      if (!dep) dependents.set(u, dep = []);
+      dep.push(k);
+    }
   }
+
   const levels: T[][] = [];
-  while (remaining.size > 0) {
-    const ready: T[] = [];
-    for (const k of remaining) {
-      let satisfied = true;
-      for (const d of upstream.get(k)!) {
-        if (remaining.has(d)) { satisfied = false; break; }
-      }
-      if (satisfied) ready.push(k);
-    }
-    if (ready.length === 0) {
-      const cycle = [...remaining];
-      const err = new Error(
-        `${prefix}; remaining: ${cycle.map(String).join(", ")}`,
-      ) as Error & { cycle: T[] };
-      err.cycle = cycle;
-      throw err;
-    }
+  let ready: T[] = nodeList.filter((k) => inDegree.get(k) === 0);
+  let processed = 0;
+  while (ready.length > 0) {
     levels.push(ready);
-    for (const k of ready) remaining.delete(k);
+    processed += ready.length;
+    const next: T[] = [];
+    for (const k of ready) {
+      const deps = dependents.get(k);
+      if (!deps) continue;
+      for (const d of deps) {
+        const nd = inDegree.get(d)! - 1;
+        inDegree.set(d, nd);
+        if (nd === 0) next.push(d);
+      }
+    }
+    ready = next;
+  }
+
+  if (processed < nodeList.length) {
+    const cycle = nodeList.filter((k) => (inDegree.get(k) ?? 0) > 0);
+    const err = new Error(
+      `${prefix}; remaining: ${cycle.map(String).join(", ")}`,
+    ) as Error & { cycle: T[] };
+    err.cycle = cycle;
+    throw err;
   }
   return levels;
 };
