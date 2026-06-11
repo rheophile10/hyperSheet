@@ -1,0 +1,7 @@
+{
+  "name": "xlsx",
+  "cels": [
+    { "key": "xlsximport", "celType": "LockedLambdaCel", "metadata": { "key": "xlsximport", "segment": "xlsx", "name": "xlsximport", "kind": "native", "description": "(base64) - parse .xlsx bytes (base64) into a genesis worksheet of cels (layer 'xlsx'). One sheet, number/string values." }, "locked": true },
+    { "key": "xlsxexport", "celType": "LockedLambdaCel", "metadata": { "key": "xlsxexport", "segment": "xlsx", "name": "xlsxexport", "kind": "native", "description": "(segment?) - serialize a grid segment's value cels (default 元) to a .xlsx file, returned base64. Round-trips with xlsximport." }, "locked": true }
+  ]
+}

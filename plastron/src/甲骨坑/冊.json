@@ -262,5 +262,11 @@
     "version": "0.0.1",
     "description": "WebRTC peer transport — two browsers share a live sheet; remote is setValue-only into an allowlisted namespace, 函 quarantine, no secret exfil",
     "dependencies": []
+  },
+  {
+    "name": "xlsx",
+    "version": "0.0.1",
+    "description": "read/write .xlsx into/out of cels (the Excel I/O on-ramp); minimal hand-rolled ZIP + DEFLATE via Compression/DecompressionStream",
+    "dependencies": []
   }
 ]
