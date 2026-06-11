@@ -114,7 +114,13 @@ export const createPainter = (state: State, opts: PainterOpts = {}): Painter => 
           drawCanvases(target);
         }
       }
-      applyListenerDelta(prev?.listeners, next.listeners, globalReg, state, resolveTarget);
+      // Specs without a listeners array (e.g. window-frame mounts) skip the
+      // global-listener reconciliation entirely — passing undefined through
+      // would throw, and an empty array would wrongly REMOVE the view's
+      // registered listeners under another mount key.
+      if (Array.isArray(next.listeners)) {
+        applyListenerDelta(prev?.listeners, next.listeners, globalReg, state, resolveTarget);
+      }
       lastApplied.set(key, next);
     }
     dirty.clear();

@@ -11,7 +11,7 @@
         "description": "cell A1 — the origin cell. holds the readme formula at boot (its rendered output mounts below); a cell whose output renders elsewhere shows its SOURCE here. editable; clear it to restore the readme.",
         "parser": "f"
       },
-      "f": "(doc (desktop) (readmewin) (chatapp \"claude\" \"Claude\") (winapp \"wallet\" \"Wallet\" \"(domWallet)\"))"
+      "f": "(doc (desktop) (readmewin) (chatapp \"claude\" \"Claude\") (winapp \"wallet\" \"Wallet\" \"(domWallet (locked walletNote) (apiKeys))\"))"
     },
     {
       "key": "元.mount",
