@@ -1,6 +1,7 @@
 import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
 import { bindNativeFns, resolveFn } from "../../../kernel/index.js";
 import { el as makeEl, text as T } from "../dom/index.js";
+import { BG } from "./bg.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -325,12 +326,21 @@ const chatappFn: Fn = ((channel: unknown, title: unknown): unknown => {
   } };
 }) as Fn;
 
+// desktop() — GENESIS: create a desktop.bg cel that mounts a fixed full-screen
+// wallpaper behind the windows. Genesis (not a bare placement) so it composes in
+// the boot doc(). The image ships inline (bg.ts). desktopbg() is the vnode.
+const desktopbgFn: Fn = ((): V => el("div", { class: "desktop-bg", style: `position:fixed;inset:0;z-index:-1;background:#0a1216 url("${BG}") center/cover no-repeat` }, [])) as Fn;
+const desktopFn: Fn = ((): unknown => ({ genesis: true, layer: "desktop", cels: {
+  "desktop.bg": { celType: "FormulaCel", f: `(mount ".origin" (desktopbg))`, metadata: { name: "bg", parser: "f" } },
+} })) as Fn;
+
 export const name = "windows" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["win", winFn],
   ["winmake", makeFn],
   ["winapp", appFn],
+  ["desktop", desktopFn], ["desktopbg", desktopbgFn],
   ["chatui", chatFn], ["chat.send", chatSend], ["chat.key", chatKey], ["chatapp", chatappFn],
   ["winframe", frameFn],
   ["winx.grab", xGrab], ["winx.move", xMove], ["winx.grabResize", xGrabResize], ["winx.resizeMove", xResizeMove], ["winx.drop", xDrop],

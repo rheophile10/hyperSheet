@@ -419,6 +419,31 @@
         "genesis": true
       },
       "locked": true
+    },
+    {
+      "key": "desktop",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "desktop",
+        "segment": "windows",
+        "name": "desktop",
+        "kind": "native",
+        "description": "mount a fixed full-screen wallpaper behind the windows (ships inline). =desktop()",
+        "genesis": true
+      },
+      "locked": true
+    },
+    {
+      "key": "desktopbg",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "desktopbg",
+        "segment": "windows",
+        "name": "desktopbg",
+        "kind": "native",
+        "description": "the wallpaper vnode (mounted by desktop)"
+      },
+      "locked": true
     }
   ]
 }
