@@ -120,6 +120,30 @@
         "description": "stop button press starting a drag"
       },
       "locked": true
+    },
+    {
+      "key": "winsheet.maximize",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.maximize",
+        "segment": "sheet-host",
+        "name": "winsheet.maximize",
+        "kind": "native",
+        "description": "maximize a worksheet window to the viewport"
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.mid",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.mid",
+        "segment": "sheet-host",
+        "name": "winsheet.mid",
+        "kind": "native",
+        "description": "reset a worksheet window to a mid size"
+      },
+      "locked": true
     }
   ]
 }

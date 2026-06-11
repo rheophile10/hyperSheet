@@ -126,8 +126,12 @@ const sheetView: Fn = ((
     const x = gnum(g.x, 40 + i * 34), y = gnum(g.y, 40 + i * 34), w = gnum(g.w, 380), h = gnum(g.h, 260), z = gnum(g.z, 1);
     return el("div", { class: "pl-window", "data-win": seg, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas;box-shadow:0 4px 16px #0004;overflow:hidden` }, [
       el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
-        el("span", {}, [T(seg)]),
-        el("button", { class: "pl-min-btn", style: "border:0;background:transparent;cursor:pointer;font:600 1rem ui-monospace,monospace;padding:0 .35rem;line-height:1" }, [T("–")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.minimize", payload: seg } }),
+        el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(seg)]),
+        el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
+          el("button", { class: "pl-win-btn", title: "mid size", style: "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .28rem;line-height:1" }, [T("◱")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.mid", payload: seg } }),
+          el("button", { class: "pl-win-btn", title: "maximize", style: "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .28rem;line-height:1" }, [T("⛶")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.maximize", payload: seg } }),
+          el("button", { class: "pl-min-btn", title: "minimize", style: "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .28rem;line-height:1" }, [T("–")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.minimize", payload: seg } }),
+        ]),
       ], { pointerdown: { dispatch: "winsheet.grab", payload: seg }, pointermove: { dispatch: "winsheet.move" }, pointerup: { dispatch: "winsheet.drop" } }),
       el("div", { class: "pl-window-body", style: "flex:1 1 auto;overflow:auto;padding:.25rem;min-height:0" }, [table]),
       el("div", { class: "pl-resize", style: "position:absolute;right:0;bottom:0;width:15px;height:15px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" }, [], { pointerdown: { dispatch: "winsheet.grabResize", payload: seg }, pointermove: { dispatch: "winsheet.resizeMove" }, pointerup: { dispatch: "winsheet.drop" } }),
@@ -240,8 +244,13 @@ const sheetView: Fn = ((
   const placements: { sel: string; vnode: V }[] = [];
   for (const k of ks) { const p = asPlacement(valOf.get(k)); if (p) placements.push(p); }
 
-  // .origin is the positioned desktop the windows float on.
-  const originNode = el("div", { class: "origin", style: "position:relative;min-height:90vh;width:100%" }, sections);
+  // taskbar — every worksheet window, click to restore + raise (minimized dimmed).
+  const allWins = [...(base.length ? [BASE] : []), ...[...layers.keys()].filter((seg) => layers.get(seg)!.some((k) => addrOf(k)))];
+  const taskbar = el("div", { class: "pl-taskbar", style: "position:fixed;left:0;right:0;bottom:0;display:flex;gap:.4rem;padding:.3rem .5rem;background:#8881;border-top:1px solid #8883;z-index:99999;overflow-x:auto;align-items:center" },
+    [el("span", { style: "font:600 .72rem ui-monospace,monospace;color:#888;flex:0 0 auto;margin-right:.2rem" }, [T("windows:")]),
+     ...allWins.map((seg) => el("button", { class: "pl-task", "data-win": seg, style: `flex:0 0 auto;padding:.2rem .6rem;border:1px solid #8884;border-radius:.3rem;background:${GM[seg]?.min ? "#8882" : "Canvas"};cursor:pointer;font:600 .76rem ui-monospace,monospace;opacity:${GM[seg]?.min ? ".55" : "1"};white-space:nowrap` }, [T(seg)], { click: { dispatch: "winsheet.restore", payload: seg } }))]);
+  // .origin is the positioned desktop the windows float on; the taskbar pins to the bottom.
+  const originNode = el("div", { class: "origin", style: "position:relative;min-height:90vh;width:100%;padding-bottom:3rem" }, [...sections, taskbar]);
 
   // Splice each placement into the FIRST view node matching its selector.
   // No magic regions: the target must be an element the view actually renders
@@ -281,6 +290,8 @@ const wsDrop: Fn = (async (state: State): Promise<void> => { await setWdrag(stat
 const wsRaise: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), z: ++wTopZ }; await setGeom(state, m); }) as Fn;
 const wsMin: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 1 }; await setGeom(state, m); }) as Fn;
 const wsRestore: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 0, z: ++wTopZ }; await setGeom(state, m); }) as Fn;
+const wsMax: Fn = (async (state: State, seg: unknown): Promise<void> => { const g = globalThis as { innerWidth?: number; innerHeight?: number }; const m = geomMap(state); m[String(seg)] = { x: 0, y: 0, w: wnum(g.innerWidth, 1200), h: Math.max(160, wnum(g.innerHeight, 800) - 46), z: ++wTopZ, min: 0 }; await setGeom(state, m); }) as Fn;
+const wsMid: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { x: 90, y: 70, w: 540, h: 380, z: ++wTopZ, min: 0 }; await setGeom(state, m); }) as Fn;
 const wsStop: Fn = ((_state: State, _p: unknown, event?: WEvt): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
 
 export const name = "sheet-host" as const;
@@ -288,5 +299,5 @@ export const name = "sheet-host" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["sheetView", sheetView],
   ["winsheet.grab", wsGrab], ["winsheet.move", wsMove], ["winsheet.grabResize", wsGrabResize], ["winsheet.resizeMove", wsResizeMove],
-  ["winsheet.drop", wsDrop], ["winsheet.raise", wsRaise], ["winsheet.minimize", wsMin], ["winsheet.restore", wsRestore], ["winsheet.stop", wsStop],
+  ["winsheet.drop", wsDrop], ["winsheet.raise", wsRaise], ["winsheet.minimize", wsMin], ["winsheet.restore", wsRestore], ["winsheet.maximize", wsMax], ["winsheet.mid", wsMid], ["winsheet.stop", wsStop],
 ]));
