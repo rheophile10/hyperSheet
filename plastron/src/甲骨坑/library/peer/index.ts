@@ -27,6 +27,10 @@ interface LogRow { dir: "in" | "out"; k: string; d: string }
 const log: LogRow[] = [];
 const note = (dir: "in" | "out", k: string, d: string): void => { log.push({ dir, k, d }); if (log.length > 500) log.shift(); };
 
+// size caps — a malicious peer can't memory-DoS via a giant key/value or frame.
+const MAX_KEY = 256, MAX_VAL = 64 * 1024, MAX_MSG = 256 * 1024;
+const jsize = (v: unknown): number => { try { return JSON.stringify(v ?? null).length; } catch { return Infinity; } };
+
 const inAllow = (k: string): boolean => allowlist.some((p) => k.startsWith(p));
 const looksSecret = (v: unknown): boolean => !!v && typeof v === "object" && ((v as { __secretHandle?: unknown }).__secretHandle !== undefined || (v as { secretHandle?: unknown }).secretHandle !== undefined);
 const isSecretKey = (state: State, k: string): boolean => looksSecret(state.cels.get(k)?.v);
@@ -54,6 +58,7 @@ const applyFn: Fn = (async (state: State, msg: unknown): Promise<string> => {
   if (m?.t !== "set" || typeof m.k !== "string") d = "dropped:tier";          // (1) setValue-only
   else if (!inAllow(m.k)) d = "dropped:namespace";                            // (2) allowlist
   else if (isSecretKey(state, m.k)) d = "dropped:secret";                     // (4) no exfil into a secret cel
+  else if (m.k.length > MAX_KEY || jsize(m.v) > MAX_VAL) d = "dropped:size";  // (5) size cap (DoS)
   else if (isQuarantined(m.v)) d = "quarantined";                            // (3) 函 quarantine
   else {
     // Data plane only: write an EXISTING ValueCel, or create a fresh ValueCel
@@ -142,7 +147,7 @@ const rtc = (): (new (cfg: unknown) => RtcConn) | undefined => (globalThis as { 
 
 const wire = (state: State, ch: RtcChan): void => {
   ch.onopen = () => { transport = { send: (m: string) => ch.send(m) }; (globalThis as { __peerOpen?: boolean }).__peerOpen = true; };
-  ch.onmessage = (e) => { try { void applyFn(state, JSON.parse(e.data)); } catch { /* malformed frame */ } };
+  ch.onmessage = (e) => { if (typeof e.data !== "string" || e.data.length > MAX_MSG) { note("in", "?", "dropped:size"); return; } try { void applyFn(state, JSON.parse(e.data)); } catch { /* malformed frame */ } };
 };
 const iceDone = (conn: RtcConn): Promise<void> => new Promise<void>((res) => {
   if (conn.iceGatheringState === "complete") return res();

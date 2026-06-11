@@ -67,3 +67,14 @@ test("outbound — broadcast ships only allowed, non-secret, non-executable VALU
   assert.equal(n, 1, "only shared.a ships");
   assert.deepEqual(sent, [{ t: "set", k: "shared.a", v: 1 }]);
 });
+
+test("rule 5 — size cap: an oversized value or key is dropped (DoS guard)", async () => {
+  const s = createInitialState();
+  resolveFn(s, "peerallow")("shared.");
+  const big = "x".repeat(70 * 1024);              // > 64KB value
+  assert.equal(await apply(s, { t: "set", k: "shared.x", v: big }), "dropped:size");
+  assert.equal(await apply(s, { t: "set", k: "shared." + "k".repeat(300), v: 1 }), "dropped:size");
+  assert.equal(val(s, "shared.x"), undefined);
+  // a normal-sized value still applies
+  assert.equal(await apply(s, { t: "set", k: "shared.ok", v: "fine" }), "applied");
+});
