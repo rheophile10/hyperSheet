@@ -120,6 +120,18 @@
         "description": "kernel post-mutation hook: auto-broadcast the shared-namespace keys a host just wrote to the connected peer (makes the sheet live)"
       },
       "locked": true
+    },
+    {
+      "key": "peerjoin",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "peerjoin",
+        "segment": "peer",
+        "name": "peerjoin",
+        "kind": "native",
+        "description": "(room, relayUrl) - automatic signaling via a relay: join a room, the existing member offers + the newcomer answers, all brokered over WebSocket (no SDP copy/paste). Browser-only, 2-peer rooms."
+      },
+      "locked": true
     }
   ]
 }

@@ -184,6 +184,27 @@ const acceptFn: Fn = (async (_state: State, answer: unknown): Promise<string> =>
   return "peer: accepted";
 }) as Fn;
 
+// peerJoin(room, relayUrl) — automatic signaling via a relay (no SDP copy/paste).
+// Connect to the room; when a peer arrives the existing member OFFERS, the
+// newcomer ANSWERS — all brokered over the WebSocket (offer/answer carry
+// non-trickle SDP, so no ICE relay). 2-peer rooms (v1). Browser-only (WebRTC).
+interface WSish { send(m: string): void; onopen: (() => void) | null; onmessage: ((e: { data: string }) => void) | null }
+const joinFn: Fn = ((state: State, room: unknown, relayUrl: unknown): string => {
+  const WS = (globalThis as { WebSocket?: new (u: string) => WSish }).WebSocket;
+  if (!WS) return "(peer: no WebSocket here)";
+  const r = String(room ?? "plastron");
+  const ws = new WS(String(relayUrl ?? "ws://localhost:8787"));
+  ws.onopen = () => ws.send(JSON.stringify({ t: "join", room: r }));
+  ws.onmessage = (e) => {
+    let m: { t?: string; sdp?: string };
+    try { m = JSON.parse(e.data); } catch { return; }
+    if (m.t === "peer-joined") void (offerFn as (s: State) => Promise<string>)(state).then((sdp) => ws.send(JSON.stringify({ t: "offer", sdp })));
+    else if (m.t === "offer") void (answerFn as (s: State, o: unknown) => Promise<string>)(state, m.sdp).then((sdp) => ws.send(JSON.stringify({ t: "answer", sdp })));
+    else if (m.t === "answer") void (acceptFn as (s: State, a: unknown) => Promise<string>)(state, m.sdp);
+  };
+  return `peer: joining "${r}"`;
+}) as Fn;
+
 export const name = "peer" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
@@ -197,4 +218,5 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["peerOffer", offerFn],
   ["peerAnswer", answerFn],
   ["peerAccept", acceptFn],
+  ["peerjoin", joinFn],
 ]));

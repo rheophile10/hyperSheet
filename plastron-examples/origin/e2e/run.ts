@@ -428,6 +428,38 @@ await withPage("windows — a window renders via mount and drags", async (page) 
   }
 }
 
+// ── peer via RELAY — automatic signaling (no SDP copy/paste). An in-process
+// signal-server brokers; two pages peerjoin the same room and connect.
+{
+  console.log("\n▶ peer — relay signaling (peerjoin a room)");
+  const { startSignalServer } = await import("../../signal-server.ts");
+  const relay = startSignalServer(0);
+  const A = await browser.newPage();
+  const B = await browser.newPage();
+  try {
+    for (const p of [A, B]) {
+      await p.goto("file://" + bundle);
+      await p.waitForFunction(() => !!(globalThis as { plastron?: unknown }).plastron, { timeout: 8000 });
+      await p.evaluate(() => { const { state, resolveFn } = (globalThis as any).plastron; return resolveFn(state, "peerallow")("shared."); });
+    }
+    const url = `ws://localhost:${relay.port}`;
+    await A.evaluate((u) => { const { state, resolveFn } = (globalThis as any).plastron; return resolveFn(state, "peerjoin")(state, "room1", u); }, url);
+    await A.waitForTimeout(300);                       // A is the existing member before B arrives
+    await B.evaluate((u) => { const { state, resolveFn } = (globalThis as any).plastron; return resolveFn(state, "peerjoin")(state, "room1", u); }, url);
+    let opened = false;
+    for (let i = 0; i < 24 && !opened; i++) { await A.waitForTimeout(500); opened = await A.evaluate(() => (globalThis as { __peerOpen?: boolean }).__peerOpen === true); }
+    ok(opened, "relay-signaled peers connected (no SDP copy/paste)");
+    await A.evaluate(() => { const { state, resolveFn } = (globalThis as any).plastron; resolveFn(state, "setCel")(state, "shared.r", { celType: "ValueCel", v: 0, metadata: { key: "shared.r", segment: "shared" } }); return resolveFn(state, "setValue")(state, "shared.r", 7); });
+    let got: unknown = null;
+    for (let i = 0; i < 16 && got !== 7; i++) { await B.waitForTimeout(500); got = await B.evaluate(() => (globalThis as any).plastron.state.cels.get("shared.r")?.v ?? null); }
+    ok(got === 7, `B received shared.r=7 over the relay-signaled channel (got ${JSON.stringify(got)})`);
+  } catch (e) {
+    ok(false, `relay e2e threw: ${String(e).slice(0, 160)}`);
+  } finally {
+    await A.close(); await B.close(); relay.stop();
+  }
+}
+
 await browser.close();
 console.log(`\n${fails === 0 ? "🟢" : "🔴"} ${passes} passing, ${fails} failing`);
 process.exit(fails === 0 ? 0 : 1);
