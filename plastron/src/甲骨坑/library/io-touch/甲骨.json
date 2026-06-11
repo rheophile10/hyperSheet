@@ -1,0 +1,9 @@
+{
+  "name": "io-touch",
+  "cels": [
+    { "key": "touch.press", "celType": "LockedLambdaCel", "metadata": { "key": "touch.press", "segment": "io-touch", "name": "touch.press", "kind": "native", "description": "button pointerdown (dispatch): synthesize a keydown for <key> through keys.capture (so keys.pressed/routing behave as for a real key)" }, "locked": true },
+    { "key": "touch.release", "celType": "LockedLambdaCel", "metadata": { "key": "touch.release", "segment": "io-touch", "name": "touch.release", "kind": "native", "description": "button pointerup/cancel (dispatch): synthesize a keyup for <key> through keys.capture" }, "locked": true },
+    { "key": "touchpad", "celType": "LockedLambdaCel", "metadata": { "key": "touchpad", "segment": "io-touch", "name": "touchpad", "kind": "native", "description": "(keys) - an on-screen overlay of hold-buttons; keys=[{label,key}] write keys.pressed via touch.press/release. Doom cannot tell a thumb from a keyboard." }, "locked": true },
+    { "key": "touchcapable", "celType": "LockedLambdaCel", "metadata": { "key": "touchcapable", "segment": "io-touch", "name": "touchcapable", "kind": "native", "description": "() - true on a touch device (maxTouchPoints>0 / ontouchstart). Mount the overlay only when capable." }, "locked": true }
+  ]
+}

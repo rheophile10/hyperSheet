@@ -274,5 +274,14 @@
     "version": "0.0.1",
     "description": "keyboard routing as cels — keys.event/pressed/capture/route; input is source-agnostic data",
     "dependencies": []
+  },
+  {
+    "name": "io-touch",
+    "version": "0.0.1",
+    "description": "mobile input — a virtual-key overlay writing the same io-keys cels (second producer through keys.capture)",
+    "dependencies": [
+      "io-keys",
+      "dom"
+    ]
   }
 ]
