@@ -43,3 +43,16 @@ test("dragging the corner handle resizes (min 120x80)", async () => {
   await move(s, null, { clientX: 100, clientY: 100 }); // clamp
   assert.equal(val(s, "w1.w"), 120); assert.equal(val(s, "w1.h"), 80);
 });
+
+test("z-order: win.raise bumps the window's z above the previously-raised one", async () => {
+  const s = createInitialState();
+  const raise = resolveFn(s, "win.raise");
+  await raise(s, "w1"); const z1 = val(s, "w1.z");
+  await raise(s, "w2"); const z2 = val(s, "w2.z");
+  await raise(s, "w1"); const z1b = val(s, "w1.z");
+  assert.ok(z2 > z1, "w2 raised above w1");
+  assert.ok(z1b > z2, "raising w1 again puts it on top");
+  // the window frame renders the z as z-index
+  const frame = resolveFn(s, "window")("w1", 0, 0, 100, 100, "T", "x", z1b);
+  assert.match(frame.attrs.style, new RegExp(`z-index:${z1b}`));
+});
