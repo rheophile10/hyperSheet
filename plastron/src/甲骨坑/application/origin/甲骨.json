@@ -379,18 +379,6 @@
       }
     },
     {
-      "key": "claude",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "claude",
-        "segment": "origin",
-        "name": "claude",
-        "kind": "native",
-        "description": "(prompt, apiKey [, model]) - ask Anthropic Claude (default claude-fable-5); the reply lands in the cell and re-asks when the prompt cel changes. =claude(chat!A1, setup!B1). Works straight from the browser."
-      }
-    },
-    {
       "key": "cdn",
       "celType": "LockedLambdaCel",
       "locked": true,

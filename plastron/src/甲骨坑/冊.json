@@ -212,7 +212,8 @@
       "dom",
       "plastron-canvas",
       "checkpoint",
-      "unsafe-wallet"
+      "unsafe-wallet",
+      "llm"
     ],
     "role": "application"
   },
@@ -221,5 +222,13 @@
     "version": "0.0.1",
     "description": "network governance gate — wraps fetch, logs traffic (netlog), enforces the host allowlist (netallow); the =fetch verb",
     "dependencies": []
+  },
+  {
+    "name": "llm",
+    "version": "0.0.1",
+    "description": "talk to an LLM from a formula — claude() (reactive, wallet-handle keys), over the net gate",
+    "dependencies": [
+      "net"
+    ]
   }
 ]

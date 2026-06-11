@@ -3,7 +3,7 @@ import type {
 } from "../../../types/index.js";
 import {
   bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError,
-  isSecretHandle, isSecretHandleRef,
+  isSecretHandleRef,
 } from "../../../kernel/index.js";
 // Core rendering comes from the dom LIBRARY — the app doesn't re-roll
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
@@ -717,32 +717,6 @@ const grokFn: Fn = (prompt: unknown, key: unknown, model: unknown) =>
  *  stays put — edit the prompt cel and it asks again. Works straight
  *  from the browser via Anthropic's OpenAI-compatible endpoint + the
  *  CORS opt-in header. Empty prompt/key short-circuit without fetching. */
-const claudeFn: Fn = async (prompt: unknown, key: unknown, model: unknown): Promise<string> => {
-  const p = String(prompt ?? "").trim();
-  // accept a kernel SecretHandle (from apiKey("…")) OR a literal key string /
-  // cel value. The handle keeps the secret out of the graph — resolution
-  // happens HERE, at the effect site, and the secret is never stored.
-  const isHandle = isSecretHandle(key);
-  const k = (isHandle ? String(key.resolve() ?? "") : String(key ?? "")).trim();
-  if (!p) return "(ask something — the reply lands here when the prompt cel has text)";
-  if (isHandle && !k) return `(wallet has no usable "${key.name}" — =unlockWallet(), then =apiKeys())`;
-  if (!k) return "(no api key — put an sk-ant-… key in the key cel, or use key(\"anthropic\") with the wallet)";
-  const res = await fetch("https://api.anthropic.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${k}`,
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: model == null || model === "" ? "claude-fable-5" : String(model),
-      messages: [{ role: "user", content: p }],
-    }),
-  });
-  if (!res.ok) return `(claude ${res.status}: ${(await res.text()).slice(0, 200)})`;
-  const j = await res.json() as { choices?: { message?: { content?: string } }[] };
-  return j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
-};
 /** cdn(url) — load an external script/library from a URL via the kernel's
  *  loadScript primitive. The explicit way external resources enter the page
  *  (e.g. a charting lib, or a self-hosted Pyodide build). */
@@ -1253,7 +1227,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["def",            defFn],
   ["chat",           chatFn],
   ["grok",           grokFn],
-  ["claude",         claudeFn],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],

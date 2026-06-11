@@ -1,0 +1,17 @@
+{
+  "name": "llm",
+  "cels": [
+    {
+      "key": "claude",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "claude",
+        "segment": "llm",
+        "name": "claude",
+        "kind": "native",
+        "description": "(prompt, key [, model]) - ask Claude; the reply becomes the cell value (REACTIVE: edit the prompt to re-ask). key accepts a wallet SecretHandle from apiKey(\"anthropic\") (resolved at the fetch site, never stored) or a literal sk-ant-… string. Default model claude-fable-5. =claude(chat!A1, apiKey(\"anthropic\"))"
+      },
+      "locked": true
+    }
+  ]
+}
