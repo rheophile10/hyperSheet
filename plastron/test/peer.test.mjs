@@ -78,3 +78,19 @@ test("rule 5 — size cap: an oversized value or key is dropped (DoS guard)", as
   // a normal-sized value still applies
   assert.equal(await apply(s, { t: "set", k: "shared.ok", v: "fine" }), "applied");
 });
+
+test("rule 6 — rate limit: a flood of in-cap messages gets throttled (per-State bucket)", async () => {
+  const s = createInitialState();
+  resolveFn(s, "peerallow")("shared.");
+  let dropped = 0, applied = 0;
+  for (let i = 0; i < 280; i++) {                  // > 200 burst → some throttled
+    const d = await apply(s, { t: "set", k: "shared.x", v: i });
+    if (d === "dropped:rate") dropped++; else if (d === "applied") applied++;
+  }
+  assert.ok(dropped > 0, `flood throttled (dropped ${dropped}, applied ${applied})`);
+  assert.ok(applied >= 200, "the burst still got through");
+  // a SEPARATE state has its own full bucket (isolation)
+  const s2 = createInitialState();
+  resolveFn(s2, "peerallow")("shared.");
+  assert.equal(await resolveFn(s2, "peer.apply")(s2, { t: "set", k: "shared.x", v: 1 }), "applied", "fresh state not throttled");
+});
