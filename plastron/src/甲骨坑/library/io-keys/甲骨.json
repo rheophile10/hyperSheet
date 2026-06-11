@@ -1,0 +1,11 @@
+{
+  "name": "io-keys",
+  "cels": [
+    { "key": "keys.event", "celType": "ValueCel", "metadata": { "key": "keys.event", "segment": "io-keys", "name": "keys.event", "description": "the last key event as plain data {type,key,code,mods,editable} — the input stream, observable by anything reactive" }, "v": null },
+    { "key": "keys.pressed", "celType": "ValueCel", "metadata": { "key": "keys.pressed", "segment": "io-keys", "name": "keys.pressed", "description": "the currently-held key set (Record<key,true>) — game-style consumers poll this" }, "v": {} },
+    { "key": "keys.active", "celType": "ValueCel", "metadata": { "key": "keys.active", "segment": "io-keys", "name": "keys.active", "description": "the active app name — keys.route consults keys.map.<active>" }, "v": "" },
+    { "key": "keys.capture", "celType": "LockedLambdaCel", "metadata": { "key": "keys.capture", "segment": "io-keys", "name": "keys.capture", "kind": "native", "description": "the document keydown/keyup handler (dispatch): writes keys.event + keys.pressed, then routes on keydown. Attach via document|keydown|(dispatch \"keys.capture\")." }, "locked": true },
+    { "key": "keys.route", "celType": "LockedLambdaCel", "metadata": { "key": "keys.route", "segment": "io-keys", "name": "keys.route", "kind": "native", "description": "match the event against keys.map.<keys.active> + dispatch the action (first match wins; honors inEditable/mods/preventDefault)" }, "locked": true },
+    { "key": "keys.blur", "celType": "LockedLambdaCel", "metadata": { "key": "keys.blur", "segment": "io-keys", "name": "keys.blur", "kind": "native", "description": "clear keys.pressed (the stuck-key fix on window blur). Attach via window|blur|(dispatch \"keys.blur\")." }, "locked": true }
+  ]
+}

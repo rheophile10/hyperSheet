@@ -30,6 +30,7 @@ import * as sheetHost       from "./甲骨坑/library/sheet-host/index.js";
 import * as windows         from "./甲骨坑/library/windows/index.js";
 import * as peer            from "./甲骨坑/library/peer/index.js";
 import * as xlsx            from "./甲骨坑/library/xlsx/index.js";
+import * as ioKeys          from "./甲骨坑/library/io-keys/index.js";
 import * as segmentStore    from "./甲骨坑/library/segment-store/index.js";
 import * as opfsSeeding     from "./甲骨坑/library/opfs-seeding/index.js";
 import * as cliSegmentExport from "./甲骨坑/library/cli-segment-export/index.js";
@@ -91,6 +92,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "windows":          () => [...windows.cels],
   "peer":             () => [...peer.cels],
   "xlsx":             () => [...xlsx.cels],
+  "io-keys":          () => [...ioKeys.cels],
   "segment-store":    () => [...segmentStore.cels],
   "opfs-seeding":     () => [...opfsSeeding.cels],
   "cli-segment-export": () => [...cliSegmentExport.cels],

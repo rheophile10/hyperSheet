@@ -268,5 +268,11 @@
     "version": "0.0.1",
     "description": "read/write .xlsx into/out of cels (the Excel I/O on-ramp); minimal hand-rolled ZIP + DEFLATE via Compression/DecompressionStream",
     "dependencies": []
+  },
+  {
+    "name": "io-keys",
+    "version": "0.0.1",
+    "description": "keyboard routing as cels — keys.event/pressed/capture/route; input is source-agnostic data",
+    "dependencies": []
   }
 ]
