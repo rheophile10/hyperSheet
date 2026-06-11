@@ -10,6 +10,7 @@ import { resolveSchemas } from "../hydrate/schema.js";
 import { resolveFn } from "../resolve-fn.js";
 import { topoLevels as topoLevelsGeneric } from "./topo.js";
 import { bfsDownstream, celDependencies } from "./graph.js";
+import { resolveInputCel } from "../segments/access.js";
 import { precomputeOptional } from "./precomputeOptional.js";
 import { appendError, makeCelError } from "../cel-error.js";
 
@@ -220,7 +221,7 @@ const precomputeBody = (state: State): void => {
       // No inputs → _evaluate (if any) can't go stale from a graph edit.
       continue;
     }
-    const fresh = buildInputEntries(inputMap, cels);
+    const fresh = buildInputEntries(inputMap, state, cel.metadata.segment);
     if (!inputEntriesEqual(cel._inputEntries, fresh)) {
       cel._inputEntries = fresh;
       cel._evaluate = undefined; // resolved inputs changed → recodegen
@@ -258,14 +259,19 @@ const precomputeBody = (state: State): void => {
 // precomputeOptional caches as _inputEntries. Used by precompute's incremental
 // invalidation to compare a cel's resolved inputs against its cached ones.
 type InputEntries = Array<[string, Cel | undefined | Array<Cel | undefined>]>;
+// GET choke point — resolve each ref through the access gate so a
+// consumer denied read-access to a ref's segment captures the #DENIED
+// sentinel cel (cached per key, so the identity check below stays
+// stable) instead of the real value.
 const buildInputEntries = (
   inputMap: Record<string, Key | Key[]>,
-  cels: Map<Key, Cel>,
+  state: State,
+  accessorSegment: Key,
 ): InputEntries => {
   const entries: InputEntries = [];
   for (const [name, ref] of Object.entries(inputMap)) {
-    if (Array.isArray(ref)) entries.push([name, ref.map((k) => cels.get(k))]);
-    else entries.push([name, cels.get(ref)]);
+    if (Array.isArray(ref)) entries.push([name, ref.map((k) => resolveInputCel(state, accessorSegment, k))]);
+    else entries.push([name, resolveInputCel(state, accessorSegment, ref)]);
   }
   return entries;
 };

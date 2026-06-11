@@ -4,6 +4,7 @@ import type {
 import { isFireable } from "../cels.js";
 import type { PrecomputedIndexes } from "../../types/index.js";
 import { PRECOMPUTED_STATES_KEY } from "./graph.js";
+import { resolveInputCel } from "../segments/access.js";
 
 /** Reserved keys of the csp segment's capability probe cels. Owned
  *  kernel-side — kernel code must not import from 甲骨坑, and per
@@ -46,12 +47,16 @@ export const precomputeOptional = async (state: State): Promise<void> => {
       try {
         const inputMap = cel.metadata.inputMap;
         if (inputMap) {
+          // GET choke point — resolve each ref through the access gate so
+          // a consumer denied read-access to a ref's segment captures the
+          // #DENIED sentinel cel, never the real value.
+          const accessor = cel.metadata.segment;
           const entries: Array<[string, Cel | undefined | Array<Cel | undefined>]> = [];
           for (const [name, ref] of Object.entries(inputMap)) {
             if (Array.isArray(ref)) {
-              entries.push([name, ref.map((k) => cels.get(k))]);
+              entries.push([name, ref.map((k) => resolveInputCel(state, accessor, k))]);
             } else {
-              entries.push([name, cels.get(ref)]);
+              entries.push([name, resolveInputCel(state, accessor, ref)]);
             }
           }
           if (state.precomputeGeneration !== myGen) return;

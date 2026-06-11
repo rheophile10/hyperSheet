@@ -10,6 +10,7 @@ import { hasHooksOrCache as hooked, makeLambdaTrampoline } from "./hooks.js";
 import { resolveFn } from "../resolve-fn.js";
 import { appendError, makeCelError } from "../cel-error.js";
 import { deriveCacheKeysFromInputMap, hasHooksOrCache, runHookedExecution } from "./hooks.js";
+import { resolveInputCel, withAccessor } from "../segments/access.js";
 
 // Route a changed compute cel onto every channel handler. Fast path
 // reads cel._channelHandlers; fallback resolves channels via the
@@ -64,15 +65,18 @@ const resolveInputs = (cel: FireableCel, state: State): Record<string, unknown> 
     return inputs;
   }
   if (cel.metadata.inputMap) {
+    // GET choke point on the slow path (no _inputEntries built yet) —
+    // resolve through the access gate so a denied ref reads #DENIED.
+    const accessor = cel.metadata.segment;
     for (const [name, refKey] of Object.entries(cel.metadata.inputMap)) {
       if (Array.isArray(refKey)) {
         const arr: unknown[] = new Array(refKey.length);
         for (let i = 0; i < refKey.length; i++) {
-          arr[i] = inputValue(state.cels.get(refKey[i]));
+          arr[i] = inputValue(resolveInputCel(state, accessor, refKey[i]!));
         }
         inputs[name] = arr;
       } else {
-        inputs[name] = inputValue(state.cels.get(refKey));
+        inputs[name] = inputValue(resolveInputCel(state, accessor, refKey));
       }
     }
   }
@@ -108,10 +112,13 @@ const recompileStale = async (
   // to the `undefined` we assigned above, but compileCelBody repopulated it.
   const buildEv = (cel as ComputeCel)._buildEvaluate;
   if (buildEv && inputMap) {
+    const accessor = cel.metadata.segment;
     const resolved: ResolvedInputs = {};
     const entries: Array<[string, Cel | undefined | Array<Cel | undefined>]> = [];
     for (const [name, ref] of Object.entries(inputMap)) {
-      const cs = Array.isArray(ref) ? ref.map((k) => state.cels.get(k)) : state.cels.get(ref);
+      const cs = Array.isArray(ref)
+        ? ref.map((k) => resolveInputCel(state, accessor, k))
+        : resolveInputCel(state, accessor, ref);
       resolved[name] = cs;
       entries.push([name, cs]);
     }
@@ -338,7 +345,14 @@ const runCascadeInner = async (
       for (const key of level) {
         if (!affected.has(key)) continue;
         _currentCel = key;                  // provenance (net gate reads it)
-        const r = fireCel(state, key, suppression, changed, recompiled);
+        // Accessor context — the firing cel's segment is the accessor for
+        // any setValue/setCel its evaluation triggers (a handler dispatch).
+        // Sync window only, like _currentCel; an async cel initiates its IO
+        // here. resolveInputCel attributes ITS reads statically per cel, so
+        // the gate doesn't depend on this stack.
+        const seg = state.cels.get(key)?.metadata.segment;
+        const r = withAccessor(state, seg, () =>
+          fireCel(state, key, suppression, changed, recompiled));
         _currentCel = undefined;
         if (r instanceof Promise) {
           if (!promises) promises = [];

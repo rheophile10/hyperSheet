@@ -89,9 +89,14 @@ export {
   computeKernelClosure, kernelClosureOf, segmentMap, topologicalDependentOrder,
   registerSegmentLoader, loadSegment, ensureSegments, isSegmentPending,
   assertOneDirection, specTouchesEdges,
+  accessPolicyOf, setAccessPolicy, accessPolicyKeyOf, hasDeclaredPolicy,
+  canGet, canSet, bundleSegments, ACCESS_BUNDLES_KEY,
+  currentAccessor, withAccessor,
+  resolveInputCel, deniedCel, isDenied, DENIED, DEFAULT_POLICY,
   installDormant, dormantSegmentOf, dormantView, assertNotDormant,
   flush, wake, sleep, forget,
 } from "./segments/index.js";
+export type { AccessPolicy, AccessList } from "./segments/index.js";
 export type { SegmentSink, SleepOptions, ForgetOptions } from "./segments/index.js";
 
 // ── reserved cel keys + range notation ── kernel-owned constants,

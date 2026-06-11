@@ -15,6 +15,13 @@ export {
 } from "./load.js";
 export { assertOneDirection, specTouchesEdges } from "./edge-rule.js";
 export {
+  accessPolicyOf, setAccessPolicy, accessPolicyKeyOf, hasDeclaredPolicy,
+  canGet, canSet, bundleSegments, ACCESS_BUNDLES_KEY,
+  currentAccessor, withAccessor,
+  resolveInputCel, deniedCel, isDenied, DENIED, DEFAULT_POLICY,
+} from "./access.js";
+export type { AccessPolicy, AccessList } from "./access.js";
+export {
   installDormant, dormantSegmentOf, dormantView, assertNotDormant,
 } from "./dormant.js";
 export { flush } from "./flush.js";

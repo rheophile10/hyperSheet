@@ -45,6 +45,7 @@ import * as checkpoint      from "./甲骨坑/library/checkpoint/index.js";
 import * as plastronCanvas  from "./甲骨坑/library/plastron-canvas/index.js";
 import * as unsafeWallet    from "./甲骨坑/library/unsafe-wallet/index.js";
 import * as net             from "./甲骨坑/library/net/index.js";
+import * as cryptoLib       from "./甲骨坑/library/crypto/index.js";
 import * as llm             from "./甲骨坑/library/llm/index.js";
 import * as sqlite          from "./甲骨坑/library/sqlite/index.js";
 import * as domWallet       from "./甲骨坑/library/dom-wallet/index.js";
@@ -109,6 +110,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "plastron-canvas":  () => [...plastronCanvas.cels],
   "unsafe-wallet":    () => [...unsafeWallet.cels],
   "net":              () => [...net.cels],
+  "crypto":           () => [...cryptoLib.cels],
   "llm":              () => [...llm.cels],
   "sqlite":           () => [...sqlite.cels],
   "dom-wallet":       () => [...domWallet.cels],
@@ -298,6 +300,9 @@ export {
   hydrate函, dehydrate函,
   wake, sleep, forget,
   registerSegmentLoader, loadSegment, ensureSegments, isSegmentPending,
+  setAccessPolicy, accessPolicyOf, accessPolicyKeyOf,
+  canGet, canSet, bundleSegments,
+  currentAccessor, withAccessor, isDenied, DENIED,
   validateManifests,
   celDependencies, dependentsOf, downstreamOf, upstreamOf,
   celAt, valueAt, valuesInRange, neighborsOf,
