@@ -15,8 +15,8 @@ const genesisFlush = async (state) => {
 
 const bootTwoGrids = async () => {
   const state = createInitialState();
-  await seedUser(state, "makerG", { celType: "FormulaCel", f: '(grid 3 2 "g")' });
-  await seedUser(state, "makerH", { celType: "FormulaCel", f: '(grid 2 2 "h")' });
+  await seedUser(state, "makerG", { celType: "FormulaCel", f: '(cels 3 2 "g")' });
+  await seedUser(state, "makerH", { celType: "FormulaCel", f: '(cels 2 2 "h")' });
   await resolveFn(state, "runCycle")(state);
   await genesisFlush(state);
   const set = resolveFn(state, "setValue");
