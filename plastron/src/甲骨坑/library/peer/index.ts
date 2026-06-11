@@ -19,6 +19,7 @@ import seed from "./甲骨.json" with { type: "json" };
 
 interface Transport { send: (msg: string) => void }
 let transport: Transport | null = null;       // null until a peer connects
+let applying = false;                         // true while applying an INBOUND write — suppresses the echo re-broadcast (A→B→A loop guard)
 
 // Module-scope governance state (mirrors net's allowlist/log pattern).
 let allowlist: string[] = ["shared."];        // shared namespaces; default-deny outside
@@ -62,8 +63,14 @@ const applyFn: Fn = (async (state: State, msg: unknown): Promise<string> => {
     // refuse (structure stays local).
     const existing = state.cels.get(m.k);
     if (existing && existing.celType !== "ValueCel") d = "dropped:tier";
-    else if (existing) { await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, m.k, m.v)); d = "applied"; }
-    else { await Promise.resolve((resolveFn(state, "setCel") as Fn)(state, m.k, { celType: "ValueCel", v: m.v, metadata: { key: m.k, segment: "peer" } })); d = "applied"; }
+    else {
+      applying = true;   // suppress the echo: this write must NOT re-broadcast
+      try {
+        if (existing) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, m.k, m.v));
+        else await Promise.resolve((resolveFn(state, "setCel") as Fn)(state, m.k, { celType: "ValueCel", v: m.v, metadata: { key: m.k, segment: "peer" } }));
+      } finally { applying = false; }
+      d = "applied";
+    }
   }
   note("in", typeof m?.k === "string" ? m.k : "", d);
   return d;
@@ -72,7 +79,7 @@ const applyFn: Fn = (async (state: State, msg: unknown): Promise<string> => {
 // peer.broadcast — outbound: filter changed keys to the shared namespace, ship
 // each cel's VALUE (never structure, never an executable shape, never a secret).
 const broadcastFn: Fn = ((state: State, changed: unknown): number => {
-  if (!transport) return 0;
+  if (!transport || applying) return 0;       // no peer, or mid-inbound-apply (echo guard)
   const keys = Array.isArray(changed) ? changed.map(String) : [];
   let n = 0;
   for (const k of keys) {
@@ -177,6 +184,7 @@ export const name = "peer" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["peer.apply", applyFn],
   ["peer.broadcast", broadcastFn],
+  ["cascade.observe", broadcastFn],
   ["peer.connect", connectFn],
   ["peersend", sendFn],
   ["peerallow", allowFn],

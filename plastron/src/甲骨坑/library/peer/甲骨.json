@@ -1,14 +1,125 @@
 {
   "name": "peer",
   "cels": [
-    { "key": "peer.apply", "celType": "LockedLambdaCel", "metadata": { "key": "peer.apply", "segment": "peer", "name": "peer.apply", "kind": "native", "description": "the security core (dispatch): validate an inbound remote message against the 4 rules (setValue-only, namespace allowlist, 函 quarantine, no secret exfil) + setValue if it passes. Returns the decision." }, "locked": true },
-    { "key": "peer.broadcast", "celType": "LockedLambdaCel", "metadata": { "key": "peer.broadcast", "segment": "peer", "name": "peer.broadcast", "kind": "native", "description": "outbound (dispatch): ship the VALUES of changed cels in the shared namespace to the peer (never structure/executable/secret shapes)." }, "locked": true },
-    { "key": "peer.connect", "celType": "LockedLambdaCel", "metadata": { "key": "peer.connect", "segment": "peer", "name": "peer.connect", "kind": "native", "description": "install a transport ({send} — a fake channel in tests, an RTCDataChannel wrapper in the browser)." }, "locked": true },
-    { "key": "peersend", "celType": "LockedLambdaCel", "metadata": { "key": "peersend", "segment": "peer", "name": "peersend", "kind": "native", "description": "(key, value) - explicit share: setValue locally + broadcast to the peer. Demo shim until automatic sync rides the post-cascade seam." }, "locked": true },
-    { "key": "peerallow", "celType": "LockedLambdaCel", "metadata": { "key": "peerallow", "segment": "peer", "name": "peerallow", "kind": "native", "description": "([prefix, …]) - the shared-namespace allowlist (default [\"shared.\"]); remote writes outside it are dropped. =peerallow(\"*\") denies all. No args shows the policy." }, "locked": true },
-    { "key": "peerlog", "celType": "LockedLambdaCel", "metadata": { "key": "peerlog", "segment": "peer", "name": "peerlog", "kind": "native", "description": "() - the peer wiretap: inbound/outbound messages + the gate's decision for each." }, "locked": true },
-    { "key": "peerOffer", "celType": "LockedLambdaCel", "metadata": { "key": "peerOffer", "segment": "peer", "name": "peerOffer", "kind": "native", "description": "() - WebRTC: mint an SDP offer (copy it to the other browser). Browser-only." }, "locked": true },
-    { "key": "peerAnswer", "celType": "LockedLambdaCel", "metadata": { "key": "peerAnswer", "segment": "peer", "name": "peerAnswer", "kind": "native", "description": "(offer) - WebRTC: accept an offer, return the answer (copy back to the offerer). Browser-only." }, "locked": true },
-    { "key": "peerAccept", "celType": "LockedLambdaCel", "metadata": { "key": "peerAccept", "segment": "peer", "name": "peerAccept", "kind": "native", "description": "(answer) - WebRTC: finalize the connection on the offerer side; the data channel opens. Browser-only." }, "locked": true }
+    {
+      "key": "peer.apply",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "peer.apply",
+        "segment": "peer",
+        "name": "peer.apply",
+        "kind": "native",
+        "description": "the security core (dispatch): validate an inbound remote message against the 4 rules (setValue-only, namespace allowlist, 函 quarantine, no secret exfil) + setValue if it passes. Returns the decision."
+      },
+      "locked": true
+    },
+    {
+      "key": "peer.broadcast",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "peer.broadcast",
+        "segment": "peer",
+        "name": "peer.broadcast",
+        "kind": "native",
+        "description": "outbound (dispatch): ship the VALUES of changed cels in the shared namespace to the peer (never structure/executable/secret shapes)."
+      },
+      "locked": true
+    },
+    {
+      "key": "peer.connect",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "peer.connect",
+        "segment": "peer",
+        "name": "peer.connect",
+        "kind": "native",
+        "description": "install a transport ({send} — a fake channel in tests, an RTCDataChannel wrapper in the browser)."
+      },
+      "locked": true
+    },
+    {
+      "key": "peersend",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "peersend",
+        "segment": "peer",
+        "name": "peersend",
+        "kind": "native",
+        "description": "(key, value) - explicit share: setValue locally + broadcast to the peer. Demo shim until automatic sync rides the post-cascade seam."
+      },
+      "locked": true
+    },
+    {
+      "key": "peerallow",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "peerallow",
+        "segment": "peer",
+        "name": "peerallow",
+        "kind": "native",
+        "description": "([prefix, …]) - the shared-namespace allowlist (default [\"shared.\"]); remote writes outside it are dropped. =peerallow(\"*\") denies all. No args shows the policy."
+      },
+      "locked": true
+    },
+    {
+      "key": "peerlog",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "peerlog",
+        "segment": "peer",
+        "name": "peerlog",
+        "kind": "native",
+        "description": "() - the peer wiretap: inbound/outbound messages + the gate's decision for each."
+      },
+      "locked": true
+    },
+    {
+      "key": "peerOffer",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "peerOffer",
+        "segment": "peer",
+        "name": "peerOffer",
+        "kind": "native",
+        "description": "() - WebRTC: mint an SDP offer (copy it to the other browser). Browser-only."
+      },
+      "locked": true
+    },
+    {
+      "key": "peerAnswer",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "peerAnswer",
+        "segment": "peer",
+        "name": "peerAnswer",
+        "kind": "native",
+        "description": "(offer) - WebRTC: accept an offer, return the answer (copy back to the offerer). Browser-only."
+      },
+      "locked": true
+    },
+    {
+      "key": "peerAccept",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "peerAccept",
+        "segment": "peer",
+        "name": "peerAccept",
+        "kind": "native",
+        "description": "(answer) - WebRTC: finalize the connection on the offerer side; the data channel opens. Browser-only."
+      },
+      "locked": true
+    },
+    {
+      "key": "cascade.observe",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "cascade.observe",
+        "segment": "peer",
+        "name": "cascade.observe",
+        "kind": "native",
+        "description": "kernel post-mutation hook: auto-broadcast the shared-namespace keys a host just wrote to the connected peer (makes the sheet live)"
+      },
+      "locked": true
+    }
   ]
 }

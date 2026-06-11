@@ -3,7 +3,18 @@ import type { SetOpts } from "../../types/index.js";
 import { isDataCel } from "../cels.js";
 import { affectedFor, runCascade } from "../卜/runCycle.js";
 import { settleStructural } from "./settle.js";
+import { resolveFn } from "../resolve-fn.js";
 import { precompute } from "../卜/precompute.js";
+
+// Post-mutation observer hook. A host capability (the p2p peer transport) can
+// register "cascade.observe" to react to the keys a host just WROTE (the seed
+// keys, not derived cascade values — a remote recomputes its own derived). No
+// observer registered → skipped (zero cost beyond a registry lookup). An
+// observer error must never break the write.
+const observeMutation = (state: State, keys: Key[]): void => {
+  const obs = resolveFn(state, "cascade.observe") as Fn | undefined;
+  if (obs) { try { void obs(state, keys); } catch { /* observer is best-effort */ } }
+};
 import { compileCelBody } from "../hydrate/formula.js";
 import { flushChannels } from "./flush-channels.js";
 import { assertNotDormant, dormantSegmentOf, dormantView } from "../segments/dormant.js";
@@ -94,6 +105,7 @@ export const setValue: Fn = async (
   if (topoChanged) precompute(state);
   await runCascade(state, affectedFor(state, [key]), new Set([key]));
   await settleStructural(state);
+  observeMutation(state, [key]);
   if (opts?.flush) await flushChannels(state, opts.flush);
   return state;
 };
@@ -114,6 +126,7 @@ export const setValueBatch: Fn = async (
   if (topoChanged) precompute(state);
   await runCascade(state, affectedFor(state, firedKeys), new Set(firedKeys));
   await settleStructural(state);
+  observeMutation(state, firedKeys);
   if (opts?.flush) await flushChannels(state, opts.flush);
   return state;
 };

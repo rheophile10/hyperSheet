@@ -378,13 +378,23 @@ await withPage("=def(py) + call works via Pyodide", async (page) => {
     let opened = false;
     for (let i = 0; i < 16 && !opened; i++) { await A.waitForTimeout(500); opened = await A.evaluate(() => (globalThis as { __peerOpen?: boolean }).__peerOpen === true); }
     ok(opened, "A's WebRTC data channel opened (ICE connected)");
-    // A shares a clean value (should cross) + an executable one (should NOT)
-    await A.evaluate(() => { const { state, resolveFn } = (globalThis as any).plastron; resolveFn(state, "peersend")(state, "shared.x", 42); resolveFn(state, "peersend")(state, "shared.evil", { defn: true }); });
+    // AUTO-SYNC: a plain setValue to a shared cel propagates — no explicit peersend.
+    await A.evaluate(() => { const { state, resolveFn } = (globalThis as any).plastron; resolveFn(state, "setCel")(state, "shared.x", { celType: "ValueCel", v: 0, metadata: { key: "shared.x", segment: "shared" } }); });
+    await A.evaluate(() => { const { state, resolveFn } = (globalThis as any).plastron; return resolveFn(state, "setValue")(state, "shared.x", 42); });
     let got: unknown = null;
     for (let i = 0; i < 16 && got !== 42; i++) { await B.waitForTimeout(500); got = await B.evaluate(() => (globalThis as any).plastron.state.cels.get("shared.x")?.v ?? null); }
-    ok(got === 42, `B received shared.x=42 over WebRTC (got ${JSON.stringify(got)})`);
+    ok(got === 42, `B received shared.x=42 via AUTO-SYNC, no peersend (got ${JSON.stringify(got)})`);
+    // BIDIRECTIONAL + ECHO GUARD: B edits, A receives; if the echo looped this
+    // would storm — instead both converge to 99.
+    await B.evaluate(() => { const { state, resolveFn } = (globalThis as any).plastron; return resolveFn(state, "setValue")(state, "shared.x", 99); });
+    let back: unknown = null;
+    for (let i = 0; i < 16 && back !== 99; i++) { await A.waitForTimeout(500); back = await A.evaluate(() => (globalThis as any).plastron.state.cels.get("shared.x")?.v ?? null); }
+    ok(back === 99, `A received B's edit shared.x=99 (bidirectional, no echo storm) (got ${JSON.stringify(back)})`);
+    // QUARANTINE over the wire: an executable value never crosses.
+    await A.evaluate(() => { const { state, resolveFn } = (globalThis as any).plastron; resolveFn(state, "setCel")(state, "shared.evil", { celType: "ValueCel", v: 0, metadata: { key: "shared.evil", segment: "shared" } }); return resolveFn(state, "setValue")(state, "shared.evil", { defn: true }); });
+    await A.waitForTimeout(1500);
     const evil = await B.evaluate(() => (globalThis as any).plastron.state.cels.get("shared.evil")?.v ?? null);
-    ok(evil === null, "B did NOT receive the executable value (outbound quarantine holds over the wire)");
+    ok(evil === null, "B did NOT receive the executable value (quarantine holds over the wire)");
     ok(errs.length === 0, `no console/page errors${errs.length ? ` (${errs.slice(0, 2).join(" | ")})` : ""}`);
   } catch (e) {
     ok(false, `peer e2e threw: ${String(e).slice(0, 160)}`);
