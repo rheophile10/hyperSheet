@@ -256,12 +256,82 @@ const appFn: Fn = ((id: unknown, title: unknown, contentSource: unknown): unknow
   } };
 }) as Fn;
 
+// ── generic chat app ─────────────────────────────────────────────────────────
+// One chat UI; the OTHER party (claude, grok, a peer) is just a "user". Messages
+// live in chat.<channel>.log; chat.send appends your line, then for an LLM
+// channel appends the assistant's reply, for a peer channel broadcasts it.
+interface Msg { from?: string; text?: string }
+const chatFn: Fn = ((channel: unknown, log: unknown, input: unknown): V => {
+  const ch = String(channel ?? "chat");
+  const msgs: Msg[] = Array.isArray(log) ? log as Msg[] : [];
+  const inputVal = input == null ? "" : String(input);
+  return el("div", { class: "chat", style: "display:flex;flex-direction:column;height:100%;gap:.4rem" }, [
+    el("div", { class: "chat-log", style: "flex:1 1 auto;overflow:auto;display:flex;flex-direction:column;gap:.35rem;padding:.2rem" }, msgs.map((m) => {
+      const from = String(m?.from ?? "?"), me = from === "me";
+      return el("div", { style: `align-self:${me ? "flex-end" : "flex-start"};max-width:82%;padding:.3rem .55rem;border-radius:.6rem;background:${me ? "#4a90d9" : "#8883"};color:${me ? "white" : "CanvasText"};font-size:.85rem;white-space:pre-wrap` }, [
+        el("div", { style: "font-size:.62rem;opacity:.65;margin-bottom:.1rem" }, [T(from)]),
+        T(String(m?.text ?? "")),
+      ]);
+    })),
+    el("div", { style: "flex:0 0 auto;display:flex;gap:.3rem" }, [
+      el("input", { class: "chat-input", value: inputVal, placeholder: `message ${ch}…`, style: "flex:1;padding:.35rem .5rem;border:1px solid #8884;border-radius:.4rem;font-size:.85rem;background:Canvas;color:CanvasText" }, [], { input: { set: `chat.${ch}.input`, extract: "value" }, keydown: { dispatch: "chat.key", payload: ch } }),
+      el("button", { style: "padding:.35rem .8rem;border:1px solid #8884;border-radius:.4rem;cursor:pointer;font-size:.85rem;background:#8881;color:CanvasText" }, [T("send")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "chat.send", payload: ch } }),
+    ]),
+  ]);
+}) as Fn;
+
+const pushMsg = async (state: State, ch: string, m: Msg): Promise<void> => {
+  const k = `chat.${ch}.log`; const cur = state.cels.get(k)?.v;
+  const log = Array.isArray(cur) ? [...cur as Msg[], m] : [m];
+  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, k, log)); await repaint(state);
+};
+const chatSend: Fn = (async (state: State, channel: unknown): Promise<void> => {
+  const ch = String(channel);
+  const text = String(state.cels.get(`chat.${ch}.input`)?.v ?? "").trim();
+  if (!text) return;
+  await Promise.resolve((resolveFn(state, "setValueBatch") as Fn)(state, [[`chat.${ch}.input`, ""]]));
+  await pushMsg(state, ch, { from: "me", text });
+  if (ch === "claude" || ch === "grok") {                 // LLM channels — the bot is a user
+    const key = state.cels.get("chat.key")?.v ?? state.cels.get(`chat.${ch}.key`)?.v ?? "";
+    let reply = "";
+    try {
+      reply = ch === "claude"
+        ? String(await (resolveFn(state, "claude") as Fn)(text, key, ""))
+        : String(await (resolveFn(state, "llm.chat") as Fn)("", text, key, ""));
+    } catch (e) { reply = "⚠ " + String((e as { message?: unknown })?.message ?? e); }
+    await pushMsg(state, ch, { from: ch, text: reply });
+  } else {                                                // a peer channel — broadcast over shared.*
+    try { await (resolveFn(state, "peersend") as Fn)(state, `shared.chat.${ch}`, { from: "me", text }); } catch { /* offline */ }
+  }
+}) as Fn;
+const chatKey: Fn = (async (state: State, channel: unknown, event?: { key?: string; preventDefault?: () => void }): Promise<void> => {
+  if (event?.key === "Enter") { try { event.preventDefault?.(); } catch { /* */ } await (chatSend as unknown as (s: State, c: unknown) => Promise<void>)(state, channel); }
+}) as Fn;
+
+// chatapp(channel, title) — a chat WINDOW: seeds the log/input + a winframe whose
+// content is (chat channel …). =chatapp("claude","Claude") / chatapp("grok","Grok").
+const chatappFn: Fn = ((channel: unknown, title: unknown): unknown => {
+  const ch = String(channel ?? "chat");
+  const lay = `win.chat-${ch}`, sref = `${lay}.state`;
+  let hsh = 0; for (const c of ch) hsh = (hsh * 31 + c.charCodeAt(0)) >>> 0;
+  const dx = 70 + (hsh % 6) * 50, dy = 60 + (hsh % 4) * 44;
+  const t = String(title ?? ch).replace(/"/g, "'");
+  return { genesis: true, layer: lay, cels: {
+    [`chat.${ch}.log`]: { celType: "ValueCel", v: [], metadata: { name: "log" } },
+    [`chat.${ch}.input`]: { celType: "ValueCel", v: "", metadata: { name: "input" } },
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: dx, y: dy, w: 360, h: 460, z: 1, min: 0, max: 0, closed: 0, title: t }, metadata: { name: "state" } },
+    [`${lay}.content`]: { celType: "FormulaCel", f: `(chatui "${ch}" chat.${ch}.log chat.${ch}.input)`, metadata: { name: "content", parser: "f" } },
+    [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${lay}.content))`, metadata: { name: "frame", parser: "f" } },
+  } };
+}) as Fn;
+
 export const name = "windows" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["win", winFn],
   ["winmake", makeFn],
   ["winapp", appFn],
+  ["chatui", chatFn], ["chat.send", chatSend], ["chat.key", chatKey], ["chatapp", chatappFn],
   ["winframe", frameFn],
   ["winx.grab", xGrab], ["winx.move", xMove], ["winx.grabResize", xGrabResize], ["winx.resizeMove", xResizeMove], ["winx.drop", xDrop],
   ["winx.raise", xRaise], ["winx.min", xMin], ["winx.max", xMax], ["winx.close", xClose], ["winx.stop", xStop],

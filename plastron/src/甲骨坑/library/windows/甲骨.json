@@ -370,6 +370,55 @@
         "genesis": true,
         "description": "(id, title, contentSource) — create a window backed by a state cel whose content is a FORMULA (win.<id>.content). Mounts a real app: =winapp(\"wallet\",\"Wallet\",\"(domWallet)\")"
       }
+    },
+    {
+      "key": "chatui",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "chatui",
+        "segment": "windows",
+        "name": "chatui",
+        "kind": "native",
+        "description": "(channel, log, input) — generic chat UI; the other party (claude/grok/peer) is just a user"
+      },
+      "locked": true
+    },
+    {
+      "key": "chat.send",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "chat.send",
+        "segment": "windows",
+        "name": "chat.send",
+        "kind": "native",
+        "description": "send the chat input; appends your line then the LLM reply (or broadcasts to a peer)"
+      },
+      "locked": true
+    },
+    {
+      "key": "chat.key",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "chat.key",
+        "segment": "windows",
+        "name": "chat.key",
+        "kind": "native",
+        "description": "Enter in the chat input sends"
+      },
+      "locked": true
+    },
+    {
+      "key": "chatapp",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "chatapp",
+        "segment": "windows",
+        "name": "chatapp",
+        "kind": "native",
+        "description": "(channel, title) — a chat WINDOW: seeds log/input + a winframe of (chat …). =chatapp(\"claude\",\"Claude\")",
+        "genesis": true
+      },
+      "locked": true
     }
   ]
 }
