@@ -179,6 +179,18 @@
         "description": "(keys, titles) - a taskbar of open windows; click a chip to restore+raise. Pass win.list + the titles."
       },
       "locked": true
+    },
+    {
+      "key": "win.stop",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "win.stop",
+        "segment": "windows",
+        "name": "win.stop",
+        "kind": "native",
+        "description": "pointerdown handler (dispatch): stop a titlebar button press from starting a window drag"
+      },
+      "locked": true
     }
   ]
 }

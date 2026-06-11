@@ -33,7 +33,7 @@ const windowFn: Fn = ((key: unknown, x: unknown, y: unknown, w: unknown, h: unkn
   return el("div", { class: "pl-window", "data-win": k, style: `position:absolute;left:${fx}px;top:${fy}px;width:${fw}px;height:${fh}px;z-index:${fz};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas;box-shadow:0 4px 16px #0004;overflow:hidden` }, [
     el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
       el("span", {}, [T(String(title ?? k))]),
-      el("button", { class: "pl-min-btn", style: "border:0;background:transparent;cursor:pointer;font:600 1rem ui-monospace,monospace;padding:0 .3rem;line-height:1" }, [T("–")], { click: { dispatch: "win.minimize", payload: k } }),
+      el("button", { class: "pl-min-btn", style: "border:0;background:transparent;cursor:pointer;font:600 1rem ui-monospace,monospace;padding:0 .3rem;line-height:1" }, [T("–")], { pointerdown: { dispatch: "win.stop" }, click: { dispatch: "win.minimize", payload: k } }),
     ], {
       pointerdown: { dispatch: "win.grab", payload: k },
       pointermove: { dispatch: "win.move" },
@@ -103,6 +103,10 @@ export const snapRegion = (mx: number, my: number, vw: number, vh: number, edge 
   if (R) return { x: vw / 2, y: 0, w: vw / 2, h: vh };   // right half
   return null;
 };
+
+// win.stop — pointerdown on a titlebar BUTTON: stop the event reaching the
+// titlebar's drag handler (which would pointer-capture + swallow the click).
+const stopFn: Fn = ((_state: State, _p: unknown, event?: { stopPropagation?: () => void }): void => { try { event?.stopPropagation?.(); } catch { /* no-op off-DOM */ } }) as Fn;
 
 const dropFn: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => {
   const d = dragOf(state);
@@ -177,6 +181,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["win.resizeMove", resizeMoveFn],
   ["win.drop", dropFn],
   ["win.raise", raiseFn],
+  ["win.stop", stopFn],
   ["winopen", openFn],
   ["winclose", closeFn],
   ["win.minimize", minimizeFn],
