@@ -354,6 +354,21 @@ await withPage("=def(py) + call works via Pyodide", async (page) => {
   eq(out.result, 36, "=sq(6) → 36 (python)");
 });
 
+// ── xlsx — export + import round-trip + MATERIALIZE in a real browser (the
+// ZIP+DEFLATE path runs through Chromium's Compression/DecompressionStream).
+await withPage("xlsx — round-trips + materializes in the browser", async (page) => {
+  const out = await page.evaluate(async () => {
+    const { state, resolveFn } = (globalThis as any).plastron;
+    const sc = (k: string, v: unknown, name: string) => resolveFn(state, "setCel")(state, k, { celType: "ValueCel", v, metadata: { key: k, segment: "sh", name } });
+    await sc("sh.A1", "Widget", "A1"); await sc("sh.B1", 42, "B1");
+    const b64 = await resolveFn(state, "xlsxexport")(state, "sh");
+    const msg = await resolveFn(state, "xlsxload")(state, b64);
+    return { msg, a1: state.cels.get("xlsx.A1")?.v, b1: state.cels.get("xlsx.B1")?.v };
+  });
+  eq(out.a1, "Widget", "imported A1 materialized in-browser");
+  eq(out.b1, 42, "imported B1 materialized in-browser");
+});
+
 // ── windows — a window renders via mount() + drags with REAL pointer events
 // (the painter wires the vnode events; page.mouse drives a true drag). Proves
 // the windows library end-to-end in a browser, beyond the fake-event unit test.

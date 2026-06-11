@@ -1,7 +1,65 @@
 {
   "name": "xlsx",
   "cels": [
-    { "key": "xlsximport", "celType": "LockedLambdaCel", "metadata": { "key": "xlsximport", "segment": "xlsx", "name": "xlsximport", "kind": "native", "description": "(base64) - parse .xlsx bytes (base64) into a genesis worksheet of cels (layer 'xlsx'). One sheet, number/string values." }, "locked": true },
-    { "key": "xlsxexport", "celType": "LockedLambdaCel", "metadata": { "key": "xlsxexport", "segment": "xlsx", "name": "xlsxexport", "kind": "native", "description": "(segment?) - serialize a grid segment's value cels (default 元) to a .xlsx file, returned base64. Round-trips with xlsximport." }, "locked": true }
+    {
+      "key": "xlsximport",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "xlsximport",
+        "segment": "xlsx",
+        "name": "xlsximport",
+        "kind": "native",
+        "description": "(base64) - parse .xlsx bytes (base64) into a genesis worksheet of cels (layer 'xlsx'). One sheet, number/string values."
+      },
+      "locked": true
+    },
+    {
+      "key": "xlsxexport",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "xlsxexport",
+        "segment": "xlsx",
+        "name": "xlsxexport",
+        "kind": "native",
+        "description": "(segment?) - serialize a grid segment's value cels (default 元) to a .xlsx file, returned base64. Round-trips with xlsximport."
+      },
+      "locked": true
+    },
+    {
+      "key": "xlsxload",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "xlsxload",
+        "segment": "xlsx",
+        "name": "xlsxload",
+        "kind": "native",
+        "description": "(base64) - parse .xlsx bytes (base64) and MATERIALIZE them into the live sheet (the xlsx worksheet of cels)"
+      },
+      "locked": true
+    },
+    {
+      "key": "xlsxopen",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "xlsxopen",
+        "segment": "xlsx",
+        "name": "xlsxopen",
+        "kind": "native",
+        "description": "() - browser file picker: choose a .xlsx and import it into the sheet"
+      },
+      "locked": true
+    },
+    {
+      "key": "xlsxsave",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "xlsxsave",
+        "segment": "xlsx",
+        "name": "xlsxsave",
+        "kind": "native",
+        "description": "(segment?) - export a grid segment to .xlsx and download it (default 元)"
+      },
+      "locked": true
+    }
   ]
 }

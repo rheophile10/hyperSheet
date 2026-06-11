@@ -38,3 +38,14 @@ test("xlsxexport -> xlsximport verbs round-trip through a genesis request", asyn
   assert.equal(req.cels["xlsx.A1"].v, "Item");
   assert.equal(req.cels["xlsx.B2"].v, 7);
 });
+
+test("xlsxload materializes a .xlsx into the live graph (import wiring)", async () => {
+  const s = createInitialState();
+  for (const [k, v, name] of [["sh.A1", "Hi", "A1"], ["sh.B1", 5, "B1"]])
+    await resolveFn(s, "setCel")(s, k, { celType: "ValueCel", v, metadata: { key: k, segment: "sh", name } });
+  const b64 = await resolveFn(s, "xlsxexport")(s, "sh");
+  const msg = await resolveFn(s, "xlsxload")(s, b64);
+  assert.match(msg, /imported 2 cells/);
+  assert.equal(s.cels.get("xlsx.A1")?.v, "Hi", "A1 materialized as a live cel");
+  assert.equal(s.cels.get("xlsx.B1")?.v, 5, "B1 materialized");
+});

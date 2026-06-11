@@ -1,5 +1,5 @@
 import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
-import { bindNativeFns } from "../../../kernel/index.js";
+import { bindNativeFns, resolveFn } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -191,9 +191,47 @@ const exportFn: Fn = (async (state: State, segment?: unknown): Promise<string> =
   return btoa(bin);
 }) as Fn;
 
+// ── host wiring (import materializes; browser file-picker + download) ────────
+// xlsxload(base64) — parse + MATERIALIZE into the live graph (the genesis cels).
+const loadFn: Fn = (async (state: State, b64: unknown): Promise<string> => {
+  const req = await (importFn as (s: State, b: unknown) => Promise<{ cels?: Record<string, unknown> }>)(state, b64);
+  if (req.cels) await Promise.resolve((resolveFn(state, "setCelBatch") as Fn)(state, req.cels));
+  return `imported ${req.cels ? Object.keys(req.cels).length : 0} cells`;
+}) as Fn;
+
+// xlsxopen() — browser: pick a .xlsx file → xlsxload it into the sheet.
+const pickFn: Fn = ((state: State): string => {
+  const doc = (globalThis as { document?: { createElement: (t: string) => { type?: string; accept?: string; files?: { 0?: { arrayBuffer: () => Promise<ArrayBuffer> } }; onchange?: () => void; click: () => void } } }).document;
+  if (!doc) return "(xlsx: no file picker here)";
+  const input = doc.createElement("input"); input.type = "file"; input.accept = ".xlsx,.xlsm";
+  input.onchange = async (): Promise<void> => {
+    const file = input.files?.[0]; if (!file) return;
+    const buf = new Uint8Array(await file.arrayBuffer());
+    let bin = ""; for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]!);
+    await (loadFn as (s: State, b: unknown) => Promise<string>)(state, btoa(bin));
+  };
+  input.click();
+  return "xlsx: choose a file…";
+}) as Fn;
+
+// xlsxsave(segment) — browser: export the segment to .xlsx + download it.
+const saveFn: Fn = (async (state: State, segment: unknown): Promise<string> => {
+  const b64 = await (exportFn as (s: State, seg: unknown) => Promise<string>)(state, segment);
+  const g = globalThis as { document?: { createElement: (t: string) => { href?: string; download?: string; click: () => void } }; URL?: { createObjectURL: (b: unknown) => string; revokeObjectURL: (u: string) => void }; Blob?: new (parts: unknown[], opts: unknown) => unknown };
+  if (!g.document || !g.URL || !g.Blob) return b64;                  // off-DOM → just the base64
+  const bin = atob(b64); const buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  const a = g.document.createElement("a");
+  a.href = g.URL.createObjectURL(new g.Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+  a.download = `${String(segment ?? "sheet")}.xlsx`; a.click(); g.URL.revokeObjectURL(a.href!);
+  return `downloaded ${String(segment ?? "sheet")}.xlsx`;
+}) as Fn;
+
 export const name = "xlsx" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["xlsximport", importFn],
   ["xlsxexport", exportFn],
+  ["xlsxload", loadFn],
+  ["xlsxopen", pickFn],
+  ["xlsxsave", saveFn],
 ]));
