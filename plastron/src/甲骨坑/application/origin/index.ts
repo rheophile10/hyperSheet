@@ -445,6 +445,17 @@ const rewireView = async (state: State, keys: string[]): Promise<void> => {
   await (resolveFn(state, "setCel") as Fn)(state, VIEW_KEY, { metadata: { inputMap: im } });
 };
 
+// view.refresh — the generic hook the kernel's settleStructural calls after
+// OUT-OF-BAND structure materializes (a generator fired by a value change, not
+// a user commit). Origin renders a fixed cell list (元.view's vals), so a
+// structural change elsewhere must rebuild that list + repaint. commit still
+// rewires for the user-edit path; this closes the gap for everything else
+// (#17 render half — the abandoned walletKeys worksheet, future windows).
+const viewRefreshFn: Fn = (async (state: State): Promise<void> => {
+  await rewireView(state, cellKeys(state));
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+}) as Fn;
+
 // source text of a cell (formula `f`, else stringified value)
 const cellSource = (state: State, key: string): string => {
   const c = state.cels.get(key);
@@ -1086,6 +1097,7 @@ export const name = "origin" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["originView",     originView],
+  ["view.refresh",   viewRefreshFn],
   ["mount",          mount],
   ["origin.commit",  commit],
   ["origin.edit",    edit],

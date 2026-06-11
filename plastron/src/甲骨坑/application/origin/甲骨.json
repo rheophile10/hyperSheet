@@ -734,6 +734,18 @@
         "kind": "native",
         "description": "(state) - restore the default saved sheet on boot; the host calls this after hydrate."
       }
+    },
+    {
+      "key": "view.refresh",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "view.refresh",
+        "segment": "origin",
+        "name": "view.refresh",
+        "kind": "native",
+        "description": "host hook called by settleStructural after out-of-band structure materializes — rebuilds 元.cells + repaints"
+      },
+      "locked": true
     }
   ]
 }
