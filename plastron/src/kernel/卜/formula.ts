@@ -415,6 +415,12 @@ const hasArrayInput = (cels: ResolvedInputs, symbols: string[]): boolean => {
   return false;
 };
 
+// Past this many distinct scalar refs, codegen inlines too large a body/param
+// list for `new Function` (OOM at ~10⁵); the AST-walk interpreter handles it
+// without codegen. Generous — real formulas reference a handful of cels, and
+// ranges arrive as a single array input (handled separately).
+const MAX_CODEGEN_SYMBOLS = 2000;
+
 const buildEvaluateFor = (
   ast: SExp,
   cels: ResolvedInputs,
@@ -433,6 +439,15 @@ const buildEvaluateFor = (
     // Codegen output assumes scalar inputs. If any input resolved to
     // an array, fall back to the AST walk which handles arrays correctly.
     if (hasArrayInput(cels, symbols)) {
+      return () => evaluateAgainstCels(ast, cels);
+    }
+    // Arity cap. A formula with thousands of distinct scalar refs (e.g.
+    // `(+ c0 c1 … c100000)`) would inline a giant body + that many params into
+    // `new Function` — which OOMs the parser. The AST walk reduces over the
+    // same nodes with no codegen, so fall back past the cap. (SUM over a RANGE
+    // is one array input, handled above — this only trips on pathological
+    // explicit-arg formulas, never normal sheet usage.)
+    if (symbols.length > MAX_CODEGEN_SYMBOLS) {
       return () => evaluateAgainstCels(ast, cels);
     }
     const params = symbols.map((_, i) => `c${i}`);
