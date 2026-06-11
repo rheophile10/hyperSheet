@@ -793,22 +793,7 @@ const uploadHandler: Fn = async (stateArg: unknown, dir: unknown, event: unknown
 };
 
 // join a dir path and an entry name into an absolute OPFS path.
-const fsJoin = (dir: string, name: string): string =>
-  (dir === "/" ? "" : dir.replace(/\/+$/, "")) + "/" + name;
 
-// recursive listing, indented — `tree(path)`.
-const fsTree = async (state: State, path: string, prefix = ""): Promise<string> => {
-  const call = (k: string, ...a: unknown[]) => (resolveFn(state, k) as Fn)(...a);
-  const names = ((await call("fs.list", path)) as string[]).slice().sort();
-  const out: string[] = [];
-  for (const n of names) {
-    const full = fsJoin(path, n);
-    const st = await (call("fs.stat", full) as Promise<{ isDir?: boolean }>).catch(() => null);
-    if (st?.isDir) { out.push(`${prefix}${n}/`); out.push(await fsTree(state, full, `${prefix}  `)); }
-    else out.push(`${prefix}${n}`);
-  }
-  return out.filter(Boolean).join("\n");
-};
 
 // --- sqlite — lazy sql.js (CDN, like pyodide) + in-memory dbs persisted to
 //     OPFS bytes at /plastron/dbs/<name>.db. db()/sql()/tables() vocabulary.
@@ -1061,39 +1046,8 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
           }
         }
       } else if (req.originFs) {
-        // OPFS filesystem op — lazy-load file-store, then run the fs.* cel.
         await ensureSegments(state, ["file-store"]);
-        const call = (k: string, ...a: unknown[]) => (resolveFn(state, k) as Fn)(...a);
-        const op = String(req.originFs);
-        const p = String(req.path ?? "");
-        if (op === "ls") {
-          const names = ((await call("fs.list", p)) as string[]).slice().sort();
-          const lines = await Promise.all(names.map(async (n) => {
-            const st = await (call("fs.stat", fsJoin(p, n)) as Promise<{ isDir?: boolean }>).catch(() => null);
-            return st?.isDir ? `${n}/` : n;
-          }));
-          result = lines.length ? lines.join("\n") : "(empty)";
-        } else if (op === "tree") {
-          result = await fsTree(state, p) || "(empty)";
-        } else if (op === "mkdir") {
-          await call("fs.mkdir", p); result = `mkdir ${p}`;
-        } else if (op === "rm") {
-          const st = await (call("fs.stat", p) as Promise<{ isDir?: boolean }>).catch(() => null);
-          if (st?.isDir) await call("fs.rmdir", p); else await call("fs.delete", p);
-          result = `rm ${p}`;
-        } else if (op === "mv") {
-          await call("fs.rename", p, String(req.to)); result = `mv ${p} → ${req.to}`;
-        } else if (op === "cat") {
-          result = await call("fs.readText", p);
-        } else if (op === "write") {
-          await call("fs.writeText", p, String(req.text ?? "")); result = `wrote ${p}`;
-        } else if (op === "touch") {
-          if (!(await call("fs.exists", p))) await call("fs.writeText", p, "");
-          result = `touch ${p}`;
-        } else if (op === "stat") {
-          const st = (await call("fs.stat", p)) as { size?: number; isDir?: boolean; mtime?: unknown };
-          result = yamlDoc([["path", p], ["isDir", st.isDir], ["size", st.size], ["mtime", st.mtime != null ? String(st.mtime) : undefined]]);
-        } else result = `(unknown fs op: ${op})`;
+        result = String(await (resolveFn(state, "fs.command") as Fn)(String(req.originFs), String(req.path ?? ""), req.to, req.text));
       } else if (req.originSeg) {
         // sheet manager — collectArchive ⇄ OPFS files under /plastron/sheets.
         await ensureSegments(state, ["file-store"]);

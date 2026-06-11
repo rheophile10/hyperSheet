@@ -394,7 +394,56 @@ const fileBinaryMime: Fn = (_v: unknown) => "application/octet-stream";
 
 export const name = "file-store" as const;
 
+// fs.command — the file-op vocabulary's shared logic (ls/tree/mkdir/rm/mv/cat/
+// write/touch/stat), moved here from origin so the capability lives with the
+// store (apps-are-cels: a reusable file capability is a library, not app code).
+// Calls the module-scope backend fns directly and returns a formatted string; a
+// host's verb (=ls, =cat, …) emits a descriptor whose drain delegates here.
+const fsJoin = (dir: string, name: string): string =>
+  (dir === "/" ? "" : dir.replace(/\/+$/, "")) + "/" + name;
+
+const fsTree = async (path: string, prefix = ""): Promise<string> => {
+  const names = ((await list(path)) as unknown as string[]).slice().sort();
+  const out: string[] = [];
+  for (const n of names) {
+    const full = fsJoin(path, n);
+    const st = await (stat(full) as unknown as Promise<{ isDir?: boolean }>).catch(() => null);
+    if (st?.isDir) { out.push(`${prefix}${n}/`); out.push(await fsTree(full, `${prefix}  `)); }
+    else out.push(`${prefix}${n}`);
+  }
+  return out.filter(Boolean).join("\n");
+};
+
+const fsCommand: Fn = (async (op: unknown, path: unknown, to?: unknown, text?: unknown): Promise<string> => {
+  const o = String(op ?? ""); const p = String(path ?? "");
+  if (o === "ls") {
+    const names = ((await list(p)) as unknown as string[]).slice().sort();
+    const lines = await Promise.all(names.map(async (n) => {
+      const st = await (stat(fsJoin(p, n)) as unknown as Promise<{ isDir?: boolean }>).catch(() => null);
+      return st?.isDir ? `${n}/` : n;
+    }));
+    return lines.length ? lines.join("\n") : "(empty)";
+  }
+  if (o === "tree") return (await fsTree(p)) || "(empty)";
+  if (o === "mkdir") { await mkdir(p); return `mkdir ${p}`; }
+  if (o === "rm") {
+    const st = await (stat(p) as unknown as Promise<{ isDir?: boolean }>).catch(() => null);
+    if (st?.isDir) await rmdir(p); else await del(p);
+    return `rm ${p}`;
+  }
+  if (o === "mv") { await rename(p, String(to)); return `mv ${p} → ${String(to)}`; }
+  if (o === "cat") return String(await readText(p));
+  if (o === "write") { await writeText(p, String(text ?? "")); return `wrote ${p}`; }
+  if (o === "touch") { if (!(await exists(p))) await writeText(p, ""); return `touch ${p}`; }
+  if (o === "stat") {
+    const st = (await stat(p)) as unknown as { size?: number; isDir?: boolean; mtime?: unknown };
+    return [`path: ${p}`, `isDir: ${st.isDir}`, `size: ${st.size}`, st.mtime != null ? `mtime: ${String(st.mtime)}` : ""].filter(Boolean).join("\n");
+  }
+  return `(unknown fs op: ${o})`;
+}) as Fn;
+
 const _cels = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
+  ["fs.command",            fsCommand],
   ["fs.exists",             exists],
   ["fs.read",               read],
   ["fs.readText",           readText],
