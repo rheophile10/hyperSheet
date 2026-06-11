@@ -3,6 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Network-governance Layer 6: CSP is the HARD enforcement under the net
+         gate. connect-src pins outbound destinations (a compromised CDN script
+         can't fetch arbitrary hosts); script-src omits 'unsafe-eval' so formula
+         codegen can't run new Function — the engine's AST-walk fallback (gated
+         on csp.eval-available) takes over. 'wasm-unsafe-eval' keeps the wasm
+         compilers (js/quickjs/py) working; CDNs pinned for Pyodide/confetti. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' blob: data: https://api.anthropic.com https://api.x.ai https://api.open-meteo.com https://geocoding-api.open-meteo.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; worker-src 'self' blob:;" />
     <title>元 — plastron origin</title>
     <style>
       :root { color-scheme: light dark; }
