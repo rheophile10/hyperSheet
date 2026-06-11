@@ -12,6 +12,18 @@
         "description": "(prompt, key [, model]) - ask Claude; the reply becomes the cell value (REACTIVE: edit the prompt to re-ask). key accepts a wallet SecretHandle from apiKey(\"anthropic\") (resolved at the fetch site, never stored) or a literal sk-ant-… string. Default model claude-fable-5. =claude(chat!A1, apiKey(\"anthropic\"))"
       },
       "locked": true
+    },
+    {
+      "key": "llm.chat",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "llm.chat",
+        "segment": "llm",
+        "name": "llm.chat",
+        "kind": "native",
+        "description": "(prompt, key [, model] [, url]) - a generic OpenAI-shaped chat completion; returns the reply text. Host chat()/grok() verbs delegate here."
+      },
+      "locked": true
     }
   ]
 }

@@ -983,27 +983,7 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         if (!raw) result = `(nothing saved as "${String(req.name || "default")}")`;
         else { await restoreArchive(state, JSON.parse(raw)); result = `opened "${String(req.name || "default")}"`; }
       } else if (req.originChat) {
-        // chat completion — POST to an OpenAI-shaped endpoint, await the reply.
-        const url = String(req.url ?? "https://api.x.ai/v1/chat/completions");
-        const model = String(req.model ?? "grok-3-mini");
-        const key = String(req.key ?? "");
-        if (!key) {
-          result = `(no api key — pass one: =claude("hi", "sk-ant-…") / =grok("hi", "xai-…") or a cel holding it)`;
-        } else {
-          const headers: Record<string, string> = { "content-type": "application/json", authorization: `Bearer ${key}` };
-          // Anthropic gates browser CORS behind an explicit opt-in header.
-          if (url.includes("api.anthropic.com")) headers["anthropic-dangerous-direct-browser-access"] = "true";
-          const res = await fetch(url, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ model, messages: [{ role: "user", content: String(req.prompt ?? "") }] }),
-          });
-          if (!res.ok) result = `(chat ${res.status}: ${(await res.text()).slice(0, 200)})`;
-          else {
-            const j = await res.json() as { choices?: { message?: { content?: string } }[] };
-            result = j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
-          }
-        }
+        result = String(await (resolveFn(state, "llm.chat") as Fn)(req.prompt, req.key, req.model, req.url));
       } else if (req.originFs) {
         await ensureSegments(state, ["file-store"]);
         result = String(await (resolveFn(state, "fs.command") as Fn)(String(req.originFs), String(req.path ?? ""), req.to, req.text));

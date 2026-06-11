@@ -41,8 +41,28 @@ const claudeFn: Fn = async (prompt: unknown, key: unknown, model: unknown): Prom
   return j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
 };
 
+// llm.chat — a generic OpenAI-shaped chat completion (POST messages, return the
+// reply text). The host's chat()/grok() verbs emit a descriptor whose drain
+// delegates here. Stateless (just fetch, over the net gate).
+const chatFn: Fn = (async (prompt: unknown, key: unknown, model: unknown, url: unknown): Promise<string> => {
+  const u = String(url ?? "https://api.x.ai/v1/chat/completions");
+  const m = String(model ?? "grok-3-mini");
+  const k = String(key ?? "");
+  if (!k) return `(no api key — pass one: =claude("hi", "sk-ant-…") / =grok("hi", "xai-…") or a cel holding it)`;
+  const headers: Record<string, string> = { "content-type": "application/json", authorization: `Bearer ${k}` };
+  if (u.includes("api.anthropic.com")) headers["anthropic-dangerous-direct-browser-access"] = "true";
+  const res = await fetch(u, {
+    method: "POST", headers,
+    body: JSON.stringify({ model: m, messages: [{ role: "user", content: String(prompt ?? "") }] }),
+  });
+  if (!res.ok) return `(chat ${res.status}: ${(await res.text()).slice(0, 200)})`;
+  const j = await res.json() as { choices?: { message?: { content?: string } }[] };
+  return j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
+}) as Fn;
+
 export const name = "llm" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["claude", claudeFn],
+  ["llm.chat", chatFn],
 ]));
