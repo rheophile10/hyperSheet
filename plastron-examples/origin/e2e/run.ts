@@ -87,8 +87,8 @@ const cel = (page: Page, key: string): Promise<unknown> =>
 // ── cases ───────────────────────────────────────────────────────────────────
 
 await withPage("boot — canvas readme renders + draws", async (page) => {
-  eq((await cel(page, "元") as { __mount?: string })?.__mount, ".origin", "元 holds the readme (renders below)");
-  ok(await page.$('td.cell[data-key="元"] pre.cell-src'), "元 shows its SOURCE — the readme formula text");
+  ok(await page.$('.desktop-bg'), "the wallpaper mounted on boot");
+  ok(await page.$('.pl-window[data-win="win.readme.state"]'), "the readme renders in its own window");
   ok(await page.$('table.grid td.cell[data-key="元"]'), "元 is a uniform table cell (same UI as grid cels)");
   ok(await page.$(".readme"), "readme card rendered");
   ok(await page.$(".readme canvas"), "canvas banner element present");
@@ -249,9 +249,7 @@ await withPage("editor: Shift+Enter newline, Tab indents (focus kept)", async (p
 
 await withPage("readme formula text is black (CanvasText), not blue", async (page) => {
   const code = await page.evaluate(() => getComputedStyle(document.querySelector(".readme td.fx-code")!).color);
-  const src = await page.evaluate(() => getComputedStyle(document.querySelector('td.cell[data-key="元"] pre.cell-src')!).color);
   ok(code === "rgb(0, 0, 0)" || /^rgb\(2[0-9]{2}/.test(code), `readme code is black/white not blue (${code})`);
-  ok(src === "rgb(0, 0, 0)" || /^rgb\(2[0-9]{2}/.test(src), `元 source is black/white not blue (${src})`);
 });
 
 await withPage("=segments() lists origin", async (page) => ok(String(await put(page, "=segments()")).includes("origin"), "origin listed"));
@@ -308,16 +306,18 @@ await withPage("a syntax error surfaces, stays editing", async (page) => {
 });
 
 await withPage("click a cell to edit it", async (page) => {
-  await page.click('td.cell[data-key="元"] .cell-value');
+  await put(page, "=cels(2, 2)");
+  await page.click('td.cell[data-key="g2x2.A1"] .cell-value');
   await page.waitForTimeout(80);
-  ok(await page.$('td.cell[data-key="元"] textarea.cell-edit'), "click opens the expandable editor");
+  ok(await page.$('td.cell[data-key="g2x2.A1"] textarea.cell-edit'), "click opens the expandable editor");
 });
 
-await withPage("clearing 元 restores the readme", async (page) => {
+await withPage("clearing 元 restores the desktop", async (page) => {
   await put(page, "=1 + 1");
   await put(page, "");
-  eq((await cel(page, "元") as { __mount?: string })?.__mount, ".origin", "clearing 元 restores the readme");
-  ok(await page.$(".readme canvas"), "readme (with canvas banner) still below");
+  await page.waitForTimeout(140);
+  ok(await page.$('.pl-window[data-win="win.readme.state"]'), "clearing 元 restores the desktop (readme window)");
+  ok(await page.$(".readme canvas"), "readme canvas back");
 });
 
 await withPage("=mount targets existing nodes only (no top/bottom regions)", async (page) => {

@@ -444,6 +444,31 @@
         "description": "the wallpaper vnode (mounted by desktop)"
       },
       "locked": true
+    },
+    {
+      "key": "readme",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "readme",
+        "segment": "windows",
+        "name": "readme",
+        "kind": "native",
+        "description": "the plastron readme as a vnode, for a readme window"
+      },
+      "locked": true
+    },
+    {
+      "key": "readmewin",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "readmewin",
+        "segment": "windows",
+        "name": "readmewin",
+        "kind": "native",
+        "genesis": true,
+        "description": "genesis: the readme WINDOW with the full plastron README"
+      },
+      "locked": true
     }
   ]
 }

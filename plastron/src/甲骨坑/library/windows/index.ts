@@ -2,6 +2,7 @@ import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
 import { bindNativeFns, resolveFn } from "../../../kernel/index.js";
 import { el as makeEl, text as T } from "../dom/index.js";
 import { BG } from "./bg.js";
+import { README_INNER } from "./readme-content.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -334,12 +335,33 @@ const desktopFn: Fn = ((): unknown => ({ genesis: true, layer: "desktop", cels: 
   "desktop.bg": { celType: "FormulaCel", f: `(mount ".origin" (desktopbg))`, metadata: { name: "bg", parser: "f" } },
 } })) as Fn;
 
+// readme() — the plastron readme as a vnode, for a readme WINDOW.
+const readmeFn: Fn = ((): V => el("div", { class: "readme", style: "font:13px/1.6 ui-monospace,monospace;padding:.2rem .35rem" }, [
+  el("h2", { style: "margin:.15rem 0;font-size:1.1rem" }, [T("元 · plastron")]),
+  el("p", { style: "margin:.3rem 0;opacity:.85" }, [T("A reactive cel substrate. Every worksheet is a window; formulas build apps; chat treats claude / grok / peers as users.")]),
+  el("p", { style: "margin:.3rem 0 .15rem" }, [T("Type a formula in any cell:")]),
+  el("pre", { style: "background:#8881;padding:.45rem;border-radius:.35rem;white-space:pre-wrap;margin:.15rem 0" }, [T('=cels(3, 3)                              a sheet, in its own window\n=chatapp("claude", "Claude")             a chat window\n=winapp("wallet", "Wallet", "(domWallet)")   the wallet\n=desktop()                               the wallpaper')]),
+  el("p", { style: "margin:.35rem 0;opacity:.85" }, [T("Drag a titlebar onto another window's titlebar to make tabs; double-click a tab to pop it back out. ◱ mid · ⛶ max · – min · ✕ close.")]),
+]) ) as Fn;
+
+// readmewin() — GENESIS: the readme WINDOW, content = the full plastron README
+// (preserved from the original boot, in readme-content.ts).
+const readmewinFn: Fn = ((): unknown => {
+  const lay = "win.readme", sref = `${lay}.state`;
+  return { genesis: true, layer: lay, cels: {
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: 60, y: 48, w: 580, h: 500, z: 1, min: 0, max: 0, closed: 0, title: "README" }, metadata: { name: "state" } },
+    [`${lay}.content`]: { celType: "FormulaCel", f: README_INNER, metadata: { name: "content", parser: "f" } },
+    [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${lay}.content))`, metadata: { name: "frame", parser: "f" } },
+  } };
+}) as Fn;
+
 export const name = "windows" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["win", winFn],
   ["winmake", makeFn],
   ["winapp", appFn],
+  ["readme", readmeFn], ["readmewin", readmewinFn],
   ["desktop", desktopFn], ["desktopbg", desktopbgFn],
   ["chatui", chatFn], ["chat.send", chatSend], ["chat.key", chatKey], ["chatapp", chatappFn],
   ["winframe", frameFn],
