@@ -347,6 +347,17 @@
         "name": "winx.drag",
         "description": "transient drag state for state-cel windows"
       }
+    },
+    {
+      "key": "win.active",
+      "celType": "ValueCel",
+      "v": "",
+      "metadata": {
+        "key": "win.active",
+        "segment": "windows",
+        "name": "win.active",
+        "description": "focus pointer for the LOCAL keyboard key stream: the ref of the window keystrokes route to. One pointer per stream (network/gamepad get their own)."
+      }
     }
   ]
 }
