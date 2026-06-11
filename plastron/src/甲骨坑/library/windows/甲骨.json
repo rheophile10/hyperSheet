@@ -358,6 +358,18 @@
         "name": "win.active",
         "description": "focus pointer for the LOCAL keyboard key stream: the ref of the window keystrokes route to. One pointer per stream (network/gamepad get their own)."
       }
+    },
+    {
+      "key": "winapp",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winapp",
+        "segment": "windows",
+        "name": "winapp",
+        "kind": "native",
+        "genesis": true,
+        "description": "(id, title, contentSource) — create a window backed by a state cel whose content is a FORMULA (win.<id>.content). Mounts a real app: =winapp(\"wallet\",\"Wallet\",\"(domWallet)\")"
+      }
     }
   ]
 }

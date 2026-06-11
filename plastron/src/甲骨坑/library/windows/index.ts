@@ -215,7 +215,7 @@ const xMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<vo
 const xGrabResize: Fn = (async (state: State, ref: unknown, event?: DomEvt): Promise<void> => { capture(event); const s = stateOf(state, String(ref)); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", { ref: String(ref), ox: num(event?.clientX) - num(s.w, 380), oy: num(event?.clientY) - num(s.h, 260), resize: true })); }) as Fn;
 const xResizeMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d?.resize) return; await setState(state, d.ref, { w: Math.max(160, num(event?.clientX) - d.ox), h: Math.max(90, num(event?.clientY) - d.oy) }); }) as Fn;
 const xDrop: Fn = (async (state: State): Promise<void> => { await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", null)); }) as Fn;
-const xRaise: Fn = (async (state: State, ref: unknown): Promise<void> => { await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.active", String(ref))); await setState(state, String(ref), { z: ++xTopZ }); }) as Fn;
+const xRaise: Fn = (async (state: State, ref: unknown): Promise<void> => { const r = String(ref); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.active", r)); if (state.cels.get("keys.active")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "keys.active", r)); await setState(state, r, { z: ++xTopZ }); }) as Fn;
 const xMin: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { min: s.min ? 0 : 1 }); }) as Fn;
 const xMax: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { max: s.max ? 0 : 1, z: ++xTopZ }); }) as Fn;
 const xClose: Fn = (async (state: State, ref: unknown): Promise<void> => { await setState(state, String(ref), { closed: 1 }); }) as Fn;
@@ -237,11 +237,31 @@ const makeFn: Fn = ((id: unknown, title: unknown, content: unknown): unknown => 
   } };
 }) as Fn;
 
+// winapp(id, title, contentSource) — like winmake, but the content is a FORMULA,
+// not a string: it creates win.<id>.content as a FormulaCel and the frame mounts
+// THAT cel, so a window can hold a real app — the wallet panel, a chat, the
+// readme, anything renderable. =winapp("wallet","Wallet","(domWallet)").
+const appFn: Fn = ((id: unknown, title: unknown, contentSource: unknown): unknown => {
+  const lay = `win.${String(id ?? "w")}`;
+  const sref = `${lay}.state`, cref = `${lay}.content`;
+  let hsh = 0; for (const ch of String(id ?? "w")) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+  const dx = 60 + (hsh % 7) * 46, dy = 50 + (hsh % 5) * 40;
+  const t = String(title ?? id ?? "window").replace(/"/g, "'");
+  const src = String(contentSource ?? "");
+  const parser = src.trim().startsWith("=") ? "infix" : "f";
+  return { genesis: true, layer: lay, cels: {
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: dx, y: dy, w: 440, h: 320, z: 1, min: 0, max: 0, closed: 0, title: t }, metadata: { name: "state" } },
+    [cref]: { celType: "FormulaCel", f: src, metadata: { name: "content", parser } },
+    [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f" } },
+  } };
+}) as Fn;
+
 export const name = "windows" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["win", winFn],
   ["winmake", makeFn],
+  ["winapp", appFn],
   ["winframe", frameFn],
   ["winx.grab", xGrab], ["winx.move", xMove], ["winx.grabResize", xGrabResize], ["winx.resizeMove", xResizeMove], ["winx.drop", xDrop],
   ["winx.raise", xRaise], ["winx.min", xMin], ["winx.max", xMax], ["winx.close", xClose], ["winx.stop", xStop],
