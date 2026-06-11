@@ -45,7 +45,10 @@ const ok = (cond: unknown, what: string): void => {
 const eq = (actual: unknown, expected: unknown, what: string): void =>
   ok(JSON.stringify(actual) === JSON.stringify(expected), `${what}${JSON.stringify(actual) === JSON.stringify(expected) ? "" : `  (got ${JSON.stringify(actual)})`}`);
 
-const browser: Browser = await chromium.launch({ executablePath: CHROME, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+// --disable-features=WebRtcHideLocalIpsWithMdns: headless Chromium otherwise
+// hides host IPs behind mDNS .local candidates that don't resolve, so the
+// two-page WebRTC ICE never connects. This exposes real localhost candidates.
+const browser: Browser = await chromium.launch({ executablePath: CHROME, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-features=WebRtcHideLocalIpsWithMdns"] });
 
 // run `body` against a freshly-booted page; collects console/page errors.
 const withPage = async (label: string, body: (page: Page) => Promise<void>): Promise<void> => {
@@ -350,6 +353,45 @@ await withPage("=def(py) + call works via Pyodide", async (page) => {
   eq(out.cel, "EditableLambdaCel", "python function cel created");
   eq(out.result, 36, "=sq(6) → 36 (python)");
 });
+
+// ── peer — TWO browsers share a cel over WebRTC. Manual signaling is brokered
+// by the test (copy A's offer → B, B's answer → A); ICE uses localhost host
+// candidates (same machine), so no STUN/TURN. Confirms a setValue propagates
+// A→B through the security gate, and that an executable value does NOT cross.
+{
+  console.log("\n▶ peer — two browsers share a cel over WebRTC");
+  const A = await browser.newPage();
+  const B = await browser.newPage();
+  const errs: string[] = [];
+  for (const p of [A, B]) { p.on("pageerror", (e) => errs.push(String(e))); p.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); }); }
+  const boot = async (p: Page): Promise<void> => { await p.goto("file://" + bundle); await p.waitForFunction(() => !!(globalThis as { plastron?: unknown }).plastron, { timeout: 8000 }); };
+  try {
+    await boot(A); await boot(B);
+    // both sides share the "shared." namespace
+    for (const p of [A, B]) await p.evaluate(() => { const { state, resolveFn } = (globalThis as any).plastron; return resolveFn(state, "peerallow")("shared."); });
+    // brokered signaling: A offers → B answers → A accepts
+    const offer = await A.evaluate(() => { const { state, resolveFn } = (globalThis as any).plastron; return resolveFn(state, "peerOffer")(state); });
+    ok(typeof offer === "string" && offer.includes("sdp"), "A minted a WebRTC offer (SDP)");
+    const answer = await B.evaluate((o) => { const { state, resolveFn } = (globalThis as any).plastron; return resolveFn(state, "peerAnswer")(state, o); }, offer);
+    await A.evaluate((a) => { const { state, resolveFn } = (globalThis as any).plastron; return resolveFn(state, "peerAccept")(state, a); }, answer);
+    // wait for A's data channel to open (poll — localhost ICE connects in ~1s)
+    let opened = false;
+    for (let i = 0; i < 16 && !opened; i++) { await A.waitForTimeout(500); opened = await A.evaluate(() => (globalThis as { __peerOpen?: boolean }).__peerOpen === true); }
+    ok(opened, "A's WebRTC data channel opened (ICE connected)");
+    // A shares a clean value (should cross) + an executable one (should NOT)
+    await A.evaluate(() => { const { state, resolveFn } = (globalThis as any).plastron; resolveFn(state, "peersend")(state, "shared.x", 42); resolveFn(state, "peersend")(state, "shared.evil", { defn: true }); });
+    let got: unknown = null;
+    for (let i = 0; i < 16 && got !== 42; i++) { await B.waitForTimeout(500); got = await B.evaluate(() => (globalThis as any).plastron.state.cels.get("shared.x")?.v ?? null); }
+    ok(got === 42, `B received shared.x=42 over WebRTC (got ${JSON.stringify(got)})`);
+    const evil = await B.evaluate(() => (globalThis as any).plastron.state.cels.get("shared.evil")?.v ?? null);
+    ok(evil === null, "B did NOT receive the executable value (outbound quarantine holds over the wire)");
+    ok(errs.length === 0, `no console/page errors${errs.length ? ` (${errs.slice(0, 2).join(" | ")})` : ""}`);
+  } catch (e) {
+    ok(false, `peer e2e threw: ${String(e).slice(0, 160)}`);
+  } finally {
+    await A.close(); await B.close();
+  }
+}
 
 await browser.close();
 console.log(`\n${fails === 0 ? "🟢" : "🔴"} ${passes} passing, ${fails} failing`);

@@ -96,7 +96,9 @@ const connectFn: Fn = ((_state: State, t: unknown): string => {
 // this automatic by riding the post-cascade seam.
 const sendFn: Fn = (async (state: State, key: unknown, value: unknown): Promise<unknown> => {
   const k = String(key);
-  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, k, value));
+  const existing = state.cels.get(k);
+  if (existing) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, k, value));
+  else { const seg = k.includes(".") ? k.slice(0, k.indexOf(".")) : "peer"; await Promise.resolve((resolveFn(state, "setCel") as Fn)(state, k, { celType: "ValueCel", v: value, metadata: { key: k, segment: seg } })); }
   broadcastFn(state, [k]);
   return value;
 }) as Fn;
@@ -114,6 +116,62 @@ const logFn: Fn = ((): string => {
   return log.map((e) => `${e.dir === "in" ? "←" : "→"} ${e.k} [${e.d}]`).join("\n");
 }) as Fn;
 
+// ── WebRTC transport + manual signaling (stage 2) ────────────────────────────
+// Browser-only. In Bun (no RTCPeerConnection) the verbs no-op so the suite is
+// unaffected; a two-page Playwright e2e brokers the offer/answer + asserts a
+// setValue propagates A→B through the security gate. ICE: host candidates only
+// (localhost), gathered non-trickle into the SDP, so no STUN/TURN needed.
+interface RtcChan { send(m: string): void; onopen: (() => void) | null; onmessage: ((e: { data: string }) => void) | null }
+interface RtcConn {
+  createDataChannel(label: string): RtcChan;
+  createOffer(): Promise<unknown>; createAnswer(): Promise<unknown>;
+  setLocalDescription(d: unknown): Promise<void>; setRemoteDescription(d: unknown): Promise<void>;
+  localDescription: unknown; iceGatheringState: string;
+  addEventListener(t: string, f: () => void): void; removeEventListener(t: string, f: () => void): void;
+  ondatachannel: ((e: { channel: RtcChan }) => void) | null;
+}
+let pc: RtcConn | null = null;
+const rtc = (): (new (cfg: unknown) => RtcConn) | undefined => (globalThis as { RTCPeerConnection?: new (cfg: unknown) => RtcConn }).RTCPeerConnection;
+
+const wire = (state: State, ch: RtcChan): void => {
+  ch.onopen = () => { transport = { send: (m: string) => ch.send(m) }; (globalThis as { __peerOpen?: boolean }).__peerOpen = true; };
+  ch.onmessage = (e) => { try { void applyFn(state, JSON.parse(e.data)); } catch { /* malformed frame */ } };
+};
+const iceDone = (conn: RtcConn): Promise<void> => new Promise<void>((res) => {
+  if (conn.iceGatheringState === "complete") return res();
+  const check = (): void => { if (conn.iceGatheringState === "complete") { conn.removeEventListener("icegatheringstatechange", check); res(); } };
+  conn.addEventListener("icegatheringstatechange", check);
+  setTimeout(res, 3000);                                  // fallback if gathering stalls
+});
+
+// peerOffer() — mint an SDP offer (copy it to the other browser).
+const offerFn: Fn = (async (state: State): Promise<string> => {
+  const R = rtc(); if (!R) return "(peer: no WebRTC here)";
+  pc = new R({ iceServers: [] });
+  wire(state, pc.createDataChannel("plastron"));
+  await pc.setLocalDescription(await pc.createOffer());
+  await iceDone(pc);
+  return JSON.stringify(pc.localDescription);
+}) as Fn;
+
+// peerAnswer(offer) — accept an offer, return the answer (copy back).
+const answerFn: Fn = (async (state: State, offer: unknown): Promise<string> => {
+  const R = rtc(); if (!R) return "(peer: no WebRTC here)";
+  pc = new R({ iceServers: [] });
+  pc.ondatachannel = (e) => wire(state, e.channel);
+  await pc.setRemoteDescription(JSON.parse(String(offer)));
+  await pc.setLocalDescription(await pc.createAnswer());
+  await iceDone(pc);
+  return JSON.stringify(pc.localDescription);
+}) as Fn;
+
+// peerAccept(answer) — finalize on the offerer side; the channel opens.
+const acceptFn: Fn = (async (_state: State, answer: unknown): Promise<string> => {
+  if (!pc) return "(peer: no pending connection)";
+  await pc.setRemoteDescription(JSON.parse(String(answer)));
+  return "peer: accepted";
+}) as Fn;
+
 export const name = "peer" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
@@ -123,4 +181,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["peersend", sendFn],
   ["peerallow", allowFn],
   ["peerlog", logFn],
+  ["peerOffer", offerFn],
+  ["peerAnswer", answerFn],
+  ["peerAccept", acceptFn],
 ]));
