@@ -78,7 +78,31 @@ const resizeMoveFn: Fn = (async (state: State, _p: unknown, event?: DomEvt): Pro
   await setBatch(state, [[`${d.key}.w`, Math.max(120, num(event?.clientX) - d.ox)], [`${d.key}.h`, Math.max(80, num(event?.clientY) - d.oy)]]);
 }) as Fn;
 
-const dropFn: Fn = (async (state: State): Promise<void> => { await setV(state, "win.drag", null); }) as Fn;
+// snapRegion — Ubuntu-style edge tiling. Given the pointer at drop + the
+// viewport, return the rect to snap to (left/right half, top=maximize, corner
+// quarters), or null for "no snap" (dropped in the interior). Pure geometry,
+// unit-tested.
+export const snapRegion = (mx: number, my: number, vw: number, vh: number, edge = 24): { x: number; y: number; w: number; h: number } | null => {
+  if (!vw || !vh) return null;
+  const L = mx <= edge, R = mx >= vw - edge, T = my <= edge, B = my >= vh - edge;
+  if (L && T) return { x: 0, y: 0, w: vw / 2, h: vh / 2 };
+  if (L && B) return { x: 0, y: vh / 2, w: vw / 2, h: vh / 2 };
+  if (R && T) return { x: vw / 2, y: 0, w: vw / 2, h: vh / 2 };
+  if (R && B) return { x: vw / 2, y: vh / 2, w: vw / 2, h: vh / 2 };
+  if (T) return { x: 0, y: 0, w: vw, h: vh };            // top → maximize
+  if (L) return { x: 0, y: 0, w: vw / 2, h: vh };        // left half
+  if (R) return { x: vw / 2, y: 0, w: vw / 2, h: vh };   // right half
+  return null;
+};
+
+const dropFn: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => {
+  const d = dragOf(state);
+  await setV(state, "win.drag", null);
+  if (!d || d.resize || !event) return;                 // only a drag-drop snaps
+  const g = globalThis as { innerWidth?: number; innerHeight?: number };
+  const rect = snapRegion(num(event.clientX), num(event.clientY), num(g.innerWidth), num(g.innerHeight));
+  if (rect) await setBatch(state, [[`${d.key}.x`, rect.x], [`${d.key}.y`, rect.y], [`${d.key}.w`, rect.w], [`${d.key}.h`, rect.h]]);
+}) as Fn;
 
 // z-order: any pointerdown in a window raises it. A module-scope counter assigns
 // the next-highest z; the window's z-index reads the reactive `${key}.z` cel.

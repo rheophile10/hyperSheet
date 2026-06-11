@@ -56,3 +56,13 @@ test("z-order: win.raise bumps the window's z above the previously-raised one", 
   const frame = resolveFn(s, "window")("w1", 0, 0, 100, 100, "T", "x", z1b);
   assert.match(frame.attrs.style, new RegExp(`z-index:${z1b}`));
 });
+
+import { snapRegion } from "../dist/甲骨坑/library/windows/index.js";
+test("snapRegion: edge tiling geometry (half / maximize / quarter / none)", () => {
+  assert.deepEqual(snapRegion(5, 300, 1000, 600), { x: 0, y: 0, w: 500, h: 600 }, "left half");
+  assert.deepEqual(snapRegion(995, 300, 1000, 600), { x: 500, y: 0, w: 500, h: 600 }, "right half");
+  assert.deepEqual(snapRegion(500, 5, 1000, 600), { x: 0, y: 0, w: 1000, h: 600 }, "top → maximize");
+  assert.deepEqual(snapRegion(5, 5, 1000, 600), { x: 0, y: 0, w: 500, h: 300 }, "top-left quarter");
+  assert.equal(snapRegion(500, 300, 1000, 600), null, "interior → no snap");
+  assert.equal(snapRegion(5, 300, 0, 0), null, "no viewport → no snap");
+});
