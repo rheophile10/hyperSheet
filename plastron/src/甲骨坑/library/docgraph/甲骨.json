@@ -81,6 +81,63 @@
         "name": "wiki.noteDraft",
         "description": "the note editor's buffer (set-binding from the textarea; wiki.saveNote commits it)."
       }
+    },
+    {
+      "key": "wiki.saveDesc",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wiki.saveDesc",
+        "segment": "docgraph",
+        "name": "wiki.saveDesc",
+        "kind": "native",
+        "description": "dispatch (state) - write the wiki.descDraft buffer to the current entry's metadata.description (metadata-only setCel). The wiki is editable: every render (inspect, vocab, wiki, skill) reads the same field. Runtime-local until the document dehydrates."
+      }
+    },
+    {
+      "key": "wiki.zoomWheel",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wiki.zoomWheel",
+        "segment": "docgraph",
+        "name": "wiki.zoomWheel",
+        "kind": "native",
+        "description": "dispatch (state, _, wheelEvent) - mousewheel on the graph: scale wiki.zoom (0.35-3x) around the pinned center node and re-render the article."
+      }
+    },
+    {
+      "key": "wiki.zoom",
+      "celType": "ValueCel",
+      "v": 1,
+      "metadata": {
+        "key": "wiki.zoom",
+        "segment": "docgraph",
+        "name": "wiki.zoom",
+        "description": "the graph view's zoom factor (wheel-driven; resets to 1 on a new subject)."
+      }
+    },
+    {
+      "key": "wiki.descDraft",
+      "celType": "ValueCel",
+      "v": "",
+      "metadata": {
+        "key": "wiki.descDraft",
+        "segment": "docgraph",
+        "name": "wiki.descDraft",
+        "description": "the description editor's buffer (set-binding from the textarea; wiki.saveDesc commits it)."
+      }
+    },
+    {
+      "key": "wiki.notes",
+      "celType": "ValueCel",
+      "v": {},
+      "metadata": {
+        "key": "wiki.notes",
+        "segment": "docgraph",
+        "name": "wiki.notes",
+        "description": "the annotation sidecar: key → note text. Notes point AT their subject (locked natives are annotatable); dehydrates with the document. The annotation plane supersedes this when it ships."
+      }
     }
   ]
 }

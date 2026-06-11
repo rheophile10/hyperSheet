@@ -105,9 +105,67 @@ test("graph view renders edge canvas + clickable node chips", async () => {
   const canvases = find(article, (n) => n.tag === "canvas");
   assert.equal(canvases.length, 1, "one graph canvas");
   assert.ok(JSON.parse(canvases[0].attrs["data-ops"]).length >= 1, "edge ops present");
-  const chips = find(article, (n) => n.attrs?.class === "wk-node");
+  const chips = find(article, (n) => String(n.attrs?.class ?? "").startsWith("wk-node"));
   assert.ok(chips.length >= 2, "node chips present");
   assert.ok(chips.every((c) => c.events?.click?.dispatch === "wiki.open"), "chips navigate");
+  // the subject is pinned to the box center (50%, 50%)
+  const center = chips.find((c) => c.attrs.class.includes("wk-node-center"));
+  assert.ok(center, "center chip present");
+  assert.match(center.attrs.style, /left:50\.00%;top:50\.00%/, "center pinned at 50%/50%");
+  // node size ∝ degree: at least two distinct scale factors among chips
+  const scales = new Set(chips.map((c) => (c.attrs.style.match(/scale\(([\d.]+)\)/) ?? [])[1]));
+  assert.ok(scales.size >= 2, "degree-proportional sizing produces distinct scales");
+});
+
+test("wheel zoom: wiki.zoomWheel scales wiki.zoom and re-renders", async () => {
+  const state = await boot();
+  await resolveFn(state, "wiki.open")(state, "wikidoc");
+  assert.equal(state.cels.get("wiki.zoom")?.v, 1);
+  await resolveFn(state, "wiki.zoomWheel")(state, null, { deltaY: -100 });
+  const z = state.cels.get("wiki.zoom")?.v;
+  assert.ok(z > 1 && z <= 3, `zoomed in (${z})`);
+  await resolveFn(state, "wiki.open")(state, "wiki"); // new subject resets
+  assert.equal(state.cels.get("wiki.zoom")?.v, 1, "zoom resets on a new subject");
+});
+
+test("the wiki is editable: saveDesc writes metadata.description (unlocked cels)", async () => {
+  const state = await boot();
+  await resolveFn(state, "wiki.open")(state, "x"); // creates the (unlocked) content cel
+  await resolveFn(state, "hydrate")(state, [], []);
+  await resolveFn(state, "wiki.open")(state, "win.wiki.content");
+  await resolveFn(state, "setValue")(state, "wiki.descDraft", "the wiki window body formula");
+  await resolveFn(state, "wiki.saveDesc")(state);
+  assert.equal(state.cels.get("win.wiki.content").metadata.description, "the wiki window body formula");
+  assert.match(textOf(state.cels.get("wiki.article")?.v), /the wiki window body formula/, "article refreshed with the edit");
+});
+
+test("locked natives: no desc editor, but the sidecar note STICKS", async () => {
+  const state = await boot();
+  await resolveFn(state, "wiki.open")(state, "wikidoc");
+  assert.match(textOf(state.cels.get("wiki.article")?.v), /locked — the description ships/i);
+  await resolveFn(state, "setValue")(state, "wiki.noteDraft", "great fn, see [[wiki]]");
+  await resolveFn(state, "wiki.saveNote")(state);
+  assert.equal(state.cels.get("wiki.notes").v["wikidoc"], "great fn, see [[wiki]]");
+  assert.equal(state.cels.get("wikidoc").metadata.note, undefined, "locked cel untouched");
+  assert.match(textOf(state.cels.get("wiki.article")?.v), /great fn/, "note renders in the article");
+});
+
+test("native fns show live source + a github link", async () => {
+  const state = await boot();
+  await resolveFn(state, "wiki.open")(state, "wikidoc");
+  const article = state.cels.get("wiki.article")?.v;
+  assert.match(textOf(article), /source \(live binding\)/i);
+  const a = find(article, (n) => n.tag === "a")[0];
+  assert.ok(a && /github\.com\/rheophile10\/plastron\/blob\/master/.test(a.attrs.href), "github source link");
+});
+
+test("layer articles seed the graph from members (never empty)", async () => {
+  const state = await boot();
+  await resolveFn(state, "wiki.open")(state, "win.wiki.state"); // creates window cels, articles win.wiki
+  await resolveFn(state, "hydrate")(state, [], []);
+  await resolveFn(state, "wiki.open")(state, "win.wiki");
+  const chips = find(state.cels.get("wiki.article")?.v, (n) => String(n.attrs?.class ?? "").startsWith("wk-node"));
+  assert.ok(chips.length >= 3, `layer graph has member nodes (${chips.length})`);
 });
 
 test("saveNote writes metadata.note (merge — inputMap survives) and [[links]] render", async () => {
@@ -120,8 +178,9 @@ test("saveNote writes metadata.note (merge — inputMap survives) and [[links]] 
   await resolveFn(state, "setValue")(state, "wiki.noteDraft", "see [[wikidoc]] for the render half");
   await resolveFn(state, "wiki.saveNote")(state);
 
-  assert.equal(state.cels.get("win.wiki.content").metadata.note, "see [[wikidoc]] for the render half");
-  assert.deepEqual({ ...(state.cels.get("win.wiki.content").metadata.inputMap ?? {}) }, before, "metadata edit merged, inputMap intact");
+  // notes live in the docgraph sidecar map — the subject cel is never edited
+  assert.equal(state.cels.get("wiki.notes").v["win.wiki.content"], "see [[wikidoc]] for the render half");
+  assert.deepEqual({ ...(state.cels.get("win.wiki.content").metadata.inputMap ?? {}) }, before, "subject untouched, inputMap intact");
 
   // the refreshed article renders the [[wikidoc]] reference as a wiki link
   const article = state.cels.get("wiki.article")?.v;

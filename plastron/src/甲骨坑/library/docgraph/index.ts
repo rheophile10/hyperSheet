@@ -51,9 +51,9 @@ const isVnode = (v: unknown): v is V => !!v && typeof v === "object" && ((v as V
 const FN_TYPES = new Set(["LockedLambdaCel", "EditableLambdaCel", "CompilerCel"]);
 // our own machinery stays out of the graph (a wiki article about the wiki's
 // article buffer is noise, not knowledge).
-const isInternal = (key: string): boolean => key === "wiki.article" || key === "wiki.noteDraft";
+const isInternal = (key: string): boolean => key === "wiki.article" || key === "wiki.noteDraft" || key === "wiki.notes" || key === "wiki.descDraft";
 
-interface CelLike { celType: string; f?: string; v?: unknown; metadata: Record<string, unknown> }
+interface CelLike { celType: string; f?: string; v?: unknown; locked?: boolean; metadata: Record<string, unknown> }
 const celOf = (state: State, key: string): CelLike | undefined => state.cels.get(key) as unknown as CelLike | undefined;
 
 /** Flatten a cel's inputMap (values are Key | Key[]) into dep keys. */
@@ -83,7 +83,14 @@ const summaryOf = (cel: CelLike | undefined): string => {
   const doc = cel?.metadata?.doc as Record<string, unknown> | undefined;
   return String(doc?.summary ?? cel?.metadata?.description ?? "");
 };
-const noteOf = (cel: CelLike | undefined): string => String(cel?.metadata?.note ?? "");
+/** Notes live in a docgraph-owned SIDECAR map (wiki.notes: key → text) — the
+ *  note points AT the subject instead of editing it (the annotation-plane
+ *  shape), so locked natives are annotatable and no lock/Layer-1 policy is
+ *  ever in the write path. metadata.note remains a read fallback. */
+const noteOf = (state: State, key: string): string => {
+  const map = state.cels.get("wiki.notes")?.v as Record<string, string> | undefined;
+  return String(map?.[key] ?? celOf(state, key)?.metadata?.note ?? "");
+};
 
 /** Member cels of a segment (or a win.<id> layer — genesis stamps segment to
  *  the layer name, but tolerate key-prefix membership too). */
@@ -99,7 +106,9 @@ const membersOf = (state: State, seg: string): string[] => {
 // ── deterministic force layout (no Math.random — seeds from index) ──────────
 
 interface LNode { key: string; x: number; y: number }
-const forceLayout = (keys: string[], edges: Array<[number, number]>, w: number, h: number): LNode[] => {
+/** pinIndex: that node is HELD at the box center every iteration — the
+ *  article's subject anchors the layout instead of drifting with it. */
+const forceLayout = (keys: string[], edges: Array<[number, number]>, w: number, h: number, pinIndex = -1): LNode[] => {
   const n = keys.length;
   const cx = w / 2, cy = h / 2;
   const nodes: LNode[] = keys.map((key, i) => {
@@ -107,6 +116,7 @@ const forceLayout = (keys: string[], edges: Array<[number, number]>, w: number, 
     const r = 0.30 * Math.min(w, h) * (1 + (i % 3) * 0.22);
     return { key, x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
   });
+  if (pinIndex >= 0 && pinIndex < n) { nodes[pinIndex]!.x = cx; nodes[pinIndex]!.y = cy; }
   const K = Math.sqrt((w * h) / Math.max(1, n)) * 0.7;
   for (let it = 0; it < 120; it++) {
     const fx = new Array(n).fill(0), fy = new Array(n).fill(0);
@@ -122,6 +132,7 @@ const forceLayout = (keys: string[], edges: Array<[number, number]>, w: number, 
     }
     const cool = 1 - it / 120;
     for (let i = 0; i < n; i++) {
+      if (i === pinIndex) { nodes[i]!.x = cx; nodes[i]!.y = cy; continue; }
       nodes[i]!.x += Math.max(-12, Math.min(12, fx[i])) * cool + (cx - nodes[i]!.x) * 0.01;
       nodes[i]!.y += Math.max(-12, Math.min(12, fy[i])) * cool + (cy - nodes[i]!.y) * 0.01;
       nodes[i]!.x = Math.max(14, Math.min(w - 14, nodes[i]!.x));
@@ -148,11 +159,23 @@ const linkRow = (keys: string[]): V =>
 
 const section = (title: string, body: V): V[] => [el("div", { style: H2 }, [T(title)]), body];
 
-/** The neighborhood graph: canvas edges under clickable node chips. */
-const graphView = (state: State, center: string, w = 520, h = 230): V => {
-  // depth-2 BFS over dep edges (both directions), capped.
+/** The neighborhood graph: canvas edges under clickable node chips.
+ *  - layout runs in a fixed 1000×460 coordinate space; chips position in
+ *    PERCENTAGES and the canvas stretches to 100% — so the graph grows with
+ *    the window (resize the window, the graph expands with it).
+ *  - node size ∝ degree (sqrt-scaled, so hubs read as hubs without eating
+ *    the box); the article's subject is PINNED to the center.
+ *  - mousewheel dispatches wiki.zoomWheel: zoom spreads positions around the
+ *    pinned center (zoom is a cel; the handler re-renders the article). */
+const graphView = (state: State, center: string, zoom = 1): V => {
+  const W = 1000, H = 460;
+  // depth-2 BFS over dep edges (both directions), capped. A segment/layer
+  // center has no cel — seed its neighborhood from MEMBER cels instead so
+  // the graph is never empty for W-button (window-layer) articles.
   const seen = new Set<string>([center]);
-  let frontier = [center];
+  const memberSeeds = celOf(state, center) ? [] : membersOf(state, center).filter((k) => k !== center).slice(0, 14);
+  for (const m of memberSeeds) seen.add(m);
+  let frontier = memberSeeds.length ? [...memberSeeds] : [center];
   for (let depth = 0; depth < 2 && seen.size < 36; depth++) {
     const next: string[] = [];
     for (const k of frontier) {
@@ -173,23 +196,54 @@ const graphView = (state: State, center: string, w = 520, h = 230): V => {
       if (j !== undefined) edges.push([idx.get(k)!, j]);
     }
   }
-  const pos = forceLayout(keys, edges, w, h);
+  // synthetic spokes from a member-seeded center so the layout holds together
+  const ci = idx.get(center)!;
+  for (const m of memberSeeds) edges.push([ci, idx.get(m)!]);
+  // degree (within the doc graph, both directions) → node size
+  const degree = new Map<string, number>(keys.map((k) => [k,
+    inputKeysOf(celOf(state, k)).filter((d) => state.cels.has(d)).length + backlinksOf(state, k).length]));
+  const pos = forceLayout(keys, edges, W, H, ci);
+  // zoom spreads/contracts positions around the pinned center
+  const zx = (x: number): number => Math.max(8, Math.min(W - 8, W / 2 + (x - W / 2) * zoom));
+  const zy = (y: number): number => Math.max(8, Math.min(H - 8, H / 2 + (y - H / 2) * zoom));
   const ops = edges.map(([a, b]) => ({
-    op: "line", points: [[pos[a]!.x, pos[a]!.y], [pos[b]!.x, pos[b]!.y]], stroke: "#8886", lineWidth: 1,
+    op: "line", points: [[zx(pos[a]!.x), zy(pos[a]!.y)], [zx(pos[b]!.x), zy(pos[b]!.y)]], stroke: "#8886", lineWidth: 1,
   }));
   const chips = pos.map((p) => {
     const isCenter = p.key === center;
+    const deg = degree.get(p.key) ?? 0;
+    const scale = Math.min(1.9, 0.85 + 0.16 * Math.sqrt(deg)) * (isCenter ? 1.15 : 1);
     const label = p.key.length > 18 ? p.key.slice(0, 17) + "…" : p.key;
+    const lpct = (zx(p.x) / W * 100).toFixed(2), tpct = (zy(p.y) / H * 100).toFixed(2);
     return el("button", {
-      class: "wk-node", title: p.key,
-      style: `position:absolute;left:${Math.round(p.x)}px;top:${Math.round(p.y)}px;transform:translate(-50%,-50%);font:.66rem ui-monospace,monospace;padding:.06rem .35rem;border-radius:.7rem;cursor:pointer;white-space:nowrap;border:1px solid ${isCenter ? "#4a90d9" : "#8885"};background:${isCenter ? "#4a90d922" : "Canvas"};color:CanvasText`,
+      class: isCenter ? "wk-node wk-node-center" : "wk-node", title: `${p.key} — ${deg} edge${deg === 1 ? "" : "s"}`,
+      style: `position:absolute;left:${lpct}%;top:${tpct}%;transform:translate(-50%,-50%) scale(${scale.toFixed(2)});font:.66rem ui-monospace,monospace;padding:.06rem .35rem;border-radius:.7rem;cursor:pointer;white-space:nowrap;border:1px solid ${isCenter ? "#4a90d9" : "#8885"};background:${isCenter ? "#4a90d922" : "Canvas"};color:CanvasText`,
     }, [T(label)], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "wiki.open", payload: p.key } });
   });
-  return el("div", { class: "wk-graph", style: `position:relative;width:${w}px;height:${h}px;max-width:100%;border:1px solid #8883;border-radius:.5rem;overflow:hidden;background:#8880` }, [
-    { type: "el", tag: "canvas", attrs: { width: w, height: h, "data-ops": JSON.stringify(ops) }, children: [] } as V,
+  return el("div", {
+    class: "wk-graph", title: "scroll to zoom",
+    style: "position:relative;width:100%;height:340px;border:1px solid #8883;border-radius:.5rem;overflow:hidden;background:#8880",
+  }, [
+    { type: "el", tag: "canvas", attrs: { width: W, height: H, "data-ops": JSON.stringify(ops) },
+      style: { width: "100%", height: "100%", display: "block" }, children: [] } as V,
     ...chips,
-  ]);
+  ], { wheel: { dispatch: "wiki.zoomWheel" } });
 };
+
+/** The wiki is editable: the summary (metadata.description) gets the same
+ *  buffer + save treatment as the note. Edits are runtime-local until the
+ *  document dehydrates — the shipped seed is still the repo's. */
+const descEditor = (desc: string): V =>
+  el("div", { style: "margin:.25rem 0 .1rem" }, [
+    el("textarea", {
+      class: "wk-desc", rows: 2, placeholder: "describe this entry (saved to metadata.description — every render reads it: inspect, vocab, wiki, skill)",
+      style: "width:100%;box-sizing:border-box;font:.8rem system-ui;padding:.3rem .45rem;border:1px dashed #8884;border-radius:.4rem;background:#8880;color:CanvasText;resize:vertical",
+      value: desc,
+    }, [T(desc)], { input: { set: "wiki.descDraft", extract: "value" }, pointerdown: { dispatch: "winx.stop" } }),
+    el("div", { style: "margin-top:.2rem" }, [
+      el("button", { style: BTN }, [T("✎ save description")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "wiki.saveDesc" } }),
+    ]),
+  ]);
 
 const noteEditor = (note: string): V =>
   el("div", {}, [
@@ -256,8 +310,35 @@ const articleVnode = (state: State, key: string): V => {
     ]));
     const summary = summaryOf(cel);
     if (summary) body.push(el("p", { style: "font:.88rem system-ui;margin:.5rem 0" }, [T(summary)]));
+    if (cel.locked) {
+      body.push(el("div", { style: "font:.72rem system-ui;color:GrayText;margin:.1rem 0" },
+        [T("🔒 locked — the description ships with the segment; annotate below instead")]));
+    } else {
+      body.push(descEditor(summary));
+    }
     if (typeof cel.f === "string" && cel.f) {
       body.push(...section("formula", el("pre", { style: "font:.8rem ui-monospace,monospace;background:#8881;border:1px solid #8883;border-radius:.4rem;padding:.4rem .5rem;white-space:pre-wrap;word-break:break-word;margin:0" }, [T(cel.f)])));
+    } else if (FN_TYPES.has(cel.celType)) {
+      // a NATIVE fn carries no `f` — but the bound _fn is a live JS function,
+      // and toString() yields its real (tsc-emitted) source. Show it, plus a
+      // link to the segment's source file on GitHub (no iframe: GitHub sends
+      // X-Frame-Options deny — a tab is the honest affordance).
+      const live = (cel as unknown as { _fn?: unknown })._fn;
+      if (typeof live === "function") {
+        const src = String(live);
+        body.push(...section("source (live binding)", el("pre", {
+          style: "font:.74rem ui-monospace,monospace;background:#8881;border:1px solid #8883;border-radius:.4rem;padding:.4rem .5rem;white-space:pre-wrap;word-break:break-word;margin:0;max-height:14rem;overflow:auto",
+        }, [T(src.length > 4000 ? src.slice(0, 4000) + "\n…" : src)])));
+      }
+      const seg = segmentOf(cel);
+      const role = (state as unknown as { segments?: Map<string, { role?: string }> }).segments?.get(seg)?.role ?? "library";
+      const path = role === "kernel" ? "kernel/index.ts" : `${role === "application" ? "application" : "library"}/${seg}/index.ts`;
+      body.push(el("div", { style: "margin:.3rem 0 0;font:.78rem system-ui" }, [
+        el("a", {
+          href: `https://github.com/rheophile10/plastron/blob/master/plastron/src/甲骨坑/${path}`,
+          target: "_blank", style: "color:LinkText",
+        }, [T(`view ${seg}/index.ts on github ↗`)]),
+      ]));
     } else if (!FN_TYPES.has(cel.celType) && cel.v !== undefined && cel.v !== null && !isVnode(cel.v)) {
       const s = typeof cel.v === "object" ? JSON.stringify(cel.v) : String(cel.v);
       body.push(...section("value", el("pre", { style: "font:.8rem ui-monospace,monospace;background:#8881;border-radius:.4rem;padding:.3rem .5rem;margin:0;white-space:pre-wrap;word-break:break-word" }, [T(s.length > 400 ? s.slice(0, 400) + "…" : s)])));
@@ -272,8 +353,8 @@ const articleVnode = (state: State, key: string): V => {
 
   const back = backlinksOf(state, key);
   body.push(...section(`used by (${back.length})`, linkRow(back.slice(0, 40))));
-  body.push(...section("graph", graphView(state, key)));
-  const note = noteOf(cel);
+  body.push(...section("graph (scroll to zoom)", graphView(state, key, Number(celOf(state, "wiki.zoom")?.v) || 1)));
+  const note = noteOf(state, key);
   body.push(...section("note", el("div", {}, [...(note ? [noteBody(note)] : []), noteEditor(note)])));
 
   return el("div", { class: "wk-article", style: "font:.9rem system-ui;padding:.15rem .3rem" }, [...head, ...body]);
@@ -302,9 +383,10 @@ const repaint = (state: State): Promise<unknown> =>
 
 const refreshArticle = async (state: State, key: string): Promise<void> => {
   const article = articleVnode(state, key);
-  const note = noteOf(celOf(state, key));
+  const cel = celOf(state, key);
   await ((resolveFn(state, "setValueBatch") as Fn)(state, [
-    ["wiki.current", key], ["wiki.article", article], ["wiki.noteDraft", note],
+    ["wiki.current", key], ["wiki.article", article],
+    ["wiki.noteDraft", noteOf(state, key)], ["wiki.descDraft", summaryOf(cel)],
   ]));
 };
 
@@ -347,6 +429,10 @@ const wikiOpen: Fn = (async (state: State, payload?: unknown): Promise<void> => 
   if (!key) key = String(state.cels.get("wiki.current")?.v ?? "") || "origin";
   // the W button passes the window's state ref — article the LAYER it heads.
   if (key.startsWith("win.") && key.endsWith(".state")) key = key.slice(0, -".state".length);
+  // a NEW subject resets the zoom (zoom is per-entry, not per-session)
+  if (key !== String(state.cels.get("wiki.current")?.v ?? "")) {
+    await ((resolveFn(state, "setValue") as Fn)(state, "wiki.zoom", 1));
+  }
   await ensureWikiWindow(state);
   await refreshArticle(state, key);
   // open + raise the wiki window above every other win.*.state z.
@@ -377,17 +463,40 @@ const wikiOpen: Fn = (async (state: State, payload?: unknown): Promise<void> => 
 
 const wikiSaveNote: Fn = (async (state: State): Promise<void> => {
   const key = String(state.cels.get("wiki.current")?.v ?? "");
-  if (!key || !state.cels.has(key)) return; // segment/red-link articles hold no note cel (v1)
+  if (!key) return;
   const draft = String(state.cels.get("wiki.noteDraft")?.v ?? "");
+  const cur = (state.cels.get("wiki.notes")?.v ?? {}) as Record<string, string>;
+  const next = { ...cur };
+  if (draft.trim()) next[key] = draft; else delete next[key];
+  await ((resolveFn(state, "setValue") as Fn)(state, "wiki.notes", next));
+  await refreshArticle(state, key);
+  await repaint(state);
+}) as Fn;
+
+const wikiSaveDesc: Fn = (async (state: State): Promise<void> => {
+  const key = String(state.cels.get("wiki.current")?.v ?? "");
+  if (!key || !state.cels.has(key)) return;
+  const draft = String(state.cels.get("wiki.descDraft")?.v ?? "");
   try {
-    await ((resolveFn(state, "setCel") as Fn)(state, key, { metadata: { note: draft } }));
+    await ((resolveFn(state, "setCel") as Fn)(state, key, { metadata: { description: draft } }));
   } catch (e) {
-    // Layer-1 set policy may refuse (sealed segments) — surface, don't die.
-    await ((resolveFn(state, "setValue") as Fn)(state, "wiki.noteDraft",
-      `(note refused: ${String((e as Error)?.message ?? e)})`));
+    await ((resolveFn(state, "setValue") as Fn)(state, "wiki.descDraft",
+      `(edit refused: ${String((e as Error)?.message ?? e)})`));
   }
   await refreshArticle(state, key);
   await repaint(state);
+}) as Fn;
+
+/** wheel on the graph → zoom around the pinned center and re-render. */
+const wikiZoomWheel: Fn = (async (state: State, _payload: unknown, event?: unknown): Promise<void> => {
+  const dy = Number((event as { deltaY?: number } | undefined)?.deltaY ?? 0);
+  if (!dy) return;
+  const cur = Number(state.cels.get("wiki.zoom")?.v) || 1;
+  const next = Math.max(0.35, Math.min(3, cur * (dy < 0 ? 1.15 : 0.87)));
+  if (next === cur) return;
+  await ((resolveFn(state, "setValue") as Fn)(state, "wiki.zoom", next));
+  const key = String(state.cels.get("wiki.current")?.v ?? "");
+  if (key) { await refreshArticle(state, key); await repaint(state); }
 }) as Fn;
 
 export const name = "docgraph" as const;
@@ -397,4 +506,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["wiki", wikiFn],
   ["wiki.open", wikiOpen],
   ["wiki.saveNote", wikiSaveNote],
+  ["wiki.saveDesc", wikiSaveDesc],
+  ["wiki.zoomWheel", wikiZoomWheel],
 ]));
