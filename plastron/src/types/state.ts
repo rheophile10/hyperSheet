@@ -13,6 +13,19 @@ export interface State {
    *  consumers — pull-based, so segments that become active later
    *  self-heal. Runtime-only (never dehydrated). */
   defGeneration: number;
+  /** Layer-2 at-rest SEAL hooks (LIBRARY-provided; the kernel stays
+   *  stateless + zero-dep). When `sealCipher` is set, dehydrate replaces a
+   *  SEALED segment cel's dehydrated value `v` with a `{ __sealed:
+   *  "<ivB64.cipherB64>" }` marker so the secret never enters the archive
+   *  in plaintext; absent (the default), dehydrate is unchanged.
+   *  `sealDecipher`, when set, is the inverse — hydrate decrypts a
+   *  `{ __sealed }` marker back to its value. With NO decipher (locked),
+   *  the marker is left intact and the value stays unreadable until a
+   *  `seal.lock(password)` installs the hooks. The seal LIBRARY
+   *  (甲骨坑/library/seal) installs/clears these; the kernel only calls
+   *  them — it never imports any cipher. Runtime-only (never dehydrated). */
+  sealCipher?: (segment: Key, v: unknown) => unknown;
+  sealDecipher?: (v: unknown) => unknown;
   // Segment manifests no longer live in a side Map. A segment named X
   // is a SegmentCel in `cels` at key `冊.X` (metadata.segment = X, v =
   // its 冊). Read/write via kernel/segments/cels.ts (getSegmentManifest

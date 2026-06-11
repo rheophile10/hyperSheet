@@ -1,5 +1,6 @@
 import type { Cel, State } from "../../types/index.js";
 import { resolveFn } from "../resolve-fn.js";
+import { isSealedMarker } from "../seal.js";
 
 // ============================================================================
 // Schema hydration of cel values — call the schema's `hydrate` protocol
@@ -18,6 +19,16 @@ import { resolveFn } from "../resolve-fn.js";
 
 export const hydrateValue = (cel: Cel, state: State): unknown => {
   if (cel.v === null || cel.v === undefined) return cel.v;
+  // Layer-2 at-rest SEAL (inverse of deflateCel's cipher). A sealed cel
+  // arrives as a { __sealed: "ivB64.cipherB64" } marker. If state.sealDecipher
+  // is installed (seal.lock with the right password), decrypt it back to its
+  // value, then fall through to schema hydrate on the recovered value. With NO
+  // decipher (locked), LEAVE the marker — the value is unreadable until unlock.
+  if (isSealedMarker(cel.v)) {
+    if (!state.sealDecipher) return cel.v;
+    cel = { ...cel, v: state.sealDecipher(cel.v) } as Cel;
+    if (cel.v === null || cel.v === undefined) return cel.v;
+  }
   const fnKey = cel.schema?.protocols.hydrate;
   if (!fnKey) return cel.v;
   const fn = resolveFn(state, fnKey);

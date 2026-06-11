@@ -1,0 +1,17 @@
+{
+  "name": "seal",
+  "cels": [
+    {
+      "key": "seal.lock",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "seal.lock", "segment": "seal", "name": "seal.lock", "kind": "native", "description": "(password?) - Layer-2 at-rest seal. With a password: derive a data key (PBKDF2-HMAC-SHA-256) and install the kernel seal hooks so SEALED segment cels encrypt (AES-256-GCM) on dehydrate and decrypt on hydrate. With no/empty arg: clear the hooks (re-lock) - sealed values stay ciphertext at rest and unreadable on load. The password and data key never become cel values and never enter an archive." },
+      "locked": true
+    },
+    {
+      "key": "seal.locked",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "seal.locked", "segment": "seal", "name": "seal.locked", "kind": "native", "description": "() - true when this state is locked (no seal cipher hook installed)." },
+      "locked": true
+    }
+  ]
+}

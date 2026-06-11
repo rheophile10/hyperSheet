@@ -22,6 +22,8 @@ export {
 } from "./cels.js";
 export { isWitPrimitive, isWasmHandle } from "./wit.js";
 export { secretHandle, isSecretHandle, isSecretHandleRef, sanitizeSecretHandle } from "./secret.js";
+export { sealedMarker, isSealedMarker } from "./seal.js";
+export type { SealedMarker } from "./seal.js";
 
 // ── trap-as-value error machinery ── when a fireable cel's evaluator
 // throws, the kernel stores a tagged CelError on the cel rather than
