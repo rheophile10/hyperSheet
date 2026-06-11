@@ -1,0 +1,12 @@
+{
+  "name": "windows",
+  "cels": [
+    { "key": "window", "celType": "LockedLambdaCel", "metadata": { "key": "window", "segment": "windows", "name": "window", "kind": "native", "description": "(key, x, y, w, h, title, content) - a draggable/resizable window FRAME around content. Geometry (x/y/w/h) comes from the host's key.x/.y/.w/.h cels, so it's reactive + persists. Titlebar drags; corner resizes; body scrolls." }, "locked": true },
+    { "key": "win.drag", "celType": "ValueCel", "metadata": { "key": "win.drag", "segment": "windows", "name": "win.drag", "description": "the active drag/resize gesture {key,ox,oy,resize?} or null — module of the window manager's state, kept as a cel so it's reactive + dehydrates" }, "v": null },
+    { "key": "win.grab", "celType": "LockedLambdaCel", "metadata": { "key": "win.grab", "segment": "windows", "name": "win.grab", "kind": "native", "description": "pointerdown handler (dispatch): start dragging window <key>; records the mouse->origin offset + captures the pointer" }, "locked": true },
+    { "key": "win.move", "celType": "LockedLambdaCel", "metadata": { "key": "win.move", "segment": "windows", "name": "win.move", "kind": "native", "description": "pointermove handler (dispatch): while dragging, setValue the window's x/y to track the pointer" }, "locked": true },
+    { "key": "win.grabResize", "celType": "LockedLambdaCel", "metadata": { "key": "win.grabResize", "segment": "windows", "name": "win.grabResize", "kind": "native", "description": "pointerdown handler (dispatch): start resizing window <key> from the corner handle" }, "locked": true },
+    { "key": "win.resizeMove", "celType": "LockedLambdaCel", "metadata": { "key": "win.resizeMove", "segment": "windows", "name": "win.resizeMove", "kind": "native", "description": "pointermove handler (dispatch): while resizing, setValue the window's w/h (min 120x80)" }, "locked": true },
+    { "key": "win.drop", "celType": "LockedLambdaCel", "metadata": { "key": "win.drop", "segment": "windows", "name": "win.drop", "kind": "native", "description": "pointerup handler (dispatch): end the drag/resize gesture (clears win.drag)" }, "locked": true }
+  ]
+}

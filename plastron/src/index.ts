@@ -27,6 +27,7 @@ import * as fileStore       from "./甲骨坑/library/file-store/index.js";
 import * as htmlTemplate    from "./甲骨坑/library/html-template-parser/index.js";
 import * as plastronDom     from "./甲骨坑/library/dom/index.js";
 import * as sheetHost       from "./甲骨坑/library/sheet-host/index.js";
+import * as windows         from "./甲骨坑/library/windows/index.js";
 import * as segmentStore    from "./甲骨坑/library/segment-store/index.js";
 import * as opfsSeeding     from "./甲骨坑/library/opfs-seeding/index.js";
 import * as cliSegmentExport from "./甲骨坑/library/cli-segment-export/index.js";
@@ -85,6 +86,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "html-template-parser": () => [...htmlTemplate.cels],
   "dom":     () => [...plastronDom.cels],
   "sheet-host":       () => [...sheetHost.cels],
+  "windows":          () => [...windows.cels],
   "segment-store":    () => [...segmentStore.cels],
   "opfs-seeding":     () => [...opfsSeeding.cels],
   "cli-segment-export": () => [...cliSegmentExport.cels],

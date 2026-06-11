@@ -1,0 +1,45 @@
+import { test } from "bun:test";
+import assert from "node:assert/strict";
+import { createInitialState, resolveFn } from "../dist/index.js";
+
+// windows — draggable/resizable window frames (windows-segment.md stage 1).
+// Geometry lives in cels; the drag/resize dispatch handlers setValue them.
+const setCel = (s, k, v) => resolveFn(s, "setCel")(s, k, { celType: "ValueCel", v, metadata: { key: k, segment: "app" } });
+const val = (s, k) => s.cels.get(k)?.v;
+const cap = { setPointerCapture() {} };
+
+test("window(...) renders a frame with a draggable titlebar bound to win.grab", () => {
+  const s = createInitialState();
+  const frame = resolveFn(s, "window")("w1", 100, 80, 320, 200, "Sheet", "hello");
+  assert.equal(frame.type, "el");
+  assert.match(frame.attrs.style, /left:100px/);
+  assert.match(frame.attrs.style, /top:80px/);
+  const titlebar = frame.children.find((c) => c.attrs?.class === "pl-titlebar");
+  assert.equal(titlebar.events.pointerdown.dispatch, "win.grab");
+  assert.equal(titlebar.events.pointerdown.payload, "w1");
+});
+
+test("dragging the titlebar updates the window's x/y cels, drop ends it", async () => {
+  const s = createInitialState();
+  await setCel(s, "w1.x", 100); await setCel(s, "w1.y", 80);
+  const grab = resolveFn(s, "win.grab"), move = resolveFn(s, "win.move"), drop = resolveFn(s, "win.drop");
+  await grab(s, "w1", { clientX: 150, clientY: 120, pointerId: 1, currentTarget: cap });
+  assert.deepEqual(val(s, "win.drag"), { key: "w1", ox: 50, oy: 40 });
+  await move(s, null, { clientX: 200, clientY: 160 });
+  assert.equal(val(s, "w1.x"), 150); assert.equal(val(s, "w1.y"), 120);
+  await drop(s);
+  assert.equal(val(s, "win.drag"), null);
+  await move(s, null, { clientX: 300, clientY: 300 }); // no-op after drop
+  assert.equal(val(s, "w1.x"), 150);
+});
+
+test("dragging the corner handle resizes (min 120x80)", async () => {
+  const s = createInitialState();
+  await setCel(s, "w1.w", 320); await setCel(s, "w1.h", 200);
+  const grab = resolveFn(s, "win.grabResize"), move = resolveFn(s, "win.resizeMove");
+  await grab(s, "w1", { clientX: 500, clientY: 400, pointerId: 1, currentTarget: cap });
+  await move(s, null, { clientX: 600, clientY: 450 });
+  assert.equal(val(s, "w1.w"), 420); assert.equal(val(s, "w1.h"), 250);
+  await move(s, null, { clientX: 100, clientY: 100 }); // clamp
+  assert.equal(val(s, "w1.w"), 120); assert.equal(val(s, "w1.h"), 80);
+});

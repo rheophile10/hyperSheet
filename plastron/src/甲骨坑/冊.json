@@ -248,5 +248,13 @@
     "dependencies": [
       "dom"
     ]
+  },
+  {
+    "name": "windows",
+    "version": "0.0.1",
+    "description": "cels as draggable/resizable windows — frame render verb + drag/resize handlers + geometry-as-cels",
+    "dependencies": [
+      "dom"
+    ]
   }
 ]
