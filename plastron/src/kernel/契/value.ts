@@ -2,6 +2,7 @@ import type { Fn, Key, State } from "../../types/index.js";
 import type { SetOpts } from "../../types/index.js";
 import { isDataCel } from "../cels.js";
 import { affectedFor, runCascade } from "../卜/runCycle.js";
+import { settleStructural } from "./settle.js";
 import { precompute } from "../卜/precompute.js";
 import { compileCelBody } from "../hydrate/formula.js";
 import { flushChannels } from "./flush-channels.js";
@@ -92,6 +93,7 @@ export const setValue: Fn = async (
   const topoChanged = await applyValueWrite(state, key, value);
   if (topoChanged) precompute(state);
   await runCascade(state, affectedFor(state, [key]), new Set([key]));
+  await settleStructural(state);
   if (opts?.flush) await flushChannels(state, opts.flush);
   return state;
 };
@@ -111,6 +113,7 @@ export const setValueBatch: Fn = async (
   }
   if (topoChanged) precompute(state);
   await runCascade(state, affectedFor(state, firedKeys), new Set(firedKeys));
+  await settleStructural(state);
   if (opts?.flush) await flushChannels(state, opts.flush);
   return state;
 };

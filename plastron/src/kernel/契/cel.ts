@@ -8,6 +8,7 @@ import { compileCelBody } from "../hydrate/formula.js";
 import { inflateCel, disposeCel } from "../hydrate/cel.js";
 import { hasHooksOrCache, makeLambdaTrampoline } from "../卜/hooks.js";
 import { affectedFor, runCascade } from "../卜/runCycle.js";
+import { settleStructural } from "./settle.js";
 import type { SetOpts } from "../../types/index.js";
 import { flushChannels } from "./flush-channels.js";
 import { isCelError } from "../cel-error.js";
@@ -159,6 +160,7 @@ export const setCel: Fn = async (
   // revert — see roadmap Notes).
   if (specTouchesEdges(spec)) assertOneDirection(state);
   await runCascade(state, affectedFor(state, [key]), new Set([key]));
+  await settleStructural(state);
   if (opts?.flush) await flushChannels(state, opts.flush);
   return state;
 };
@@ -181,6 +183,7 @@ export const setCelBatch: Fn = async (
   if (topoChanged) precompute(state);
   if (checkEdges) assertOneDirection(state);
   await runCascade(state, affectedFor(state, keys), new Set(keys));
+  await settleStructural(state);
   if (opts?.flush) await flushChannels(state, opts.flush);
   return state;
 };
