@@ -263,11 +263,17 @@ const sheetView: Fn = ((
   const placements: { sel: string; vnode: V }[] = [];
   for (const k of ks) { const p = asPlacement(valOf.get(k)); if (p) placements.push(p); }
 
-  // taskbar — every worksheet window, click to restore + raise (minimized dimmed).
+  // taskbar — worksheet windows (winsheet.restore) AND state-cel windows
+  // (winapp/chatapp/winframe → winx.show). (A lineage TREE replaces this flat
+  // strip — see window-lineage-launcher.md.)
   const allWins = [...(base.length ? [BASE] : []), ...[...layers.keys()].filter((seg) => layers.get(seg)!.some((k) => addrOf(k)))];
+  const stateWins: { ref: string; title: string; off: boolean }[] = [];
+  for (const k of ks) { if (!k.endsWith(".state")) continue; const v = valOf.get(k) as { ref?: string; title?: string; closed?: number; min?: number } | undefined; if (v && typeof v === "object" && typeof v.ref === "string") stateWins.push({ ref: v.ref, title: String(v.title ?? k), off: !!(v.closed || v.min) }); }
+  const taskItem = (label: string, ref: string, off: boolean, handler: string): V => el("button", { class: "pl-task" + (off ? " off" : ""), "data-win": ref, style: `flex:0 0 auto;padding:.2rem .6rem;border:1px solid #8884;border-radius:.3rem;background:${off ? "#8882" : "Canvas"};cursor:pointer;font:600 .76rem ui-monospace,monospace;opacity:${off ? ".55" : "1"};white-space:nowrap` }, [T(label)], { click: { dispatch: handler, payload: ref } });
   const taskbar = el("div", { class: "pl-taskbar", style: "position:fixed;left:0;right:0;bottom:0;display:flex;gap:.4rem;padding:.3rem .5rem;background:#8881;border-top:1px solid #8883;z-index:99999;overflow-x:auto;align-items:center" },
     [el("span", { style: "font:600 .72rem ui-monospace,monospace;color:#888;flex:0 0 auto;margin-right:.2rem" }, [T("windows:")]),
-     ...allWins.map((seg) => el("button", { class: "pl-task", "data-win": seg, style: `flex:0 0 auto;padding:.2rem .6rem;border:1px solid #8884;border-radius:.3rem;background:${GM[seg]?.min ? "#8882" : "Canvas"};cursor:pointer;font:600 .76rem ui-monospace,monospace;opacity:${GM[seg]?.min ? ".55" : "1"};white-space:nowrap` }, [T(seg)], { click: { dispatch: "winsheet.restore", payload: seg } }))]);
+     ...allWins.map((seg) => taskItem(seg, seg, !!GM[seg]?.min, "winsheet.restore")),
+     ...stateWins.map((w) => taskItem(w.title, w.ref, w.off, "winx.show"))]);
   // .origin is the positioned desktop the windows float on; the taskbar pins to the bottom.
   const originNode = el("div", { class: "origin", style: "position:relative;min-height:90vh;width:100%;padding-bottom:3rem" }, [...sections, taskbar]);
 

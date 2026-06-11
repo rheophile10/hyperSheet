@@ -368,7 +368,7 @@
         "name": "winapp",
         "kind": "native",
         "genesis": true,
-        "description": "(id, title, contentSource) — create a window backed by a state cel whose content is a FORMULA (win.<id>.content). Mounts a real app: =winapp(\"wallet\",\"Wallet\",\"(domWallet)\")"
+        "description": "(id, title, contentSource) — create a window backed by a state cel whose content is a FORMULA (win.<id>.content). Mounts a real app: =winapp(\"wallet\",\"Wallet\",\"(domWallet (locked walletNote) (apiKeys))\")"
       }
     },
     {
@@ -467,6 +467,18 @@
         "kind": "native",
         "genesis": true,
         "description": "genesis: the readme WINDOW with the full plastron README"
+      },
+      "locked": true
+    },
+    {
+      "key": "winx.show",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winx.show",
+        "segment": "windows",
+        "name": "winx.show",
+        "kind": "native",
+        "description": "show + focus a state-cel window (un-close, un-minimize, raise) — taskbar restore"
       },
       "locked": true
     }

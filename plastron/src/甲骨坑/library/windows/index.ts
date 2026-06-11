@@ -221,6 +221,7 @@ const xRaise: Fn = (async (state: State, ref: unknown): Promise<void> => { const
 const xMin: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { min: s.min ? 0 : 1 }); }) as Fn;
 const xMax: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { max: s.max ? 0 : 1, z: ++xTopZ }); }) as Fn;
 const xClose: Fn = (async (state: State, ref: unknown): Promise<void> => { await setState(state, String(ref), { closed: 1 }); }) as Fn;
+const xShow: Fn = (async (state: State, ref: unknown): Promise<void> => { const r = String(ref); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.active", r)); if (state.cels.get("keys.active")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "keys.active", r)); await setState(state, r, { closed: 0, min: 0, z: ++xTopZ }); }) as Fn;
 const xStop: Fn = ((_state: State, _p: unknown, event?: { stopPropagation?: () => void }): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
 
 // winmake(id, title, content) — the formula: genesis a window-STATE cel + its
@@ -242,7 +243,11 @@ const makeFn: Fn = ((id: unknown, title: unknown, content: unknown): unknown => 
 // winapp(id, title, contentSource) — like winmake, but the content is a FORMULA,
 // not a string: it creates win.<id>.content as a FormulaCel and the frame mounts
 // THAT cel, so a window can hold a real app — the wallet panel, a chat, the
-// readme, anything renderable. =winapp("wallet","Wallet","(domWallet)").
+// readme, anything renderable.
+//   =winapp("wallet","Wallet","(domWallet (locked walletNote) (apiKeys))")
+// The content formula must REFERENCE the cels it should react to (inputMap
+// doctrine): a bare "(domWallet)" renders the locked panel and never re-fires,
+// so unlocking appears to do nothing.
 const appFn: Fn = ((id: unknown, title: unknown, contentSource: unknown): unknown => {
   const lay = `win.${String(id ?? "w")}`;
   const sref = `${lay}.state`, cref = `${lay}.content`;
@@ -340,7 +345,7 @@ const readmeFn: Fn = ((): V => el("div", { class: "readme", style: "font:13px/1.
   el("h2", { style: "margin:.15rem 0;font-size:1.1rem" }, [T("元 · plastron")]),
   el("p", { style: "margin:.3rem 0;opacity:.85" }, [T("A reactive cel substrate. Every worksheet is a window; formulas build apps; chat treats claude / grok / peers as users.")]),
   el("p", { style: "margin:.3rem 0 .15rem" }, [T("Type a formula in any cell:")]),
-  el("pre", { style: "background:#8881;padding:.45rem;border-radius:.35rem;white-space:pre-wrap;margin:.15rem 0" }, [T('=cels(3, 3)                              a sheet, in its own window\n=chatapp("claude", "Claude")             a chat window\n=winapp("wallet", "Wallet", "(domWallet)")   the wallet\n=desktop()                               the wallpaper')]),
+  el("pre", { style: "background:#8881;padding:.45rem;border-radius:.35rem;white-space:pre-wrap;margin:.15rem 0" }, [T('=cels(3, 3)                              a sheet, in its own window\n=chatapp("claude", "Claude")             a chat window\n=winapp("wallet", "Wallet", "(domWallet (locked walletNote) (apiKeys))")   the wallet\n=desktop()                               the wallpaper')]),
   el("p", { style: "margin:.35rem 0;opacity:.85" }, [T("Drag a titlebar onto another window's titlebar to make tabs; double-click a tab to pop it back out. ◱ mid · ⛶ max · – min · ✕ close.")]),
 ]) ) as Fn;
 
@@ -366,7 +371,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["chatui", chatFn], ["chat.send", chatSend], ["chat.key", chatKey], ["chatapp", chatappFn],
   ["winframe", frameFn],
   ["winx.grab", xGrab], ["winx.move", xMove], ["winx.grabResize", xGrabResize], ["winx.resizeMove", xResizeMove], ["winx.drop", xDrop],
-  ["winx.raise", xRaise], ["winx.min", xMin], ["winx.max", xMax], ["winx.close", xClose], ["winx.stop", xStop],
+  ["winx.raise", xRaise], ["winx.min", xMin], ["winx.max", xMax], ["winx.close", xClose], ["winx.show", xShow], ["winx.stop", xStop],
   ["window", windowFn],
   ["win.grab", grabFn],
   ["win.move", moveFn],
