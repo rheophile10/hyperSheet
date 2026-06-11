@@ -40,6 +40,7 @@ import * as plastronCanvas  from "./甲骨坑/library/plastron-canvas/index.js";
 import * as unsafeWallet    from "./甲骨坑/library/unsafe-wallet/index.js";
 import * as net             from "./甲骨坑/library/net/index.js";
 import * as llm             from "./甲骨坑/library/llm/index.js";
+import * as sqlite          from "./甲骨坑/library/sqlite/index.js";
 import * as domWallet       from "./甲骨坑/library/dom-wallet/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
 import * as sound           from "./甲骨坑/library/sound/index.js";
@@ -97,6 +98,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "unsafe-wallet":    () => [...unsafeWallet.cels],
   "net":              () => [...net.cels],
   "llm":              () => [...llm.cels],
+  "sqlite":           () => [...sqlite.cels],
   "dom-wallet":       () => [...domWallet.cels],
 };
 

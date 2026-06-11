@@ -1,0 +1,17 @@
+{
+  "name": "sqlite",
+  "cels": [
+    {
+      "key": "sqlite.command",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sqlite.command",
+        "segment": "sqlite",
+        "name": "sqlite.command",
+        "kind": "native",
+        "description": "(state, op, name, query) - in-browser SQLite (sql.js), OPFS-backed. op=open returns a {__db} handle; op=sql runs a query (writes persist to /plastron/dbs). Host db()/sql()/tables() verbs delegate here."
+      },
+      "locked": true
+    }
+  ]
+}

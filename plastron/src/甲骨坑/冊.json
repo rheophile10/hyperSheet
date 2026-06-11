@@ -213,7 +213,8 @@
       "plastron-canvas",
       "checkpoint",
       "unsafe-wallet",
-      "llm"
+      "llm",
+      "sqlite"
     ],
     "role": "application"
   },
@@ -229,6 +230,14 @@
     "description": "talk to an LLM from a formula — claude() (reactive, wallet-handle keys), over the net gate",
     "dependencies": [
       "net"
+    ]
+  },
+  {
+    "name": "sqlite",
+    "version": "0.0.1",
+    "description": "in-browser SQLite (sql.js) over OPFS — sqlite.command (open/query, persisted under /plastron/dbs)",
+    "dependencies": [
+      "file-store"
     ]
   }
 ]

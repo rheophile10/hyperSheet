@@ -799,50 +799,9 @@ const uploadHandler: Fn = async (stateArg: unknown, dir: unknown, event: unknown
 //     OPFS bytes at /plastron/dbs/<name>.db. db()/sql()/tables() vocabulary.
 //     (A dedicated `sqlite` segment is the cleaner long-term host; the MVP
 //     lives here alongside opfs, lazy-loading sql.js on first db() use.) ---
-interface SqlDb { exec(q: string): { columns: string[]; values: unknown[][] }[]; export(): Uint8Array; }
-interface SqlJs { Database: new (bytes?: Uint8Array) => SqlDb; }
-let _sqlJs: SqlJs | null = null;
-const _dbs = new Map<string, SqlDb>();
-const sqliteCdn = (): string => (globalThis as { __sqliteCdn?: string }).__sqliteCdn ?? "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.1/";
-const dbFile = (name: string): string => `/plastron/dbs/${name}.db`;
-const loadSqlJs = async (state: State): Promise<SqlJs> => {
-  if (_sqlJs) return _sqlJs;
-  // bundled path (origin's bundle inlines sql-wasm.js + the wasm bytes) → fully
-  // offline, no network. Falls back to the CDN when not bundled.
-  const g = globalThis as {
-    initSqlJs?: (o: { locateFile?: (f: string) => string; wasmBinary?: Uint8Array }) => Promise<SqlJs>;
-    __sqliteWasm?: Uint8Array;
-  };
-  if (g.initSqlJs && g.__sqliteWasm) {
-    _sqlJs = await g.initSqlJs({ wasmBinary: g.__sqliteWasm });
-    return _sqlJs;
-  }
-  const base = sqliteCdn();
-  await (resolveFn(state, "loadScript") as Fn)(state, `${base}sql-wasm.js`);
-  if (!g.initSqlJs) throw new Error("sqlite: sql.js failed to load");
-  _sqlJs = await g.initSqlJs({ locateFile: (f: string) => base + f });
-  return _sqlJs;
-};
-const openDb = async (state: State, name: string): Promise<SqlDb> => {
-  const cached = _dbs.get(name);
-  if (cached) return cached;
-  const SQL = await loadSqlJs(state);
-  await ensureSegments(state, ["file-store"]);
-  let bytes: Uint8Array | undefined;
-  try { bytes = (await (resolveFn(state, "fs.read") as Fn)(dbFile(name))) as Uint8Array; } catch { /* new db */ }
-  const db = bytes && bytes.length ? new SQL.Database(bytes) : new SQL.Database();
-  _dbs.set(name, db);
-  return db;
-};
-const persistDb = async (state: State, name: string, db: SqlDb): Promise<void> => {
-  await ensureSegments(state, ["file-store"]);
-  await (resolveFn(state, "fs.mkdir") as Fn)("/plastron/dbs");
-  await (resolveFn(state, "fs.write") as Fn)(dbFile(name), db.export());
-};
 const dbHandleName = (h: unknown): string =>
   (h && typeof h === "object" && typeof (h as { __db?: unknown }).__db === "string")
     ? (h as { __db: string }).__db : String(h ?? "main");
-const WRITE_SQL = /^\s*(insert|update|delete|create|drop|alter|replace|begin|commit|vacuum)\b/i;
 
 const dbFn:     Fn = (name: unknown) => ({ originDb: "open", name: String(name ?? "main") });
 const sqlFn:    Fn = (handle: unknown, query: unknown) => ({ originDb: "sql", name: dbHandleName(handle), query: String(query ?? "") });
@@ -1071,22 +1030,7 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
           await call("fs.delete", file); result = `deleted sheet "${nm}"`;
         } else result = `(unknown seg op: ${op})`;
       } else if (req.originDb) {
-        // sqlite — open a db (sql.js, OPFS-backed) or run a query.
-        const op = String(req.originDb);
-        const name = String(req.name ?? "main");
-        if (op === "open") {
-          await openDb(state, name);
-          result = { __db: name };                 // a handle sql()/tables() accept
-        } else if (op === "sql") {
-          const db = await openDb(state, name);
-          const query = String(req.query ?? "");
-          const res = db.exec(query);
-          if (WRITE_SQL.test(query)) await persistDb(state, name, db);
-          if (res.length && res[0]!.values.length) {
-            const { columns, values } = res[0]!;
-            result = values.map((row) => Object.fromEntries(columns.map((c, i) => [c, row[i]])));
-          } else result = res.length ? [] : "ok";
-        } else result = `(unknown db op: ${op})`;
+        result = await (resolveFn(state, "sqlite.command") as Fn)(state, String(req.originDb), String(req.name ?? "main"), String(req.query ?? ""));
       } else if (req.originGraph !== undefined) {
         // force-directed graph of a segment's cels (nodes) + inputMap deps (edges)
         const seg = String(req.originGraph);
