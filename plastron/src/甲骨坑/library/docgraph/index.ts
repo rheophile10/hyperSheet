@@ -313,23 +313,26 @@ const refreshArticle = async (state: State, key: string): Promise<void> => {
  *  gets the article state without a window, and NOTHING traps at runCycle. */
 const ensureWikiWindow = async (state: State): Promise<void> => {
   const setCel = resolveFn(state, "setCel") as Fn;
+  // generatedBy: origin's cellKeys admits only genesis-stamped cels into
+  // 元.view's vals — without the stamp, view.refresh rewires right past the
+  // window and the frame's mount spec is never lifted into the view.
   if (!state.cels.has("win.wiki.state")) {
     await setCel(state, "win.wiki.state", {
       celType: "ValueCel",
       v: { ref: "win.wiki.state", x: 130, y: 64, w: 580, h: 500, z: 6, min: 0, max: 0, closed: 1, title: "📖 wiki" },
-      metadata: { segment: "docgraph", name: "state" },
+      metadata: { segment: "docgraph", name: "state", generatedBy: "wiki" },
     });
   }
   if (!state.cels.has("win.wiki.content")) {
     await setCel(state, "win.wiki.content", {
       celType: "FormulaCel", f: "(wikidoc wiki.article)",
-      metadata: { segment: "docgraph", name: "content", parser: "f" },
+      metadata: { segment: "docgraph", name: "content", parser: "f", generatedBy: "wiki" },
     });
   }
   if (!state.cels.has("win.wiki.frame") && state.cels.has("mount") && state.cels.has("winframe")) {
     await setCel(state, "win.wiki.frame", {
       celType: "FormulaCel", f: '(mount ".origin" (winframe win.wiki.state win.active win.wiki.content))',
-      metadata: { segment: "docgraph", name: "frame", parser: "f" },
+      metadata: { segment: "docgraph", name: "frame", parser: "f", generatedBy: "wiki" },
     });
   }
 };
@@ -352,6 +355,15 @@ const wikiOpen: Fn = (async (state: State, payload?: unknown): Promise<void> => 
     }
   }
   await ((resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0, z: top + 1 }));
+  // Lazily-created cels are OUT-OF-BAND structure. The host view must rewire
+  // to include them (view.refresh rebuilds 元.view's vals), and the view must
+  // then FIRE against the new wiring — rewire updates inputMap after its own
+  // cascade, so the cycle must come AFTER the refresh (origin's commit does
+  // exactly rewire → runCycle → drain). A bare paint drain would no-op — the
+  // wallet-window lesson, applied.
+  const viewRefresh = resolveFn(state, "view.refresh") as Fn | undefined;
+  if (viewRefresh) await viewRefresh(state);
+  await ((resolveFn(state, "runCycle") as Fn)(state));
   await repaint(state);
 }) as Fn;
 
