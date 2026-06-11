@@ -1,5 +1,5 @@
 import type { 甲骨, Cel, Fn, State, VElement } from "../../../types/index.js";
-import { bindNativeFns, isSecretHandleRef, resolveFn } from "../../../kernel/index.js";
+import { bindNativeFns, isSecretHandleRef, resolveFn, bundleSegments } from "../../../kernel/index.js";
 import { el as makeEl, text as T, memo } from "../dom/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
@@ -327,6 +327,11 @@ const wsDrop: Fn = (async (state: State, _p: unknown, event?: WEvt & { clientX?:
   m[d.seg] = { ...(m[d.seg] ?? {}), host: ult };
   m[ult] = { ...(m[ult] ?? {}), tab: d.seg, min: 0 };
   await setGeom(state, m);
+  // tabbing IS sharing context: the stacked windows form a BUNDLE (a clique —
+  // mutual get/set among all tabs), so a minted worksheet can write its
+  // tab-mates' cels. Sealing still wins. (Tearoff leaving the bundle: next.)
+  const members = [ult, ...Object.keys(m).filter((k) => m[k]?.host === ult)];
+  bundleSegments(state, members);
 }) as Fn;
 const wsTab: Fn = (async (state: State, payload: unknown): Promise<void> => { const p = payload as { host?: string; tab?: string }; if (!p?.host || !p?.tab) return; const m = geomMap(state); m[p.host] = { ...(m[p.host] ?? {}), tab: p.tab }; await setGeom(state, m); }) as Fn;
 const wsTearoff: Fn = (async (state: State, seg: unknown): Promise<void> => { const k = String(seg); const m = geomMap(state); const g = m[k] ?? {}; m[k] = { ...g, host: undefined, x: wnum(g.x, 80) + 40, y: wnum(g.y, 80) + 40, z: ++wTopZ }; await setGeom(state, m); }) as Fn;
