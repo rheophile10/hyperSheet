@@ -354,6 +354,31 @@ await withPage("=def(py) + call works via Pyodide", async (page) => {
   eq(out.result, 36, "=sq(6) → 36 (python)");
 });
 
+// ── windows — a window renders via mount() + drags with REAL pointer events
+// (the painter wires the vnode events; page.mouse drives a true drag). Proves
+// the windows library end-to-end in a browser, beyond the fake-event unit test.
+await withPage("windows — a window renders via mount and drags", async (page) => {
+  await page.evaluate(async () => {
+    const { state, resolveFn } = (globalThis as any).plastron;
+    const sc = (k: string, v: unknown) => resolveFn(state, "setCel")(state, k, { celType: "ValueCel", v, metadata: { key: k, segment: "win" } });
+    await sc("w1.x", 40); await sc("w1.y", 60); await sc("w1.w", 220); await sc("w1.h", 140);
+    await resolveFn(state, "origin.edit")(state, "元");
+    await resolveFn(state, "setValue")(state, "元.draft", '(mount ".origin" (window "w1" w1.x w1.y w1.w w1.h "Demo" "hi"))');
+    await resolveFn(state, "origin.commit")(state, "元");
+    await new Promise((r) => setTimeout(r, 120));
+  });
+  ok(await page.$(".pl-window"), "a window frame rendered");
+  ok(await page.$(".pl-titlebar"), "titlebar present");
+  const box = await (await page.$(".pl-titlebar"))!.boundingBox();
+  const cx = box!.x + box!.width / 2, cy = box!.y + box!.height / 2;
+  await page.mouse.move(cx, cy); await page.mouse.down();
+  await page.mouse.move(cx + 60, cy + 40, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(120);
+  const pos = await page.evaluate(() => { const { state } = (globalThis as any).plastron; return { x: state.cels.get("w1.x")?.v, y: state.cels.get("w1.y")?.v }; });
+  ok(pos.x === 100 && pos.y === 100, `window dragged +60/+40 → w1.x/y = ${pos.x}/${pos.y} (expect 100/100)`);
+});
+
 // ── peer — TWO browsers share a cel over WebRTC. Manual signaling is brokered
 // by the test (copy A's offer → B, B's answer → A); ICE uses localhost host
 // candidates (same machine), so no STUN/TURN. Confirms a setValue propagates
