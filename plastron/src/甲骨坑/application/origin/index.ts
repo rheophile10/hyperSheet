@@ -434,7 +434,7 @@ const buildSeed = (state: State): string => {
   for (const [name, kind, f] of arch.defs) parts.push(`def(${qstr(name)}, ${qstr(kind)}, ${qstr(f)})`);
   if (parts.length === 0) return "=cels(1, 1)";
   if (parts.length === 1 && parts[0]!.startsWith("cels(")) return "=" + parts[0];
-  return "=doc(" + parts.join(", ") + ")";
+  return "=甲(" + parts.join(", ") + ")";  // seg/甲 (was doc)
 };
 
 const restoreArchive = async (state: State, arch: { cells?: [string, string][]; defs?: [string, string, string][] }): Promise<void> => {
@@ -897,7 +897,9 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["cels",           celsGen],
   ["cel",            celFn],
   ["at",             at],
-  ["doc",            doc],
+  ["seg",            doc],   // primary (was doc — composes a SEGMENT)
+  ["甲",             doc],   // alias
+  ["doc",            doc],   // deprecated legacy alias
   ["seed",           seedFn],
   ["origin.drain",   effectsDrain],
   ["load",           loadFn],
