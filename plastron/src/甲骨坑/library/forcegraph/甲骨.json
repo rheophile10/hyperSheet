@@ -106,6 +106,30 @@
         "name": "fg.lastMoved",
         "description": "pointer travel of the last completed drag - fg.click reads it to suppress click-after-drag."
       }
+    },
+    {
+      "key": "fg.arm",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "fg.arm",
+        "segment": "forcegraph",
+        "name": "fg.arm",
+        "kind": "native",
+        "description": "dispatch (state, id) - click into a graph to ARM it: while armed it owns the mousewheel (zoom, page does not scroll - the maps-embed convention). fg.disarm releases on pointerleave."
+      }
+    },
+    {
+      "key": "fg.disarm",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "fg.disarm",
+        "segment": "forcegraph",
+        "name": "fg.disarm",
+        "kind": "native",
+        "description": "dispatch (state, id) - release the wheel back to the page (pointer left the graph)."
+      }
     }
   ]
 }

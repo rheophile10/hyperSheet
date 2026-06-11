@@ -346,7 +346,7 @@ const ensureWikiWindow = async (state: State): Promise<void> => {
       metadata: { segment: "win.wiki", name: "state" },
     });
   }
-  const CONTENT_F = '(wikidoc wiki.article (fgview "wiki" fg.wiki.spec fg.wiki.pos fg.wiki.zoom))';
+  const CONTENT_F = '(wikidoc wiki.article (fgview "wiki" fg.wiki.spec fg.wiki.pos fg.wiki.zoom fg.wiki.armed))';
   const content = state.cels.get("win.wiki.content") as { f?: string } | undefined;
   if (!content || content.f !== CONTENT_F) {
     await setCel(state, "win.wiki.content", {

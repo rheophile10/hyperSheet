@@ -36,7 +36,8 @@ export const bindingsEqual = (a: EventBinding, b: EventBinding): boolean =>
   && Object.is(a.value, b.value)
   && a.extract === b.extract
   && a.dispatch === b.dispatch
-  && Object.is(a.payload, b.payload);
+  && Object.is(a.payload, b.payload)
+  && (a.prevent ?? false) === (b.prevent ?? false);
 
 const eventsEqual = (
   a: Record<string, EventBinding> | undefined,

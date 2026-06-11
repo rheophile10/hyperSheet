@@ -43,6 +43,7 @@ import * as defn            from "./甲骨坑/library/defn/index.js";
 import * as genesis         from "./甲骨坑/library/genesis/index.js";
 import * as checkpoint      from "./甲骨坑/library/checkpoint/index.js";
 import * as plastronCanvas  from "./甲骨坑/library/plastron-canvas/index.js";
+import * as charts          from "./甲骨坑/library/charts/index.js";
 import * as unsafeWallet    from "./甲骨坑/library/unsafe-wallet/index.js";
 import * as net             from "./甲骨坑/library/net/index.js";
 import * as cryptoLib       from "./甲骨坑/library/crypto/index.js";
@@ -51,6 +52,7 @@ import * as llm             from "./甲骨坑/library/llm/index.js";
 import * as sqlite          from "./甲骨坑/library/sqlite/index.js";
 import * as domWallet       from "./甲骨坑/library/dom-wallet/index.js";
 import * as docgraph        from "./甲骨坑/library/docgraph/index.js";
+import * as forcegraph      from "./甲骨坑/library/forcegraph/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
 import * as sound           from "./甲骨坑/library/sound/index.js";
 
@@ -110,6 +112,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "genesis":          () => [...genesis.cels],
   "checkpoint":       () => [...checkpoint.cels],
   "plastron-canvas":  () => [...plastronCanvas.cels],
+  "charts":           () => [...charts.cels],
   "unsafe-wallet":    () => [...unsafeWallet.cels],
   "net":              () => [...net.cels],
   "crypto":           () => [...cryptoLib.cels],
@@ -118,6 +121,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "sqlite":           () => [...sqlite.cels],
   "dom-wallet":       () => [...domWallet.cels],
   "docgraph":         () => [...docgraph.cels],
+  "forcegraph":       () => [...forcegraph.cels],
 };
 
 // application/ segments. notepad + web-editor boot via host-called builders

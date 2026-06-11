@@ -87,11 +87,25 @@ test("click-after-drag suppressed; clean click re-dispatches onNode", async () =
   assert.equal(state.cels.get("wiki.current")?.v, "b", "clean click dispatched spec.onNode (wiki.open)");
 });
 
-test("fg.wheel zooms the instance within bounds", async () => {
+test("the wheel convention: unarmed wheel is ignored; click-to-arm owns it", async () => {
   const state = await boot();
   await resolveFn(state, "fg.set")(state, { id: "t4", spec: SPEC });
+  // unarmed: the wheel passes through to the page (zoom untouched)
+  await resolveFn(state, "fg.wheel")(state, "t4", { deltaY: -120 });
+  assert.equal(state.cels.get("fg.t4.zoom").v, 1, "unarmed wheel ignored");
+  // click into the graph → armed → the graph owns the wheel
+  await resolveFn(state, "fg.arm")(state, "t4");
+  assert.equal(state.cels.get("fg.t4.armed").v, 1, "armed");
   await resolveFn(state, "fg.wheel")(state, "t4", { deltaY: -120 });
   assert.ok(state.cels.get("fg.t4.zoom").v > 1, "zoomed in");
+  // armed render claims the default; unarmed render does not
+  const armedView = resolveFn(state, "fgview")("t4", SPEC, state.cels.get("fg.t4.pos").v, 1, 1);
+  const idleView = resolveFn(state, "fgview")("t4", SPEC, state.cels.get("fg.t4.pos").v, 1, 0);
+  assert.equal(armedView.events.wheel.prevent, true, "armed wheel binding claims preventDefault");
+  assert.ok(!idleView.events.wheel.prevent, "idle wheel binding leaves scrolling alone");
+  // pointer leaves → released
+  await resolveFn(state, "fg.disarm")(state, "t4");
+  assert.equal(state.cels.get("fg.t4.armed").v, 0, "disarmed on leave");
   for (let i = 0; i < 30; i++) await resolveFn(state, "fg.wheel")(state, "t4", { deltaY: 120 });
   assert.ok(state.cels.get("fg.t4.zoom").v >= 0.35, "floor respected");
 });

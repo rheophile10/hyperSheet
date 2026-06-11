@@ -119,6 +119,7 @@ test("zoom is fg-owned: wheel scales fg.wiki.zoom; a new subject resets it", asy
   const state = await boot();
   await resolveFn(state, "wiki.open")(state, "wikidoc");
   assert.equal(state.cels.get("fg.wiki.zoom")?.v, 1);
+  await resolveFn(state, "fg.arm")(state, "wiki"); // click into the graph first
   await resolveFn(state, "fg.wheel")(state, "wiki", { deltaY: -100 });
   assert.ok(state.cels.get("fg.wiki.zoom")?.v > 1, "zoomed in");
   await resolveFn(state, "wiki.open")(state, "wiki"); // new subject resets

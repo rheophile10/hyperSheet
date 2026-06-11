@@ -40,6 +40,12 @@ export interface EventBinding {
   dispatch?: string;
   /** Static payload passed to the dispatch fn. */
   payload?: unknown;
+  /** Claim the event: call preventDefault() synchronously before handling.
+   *  The scroll-containment convention (a graph owning the wheel, a key
+   *  the page must not see) — the keymap preventDefault, generalized to
+   *  every binding form. The painter attaches prevent-bindings with
+   *  { passive: false } so wheel/touch defaults are actually claimable. */
+  prevent?: boolean;
 }
 
 export interface VText {

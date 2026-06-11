@@ -22,7 +22,11 @@ export type DomEvent = { type?: string; target?: unknown; [k: string]: unknown }
 export type Handler = (event: DomEvent) => void;
 
 export interface Listenable {
-  addEventListener(type: string, fn: Handler): void;
+  /** options mirrors the DOM's AddEventListenerOptions structurally (the
+   *  dom lib compiles host-agnostic, so no lib.dom types here). Browsers
+   *  ignore it pre-options; fakes/SSR shims may accept 2 args — extra
+   *  args are harmless in JS. */
+  addEventListener(type: string, fn: Handler, options?: { passive?: boolean }): void;
   removeEventListener(type: string, fn: Handler): void;
 }
 
@@ -169,6 +173,9 @@ export const makeListener = (binding: EventBinding, state: State): Handler => {
     };
   }
   return (event) => {
+    // prevent must run SYNCHRONOUSLY, before any async set/dispatch work —
+    // a deferred preventDefault is a no-op once the default has happened.
+    if (binding.prevent) (event as { preventDefault?: () => void }).preventDefault?.();
     if (binding.set !== undefined) {
       let value: unknown;
       if (binding.value !== undefined) value = binding.value;
@@ -193,7 +200,9 @@ export const attachEvents = (
   const map = reg.get(el) ?? new Map<string, AttachedListener>();
   for (const [type, binding] of Object.entries(events)) {
     const fn = makeListener(binding, state);
-    el.addEventListener(type, fn);
+    // prevent-bindings attach non-passive: browsers default wheel/touch on
+    // some targets to passive, which would silently ignore preventDefault.
+    el.addEventListener(type, fn, binding.prevent ? { passive: false } : undefined);
     map.set(type, { binding: { ...binding }, fn });
   }
   if (map.size > 0) reg.set(el, map);
@@ -218,7 +227,7 @@ export const applyEventDelta = (
       const attached = map.get(type);
       if (attached) el.removeEventListener(type, attached.fn);
       const fn = makeListener(binding, state);
-      el.addEventListener(type, fn);
+      el.addEventListener(type, fn, binding.prevent ? { passive: false } : undefined);
       map.set(type, { binding: { ...binding }, fn });
     }
   }

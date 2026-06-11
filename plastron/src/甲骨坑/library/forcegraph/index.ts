@@ -152,6 +152,7 @@ export const layout = (spec: FgSpec): Pos => {
 const posKey = (id: string): string => `fg.${id}.pos`;
 const specKey = (id: string): string => `fg.${id}.spec`;
 const zoomKey = (id: string): string => `fg.${id}.zoom`;
+const armKey = (id: string): string => `fg.${id}.armed`;
 
 /** fg.set — (state, { id, spec }): create the instance's layer cels if
  *  missing, lay the graph out to overlap-free, freeze. Re-set with a new
@@ -162,7 +163,7 @@ const fgSet: Fn = (async (state: State, payload?: unknown): Promise<void> => {
   const spec = specOf(rawSpec);
   const setCel = resolveFn(state, "setCel") as Fn;
   const setValue = resolveFn(state, "setValue") as Fn;
-  for (const [key, v] of [[specKey(gid), {}], [posKey(gid), {}], [zoomKey(gid), 1]] as Array<[string, unknown]>) {
+  for (const [key, v] of [[specKey(gid), {}], [posKey(gid), {}], [zoomKey(gid), 1], [armKey(gid), 0]] as Array<[string, unknown]>) {
     if (!state.cels.has(key)) {
       await setCel(state, key, { celType: "ValueCel", v, metadata: { segment: `fg.${gid}`, name: key.split(".").pop() } });
     }
@@ -182,11 +183,12 @@ const fgSet: Fn = (async (state: State, payload?: unknown): Promise<void> => {
 /** fgview(id, spec, pos, zoom) — the pure render. Use it in a FORMULA with
  *  the instance cels as args so drags/zooms re-render through the graph:
  *  `(fgview "wiki" fg.wiki.spec fg.wiki.pos fg.wiki.zoom)` */
-const fgviewFn: Fn = (id?: unknown, specArg?: unknown, posArg?: unknown, zoomArg?: unknown): V => {
+const fgviewFn: Fn = (id?: unknown, specArg?: unknown, posArg?: unknown, zoomArg?: unknown, armedArg?: unknown): V => {
   const gid = String(id ?? "g");
   const spec = specOf(specArg);
   const pos = (posArg ?? {}) as Pos;
   const zoom = Math.max(0.35, Math.min(3, num(zoomArg, 1)));
+  const armed = !!(typeof armedArg === "number" ? armedArg : num(armedArg, 0));
   const zx = (x: number): number => Math.max(8, Math.min(FG_W - 8, FG_W / 2 + (x - FG_W / 2) * zoom));
   const zy = (y: number): number => Math.max(8, Math.min(FG_H - 8, FG_H / 2 + (y - FG_H / 2) * zoom));
   const ops = spec.edges.flatMap(([a, b]) => {
@@ -212,14 +214,22 @@ const fgviewFn: Fn = (id?: unknown, specArg?: unknown, posArg?: unknown, zoomArg
       click: { dispatch: "fg.click", payload: { id: gid, key: n.key } },
     })];
   });
+  // the scroll-containment convention (the maps-embed pattern): the graph
+  // owns the wheel ONLY while armed — click in to arm (wheel zooms, the
+  // window does not scroll: prevent claims the default), leave to release.
   return el("div", {
-    class: "fg-box", "data-fg": gid, title: "drag nodes · scroll to zoom",
-    style: "position:relative;width:100%;height:340px;border:1px solid #8883;border-radius:.5rem;overflow:hidden;background:#8880",
+    class: armed ? "fg-box fg-armed" : "fg-box", "data-fg": gid,
+    title: armed ? "scroll zooms · move the pointer out to release" : "drag nodes · click to enable scroll-zoom",
+    style: `position:relative;width:100%;height:340px;border:1px solid ${armed ? "#4a90d9" : "#8883"};border-radius:.5rem;overflow:hidden;background:#8880;box-shadow:${armed ? "0 0 0 2px #4a90d933" : "none"}`,
   }, [
     { type: "el", tag: "canvas", attrs: { width: FG_W, height: FG_H, "data-ops": JSON.stringify(ops) },
       style: { width: "100%", height: "100%", display: "block" }, children: [] } as V,
     ...chips,
-  ], { wheel: { dispatch: "fg.wheel", payload: gid } });
+  ], {
+    wheel: { dispatch: "fg.wheel", payload: gid, prevent: armed },
+    click: { dispatch: "fg.arm", payload: gid },
+    pointerleave: { dispatch: "fg.disarm", payload: gid },
+  });
 };
 
 // ── drag / zoom / click handlers ─────────────────────────────────────────────
@@ -285,6 +295,7 @@ const fgWheel: Fn = (async (state: State, payload?: unknown, event?: DomEvt): Pr
   const gid = String(payload ?? "g");
   const dy = num(event?.deltaY);
   if (!dy || !state.cels.has(zoomKey(gid))) return;
+  if (!num(state.cels.get(armKey(gid))?.v)) return; // unarmed → the page scrolls
   const cur = Number(state.cels.get(zoomKey(gid))?.v) || 1;
   const next = Math.max(0.35, Math.min(3, cur * (dy < 0 ? 1.15 : 0.87)));
   if (next !== cur) await setV(state, zoomKey(gid), next);
@@ -305,6 +316,18 @@ const fgClick: Fn = (async (state: State, payload?: unknown, event?: unknown): P
   if (fn) await fn(state, key, event);
 }) as Fn;
 
+const fgArm: Fn = (async (state: State, payload?: unknown): Promise<void> => {
+  const gid = String(payload ?? "g");
+  if (!state.cels.has(armKey(gid)) || num(state.cels.get(armKey(gid))?.v) === 1) return;
+  await setV(state, armKey(gid), 1);
+}) as Fn;
+
+const fgDisarm: Fn = (async (state: State, payload?: unknown): Promise<void> => {
+  const gid = String(payload ?? "g");
+  if (!state.cels.has(armKey(gid)) || num(state.cels.get(armKey(gid))?.v) === 0) return;
+  await setV(state, armKey(gid), 0);
+}) as Fn;
+
 export const name = "forcegraph" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
@@ -314,5 +337,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["fg.move", fgMove],
   ["fg.drop", fgDrop],
   ["fg.wheel", fgWheel],
+  ["fg.arm", fgArm],
+  ["fg.disarm", fgDisarm],
   ["fg.click", fgClick],
 ]));
