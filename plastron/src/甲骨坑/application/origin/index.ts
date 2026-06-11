@@ -178,18 +178,34 @@ const celFn: Fn = (content?: unknown) => ({ originCel: true, content: content ==
 /** doc(…parts) — compose an ENTIRE document from cels()/def()/cel() parts into
  *  ONE genesis batch. This is what `seed()` emits: paste a doc(…) into 元 and
  *  the whole app re-materializes (genesis seeds at creation, preserves edits). */
+// segment(part1, part2, …) — compose a document from cels()/winapp()/chatapp()/
+// def()/cel() parts. Each layer-bearing part MINTS ITS OWN SEGMENT: its cels are
+// stamped metadata.segment = its layer (so they don't flatten into 元), and the
+// part's policy is collected into `mints` (the genesis drain synthesizes each).
 const doc: Fn = (...parts: unknown[]): unknown => {
   const cels: Record<string, unknown> = {};
+  const mints: Record<string, unknown> = {};
   let cn = 0;
+  const stamp = (partCels: Record<string, unknown>, layer: string, access: unknown): void => {
+    for (const spec of Object.values(partCels)) {
+      const sp = spec as { metadata?: Record<string, unknown> };
+      sp.metadata = { ...(sp.metadata ?? {}), segment: layer };   // this part's cels belong to ITS segment
+    }
+    mints[layer] = (access && typeof access === "object") ? access : {};
+  };
   for (const p of parts) {
     if (!p || typeof p !== "object") continue;
     const o = p as Record<string, unknown>;
-    if (o.genesis === true && o.cels) Object.assign(cels, o.cels);                       // cels(…)
-    else if (o.cels && o.layer) Object.assign(cels, o.cels as Record<string, unknown>);  // gridShape direct
-    else if (o.originDef === true) cels[String(o.name)] = { celType: "EditableLambdaCel", f: String(o.source ?? ""), metadata: { kind: String(o.kind ?? "js"), name: String(o.name) } };
+    if (o.genesis === true && o.cels) {                                                  // cels(…)/winapp(…)/chatapp(…)
+      if (typeof o.layer === "string") stamp(o.cels as Record<string, unknown>, o.layer, o.access);
+      Object.assign(cels, o.cels);
+    } else if (o.cels && o.layer) {                                                       // gridShape direct
+      stamp(o.cels as Record<string, unknown>, String(o.layer), o.access);
+      Object.assign(cels, o.cels as Record<string, unknown>);
+    } else if (o.originDef === true) cels[String(o.name)] = { celType: "EditableLambdaCel", f: String(o.source ?? ""), metadata: { kind: String(o.kind ?? "js"), name: String(o.name) } };
     else if (o.originCel === true) { const k = `c${++cn}`; const s = sniffCel(String(o.content ?? "")); cels[k] = { celType: s.celType, f: s.f, v: s.v, metadata: { name: k, parser: s.parser } }; }
   }
-  return { genesis: true, cels };
+  return { genesis: true, cels, mints };
 };
 
 // seed() — ask the drain (which has state) to serialize the whole document to a

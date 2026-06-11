@@ -55,6 +55,7 @@ interface GenesisRequest {
   overwrite?: boolean;
   access?: Partial<AccessPolicy>;          // minting: the new segment's policy (default public-get/private-set)
   reassert?: boolean;                      // re-write the policy on every regen (default: write-once)
+  mints?: Record<string, Partial<AccessPolicy>>;  // composed (segment(...)): per-part-layer policies
   cels: Record<Key, CelSpecish>;
 }
 
@@ -98,6 +99,15 @@ const drain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<v
     if (req.layer && (req.reassert || !hasDeclaredPolicy(state, segment))) {
       setAccessPolicy(state, segment, req.access ?? DEFAULT_POLICY);
     }
+    // COMPOSED (segment(part1, part2, …)): each part minted its own segment — the
+    // parts' cels were stamped metadata.segment = their layer (below preserves
+    // it), and `mints` carries each part-layer's policy. Synthesize them so a
+    // boot desktop's windows are each their OWN closure, not all flattened into 元.
+    if (req.mints) {
+      for (const [seg, access] of Object.entries(req.mints)) {
+        if (!hasDeclaredPolicy(state, seg)) setAccessPolicy(state, seg, (access && Object.keys(access).length) ? access : DEFAULT_POLICY);
+      }
+    }
 
     // current owned set
     const owned = new Map<Key, Cel>();
@@ -132,7 +142,9 @@ const drain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<v
       // `reset: true` re-applies the seed. Regeneration's job is to ADD
       // missing cels and (below) RETIRE removed ones, not to overwrite.
       if (prior && !spec.reset) continue;
-      const md = { ...(spec.metadata ?? {}), segment, generatedBy: owner };
+      // preserve a stamped per-part segment (segment() composition) over the
+      // request-wide segment, so a composed window's cels land in its OWN segment.
+      const md = { ...(spec.metadata ?? {}), segment: (spec.metadata as { segment?: string } | undefined)?.segment ?? segment, generatedBy: owner };
       const out: Record<string, unknown> = { celType: spec.celType, metadata: md };
       if (spec.f !== undefined) out.f = spec.f;
       if (spec.v !== undefined) out.v = spec.v;
