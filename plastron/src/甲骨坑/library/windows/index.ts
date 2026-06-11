@@ -299,7 +299,7 @@ const chatSend: Fn = (async (state: State, channel: unknown): Promise<void> => {
   await Promise.resolve((resolveFn(state, "setValueBatch") as Fn)(state, [[`chat.${ch}.input`, ""]]));
   await pushMsg(state, ch, { from: "me", text });
   if (ch === "claude" || ch === "grok") {                 // LLM channels — the bot is a user
-    const client = state.cels.get(`chat.${ch}.client`)?.v as { __client?: boolean } | undefined;
+    const client = (state.cels.get(`chat.${ch}.client`)?.v ?? state.cels.get(`clients.${ch}`)?.v) as { __client?: boolean } | undefined;  // explicit, else the clients sheet
     let reply = "";
     try {
       if (client && client.__client) {                    // a captured CLIENT cel — the chat never touches the key

@@ -48,6 +48,19 @@
         "description": "(client, message) — send a message via a captured client; resolves the key at the effect site"
       },
       "locked": true
+    },
+    {
+      "key": "clientsheet",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "clientsheet",
+        "segment": "llm",
+        "name": "clientsheet",
+        "kind": "native",
+        "genesis": true,
+        "description": "genesis: a sheet of llm clients made from the wallet (clients.claude/clients.grok = makeclient(provider, apiKey(...))). =clientsheet()"
+      },
+      "locked": true
     }
   ]
 }

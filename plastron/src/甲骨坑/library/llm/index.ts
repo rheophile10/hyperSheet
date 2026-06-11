@@ -86,6 +86,19 @@ const clientSendFn: Fn = (async (client: unknown, message: unknown): Promise<str
     : String(await claudeFn(message, key, c.model));
 }) as Fn;
 
+// clientsheet() — GENESIS: a "sheet of clients" minted from the wallet. Each cel
+// reactively makes a client from a wallet apiKey handle (the key is captured, not
+// stored). This segment READS the wallet (apiKey) but never writes it; the chat
+// reads these client cels. =clientsheet() then =chatapp("claude","Claude") talks
+// to Claude through clients.claude — the key never in the chat's reach.
+const clientsheetFn: Fn = ((): unknown => ({
+  genesis: true, layer: "clients",
+  cels: {
+    "clients.claude": { celType: "FormulaCel", f: '(makeclient "claude" (apiKey "anthropic"))', metadata: { name: "claude", parser: "f" } },
+    "clients.grok": { celType: "FormulaCel", f: '(makeclient "grok" (apiKey "xai"))', metadata: { name: "grok", parser: "f" } },
+  },
+})) as Fn;
+
 export const name = "llm" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
@@ -93,4 +106,5 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["llm.chat", chatFn],
   ["makeclient", makeClientFn],
   ["client.send", clientSendFn],
+  ["clientsheet", clientsheetFn],
 ]));
