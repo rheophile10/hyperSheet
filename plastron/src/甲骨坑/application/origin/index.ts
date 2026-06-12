@@ -359,6 +359,27 @@ const fire: Fn = async (state: State, payload?: unknown) => {
   return state;
 };
 
+// ex(formula, target) — a try-it payload: the formula to run and the cell key
+// it should land in. Authored in the readme's ⚡ buttons: (on "click"
+// "tryexample" (ex "=cels(8, 5)" "readme.B2")). Returns a marker the painter
+// hands to tryexample verbatim as the event payload (no serialization).
+const ex: Fn = (formula?: unknown, target?: unknown) =>
+  ({ __ex: { formula: String(formula ?? ""), target: String(target ?? "") } });
+
+// tryexample — the readme "try it" handler. Copies an example's formula into a
+// scratch cell beside the readme and evaluates it, so clicking the ⚡ shows the
+// result. Reuses commit (seed 元.draft → commit(target)): commit sniffs the
+// source into a FormulaCel, writes it to the target, re-evaluates and repaints.
+const tryexample: Fn = async (state: State, payload?: unknown) => {
+  const p = payload as { __ex?: { formula?: unknown; target?: unknown } } | undefined;
+  const formula = p && typeof p === "object" && p.__ex ? String(p.__ex.formula ?? "") : "";
+  const target = p && typeof p === "object" && p.__ex ? String(p.__ex.target ?? "") : "";
+  if (!target) return state;
+  await (resolveFn(state, "setValue") as Fn)(state, "元.draft", formula);
+  await commit(state, target);
+  return state;
+};
+
 /** commit — set the edited cell's content from the draft and re-evaluate.
  *  Every cell (元 included) executes its formula/value like A1. 元 is
  *  un-deletable: clearing it restores the readme. A structure formula
@@ -977,6 +998,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.select",  select],
   ["origin.fire",    fire],
   ["origin.key",     key],
+  ["ex",             ex],
+  ["tryexample",     tryexample],
   ["cels",           celsGen],
   ["cel",            celFn],
   ["at",             at],

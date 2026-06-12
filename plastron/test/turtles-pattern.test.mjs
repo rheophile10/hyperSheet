@@ -100,15 +100,38 @@ test('the "+" newtab handler creates a blank 10×10 sheet TABBED into the clicke
   assert.equal(state.cels.get("win.geom")?.v?.tab1?.host, "turtles", "tab1 hosted by turtles");
 });
 
-test("README is ONE sheet: readme.A1 holds the dom vnode and renders directly in its cell (no separate render formula)", async () => {
+test("README is a FEW dom() cels: a header cel + per-topic example cels, each a plain dom vnode (the chat-decomposition spirit)", async () => {
   const { state, root } = await boot();
-  // one readme sheet; A1 IS the readme dom vnode, rendered in place in the cell.
-  assert.equal(state.cels.get("readme.A1")?.v?.tag, "div", "readme.A1 holds the readme dom vnode");
-  assert.equal(state.cels.get("readme.A1")?.v?.attrs?.class, "readme", "…the readme div");
-  // no separate readmedata sheet, and readme is NOT tabbed into another sheet.
+  // the readme is no longer one monolith — it's a column of dom() cels.
+  // A1 is the header/title card; A2…A8 are per-topic example cards.
+  assert.equal(state.cels.get("readme.A1")?.v?.tag, "div", "readme.A1 holds a dom vnode (the header card)");
+  assert.equal(state.cels.get("readme.A1")?.v?.attrs?.class, "readme", "…a .readme card");
+  assert.equal(state.cels.get("readme.A2")?.v?.tag, "div", "readme.A2 is its own example card (cels topic)");
+  assert.ok(state.cels.get("readme.A6")?.v?.tag === "div", "readme.A6 is another example card (claude/secrets topic)");
+  // column B holds the ⚡ scratch/output target cells (start empty)
+  assert.ok(state.cels.has("readme.B2"), "readme.B2 exists — the try-it target beside the cels example");
+  // a yellow-lightning try-it button rendered next to an example
+  const tryBtns = walk(root, (n) => String(n.attrs?.class ?? "") === "try-it");
+  assert.ok(tryBtns.length > 0, "try-it lightning buttons rendered next to examples");
+  const bolt = walk(root, (n) => n.tag === "path" && /M7 2v11h3v9l7-12h-4l4-8z/.test(String(n.attrs?.d ?? "")))[0];
+  assert.ok(bolt, "the try-it button uses the formula-bar lightning bolt SVG path");
+  // no separate readmedata sheet
   assert.equal(state.cels.get("readmedata.A1"), undefined, "the readmedata sheet is gone (merged into readme)");
-  assert.equal(state.cels.get("win.geom")?.v?.readme, undefined, "readme is its OWN standalone window (not tabbed)");
-  assert.ok(walk(root, (n) => String(n.attrs?.class ?? "") === "readme")[0], "the readme rendered in its cell");
+  // the readme is its own standalone window, now seeded BIG + centered
+  const g = state.cels.get("win.geom")?.v?.readme;
+  assert.ok(g && g.host === undefined, "readme is a standalone window (geom carries no host → not tabbed)");
+  assert.ok(g.w >= 800 && g.h >= 600, "readme window is seeded big (w≥800, h≥600)");
+  assert.ok(walk(root, (n) => String(n.attrs?.class ?? "") === "readme")[0], "the readme rendered in its cells");
+});
+
+test("clicking a try-it ⚡ writes the example formula into its target cell, which evaluates", async () => {
+  const { state, m } = await boot();
+  // run the cels example whose target is readme.B2
+  await resolveFn(state, "tryexample")(state, { __ex: { formula: "=1+1", target: "readme.B2" } }); m.run();
+  assert.equal(state.cels.get("readme.B2")?.v, 2, "the formula landed in readme.B2 and evaluated → 2");
+  // a real example formula (a grid) also materializes via the target
+  await resolveFn(state, "tryexample")(state, { __ex: { formula: "=cels(3, 3)", target: "readme.B2" } }); m.run();
+  assert.ok(state.cels.get("g3x3.A1"), "a =cels(3,3) example fired through the ⚡ created the grid");
 });
 
 test("Chat is a FEW plain dom() cels (no chatpanel monolith): bots/history/entry built from the clients sheet (tabbed pair)", async () => {

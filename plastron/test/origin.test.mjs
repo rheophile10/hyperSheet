@@ -65,9 +65,11 @@ test("boot: the desktop renders — the README window + its rich content", async
   const rm = cls(root, "readme");
   assert.ok(rm, "readme rendered in its window");
   assert.ok(rm.style && Object.keys(rm.style.props).length > 0, "readme carries inline styles");
-  assert.match(txt(rm), /this readme is the formula/);
+  assert.match(txt(rm), /this readme is a few formulas/);
   assert.ok(walk(root, (n) => n.tag === "table" && /(^| )fx( |$)/.test(String(n.attrs?.class ?? "")))[0], "formulas shown in a table");
   assert.ok(walk(root, (n) => n.tag === "a" && String(n.attrs?.href ?? "").includes("github.com"))[0], "repo link present");
+  // each example carries a yellow-lightning try-it button (the fire-bolt SVG)
+  assert.ok(walk(root, (n) => n.tag === "path" && /M7 2v11h3v9l7-12h-4l4-8z/.test(String(n.attrs?.d ?? "")))[0], "try-it lightning buttons present");
 });
 
 test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restores readme", async () => {
