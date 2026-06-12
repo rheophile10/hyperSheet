@@ -105,10 +105,12 @@ test('the "+" newtab handler creates a blank 10×10 sheet TABBED into the clicke
 const walkV = (n, p, o = []) => { if (n?.type === "el") { if (p(n)) o.push(n); for (const c of n.children ?? []) walkV(c, p, o); } else if (n?.type === "text" && p(n)) o.push(n); return o; };
 const vtext = (n) => (n?.type === "text" ? (n.text ?? "") : (n?.children ?? []).map(vtext).join(""));
 
-test("README is a TALL sheet: row 1 is the header (index.html + ⚡/W legend); each later example is its OWN A/B/C row", async () => {
+test("README is a TALL sheet that flows down column A: row 1 is the header (index.html + ⚡/W legend); each example is a description cell with its code cell directly BELOW it", async () => {
   const { state, root } = await boot();
-  // the readme is a 3-column sheet: A = the example code (+ its ⚡), B = the
-  // try-it output target, C = the description. Row 1 (A1) is the header card.
+  // the readme flows down column A: A1 is the header card; then every example
+  // is TWO stacked A cells — a description (even rows: A2, A4, …) then the code
+  // card directly below it (odd rows: A3, A5, …). The code card carries the ⚡,
+  // which targets its OWN row's B cell. No side column C anymore.
   const a1 = state.cels.get("readme.A1")?.v;
   assert.equal(a1?.tag, "div", "readme.A1 holds a dom vnode (the header card)");
   assert.equal(a1?.attrs?.class, "readme", "…a .readme card");
@@ -116,20 +118,24 @@ test("README is a TALL sheet: row 1 is the header (index.html + ⚡/W legend); e
   assert.match(vtext(a1), /ONE index\.html/, "header: this is one index.html (no install/server)");
   assert.match(vtext(a1), /RUNS that formula/, "header legend: the ⚡ runs the formula");
   assert.match(vtext(a1), /wiki/, "header legend: the W wiki button");
-  // A2…An are example code cards; each carries its OWN ⚡ → its OWN B row.
-  assert.equal(state.cels.get("readme.A2")?.v?.tag, "div", "readme.A2 is its own example code card");
-  assert.equal(state.cels.get("readme.A6")?.v?.tag, "div", "readme.A6 is another example code card");
-  assert.ok(state.cels.get("readme.C2")?.v?.tag === "div", "readme.C2 is the description card for row 2");
-  // column B holds the ⚡ output target cells (start empty), per row
-  assert.ok(state.cels.has("readme.B2"), "readme.B2 exists — row 2's own try-it target");
-  // each example's ⚡ targets ITS OWN B row (no shared target). Pull the
+  // A2 is the FIRST example's description; A3 is its code card directly below.
+  const a2 = state.cels.get("readme.A2")?.v, a3 = state.cels.get("readme.A3")?.v;
+  assert.equal(a2?.tag, "div", "readme.A2 is the description card (above the code)");
+  assert.ok(walkV(a2, (n) => /(^| )fx-desc( |$)/.test(String(n.attrs?.class ?? "")))[0], "A2 holds a .fx-desc description, not code");
+  assert.equal(a3?.tag, "div", "readme.A3 is the example code card");
+  assert.ok(walkV(a3, (n) => /(^| )fx-code( |$)/.test(String(n.attrs?.class ?? "")))[0], "A3 holds an .fx-code example");
+  // column B holds the ⚡ output target cells (start empty), per CODE row.
+  assert.ok(state.cels.has("readme.B3"), "readme.B3 exists — the first code row's own try-it target");
+  // each code card's ⚡ targets ITS OWN B row (no shared target). Pull the
   // tryexample payloads out of the rendered buttons and check they're distinct.
   const targetsByRow = (vnode) => walkV(vnode, (n) => n.events?.click?.dispatch === "tryexample")
     .map((b) => b.events.click.payload?.__ex?.target);
-  const t2 = targetsByRow(state.cels.get("readme.A2")?.v);
-  const t6 = targetsByRow(state.cels.get("readme.A6")?.v);
-  assert.deepEqual(t2, ["readme.B2"], "row 2's ⚡ targets readme.B2 (its own B)");
-  assert.deepEqual(t6, ["readme.B6"], "row 6's ⚡ targets readme.B6 (its own B) — not a shared target");
+  const t3 = targetsByRow(state.cels.get("readme.A3")?.v);
+  const t5 = targetsByRow(state.cels.get("readme.A5")?.v);
+  assert.deepEqual(t3, ["readme.B3"], "the first code row's ⚡ targets readme.B3 (its own B)");
+  assert.deepEqual(t5, ["readme.B5"], "the second code row's ⚡ targets readme.B5 (its own B) — not a shared target");
+  // description cells carry NO ⚡ (only the code cells run)
+  assert.deepEqual(targetsByRow(a2), [], "the description cell has no try-it button");
   // a yellow-lightning try-it button rendered next to an example
   const tryBtns = walk(root, (n) => String(n.attrs?.class ?? "") === "try-it");
   assert.ok(tryBtns.length > 0, "try-it lightning buttons rendered next to examples");
@@ -151,11 +157,12 @@ test("the def + use examples are SEPARATE rows with SEPARATE B targets: running 
   // DIFFERENT B row. Find them by their code text.
   const exTargets = (rowKey) => walkV(state.cels.get(rowKey)?.v, (n) => n.events?.click?.dispatch === "tryexample")
     .map((b) => b.events.click.payload?.__ex);
-  // row 6 = =def("double", …); row 7 = =double(21)
-  const defEx = exTargets("readme.A6")[0];
-  const useEx = exTargets("readme.A7")[0];
-  assert.match(defEx?.formula ?? "", /def\("double"/, "row 6 is the def(\"double\") example");
-  assert.match(useEx?.formula ?? "", /double\(21\)/, "row 7 is the =double(21) example");
+  // code row A11 = =def("double", …); code row A13 = =double(21) (their desc
+  // cells sit directly above them at A10 / A12).
+  const defEx = exTargets("readme.A11")[0];
+  const useEx = exTargets("readme.A13")[0];
+  assert.match(defEx?.formula ?? "", /def\("double"/, "code row A11 is the def(\"double\") example");
+  assert.match(useEx?.formula ?? "", /double\(21\)/, "code row A13 is the =double(21) example");
   assert.notEqual(defEx.target, useEx.target, "def and use write to DIFFERENT B cells");
   // run BOTH ⚡: the use must NOT clobber the def's output (separate B targets).
   await resolveFn(state, "tryexample")(state, { __ex: defEx }); m.run();
@@ -166,22 +173,22 @@ test("the def + use examples are SEPARATE rows with SEPARATE B targets: running 
   assert.equal(state.cels.get(useEx.target)?.v, 42, "=double(21) → 42 in its OWN B cell");
 });
 
-test("two try-it clicks on DIFFERENT rows write DIFFERENT B cells (no shared-target overwrite)", async () => {
+test("two try-it clicks on DIFFERENT code rows write DIFFERENT B cells (no shared-target overwrite)", async () => {
   const { state, m } = await boot();
-  // row 2's ⚡ and row 3's ⚡ have distinct targets (readme.B2, readme.B3).
-  await resolveFn(state, "tryexample")(state, { __ex: { formula: "=1+1", target: "readme.B2" } }); m.run();
-  await resolveFn(state, "tryexample")(state, { __ex: { formula: "=2*3", target: "readme.B3" } }); m.run();
-  assert.equal(state.cels.get("readme.B2")?.v, 2, "row 2's result landed in readme.B2");
-  assert.equal(state.cels.get("readme.B3")?.v, 6, "row 3's result landed in readme.B3 (the first was NOT overwritten)");
+  // two code rows have distinct B targets (readme.B3, readme.B5).
+  await resolveFn(state, "tryexample")(state, { __ex: { formula: "=1+1", target: "readme.B3" } }); m.run();
+  await resolveFn(state, "tryexample")(state, { __ex: { formula: "=2*3", target: "readme.B5" } }); m.run();
+  assert.equal(state.cels.get("readme.B3")?.v, 2, "the first code row's result landed in readme.B3");
+  assert.equal(state.cels.get("readme.B5")?.v, 6, "the second code row's result landed in readme.B5 (the first was NOT overwritten)");
 });
 
 test("clicking a try-it ⚡ writes the example formula into its target cell, which evaluates", async () => {
   const { state, m } = await boot();
-  // run the cels example whose target is readme.B2
-  await resolveFn(state, "tryexample")(state, { __ex: { formula: "=1+1", target: "readme.B2" } }); m.run();
-  assert.equal(state.cels.get("readme.B2")?.v, 2, "the formula landed in readme.B2 and evaluated → 2");
+  // run an example whose target is readme.B3 (a code row's own B)
+  await resolveFn(state, "tryexample")(state, { __ex: { formula: "=1+1", target: "readme.B3" } }); m.run();
+  assert.equal(state.cels.get("readme.B3")?.v, 2, "the formula landed in readme.B3 and evaluated → 2");
   // a real example formula (a grid) also materializes via the target
-  await resolveFn(state, "tryexample")(state, { __ex: { formula: "=cels(3, 3)", target: "readme.B2" } }); m.run();
+  await resolveFn(state, "tryexample")(state, { __ex: { formula: "=cels(3, 3)", target: "readme.B3" } }); m.run();
   assert.ok(state.cels.get("g3x3.A1"), "a =cels(3,3) example fired through the ⚡ created the grid");
 });
 

@@ -260,13 +260,15 @@ test("def(name, kind, source) defines a callable JS function", async () => {
   assert.equal(state.cels.get("元").v, 42, "the defined function is callable from a formula");
 });
 
-test("xlsx wiring: =xlsxsave(\"turtles\") exports the boot turtles sheet, round-trips back", async () => {
+test("xlsx wiring: xlsxexport(\"turtles\") exports the boot turtles sheet, round-trips back via xlsximport", async () => {
   const { state, root, m } = await boot();
-  await resolveFn(state, "origin.commit")(state, "元"); m.run(); // materialize the boot desktop (turtles + the readme row)
-  // the readme advertises the export row (=xlsxsave("turtles")) so a user can find it
-  assert.ok(walk(root, (n) => /(^| )fx-code( |$)/.test(String(n.attrs?.class ?? "")) && /xlsxsave/.test(txt(n)))[0], "readme shows the =xlsxsave example row");
-  assert.ok(state.cels.get("readme.B24") && !state.cels.get("readme.B25"), "the xlsx row is row 24 (grid is 24 rows)");
-  // the xlsx verbs loaded with origin's closure
+  await resolveFn(state, "origin.commit")(state, "元"); m.run(); // materialize the boot desktop (turtles sheet)
+  // the broken =xlsxsave("turtles") readme row was removed — the xlsx verbs take
+  // `state` as their first arg, which formula evaluation can't supply, so they
+  // run only via resolveFn (host wiring), not as a readme formula. The export
+  // is still wired and round-trips here through the direct resolveFn path.
+  assert.ok(!walk(root, (n) => /(^| )fx-code( |$)/.test(String(n.attrs?.class ?? "")) && /xlsxsave/.test(txt(n)))[0], "the broken xlsxsave example is gone from the readme");
+  // the xlsx verbs still loaded with origin's closure
   assert.ok(state.cels.get("xlsxexport"), "xlsxexport in the origin closure");
   assert.ok(state.cels.get("turtles.A1"), "boot turtles sheet present to export");
   // export the live turtles sheet, then import the bytes back — addresses + values match

@@ -150,15 +150,6 @@ await withPage("=cels(\"in\",4,3,\"out\",4,3) → workbook", async (page) => {
   eq(await page.evaluate(() => document.querySelectorAll("table.grid").length), 3, "base 元 table + two sheets");
 });
 
-await withPage("=cel(value) + =cel(formula) create new cels beside 元", async (page) => {
-  await put(page, '=cel("monkey")');
-  eq(await cel(page, "c1"), "monkey", 'cel("monkey") → c1 holds the value');
-  ok(await page.evaluate(() => (((globalThis as any).plastron.state.cels.get("元.cells")?.v) ?? []).includes("c1")), "c1 shows in the cell list");
-  // a cel holding a formula that makes ANOTHER cel — escaped quotes + nested drain
-  await put(page, '=cel("cel(\\"banana\\")")');
-  ok(await page.evaluate(() => [...(globalThis as any).plastron.state.cels.values()].some((c: { v?: unknown }) => c.v === "banana")), 'cel("cel(\\"banana\\")") makes a cel holding banana');
-});
-
 await withPage("=cels is the grid (renamed); =members lists a segment", async (page) => {
   await put(page, "=cels(4, 3)");
   ok(await cel(page, "g4x3.A1") !== null, "cels(4,3) made a grid (cels === grid)");
@@ -172,7 +163,7 @@ await withPage('=cels("in",4,3, at("a1","apple"), at("b2","=1+1")) fills cells',
 });
 
 await withPage("seed() serializes the whole document into one paste-able formula", async (page) => {
-  await put(page, '=doc(cels("in",2,2,at("a1","apple"),at("b2","=1+1")), cel("monkey"), def("double","js","x => x * 2"))');
+  await put(page, '=segment(cels("in",2,2,at("a1","apple"),at("b2","=1+1")), def("double","js","x => x * 2"))');
   const seedStr = String(await put(page, "=seed()", "in.A2"));
   ok(/segment\(/.test(seedStr) && /cels\("in"/.test(seedStr) && /def\("double"/.test(seedStr), `seed() emits a segment(...) (${seedStr.slice(0, 64)}…)`);
   // paste it into a FRESH page's 元 — the whole app re-materializes
@@ -182,7 +173,6 @@ await withPage("seed() serializes the whole document into one paste-able formula
   await put(page, seedStr);
   eq(await cel(page, "in.A1"), "apple", "recreated in.A1 value");
   eq(await cel(page, "in.B2"), 2, "recreated in.B2 formula (=1+1)");
-  eq(await cel(page, "c1"), "monkey", "recreated base cel");
   eq(await put(page, "=double(21)", "in.B1"), 42, "recreated def is callable");
 });
 

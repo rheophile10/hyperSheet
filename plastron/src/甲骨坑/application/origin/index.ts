@@ -93,7 +93,7 @@ const genesisSummary = (cels: Record<string, unknown> | undefined): string => {
 // Build the genesis request for ONE named grid (rows×cols of empty
 // infix cels under `name.A1` …). Shared by grid() and sheets().
 // a cell SOURCE → cel spec. Like sniff, but a bare `name(…)` call counts as a
-// formula too (so cell values like cel("monkey") become formulas, not text).
+// formula too (so a cell value like sum(a1,b1) becomes a formula, not text).
 const sniffCel = (src: string): { celType: string; f?: string; v?: unknown; parser?: string } => {
   const t = String(src ?? "").trim();
   if (t === "") return { celType: "ValueCel", v: "" };
@@ -144,8 +144,8 @@ const collectValues = (args: unknown[], i: number): [Record<string, unknown> | u
  *    cels(rows, cols)              → one sheet, auto-named g<r>x<c>
  *    cels(rows, cols, "name")      → one named sheet
  *    cels("in", 4, 3, "out", 4, 3) → a WORKBOOK of named sheets
- *    cels("in", 4, 3, at("a1","apple"), at("b2","cel(\"monkey\")"))  → a sheet
- *      with initial cell contents (a value, or a formula like cel(…) / =1+1).
+ *    cels("in", 4, 3, at("a1","apple"), at("b2","=1+1"))  → a sheet
+ *      with initial cell contents (a value, or a formula like =1+1).
  *  Delete the formula → swept. */
 // SHEET_CLOSURE — every cels() worksheet mints a CLOSURE: only the host view
 // (`origin`, which aggregates every cell's value to render the grid) may read it;
@@ -180,22 +180,16 @@ const celsGen: Fn = (...args: unknown[]): unknown => {
   return { genesis: true, ...gridShape(rows, cols, name, values), access: SHEET_CLOSURE };
 };
 
-/** cel(content?) — create ONE new cel out of the origin cel. `cel()` makes an
- *  empty cel; `cel("monkey")` a cel holding the value monkey; `cel("cel(\"x\")")`
- *  a cel holding that formula. The new cel lands as a base cel beside 元. */
-const celFn: Fn = (content?: unknown) => ({ originCel: true, content: content == null ? "" : String(content) });
-
-/** doc(…parts) — compose an ENTIRE document from cels()/def()/cel() parts into
+/** doc(…parts) — compose an ENTIRE document from cels()/def() parts into
  *  ONE genesis batch. This is what `seed()` emits: paste a doc(…) into 元 and
  *  the whole app re-materializes (genesis seeds at creation, preserves edits). */
 // segment(part1, part2, …) — compose a document from cels()/winapp()/chatapp()/
-// def()/cel() parts. Each layer-bearing part MINTS ITS OWN SEGMENT: its cels are
+// def() parts. Each layer-bearing part MINTS ITS OWN SEGMENT: its cels are
 // stamped metadata.segment = its layer (so they don't flatten into 元), and the
 // part's policy is collected into `mints` (the genesis drain synthesizes each).
 const doc: Fn = (...parts: unknown[]): unknown => {
   const cels: Record<string, unknown> = {};
   const mints: Record<string, unknown> = {};
-  let cn = 0;
   const stamp = (partCels: Record<string, unknown>, layer: string, access: unknown): void => {
     for (const spec of Object.values(partCels)) {
       const sp = spec as { metadata?: Record<string, unknown> };
@@ -213,7 +207,6 @@ const doc: Fn = (...parts: unknown[]): unknown => {
       stamp(o.cels as Record<string, unknown>, String(o.layer), o.access);
       Object.assign(cels, o.cels as Record<string, unknown>);
     } else if (o.originDef === true) cels[String(o.name)] = { celType: "EditableLambdaCel", f: String(o.source ?? ""), metadata: { kind: String(o.kind ?? "js"), name: String(o.name) } };
-    else if (o.originCel === true) { const k = `c${++cn}`; const s = sniffCel(String(o.content ?? "")); cels[k] = { celType: s.celType, f: s.f, v: s.v, metadata: { name: k, parser: s.parser } }; }
   }
   return { genesis: true, cels, mints };
 };
@@ -246,13 +239,12 @@ const cellKeys = (state: State): string[] => {
     if (k === "元") continue;
     if (c.celType !== "ValueCel" && c.celType !== "FormulaCel") continue;
     const md = c.metadata as { generatedBy?: Key; segment?: string };
-    // grid cels (genesis-owned) + cel()-created base cels (c1, c2, …; no dot,
-    // origin segment — but not the internal 元.* state cels, which have dots).
-    // win.* layer cels (state/content/frame) are first-class desktop cells
-    // even when handler-created (no generatedBy) — e.g. the wiki window. The
-    // link-edge overlay (linkfx.overlay) is a desktop-wide mount too, so it
-    // survives 元 re-renders and keeps drawing the corner-link edges.
-    if (md.generatedBy || (md.segment === "origin" && /^c\d+$/.test(k)) || /^win\.[\w-]+\.(state|content|frame)$/.test(k) || k === "linkfx.overlay") out.push(k);
+    // grid cels (genesis-owned). win.* layer cels (state/content/frame) are
+    // first-class desktop cells even when handler-created (no generatedBy) —
+    // e.g. the wiki window. The link-edge overlay (linkfx.overlay) is a
+    // desktop-wide mount too, so it survives 元 re-renders and keeps drawing
+    // the corner-link edges.
+    if (md.generatedBy || /^win\.[\w-]+\.(state|content|frame)$/.test(k) || k === "linkfx.overlay") out.push(k);
   }
   return [out[0]!, ...out.slice(1).sort()];
 };
@@ -440,9 +432,9 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   // (now re-evaluated) source; clear inline editing.
   await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["元.error", null], ["元.selected", key], ["元.draft", src]]);
   // fire generators so they enqueue, then commit structure + sweep. Loop until
-  // quiescent: an effect can create a cel whose own formula is a request (e.g.
-  // cel("cel(\"banana\")") → c1 = =cel("banana") → another cel) — keep draining
-  // until a pass adds nothing new (capped, so a runaway can't spin forever).
+  // quiescent: a genesis effect can in turn materialize cels whose own formulas
+  // are requests (e.g. a seeded grid cell holding =db(…)) — keep draining until
+  // a pass adds nothing new (capped, so a runaway can't spin forever).
   const drain = resolveFn(state, "drain") as Fn;
   const gd = resolveFn(state, "genesis.drain") as Fn | undefined;
   const dd = resolveFn(state, "defn.drain") as Fn | undefined;
@@ -521,8 +513,8 @@ const collectArchive = (state: State): { v: number; cells: [string, string][]; d
 };
 
 // serialize the whole document to a single recreating formula source. Grids →
-// cels("seg", r, c, at(addr, src)…); base cels → cel(src); defs → def(…). One
-// grid alone stays a bare cels(…); anything composite wraps in doc(…).
+// cels("seg", r, c, at(addr, src)…); defs → def(…). One grid alone stays a
+// bare cels(…); anything composite wraps in segment(…).
 const qstr = (s: string): string => '"' + s.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
 const gridDims = (addrs: string[]): { r: number; c: number } => {
   let r = 1, c = 1;
@@ -537,11 +529,10 @@ const gridDims = (addrs: string[]): { r: number; c: number } => {
 const buildSeed = (state: State): string => {
   const arch = collectArchive(state);
   const grids = new Map<string, [string, string][]>();
-  const bases: string[] = [];
   for (const [key, src] of arch.cells) {
     if (key === "元" || /^=?\s*seed\s*\(/.test(src)) continue;   // skip 元 + any =seed() cell (no self-capture)
     const dot = key.indexOf(".");
-    if (dot < 0) { bases.push(src); continue; }
+    if (dot < 0) continue;   // grid cels only (seg.addr); no base cels anymore
     const seg = key.slice(0, dot), addr = key.slice(dot + 1);
     (grids.get(seg) ?? grids.set(seg, []).get(seg)!).push([addr, src]);
   }
@@ -551,7 +542,6 @@ const buildSeed = (state: State): string => {
     const ats = cells.filter(([, s]) => s !== "").map(([a, s]) => `at(${qstr(a)}, ${qstr(s)})`);
     parts.push(`cels(${qstr(seg)}, ${r}, ${c}${ats.length ? ", " + ats.join(", ") : ""})`);
   }
-  for (const s of bases) parts.push(`cel(${qstr(s)})`);
   for (const [name, kind, f] of arch.defs) parts.push(`def(${qstr(name)}, ${qstr(kind)}, ${qstr(f)})`);
   if (parts.length === 0) return "=cels(1, 1)";
   if (parts.length === 1 && parts[0]!.startsWith("cels(")) return "=" + parts[0];
@@ -1057,16 +1047,6 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const url = String(req.url ?? "");
         if (!url) result = `(cdn: pass a url, e.g. =cdn("https://cdn.jsdelivr.net/npm/…"))`;
         else { await (resolveFn(state, "loadScript") as Fn)(state, url); result = `loaded ${url}`; }
-      } else if (req.originCel) {
-        // create ONE new base cel (c1, c2, …) holding the given content. The
-        // requesting cell becomes the confirmation below, so it won't re-fire.
-        let n = 1; while (state.cels.get(`c${n}`)) n++;
-        const ck = `c${n}`;
-        const spec = sniffCel(String(req.content ?? ""));
-        // emitsTo lets a cel whose formula is itself a request (e.g. cel(…))
-        // route it to this drain — so cel("cel(\"banana\")") really makes another cel.
-        await setCel(state, ck, { celType: spec.celType, f: spec.f, v: spec.v, metadata: { segment: "origin", name: ck, parser: spec.parser, emitsTo: "origin.effects" } });
-        result = `created cel ${ck}`;
       } else if (req.originSeed) {
         result = buildSeed(state); // the whole document as one paste-able formula
 
@@ -1191,7 +1171,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["ex",             ex],
   ["tryexample",     tryexample],
   ["cels",           celsGen],
-  ["cel",            celFn],
   ["at",             at],
   ["segment",        doc],   // primary (was doc — composes a SEGMENT)
   ["doc",            doc],   // deprecated legacy alias
