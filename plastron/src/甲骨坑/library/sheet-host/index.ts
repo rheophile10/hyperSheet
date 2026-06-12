@@ -168,10 +168,10 @@ const sheetView: Fn = ((
     // a side-view pistol silhouette — an inline SVG (currentColor) so it reads
     // as an actual gun, not the water-pistol emoji. (svg/path render via the
     // painter's createElementNS path.)
-    const gunIcon = el("svg", { class: "pl-fxbar-gun-svg", width: "22", height: "22", viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": "true", style: "display:block" }, [
-      el("path", { d: "M2 7h17a2 2 0 0 1 2 2v3h-3l-2 3h-5l-1-3H6l-1 4H3l1-4H2V7zm4 2v2h2V9H6z" }, []),
+    const boltIcon = el("svg", { class: "pl-fxbar-bolt-svg", width: "22", height: "22", viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": "true", style: "display:block" }, [
+      el("path", { d: "M7 2v11h3v9l7-12h-4l4-8z" }, []),
     ]);
-    const fireBtn = el("button", { class: "pl-fxbar-fire", title: "fire — re-evaluate this cell", style: SX.glyphBtn + ";align-self:center;display:flex;align-items:center" }, [gunIcon], { click: { dispatch: FIREH, payload: barKey ?? "" } });
+    const fireBtn = el("button", { class: "pl-fxbar-fire", title: "fire — re-evaluate this cell", style: SX.glyphBtn + ";align-self:center;display:flex;align-items:center" }, [boltIcon], { click: { dispatch: FIREH, payload: barKey ?? "" } });
     const wikiBtn = el("button", { class: "pl-fxbar-wiki", title: "wiki — what is this cell?", style: SX.glyphBtn + ";align-self:center;font-family:Georgia,serif;color:CanvasText" }, [T("W")], { click: { dispatch: "wiki.open", payload: barKey ?? tabSegs[0] ?? "元" } });
     return el("div", { class: "pl-fxbar", style: SX.fxbar }, [
       wikiBtn,

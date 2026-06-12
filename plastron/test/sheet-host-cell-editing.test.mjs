@@ -141,22 +141,22 @@ test("double-click: opens the inline editor for the cell", async () => {
 
 // ── 3) the fire (gun) button ──────────────────────────────────────────────────
 
-test("fire: the bar's gun (SVG) button dispatches origin.fire; bar order is [W wiki][gun][textarea]", async () => {
+test("fire: the bar's lightning-bolt (SVG) button dispatches origin.fire; bar order is [W wiki][bolt][textarea]", async () => {
   const { state, root, m } = await boot();
   await resolveFn(state, "origin.select")(state, "turtles.B4"); m.run();
   const bar = fxbarOf(root, "turtles");
   const fire = byClass(bar, "pl-fxbar-fire")[0];
-  assert.ok(fire, "the formula bar has a gun fire button");
-  // the gun is an inline SVG pistol, not the 🔫 emoji
+  assert.ok(fire, "the formula bar has a fire button");
+  // the fire icon is an inline SVG lightning bolt, not the 🔫 emoji
   const svg = walk(fire, (n) => n.tag === "svg")[0];
-  assert.ok(svg, "the fire button holds an inline <svg> gun (not the emoji)");
+  assert.ok(svg, "the fire button holds an inline <svg> bolt (not the emoji)");
   assert.ok(walk(svg, (n) => n.tag === "path" && !!n.attrs?.d)[0], "the svg has a <path> with a d");
   assert.ok(!/🔫/.test(txt(fire)), "no water-pistol emoji");
-  // left-to-right order in the bar: W wiki, then gun fire, then the textarea
+  // left-to-right order in the bar: W wiki, then fire, then the textarea
   const kids = bar.childNodes.filter((n) => n.nodeType === 1);
   const cls = (n) => String(n.attrs?.class ?? "");
   assert.ok(cls(kids[0]).includes("pl-fxbar-wiki"), "W wiki is leftmost");
-  assert.ok(cls(kids[1]).includes("pl-fxbar-fire"), "gun fire is next");
+  assert.ok(cls(kids[1]).includes("pl-fxbar-fire"), "fire is next");
   assert.ok(cls(kids[2]).includes("pl-fxbar-input"), "the formula textarea is last");
   // spy on origin.fire — clicking the button must dispatch it with the selected key
   const cel = state.cels.get("origin.fire");
@@ -166,7 +166,7 @@ test("fire: the bar's gun (SVG) button dispatches origin.fire; bar order is [W w
   try {
     fire.fire("click");
     await new Promise((r) => setTimeout(r, 0));
-    assert.equal(fired, "turtles.B4", "the gun button dispatches origin.fire with the selected cell key");
+    assert.equal(fired, "turtles.B4", "the fire button dispatches origin.fire with the selected cell key");
   } finally { cel._fn = orig; }
   // there is NO ƒx label any more
   assert.ok(!byClass(bar, "pl-fxbar-label")[0], "the ƒx label is gone");
@@ -346,7 +346,7 @@ test("grab: with NO live rect (off-DOM) wsGrab falls back to win.geom default 60
 
 // ── 9) formula-bar icons are comfortably large ───────────────────────────────
 
-test("formula-bar icons: the W wiki + gun buttons are noticeably larger (glyphBtn ~1.1rem, gun svg 22px)", async () => {
+test("formula-bar icons: the W wiki + fire buttons are noticeably larger (glyphBtn ~1.1rem, bolt svg 22px)", async () => {
   const { root } = await boot();
   const bar = fxbarOf(root, "turtles");
   const wiki = byClass(bar, "pl-fxbar-wiki")[0];
