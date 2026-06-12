@@ -130,39 +130,15 @@ const messagesFn: Fn = ((...pairs: unknown[]): Msg[] => {
   return out;
 }) as Fn;
 
-// chatpanel(messages, entry, bots…) — the chat UI assembled as ONE dom value.
-// LEFT: each bot = its client value + a clientlight (🟢/🔴). BODY: chathistory
-// over the message list + a text ENTRY input + a SEND button. The entry input
-// writes the typed text to the `clients.D1` buffer cel (a {set} listener);
-// SEND/Enter dispatch chat.cellsend (appends the entry to the messages cell and
-// asks an available client, whose reply appends too). Pass clients.C1 (messages)
-// + clients.A1/.A2 (clients) so it re-renders as the conversation/clients change.
-const SX = {
-  wrap: "display:flex;gap:.5rem;height:100%;min-height:16rem;font-family:ui-monospace,monospace",
-  bots: "flex:0 0 auto;display:flex;flex-direction:column;gap:.4rem;padding:.3rem;border-right:1px solid #8884;min-width:7rem",
-  bot: "display:flex;align-items:center;gap:.3rem;font-size:.82rem",
-  body: "flex:1 1 auto;display:flex;flex-direction:column;gap:.4rem;min-width:0",
-  row: "flex:0 0 auto;display:flex;gap:.3rem",
-  input: "flex:1;padding:.35rem .5rem;border:1px solid #8884;border-radius:.4rem;font-size:.85rem;background:Canvas;color:CanvasText",
-  send: "padding:.35rem .8rem;border:1px solid #8884;border-radius:.4rem;cursor:pointer;font-size:.85rem;background:#8881;color:CanvasText",
-} as const;
 const MSGS = "clients.C1", ENTRY = "clients.D1";
 type Msg = { from?: string; text?: string };
-const providerOf = (c: unknown): string => (c && typeof c === "object" && (c as ClientHandle).__client === true) ? String((c as ClientHandle).provider) : "client";
-const chatPanelFn: Fn = ((messages: unknown, entry: unknown, ...bots: unknown[]): V => {
-  const botRows = bots.map((c) => elx("div", { class: "chat-bot", style: SX.bot }, [
-    clientLightFn(c) as V, T(providerOf(c)),
-  ]));
-  return elx("div", { class: "chatpanel", style: SX.wrap }, [
-    elx("div", { class: "chat-bots", style: SX.bots }, [T("bots"), ...botRows]),
-    elx("div", { class: "chat-body", style: SX.body }, [
-      chatHistoryFn(messages) as V,
-      elx("div", { class: "chat-entry", style: SX.row }, [
-        elx("input", { class: "chat-input", value: entry == null ? "" : String(entry), placeholder: "message…", style: SX.input }, [], { input: { set: ENTRY, extract: "value" }, keydown: { dispatch: "chat.cellkey" } }),
-        elx("button", { class: "chat-send", style: SX.send }, [T("send")], { click: { dispatch: "chat.cellsend" }, pointerdown: { dispatch: "winsheet.stop" } }),
-      ]),
-    ]),
-  ]);
+
+// chat.cellinput — the entry input's `input` handler: stash the live typed text
+// in the clients.D1 buffer cel (read off the event target), so the input is an
+// uncontrolled field authorable purely with (on "input" "chat.cellinput") in a
+// dom() formula — no {set}/extract binding that the on-verb can't express.
+const chatCellInput: Fn = (async (state: State, _p: unknown, event?: { target?: { value?: unknown } }): Promise<void> => {
+  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, ENTRY, String(event?.target?.value ?? "")));
 }) as Fn;
 
 // chat.cellsend — append the `clients.D1` text to the messages cell
@@ -221,7 +197,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["clientlight", clientLightFn],
   ["messages", messagesFn],
   ["chathistory", chatHistoryFn],
-  ["chatpanel", chatPanelFn],
+  ["chat.cellinput", chatCellInput],
   ["chat.cellsend", chatCellSend],
   ["chat.cellkey", chatCellKey],
   ["clientsheet", clientsheetFn],

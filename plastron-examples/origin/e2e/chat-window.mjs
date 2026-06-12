@@ -26,13 +26,14 @@ try {
 
   // CLIENTS sheet status cells
   const clients = await page.evaluate(() => {
-    const s = globalThis.plastron.state;
+    const { state: s, resolveFn } = globalThis.plastron;
     const g = (k) => s.cels.get(k)?.v;
     return {
       claude: g("clients.A1"), grok: g("clients.A2"),
       b1tag: g("clients.B1")?.tag, b2tag: g("clients.B2")?.tag,
       c1IsFormula: typeof s.cels.get("clients.C1")?.f === "string", hasD1: !!s.cels.get("clients.D1"),
-      chatTag: g("chat.A1")?.tag,
+      botsClass: g("chat.A1")?.attrs?.class, histClass: g("chat.B1")?.attrs?.class, entryClass: g("chat.C1")?.attrs?.class,
+      noChatpanel: typeof resolveFn(s, "chatpanel") === "undefined",
       host: s.cels.get("win.geom")?.v?.chat?.host,
     };
   });
@@ -41,7 +42,9 @@ try {
   ok(clients.b1tag === "span" && clients.b2tag === "span", "clientlight cells render spans (B1/B2)");
   ok(!clients.c1IsFormula, "messages cell (C1) is a plain VALUE cell, not a FormulaCel");
   ok(clients.hasD1, "entry buffer cell (D1) exists");
-  ok(clients.chatTag === "div", "chat.A1 is the chatpanel div");
+  ok(clients.noChatpanel, "the chatpanel monolith verb is gone");
+  ok(clients.botsClass === "chat-bots" && clients.histClass === "chat-history" && clients.entryClass === "chat-entry",
+     "chat is a few dom() cels: A1 bots, B1 history, C1 input+send");
   ok(clients.host === "clients", "chat tabbed into clients (one window: [clients | chat])");
 
   // activate the chat TAB (the window hosts [clients | chat]; clients is the
@@ -52,11 +55,11 @@ try {
   });
   await page.waitForTimeout(250);
 
-  // the chat window renders in the DOM: bots-left + history + entry + send
-  ok(await page.$(".chatpanel .chat-bots"), "bots column on the LEFT");
-  ok(await page.$(".chatpanel .chat-history"), "chat history in the body");
-  ok(await page.$(".chatpanel input.chat-input"), "a text entry input");
-  ok(await page.$(".chatpanel button.chat-send"), "a send button");
+  // the chat window renders in the DOM as a few dom cels: bots + history + entry
+  ok(await page.$(".chat-bots"), "bots column (chat.A1)");
+  ok(await page.$(".chat-history"), "chat history (chat.B1)");
+  ok(await page.$(".chat-entry input.chat-input"), "a text entry input (chat.C1)");
+  ok(await page.$(".chat-entry button.chat-send"), "a send button (chat.C1)");
   // a clientlight glyph rendered (🔴 since no key)
   const light = await page.evaluate(() => document.querySelector(".client-light")?.textContent ?? "");
   ok(light === "🔴" || light === "🟢", `a clientlight glyph rendered (${light})`);

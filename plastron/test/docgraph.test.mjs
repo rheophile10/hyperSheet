@@ -48,6 +48,23 @@ test("wiki.open assembles an article and lazily creates + opens the window", asy
   assert.equal(state.cels.has("win.wiki.frame"), false, "frame omitted without origin's mount");
 });
 
+test("wiki.open RAISES + FOCUSES the wiki window: win.active points at it and its z is on top", async () => {
+  const state = await boot();
+  // seed a couple of other state-cel windows with high z, one already active
+  await resolveFn(state, "setCel")(state, "win.other.state", {
+    celType: "ValueCel", v: { ref: "win.other.state", z: 42, closed: 0 }, metadata: { segment: "win.other", name: "state" },
+  });
+  await resolveFn(state, "setValue")(state, "win.active", "win.other.state");
+
+  await resolveFn(state, "wiki.open")(state, "wikidoc");
+
+  // the wiki becomes the ACTIVE/front window (the winx.show / xRaise move):
+  assert.equal(state.cels.get("win.active")?.v, "win.wiki.state", "win.active now points at the wiki window");
+  const wiki = state.cels.get("win.wiki.state")?.v;
+  assert.equal(wiki.closed, 0, "wiki opened");
+  assert.ok(wiki.z > 42, "wiki z raised above every other window's z");
+});
+
 test("no docgraph cel ever traps: a runCycle after open adds no log entries", async () => {
   const state = await boot();
   await resolveFn(state, "wiki.open")(state, "wikidoc");
@@ -152,7 +169,12 @@ test("native fns show live source + a github link", async () => {
   const state = await boot();
   await resolveFn(state, "wiki.open")(state, "wikidoc");
   const article = state.cels.get("wiki.article")?.v;
-  assert.match(textOf(article), /source \(live binding\)/i);
+  // the source section heading is the literal text node "Source" (not the old
+  // "source (live binding)"); find it exactly so adjacent source text can't
+  // mask the change.
+  const headings = find(article, (n) => n.type === "text").map((n) => n.text);
+  assert.ok(headings.includes("Source"), "the source section heading reads exactly 'Source'");
+  assert.ok(!headings.some((t) => /live binding/i.test(t)), "the old 'source (live binding)' label is gone");
   const a = find(article, (n) => n.tag === "a")[0];
   assert.ok(a && /github\.com\/rheophile10\/plastron\/blob\/master/.test(a.attrs.href), "github source link");
 });

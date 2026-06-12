@@ -279,7 +279,7 @@ const articleVnode = (state: State, key: string): V => {
       const live = (cel as unknown as { _fn?: unknown })._fn;
       if (typeof live === "function") {
         const src = String(live);
-        body.push(...section("source (live binding)", el("pre", {
+        body.push(...section("Source", el("pre", {
           style: "font:.74rem ui-monospace,monospace;background:#8881;border:1px solid #8883;border-radius:.4rem;padding:.4rem .5rem;white-space:pre-wrap;word-break:break-word;margin:0;max-height:14rem;overflow:auto",
         }, [T(src.length > 4000 ? src.slice(0, 4000) + "\n…" : src)])));
       }
@@ -417,6 +417,12 @@ const wikiOpen: Fn = (async (state: State, payload?: unknown): Promise<void> => 
     }
   }
   await ((resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0, z: top + 1 }));
+  // RAISE + FOCUS the wiki window (the winx.show / xRaise move): point win.active
+  // (and the keyboard focus pointer keys.active, when present) at the wiki ref so
+  // winframe highlights it as the active/front window — opening the wiki makes it
+  // the active window, not just a raised-but-unfocused one.
+  await ((resolveFn(state, "setValue") as Fn)(state, "win.active", sref));
+  if (state.cels.get("keys.active")) await ((resolveFn(state, "setValue") as Fn)(state, "keys.active", sref));
   // Lazily-created cels are OUT-OF-BAND structure. The host view must rewire
   // to include them (view.refresh rebuilds 元.view's vals) — but the rewire's
   // inputMap edit recompiles the view at its NEXT fire, so the first cycle

@@ -111,11 +111,16 @@ test("README is ONE sheet: readme.A1 holds the dom vnode and renders directly in
   assert.ok(walk(root, (n) => String(n.attrs?.class ?? "") === "readme")[0], "the readme rendered in its cell");
 });
 
-test("Chat renders from the clients sheet: chat.A1 builds the panel from clients.A1/A2 (tabbed pair)", async () => {
+test("Chat is a FEW plain dom() cels (no chatpanel monolith): bots/history/entry built from the clients sheet (tabbed pair)", async () => {
   const { state } = await boot();
-  // the clients sheet armed the client handles; the chat sheet reads them
+  // the chatpanel verb is GONE — the chat is assembled from a few dom() formula cels.
+  assert.equal(resolveFn(state, "chatpanel"), undefined, "the chatpanel verb is removed from the registry");
+  // the clients sheet armed the client handles; the chat dom cels read them
   assert.ok(state.cels.get("clients.A1")?.v?.__client, "clients.A1 is a captured claude client handle");
-  assert.equal(state.cels.get("chat.A1")?.v?.tag, "div", "chat.A1 built a panel vnode from the clients sheet");
+  // chat sheet = 3 dom() cels: A1 bots, B1 history, C1 input+send — each a vnode
+  assert.equal(state.cels.get("chat.A1")?.v?.attrs?.class, "chat-bots", "chat.A1 is the bots-left dom cel");
+  assert.equal(state.cels.get("chat.B1")?.v?.attrs?.class, "chat-history", "chat.B1 is the history dom cel (chathistory)");
+  assert.equal(state.cels.get("chat.C1")?.v?.attrs?.class, "chat-entry", "chat.C1 is the input+send dom cel");
   assert.equal(state.cels.get("win.geom")?.v?.chat?.host, "clients", "chat tabbed into clients");
   assert.equal(canGet(state, "chat", "clients"), true, "chat reads the clients sheet via the tab bundle");
 });
@@ -145,14 +150,21 @@ test("the chat window composes [clients | chat]: status cells + clientlights + a
   assert.ok(typeof c1?.f !== "string", "clients.C1 is a VALUE cell, not a FormulaCel");
   assert.ok(state.cels.get("clients.D1"), "clients.D1 is the entry buffer cell");
 
-  // CHAT sheet: A1 is the assembled panel — bots LEFT, body = history + entry + send
-  const panel = state.cels.get("chat.A1")?.v;
-  assert.equal(panel?.tag, "div", "chat.A1 is the chatpanel div");
-  assert.ok(walkV(panel, (n) => String(n.attrs?.class ?? "") === "chat-bots")[0], "bots column on the left");
-  assert.ok(walkV(panel, (n) => String(n.attrs?.class ?? "") === "chat-history")[0], "a chat history");
-  assert.ok(walkV(panel, (n) => n.tag === "input")[0], "a text entry input");
-  const send = walkV(panel, (n) => n.tag === "button" && /send/.test(txt(n)))[0];
-  assert.ok(send, "a send button");
+  // CHAT sheet: a FEW dom() formula cels, each referencing the clients data cels —
+  // no consolidated chatpanel verb. A1 = bots-left (clientlights), B1 = history
+  // (chathistory over the messages cell), C1 = the input + send row.
+  const bots = state.cels.get("chat.A1")?.v;
+  assert.ok(walkV(bots, (n) => String(n.attrs?.class ?? "") === "chat-bot")[0], "A1 lists the bots");
+  assert.ok(walkV(bots, (n) => String(n.attrs?.class ?? "") === "client-light")[0], "…each with a clientlight");
+  const history = state.cels.get("chat.B1")?.v;
+  assert.equal(history?.attrs?.class, "chat-history", "B1 is a chat history (chathistory clients.C1)");
+  const entry = state.cels.get("chat.C1")?.v;
+  const input = walkV(entry, (n) => n.tag === "input")[0];
+  assert.ok(input, "C1 has a text entry input");
+  assert.equal(input.events?.input?.dispatch, "chat.cellinput", "the input syncs the live text into the D1 buffer");
+  assert.equal(input.events?.keydown?.dispatch, "chat.cellkey", "Enter in the input fires chat.cellkey");
+  const send = walkV(entry, (n) => n.tag === "button" && /send/.test(txt(n)))[0];
+  assert.ok(send, "C1 has a send button");
   // the send button dispatches the spreadsheet-native chat handler
   assert.equal(send.events?.click?.dispatch, "chat.cellsend", "send wired to chat.cellsend");
 });
@@ -192,6 +204,21 @@ test("chat send: clients.C1 is a VALUE cell, every send is a plain setValue (no 
   assert.equal(after.v[0]?.from, "me", "first row is the user");
   assert.equal(after.v[0]?.text, "hello bots", "with the first typed text");
   assert.equal(after.v[4]?.text, "and once more", "the third user line landed");
+});
+
+test("chat.cellinput stashes the live typed text into the clients.D1 buffer, then send pushes it onto C1", async () => {
+  const { state, m } = await boot();
+  // the uncontrolled input dispatches chat.cellinput on every keystroke; the
+  // handler reads event.target.value and writes the D1 buffer (no {set} binding,
+  // which the on-verb can't author). Then chat.cellsend reads D1 and pushes onto C1.
+  await resolveFn(state, "chat.cellinput")(state, undefined, { target: { value: "live typed" } }); m.run();
+  assert.equal(state.cels.get("clients.D1")?.v, "live typed", "chat.cellinput wrote the live value to D1");
+  await resolveFn(state, "chat.cellsend")(state); m.run();
+  const c1 = state.cels.get("clients.C1")?.v;
+  assert.ok(Array.isArray(c1), "C1 is the message array");
+  assert.equal(c1[0]?.from, "me", "the typed line pushed onto C1 as the user");
+  assert.equal(c1[0]?.text, "live typed", "…with the text chat.cellinput captured");
+  assert.equal(state.cels.get("clients.D1")?.v, "", "D1 cleared after send");
 });
 
 test('the new tab SHARES memory with its host (bundled), but is a closure to others', async () => {

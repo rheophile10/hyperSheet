@@ -57,7 +57,7 @@
         "segment": "llm",
         "name": "clientlight",
         "kind": "native",
-        "description": "(client) — a dom 🟢 (ready) / 🔴 (error) indicator reading the client's non-secret `status`. =clientlight(clients.A1)"
+        "description": "(client) — a dom 🟢 (ready) / 🔴 (error) indicator reading the client's non-secret `status`. A FOCUSED helper: the boot's chat is assembled from a few plain dom() formula cels (a bots-left dom, a history dom, an input+send dom) that call this + chathistory — there is no all-in-one chatpanel verb. =clientlight(clients.A1)"
       },
       "locked": true
     },
@@ -81,19 +81,19 @@
         "segment": "llm",
         "name": "chathistory",
         "kind": "native",
-        "description": "(messages) — a scrollable dom rendering of a [{from, text}, …] message list; one bubble per message, the sender labeled. Renders a centered starter line ('ask the bots anything…') when the list is empty or not an array. =chathistory(clients.C1)"
+        "description": "(messages) — a scrollable dom rendering of a [{from, text}, …] message list; one bubble per message, the sender labeled. Renders a centered starter line ('ask the bots anything…') when the list is empty or not an array. A FOCUSED helper called by the boot's history dom cel — the chat is a few plain dom() formula cels, not one chatpanel verb. =chathistory(clients.C1)"
       },
       "locked": true
     },
     {
-      "key": "chatpanel",
+      "key": "chat.cellinput",
       "celType": "LockedLambdaCel",
       "metadata": {
-        "key": "chatpanel",
+        "key": "chat.cellinput",
         "segment": "llm",
-        "name": "chatpanel",
+        "name": "chat.cellinput",
         "kind": "native",
-        "description": "(messages, entry, bots…) — the chat UI as one dom value: bots listed LEFT (each client + its clientlight), BODY = chathistory + a text entry + a send button. Send appends the entry to the messages cell (clients.C1) and asks an armed client. =chatpanel(clients.C1, clients.D1, clients.A1, clients.A2)"
+        "description": "(state, payload, event) — the chat entry's `input` handler: stash the live typed text (event.target.value) into the clients.D1 buffer cel. Lets the input be an UNCONTROLLED field authored purely with (on \"input\" \"chat.cellinput\") inside a plain dom() formula — the on-verb only emits dispatch bindings, so this is how typing reaches the D1 buffer that chat.cellsend reads. Replaces the {set}/extract listener the removed chatpanel verb baked in."
       },
       "locked": true
     },
