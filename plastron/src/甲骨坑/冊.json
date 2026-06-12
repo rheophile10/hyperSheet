@@ -245,7 +245,8 @@
       "llm",
       "sqlite",
       "sheet-host",
-      "docgraph"
+      "docgraph",
+      "xlsx"
     ],
     "role": "application"
   },

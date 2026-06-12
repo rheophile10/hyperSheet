@@ -259,3 +259,21 @@ test("def(name, kind, source) defines a callable JS function", async () => {
   await put(state, root, m, "=double(21)");
   assert.equal(state.cels.get("元").v, 42, "the defined function is callable from a formula");
 });
+
+test("xlsx wiring: =xlsxsave(\"turtles\") exports the boot turtles sheet, round-trips back", async () => {
+  const { state, root, m } = await boot();
+  await resolveFn(state, "origin.commit")(state, "元"); m.run(); // materialize the boot desktop (turtles + the readme row)
+  // the readme advertises the export row (=xlsxsave("turtles")) so a user can find it
+  assert.ok(walk(root, (n) => /(^| )fx-code( |$)/.test(String(n.attrs?.class ?? "")) && /xlsxsave/.test(txt(n)))[0], "readme shows the =xlsxsave example row");
+  assert.ok(state.cels.get("readme.B24") && !state.cels.get("readme.B25"), "the xlsx row is row 24 (grid is 24 rows)");
+  // the xlsx verbs loaded with origin's closure
+  assert.ok(state.cels.get("xlsxexport"), "xlsxexport in the origin closure");
+  assert.ok(state.cels.get("turtles.A1"), "boot turtles sheet present to export");
+  // export the live turtles sheet, then import the bytes back — addresses + values match
+  const b64 = await resolveFn(state, "xlsxexport")(state, "turtles");
+  assert.equal(typeof b64, "string");
+  const req = await resolveFn(state, "xlsximport")(state, b64);
+  assert.equal(req.genesis, true, "import returns a genesis worksheet");
+  assert.equal(req.cels["xlsx.A1"].v, state.cels.get("turtles.A1").v, "A1 text round-trips");
+  assert.equal(req.cels["xlsx.B2"].v, state.cels.get("turtles.B2").v, "B2 number round-trips");
+});
