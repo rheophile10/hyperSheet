@@ -51,7 +51,7 @@ const isVnode = (v: unknown): v is V => !!v && typeof v === "object" && ((v as V
 const FN_TYPES = new Set(["LockedLambdaCel", "EditableLambdaCel", "CompilerCel"]);
 // our own machinery stays out of the graph (a wiki article about the wiki's
 // article buffer is noise, not knowledge).
-const isInternal = (key: string): boolean => key === "wiki.article" || key === "wiki.noteDraft" || key === "wiki.notes" || key === "wiki.descDraft";
+const isInternal = (key: string): boolean => key === "wiki.article" || key === "wiki.noteDraft" || key === "wiki.notes" || key === "wiki.descDraft" || key === "wiki.srcDoc";
 
 interface CelLike { celType: string; f?: string; v?: unknown; locked?: boolean; metadata: Record<string, unknown> }
 const celOf = (state: State, key: string): CelLike | undefined => state.cels.get(key) as unknown as CelLike | undefined;
@@ -133,9 +133,37 @@ const graphSpec = (state: State, center: string): { nodes: Array<{ key: string; 
   for (const m of memberSeeds) edges.push([center, m]);
   const nodes = keys.map((k) => {
     const deg = inputKeysOf(celOf(state, k)).filter((d) => state.cels.has(d)).length + backlinksOf(state, k).length;
-    return { key: k, size: Math.min(1.9, 0.85 + 0.16 * Math.sqrt(deg)) };
+    return { key: k, size: Math.min(1.9, 0.85 + 0.16 * Math.sqrt(deg)), ...classify(state, k) };
   });
   return { nodes, edges, pin: center, onNode: { dispatch: "wiki.open" } };
+};
+
+// ── node classification — kind tints + role accents ─────────────────────────
+// kind (background tint): what the node IS in the cel ontology.
+// accent (border): WHOSE it is — kernel / library / application / layer.
+const KIND_TINT: Record<string, string> = {
+  value: "#3fa34d22", formula: "#4a90d922", fn: "#e6a23c2b", segment: "#9b59b62b", other: "#88888818",
+};
+const ROLE_ACCENT: Record<string, string> = {
+  kernel: "#d4453e", library: "#2a9d8f", application: "#e6a23c", layer: "#888888",
+};
+const kindOf = (celType: string | undefined): string => {
+  if (!celType) return "segment";
+  if (celType === "ValueCel") return "value";
+  if (celType === "FormulaCel") return "formula";
+  if (FN_TYPES.has(celType)) return "fn";
+  return "other";
+};
+const roleOf = (state: State, key: string): string => {
+  const cel = celOf(state, key);
+  const seg = cel ? segmentOf(cel) : key;
+  const manifest = (state as unknown as { segments?: Map<string, { role?: string }> }).segments?.get(seg);
+  return manifest?.role ?? "layer"; // no manifest → a genesis/window layer
+};
+const classify = (state: State, key: string): { kind: string; tint?: string; accent?: string } => {
+  const kind = kindOf(celOf(state, key)?.celType);
+  const role = roleOf(state, key);
+  return { kind, tint: KIND_TINT[kind], accent: ROLE_ACCENT[role] ?? ROLE_ACCENT.layer };
 };
 
 // ── article rendering ────────────────────────────────────────────────────────
@@ -258,11 +286,13 @@ const articleVnode = (state: State, key: string): V => {
       const seg = segmentOf(cel);
       const role = (state as unknown as { segments?: Map<string, { role?: string }> }).segments?.get(seg)?.role ?? "library";
       const path = role === "kernel" ? "kernel/index.ts" : `${role === "application" ? "application" : "library"}/${seg}/index.ts`;
-      body.push(el("div", { style: "margin:.3rem 0 0;font:.78rem system-ui" }, [
+      body.push(el("div", { style: "margin:.3rem 0 0;font:.78rem system-ui;display:flex;gap:.7rem;align-items:center" }, [
+        el("button", { style: BTN }, [T("⧉ open source in a window")],
+          { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "wiki.openSource", payload: key } }),
         el("a", {
           href: `https://github.com/rheophile10/plastron/blob/master/plastron/src/甲骨坑/${path}`,
           target: "_blank", style: "color:LinkText",
-        }, [T(`view ${seg}/index.ts on github ↗`)]),
+        }, [T(`${seg}/index.ts on github ↗`)]),
       ]));
     } else if (!FN_TYPES.has(cel.celType) && cel.v !== undefined && cel.v !== null && !isVnode(cel.v)) {
       const s = typeof cel.v === "object" ? JSON.stringify(cel.v) : String(cel.v);
@@ -346,7 +376,7 @@ const ensureWikiWindow = async (state: State): Promise<void> => {
       metadata: { segment: "win.wiki", name: "state" },
     });
   }
-  const CONTENT_F = '(wikidoc wiki.article (fgview "wiki" fg.wiki.spec fg.wiki.pos fg.wiki.zoom fg.wiki.armed))';
+  const CONTENT_F = '(wikidoc wiki.article (fgview "wiki" fg.wiki.spec fg.wiki.pos fg.wiki.zoom fg.wiki.armed fg.wiki.hide))';
   const content = state.cels.get("win.wiki.content") as { f?: string } | undefined;
   if (!content || content.f !== CONTENT_F) {
     await setCel(state, "win.wiki.content", {
@@ -428,6 +458,76 @@ const wikiSaveDesc: Fn = (async (state: State): Promise<void> => {
   await repaint(state);
 }) as Fn;
 
+/** wikisrc(doc) — the source window's content: the node's LIVE source
+ *  (formula `f`, or the bound native's toString — always the running code,
+ *  which an iframe of the repo could never promise) + the github link.
+ *  (GitHub itself cannot be iframed: X-Frame-Options deny.) */
+const wikisrcFn: Fn = (doc?: unknown): V => {
+  const d = (doc ?? {}) as { key?: string; src?: string; gh?: string };
+  if (!d.key) {
+    return el("div", { style: "color:GrayText;font:.85rem system-ui;padding:.4rem" },
+      [T("no source open — use ⧉ on a wiki article")]);
+  }
+  return el("div", { style: "display:flex;flex-direction:column;gap:.35rem;height:100%" }, [
+    el("div", { style: "flex:0 0 auto;display:flex;gap:.7rem;align-items:baseline" }, [
+      el("span", { style: "font:700 .95rem ui-monospace,monospace;word-break:break-all" }, [T(String(d.key))]),
+      ...(d.gh ? [el("a", { href: d.gh, target: "_blank", style: "color:LinkText;font:.75rem system-ui" }, [T("github ↗")])] : []),
+    ]),
+    el("pre", { style: "flex:1 1 auto;overflow:auto;font:.76rem ui-monospace,monospace;background:#8881;border:1px solid #8883;border-radius:.4rem;padding:.45rem .55rem;white-space:pre-wrap;word-break:break-word;margin:0" },
+      [T(String(d.src ?? "(no source)"))]),
+  ]);
+};
+
+const wikiOpenSource: Fn = (async (state: State, payload?: unknown): Promise<void> => {
+  const key = String(payload ?? "") || String(state.cels.get("wiki.current")?.v ?? "");
+  const cel = celOf(state, key);
+  if (!cel) return;
+  const live = (cel as unknown as { _fn?: unknown })._fn;
+  const src = typeof cel.f === "string" && cel.f ? cel.f
+    : typeof live === "function" ? String(live)
+    : cel.v !== undefined ? JSON.stringify(cel.v, null, 1) : "(no source)";
+  const seg = segmentOf(cel);
+  const role = (state as unknown as { segments?: Map<string, { role?: string }> }).segments?.get(seg)?.role ?? "library";
+  const path = role === "kernel" ? "kernel/index.ts" : `${role === "application" ? "application" : "library"}/${seg}/index.ts`;
+  const setCel = resolveFn(state, "setCel") as Fn;
+  if (!state.cels.has("win.wikisrc.state")) {
+    await setCel(state, "win.wikisrc.state", {
+      celType: "ValueCel",
+      v: { ref: "win.wikisrc.state", x: 240, y: 120, w: 620, h: 460, z: 7, min: 0, max: 0, closed: 1, title: "⧉ source" },
+      metadata: { segment: "win.wikisrc", name: "state" },
+    });
+  }
+  if (!state.cels.has("win.wikisrc.content")) {
+    await setCel(state, "win.wikisrc.content", {
+      celType: "FormulaCel", f: "(wikisrc wiki.srcDoc)",
+      metadata: { segment: "win.wikisrc", name: "content", parser: "f" },
+    });
+  }
+  if (!state.cels.has("win.wikisrc.frame") && state.cels.has("mount") && state.cels.has("winframe")) {
+    await setCel(state, "win.wikisrc.frame", {
+      celType: "FormulaCel", f: '(mount ".origin" (winframe win.wikisrc.state win.active win.wikisrc.content))',
+      metadata: { segment: "win.wikisrc", name: "frame", parser: "f" },
+    });
+  }
+  await ((resolveFn(state, "setValue") as Fn)(state, "wiki.srcDoc",
+    { key, src, gh: `https://github.com/rheophile10/plastron/blob/master/plastron/src/甲骨坑/${path}` }));
+  const cur = (state.cels.get("win.wikisrc.state")?.v ?? {}) as Record<string, unknown>;
+  let top = 10;
+  for (const [k, c] of state.cels) {
+    if (k.startsWith("win.") && k.endsWith(".state")) {
+      const z = Number((c.v as Record<string, unknown> | undefined)?.z ?? 0);
+      if (Number.isFinite(z) && z > top) top = z;
+    }
+  }
+  await ((resolveFn(state, "setValue") as Fn)(state, "win.wikisrc.state", { ...cur, closed: 0, min: 0, z: top + 1 }));
+  const viewRefresh = resolveFn(state, "view.refresh") as Fn | undefined;
+  const runCycle = resolveFn(state, "runCycle") as Fn;
+  if (viewRefresh) await viewRefresh(state);
+  await runCycle(state);
+  await runCycle(state);
+  await repaint(state);
+}) as Fn;
+
 export const name = "docgraph" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
@@ -436,4 +536,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["wiki.open", wikiOpen],
   ["wiki.saveNote", wikiSaveNote],
   ["wiki.saveDesc", wikiSaveDesc],
+  ["wikisrc", wikisrcFn],
+  ["wiki.openSource", wikiOpenSource],
 ]));

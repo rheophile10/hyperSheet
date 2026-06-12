@@ -130,6 +130,18 @@
         "kind": "native",
         "description": "dispatch (state, id) - release the wheel back to the page (pointer left the graph)."
       }
+    },
+    {
+      "key": "fg.toggleKind",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "fg.toggleKind",
+        "segment": "forcegraph",
+        "name": "fg.toggleKind",
+        "kind": "native",
+        "description": "dispatch (state, {id,kind}) - toggle a node KIND in fg.<id>.hide (the legend chips dispatch this); hidden kinds drop their nodes and incident edges from the render. The pin never hides."
+      }
     }
   ]
 }

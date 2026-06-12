@@ -115,6 +115,41 @@
         "name": "wiki.notes",
         "description": "the annotation sidecar: key → note text. Notes point AT their subject (locked natives are annotatable); dehydrates with the document. The annotation plane supersedes this when it ships."
       }
+    },
+    {
+      "key": "wikisrc",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wikisrc",
+        "segment": "docgraph",
+        "name": "wikisrc",
+        "kind": "native",
+        "description": "(doc) - the source window's content: a node's LIVE source (formula f, or the bound native's toString - always the running code) + its github link. GitHub cannot be iframed (X-Frame-Options deny); the live source is strictly better anyway."
+      }
+    },
+    {
+      "key": "wiki.openSource",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wiki.openSource",
+        "segment": "docgraph",
+        "name": "wiki.openSource",
+        "kind": "native",
+        "description": "dispatch (state, key) - open the ⧉ source window on a node: live source + github link, in its own draggable window (lazy win.wikisrc, the win.wiki pattern)."
+      }
+    },
+    {
+      "key": "wiki.srcDoc",
+      "celType": "ValueCel",
+      "v": null,
+      "metadata": {
+        "key": "wiki.srcDoc",
+        "segment": "docgraph",
+        "name": "wiki.srcDoc",
+        "description": "the source window's document ({key, src, gh}; set by wiki.openSource)."
+      }
     }
   ]
 }

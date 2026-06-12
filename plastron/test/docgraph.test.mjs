@@ -186,6 +186,53 @@ test("saveNote writes metadata.note (merge — inputMap survives) and [[links]] 
   assert.ok(noteLinks.length >= 1, "[[wikidoc]] rendered as a link");
 });
 
+test("nodes are classified: kind tints + role accents on the spec", async () => {
+  const state = await boot();
+  await resolveFn(state, "wiki.open")(state, "x");
+  await resolveFn(state, "hydrate")(state, [], []);
+  await resolveFn(state, "wiki.open")(state, "win.wiki.content");
+  const spec = state.cels.get("fg.wiki.spec")?.v;
+  const byKey = Object.fromEntries(spec.nodes.map((n) => [n.key, n]));
+  assert.equal(byKey["win.wiki.content"].kind, "formula");
+  assert.equal(byKey["wikidoc"].kind, "fn");
+  assert.ok(byKey["wikidoc"].tint && byKey["wikidoc"].accent, "fn node carries tint + accent");
+  assert.equal(byKey["wikidoc"].accent, "#2a9d8f", "library role accent");
+  assert.equal(byKey["win.wiki.content"].accent, "#888888", "layer role accent");
+});
+
+test("legend filter: fg.toggleKind hides a kind's nodes + edges (pin survives)", async () => {
+  const state = await boot();
+  await resolveFn(state, "wiki.open")(state, "x");
+  await resolveFn(state, "hydrate")(state, [], []);
+  await resolveFn(state, "wiki.open")(state, "win.wiki.content");
+  const spec = state.cels.get("fg.wiki.spec")?.v;
+  await resolveFn(state, "fg.toggleKind")(state, { id: "wiki", kind: "fn" });
+  assert.deepEqual(state.cels.get("fg.wiki.hide").v, ["fn"]);
+  const v = resolveFn(state, "fgview")("wiki", spec, state.cels.get("fg.wiki.pos").v, 1, 0, ["fn"]);
+  const chips = find(v, (n) => String(n.attrs?.class ?? "").startsWith("fg-node"));
+  assert.ok(!chips.some((c) => c.attrs.title.includes("wikidoc")), "fn nodes hidden");
+  assert.ok(chips.some((c) => c.attrs.class.includes("fg-node-pin")), "pin survives filtering");
+  const legend = find(v, (n) => String(n.attrs?.class ?? "").startsWith("fg-kind"));
+  assert.ok(legend.length >= 2, "legend chips present");
+  assert.ok(legend.some((c) => c.attrs.class.includes("fg-kind-off")), "hidden kind struck through");
+  await resolveFn(state, "fg.toggleKind")(state, { id: "wiki", kind: "fn" });
+  assert.deepEqual(state.cels.get("fg.wiki.hide").v, []);
+});
+
+test("source window: live source + github link in a lazy window", async () => {
+  const state = await boot();
+  await resolveFn(state, "wiki.open")(state, "wikidoc");
+  await resolveFn(state, "wiki.openSource")(state, "wikidoc");
+  const doc = state.cels.get("wiki.srcDoc")?.v;
+  assert.equal(doc.key, "wikidoc");
+  assert.match(doc.src, /article/i, "live toString source captured");
+  assert.ok(/github[.]com\/rheophile10\/plastron/.test(doc.gh) && /docgraph\/index[.]ts/.test(doc.gh), "github path role-aware");
+  assert.equal(state.cels.get("win.wikisrc.state").v.closed, 0, "source window opened");
+  assert.equal(state.cels.has("win.wikisrc.frame"), false, "frame omitted without origin (no-trap rule)");
+  const v = resolveFn(state, "wikisrc")(doc);
+  assert.match(textOf(v), /wikidoc/);
+});
+
 test("unknown key → a red-link article, not a throw", async () => {
   const state = await boot();
   await resolveFn(state, "wiki.open")(state, "no.such.thing");

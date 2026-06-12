@@ -45,7 +45,7 @@ const T = TT as unknown as (s: string) => V;
 export const FG_W = 1000;
 export const FG_H = 460;
 
-export interface FgNode { key: string; label?: string; size?: number }
+export interface FgNode { key: string; label?: string; size?: number; kind?: string; tint?: string; accent?: string }
 export interface FgSpec { nodes: FgNode[]; edges: Array<[string, string]>; pin?: string; onNode?: { dispatch: string } }
 type Pos = Record<string, [number, number]>;
 
@@ -153,6 +153,7 @@ const posKey = (id: string): string => `fg.${id}.pos`;
 const specKey = (id: string): string => `fg.${id}.spec`;
 const zoomKey = (id: string): string => `fg.${id}.zoom`;
 const armKey = (id: string): string => `fg.${id}.armed`;
+const hideKey = (id: string): string => `fg.${id}.hide`;
 
 /** fg.set — (state, { id, spec }): create the instance's layer cels if
  *  missing, lay the graph out to overlap-free, freeze. Re-set with a new
@@ -163,7 +164,7 @@ const fgSet: Fn = (async (state: State, payload?: unknown): Promise<void> => {
   const spec = specOf(rawSpec);
   const setCel = resolveFn(state, "setCel") as Fn;
   const setValue = resolveFn(state, "setValue") as Fn;
-  for (const [key, v] of [[specKey(gid), {}], [posKey(gid), {}], [zoomKey(gid), 1], [armKey(gid), 0]] as Array<[string, unknown]>) {
+  for (const [key, v] of [[specKey(gid), {}], [posKey(gid), {}], [zoomKey(gid), 1], [armKey(gid), 0], [hideKey(gid), []]] as Array<[string, unknown]>) {
     if (!state.cels.has(key)) {
       await setCel(state, key, { celType: "ValueCel", v, metadata: { segment: `fg.${gid}`, name: key.split(".").pop() } });
     }
@@ -183,30 +184,38 @@ const fgSet: Fn = (async (state: State, payload?: unknown): Promise<void> => {
 /** fgview(id, spec, pos, zoom) — the pure render. Use it in a FORMULA with
  *  the instance cels as args so drags/zooms re-render through the graph:
  *  `(fgview "wiki" fg.wiki.spec fg.wiki.pos fg.wiki.zoom)` */
-const fgviewFn: Fn = (id?: unknown, specArg?: unknown, posArg?: unknown, zoomArg?: unknown, armedArg?: unknown): V => {
+const fgviewFn: Fn = (id?: unknown, specArg?: unknown, posArg?: unknown, zoomArg?: unknown, armedArg?: unknown, hideArg?: unknown): V => {
   const gid = String(id ?? "g");
   const spec = specOf(specArg);
   const pos = (posArg ?? {}) as Pos;
   const zoom = Math.max(0.35, Math.min(3, num(zoomArg, 1)));
   const armed = !!(typeof armedArg === "number" ? armedArg : num(armedArg, 0));
+  const hidden = new Set(Array.isArray(hideArg) ? (hideArg as unknown[]).map(String) : []);
+  // filter: a node hides with its kind (the PIN never hides — it is the
+  // subject); an edge hides with either endpoint.
+  const visible = spec.nodes.filter((n) => n.key === spec.pin || !n.kind || !hidden.has(n.kind));
+  const visKeys = new Set(visible.map((n) => n.key));
   const zx = (x: number): number => Math.max(8, Math.min(FG_W - 8, FG_W / 2 + (x - FG_W / 2) * zoom));
   const zy = (y: number): number => Math.max(8, Math.min(FG_H - 8, FG_H / 2 + (y - FG_H / 2) * zoom));
   const ops = spec.edges.flatMap(([a, b]) => {
+    if (!visKeys.has(a) || !visKeys.has(b)) return [];
     const pa = pos[a], pb = pos[b];
     if (!pa || !pb) return [];
     return [{ op: "line", points: [[zx(pa[0]), zy(pa[1])], [zx(pb[0]), zy(pb[1])]], stroke: "#8886", lineWidth: 1 }];
   });
-  const chips = spec.nodes.flatMap((n) => {
+  const chips = visible.flatMap((n) => {
     const p = pos[n.key];
     if (!p) return [];
     const isPin = n.key === spec.pin;
     const scale = Math.min(2, Math.max(0.6, num(n.size, 1))) * (isPin ? 1.15 : 1);
     const label = String(n.label ?? n.key);
     const short = label.length > 18 ? label.slice(0, 17) + "…" : label;
+    const border = isPin ? "#4a90d9" : (n.accent ?? "#8885");
+    const bg = n.tint ?? (isPin ? "#4a90d922" : "Canvas");
     return [el("button", {
       class: isPin ? "fg-node fg-node-pin" : "fg-node",
-      title: `${n.key} — drag to move, click to open`,
-      style: `position:absolute;left:${(zx(p[0]) / FG_W * 100).toFixed(2)}%;top:${(zy(p[1]) / FG_H * 100).toFixed(2)}%;transform:translate(-50%,-50%) scale(${scale.toFixed(2)});font:.66rem ui-monospace,monospace;padding:.06rem .35rem;border-radius:.7rem;cursor:grab;white-space:nowrap;touch-action:none;border:1px solid ${isPin ? "#4a90d9" : "#8885"};background:${isPin ? "#4a90d922" : "Canvas"};color:CanvasText`,
+      title: `${n.key}${n.kind ? ` · ${n.kind}` : ""} — drag to move, click to open`,
+      style: `position:absolute;left:${(zx(p[0]) / FG_W * 100).toFixed(2)}%;top:${(zy(p[1]) / FG_H * 100).toFixed(2)}%;transform:translate(-50%,-50%) scale(${scale.toFixed(2)});font:.66rem ui-monospace,monospace;padding:.06rem .35rem;border-radius:.7rem;cursor:grab;white-space:nowrap;touch-action:none;border:1.5px solid ${border};background:${bg};color:CanvasText`,
     }, [T(short)], {
       pointerdown: { dispatch: "fg.grab", payload: { id: gid, key: n.key } },
       pointermove: { dispatch: "fg.move" },
@@ -214,6 +223,20 @@ const fgviewFn: Fn = (id?: unknown, specArg?: unknown, posArg?: unknown, zoomArg
       click: { dispatch: "fg.click", payload: { id: gid, key: n.key } },
     })];
   });
+  // legend-as-filter: one chip per kind present; click toggles that kind.
+  const kinds = new Map<string, FgNode>();
+  for (const n of spec.nodes) if (n.kind && !kinds.has(n.kind)) kinds.set(n.kind, n);
+  const legend = kinds.size ? [el("div", {
+    class: "fg-legend",
+    style: "position:absolute;top:.3rem;left:.4rem;display:flex;gap:.25rem;flex-wrap:wrap;z-index:2",
+  }, [...kinds.entries()].map(([kind, sample]) => {
+    const off = hidden.has(kind);
+    return el("button", {
+      class: off ? "fg-kind fg-kind-off" : "fg-kind",
+      title: off ? `show ${kind} nodes` : `hide ${kind} nodes`,
+      style: `font:.62rem ui-monospace,monospace;padding:.04rem .35rem;border-radius:.6rem;cursor:pointer;border:1px solid ${sample.accent ?? "#8885"};background:${off ? "transparent" : (sample.tint ?? "#8881")};color:CanvasText;opacity:${off ? ".45" : "1"};text-decoration:${off ? "line-through" : "none"}`,
+    }, [T(kind)], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "fg.toggleKind", payload: { id: gid, kind } } });
+  }))] : [];
   // the scroll-containment convention (the maps-embed pattern): the graph
   // owns the wheel ONLY while armed — click in to arm (wheel zooms, the
   // window does not scroll: prevent claims the default), leave to release.
@@ -224,6 +247,7 @@ const fgviewFn: Fn = (id?: unknown, specArg?: unknown, posArg?: unknown, zoomArg
   }, [
     { type: "el", tag: "canvas", attrs: { width: FG_W, height: FG_H, "data-ops": JSON.stringify(ops) },
       style: { width: "100%", height: "100%", display: "block" }, children: [] } as V,
+    ...legend,
     ...chips,
   ], {
     wheel: { dispatch: "fg.wheel", payload: gid, prevent: armed },
@@ -316,6 +340,15 @@ const fgClick: Fn = (async (state: State, payload?: unknown, event?: unknown): P
   if (fn) await fn(state, key, event);
 }) as Fn;
 
+/** legend click — toggle a kind in fg.<id>.hide; the formula re-renders. */
+const fgToggleKind: Fn = (async (state: State, payload?: unknown): Promise<void> => {
+  const { id, kind } = (payload ?? {}) as { id?: string; kind?: string };
+  if (!id || !kind || !state.cels.has(hideKey(String(id)))) return;
+  const cur = (state.cels.get(hideKey(String(id)))?.v ?? []) as string[];
+  const next = cur.includes(kind) ? cur.filter((k) => k !== kind) : [...cur, kind];
+  await setV(state, hideKey(String(id)), next);
+}) as Fn;
+
 const fgArm: Fn = (async (state: State, payload?: unknown): Promise<void> => {
   const gid = String(payload ?? "g");
   if (!state.cels.has(armKey(gid)) || num(state.cels.get(armKey(gid))?.v) === 1) return;
@@ -338,6 +371,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["fg.drop", fgDrop],
   ["fg.wheel", fgWheel],
   ["fg.arm", fgArm],
+  ["fg.toggleKind", fgToggleKind],
   ["fg.disarm", fgDisarm],
   ["fg.click", fgClick],
 ]));
