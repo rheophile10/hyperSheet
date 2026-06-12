@@ -29,6 +29,11 @@ await (resolve(state, "drain"))(state, "dom.paint");
 await (resolve(state, "origin.seedWallpaper"))(state);
 await (resolve(state, "drain"))(state, "dom.paint");
 
+// seed the page's own served HTML into OPFS at /plastron/index.html so the file
+// explorer isn't empty — it shows "the index.html that plastron makes". Only
+// OPFS is reachable from the browser sandbox (not the repo tree).
+await (resolve(state, "origin.seedIndexHtml"))(state);
+
 // populate the file-explorer window's initial OPFS listing (the nav/open
 // handlers refresh it on every click thereafter).
 await (resolve(state, "origin.explorerRefresh"))(state);

@@ -139,9 +139,16 @@ test("explorer() renders OPFS folders + files from a listing as a dom value", as
   assert.match(all, /sub\//, "the folder is listed (with a trailing /)");
   assert.match(all, /hello\.txt/, "the file is listed");
   const dirRow = walkV(val, (n) => String(n.attrs?.class ?? "").includes("fe-dir"))[0];
-  const fileRow = walkV(val, (n) => String(n.attrs?.class ?? "").includes("fe-file"))[0];
+  // the file row holds a clickable name span (preview) + per-file action buttons
+  const fileName = walkV(val, (n) => String(n.attrs?.class ?? "").includes("fe-name"))[0];
   assert.equal(dirRow?.events?.click?.dispatch, "origin.explorerNav", "folders descend");
-  assert.equal(fileRow?.events?.click?.dispatch, "origin.explorerOpen", "files preview");
+  assert.equal(fileName?.events?.click?.dispatch, "origin.explorerOpen", "files preview");
+  // per-file action buttons render: delete / rename / download
+  const acts = walkV(val, (n) => String(n.attrs?.class ?? "").includes("fe-act"));
+  const dispatches = acts.map((a) => a.events?.click?.dispatch);
+  assert.ok(dispatches.includes("origin.explorerDelete"), "a 🗑 delete button renders");
+  assert.ok(dispatches.includes("origin.explorerRename"), "a ✎ rename button renders");
+  assert.ok(dispatches.includes("origin.explorerDownload"), "a ⬇ download button renders");
 });
 
 test("the explorer window lists real OPFS entries + descends reactively", async () => {
@@ -184,6 +191,91 @@ test("the boot desktop opens a standalone explorer window wired to explorer.cwd"
   assert.ok(deps.includes("explorer.preview"), "content reacts to explorer.preview");
   // and it rendered the explorer (a file-explorer vnode), not an error
   assert.match(txtV(content.v), /📂/, "the explorer rendered its current-dir bar");
+});
+
+// ── 4. binary-preview guard ──────────────────────────────────────────────────
+
+test("a .wasm file is NOT text-previewed — the preview shows a binary placeholder + download", async () => {
+  const { state } = await boot();
+  // a real WASM magic-byte header (\0asm) — invalid UTF-8 too, but the .wasm ext
+  // alone must already trip the guard so we never decode the bytes.
+  const wasm = new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0xff, 0xfe]);
+  await resolveFn(state, "fs.write")(p("mod.wasm"), wasm);
+
+  await resolveFn(state, "origin.explorerNav")(state, p(""));
+  await resolveFn(state, "origin.explorerOpen")(state, p("mod.wasm"));
+  const listing = state.cels.get("explorer.listing")?.v;
+  assert.equal(listing?.previewBinary, true, "the .wasm preview is flagged binary");
+  assert.match(String(listing?.previewText ?? ""), /^binary file/, "the preview is a placeholder, not the decoded bytes");
+  assert.match(String(listing?.previewText ?? ""), /wasm/, "the placeholder names the extension");
+  // the rendered preview pane shows a download button, not the bytes
+  const content = state.cels.get("win.explorer.content")?.v;
+  const dl = walkV(content, (n) => String(n.attrs?.class ?? "").includes("fe-dl"))[0];
+  assert.ok(dl, "the binary preview renders a download button");
+  assert.equal(dl?.events?.click?.dispatch, "origin.explorerDownload", "download wired to the per-file download dispatch");
+});
+
+test("a .wad file is never read as text either (extension guard)", async () => {
+  const { state } = await boot();
+  await resolveFn(state, "fs.write")(p("level.wad"), new Uint8Array([0x49, 0x57, 0x41, 0x44, 0x00, 0x01]));
+  await resolveFn(state, "origin.explorerNav")(state, p(""));
+  await resolveFn(state, "origin.explorerOpen")(state, p("level.wad"));
+  const listing = state.cels.get("explorer.listing")?.v;
+  assert.equal(listing?.previewBinary, true, ".wad flagged binary");
+  assert.match(String(listing?.previewText ?? ""), /binary file/, ".wad shows the placeholder");
+});
+
+test("a small valid-UTF-8 text file IS previewed (the guard doesn't over-block)", async () => {
+  const { state } = await boot();
+  await resolveFn(state, "fs.writeText")(p("notes.txt"), "hello world");
+  await resolveFn(state, "origin.explorerNav")(state, p(""));
+  await resolveFn(state, "origin.explorerOpen")(state, p("notes.txt"));
+  const listing = state.cels.get("explorer.listing")?.v;
+  assert.equal(listing?.previewBinary, false, "a small text file is not binary");
+  assert.equal(listing?.previewText, "hello world", "the text file IS previewed");
+});
+
+// ── 5. per-file delete / rename ──────────────────────────────────────────────
+
+test("explorerDelete removes a file and refreshes the listing", async () => {
+  const { state } = await boot();
+  await resolveFn(state, "fs.writeText")(p("doomed.txt"), "x");
+  await resolveFn(state, "origin.explorerNav")(state, p(""));
+  let names = (state.cels.get("explorer.listing")?.v?.entries ?? []).map((e) => e.name);
+  assert.ok(names.includes("doomed.txt"), "the file is listed before delete");
+
+  await resolveFn(state, "origin.explorerDelete")(state, p("doomed.txt"));
+  assert.equal(await resolveFn(state, "fs.exists")(p("doomed.txt")), false, "the file was removed from OPFS");
+  names = (state.cels.get("explorer.listing")?.v?.entries ?? []).map((e) => e.name);
+  assert.ok(!names.includes("doomed.txt"), "the listing refreshed — the file is gone");
+});
+
+test("explorerRename moves a file (prompt-driven) and refreshes", async () => {
+  const { state } = await boot();
+  globalThis.prompt = () => "renamed.txt"; // stub the browser prompt
+  try {
+    await resolveFn(state, "fs.writeText")(p("orig.txt"), "data");
+    await resolveFn(state, "origin.explorerNav")(state, p(""));
+    await resolveFn(state, "origin.explorerRename")(state, p("orig.txt"));
+    assert.equal(await resolveFn(state, "fs.exists")(p("orig.txt")), false, "old name gone");
+    assert.equal(await resolveFn(state, "fs.exists")(p("renamed.txt")), true, "new name exists");
+    assert.equal(await resolveFn(state, "fs.readText")(p("renamed.txt")), "data", "bytes preserved");
+    const names = (state.cels.get("explorer.listing")?.v?.entries ?? []).map((e) => e.name);
+    assert.ok(names.includes("renamed.txt"), "the listing refreshed with the new name");
+  } finally { delete globalThis.prompt; }
+});
+
+// ── 6. index.html seed ───────────────────────────────────────────────────────
+
+test("seedIndexHtml writes the page's served HTML to /plastron/index.html", async () => {
+  const { state } = await boot();
+  // give the mock document an outerHTML the seed can read
+  globalThis.document.documentElement = { outerHTML: "<html><body>plastron page</body></html>" };
+  await resolveFn(state, "origin.seedIndexHtml")(state);
+  assert.equal(await resolveFn(state, "fs.exists")("/plastron/index.html"), true, "the index.html was seeded into OPFS");
+  const html = await resolveFn(state, "fs.readText")("/plastron/index.html");
+  assert.match(html, /plastron page/, "the served HTML was written");
+  assert.match(html, /doctype html/i, "with a doctype prefix");
 });
 
 // cleanup the test subtree

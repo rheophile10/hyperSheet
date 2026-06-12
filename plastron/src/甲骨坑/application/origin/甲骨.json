@@ -566,7 +566,43 @@
         "segment": "origin",
         "name": "origin.explorerRefresh",
         "kind": "native",
-        "description": "(state) - populate explorer.listing from the current explorer.cwd/preview (one OPFS read). Host-called once at boot so the explorer window shows its initial listing; the nav/open handlers refresh it thereafter."
+        "description": "(state) - populate explorer.listing from the current explorer.cwd/preview (one OPFS read). Host-called once at boot so the explorer window shows its initial listing; the nav/open handlers refresh it thereafter. The listing's preview is GUARDED: a known-binary extension (.wasm/.wad/.png/.甲/.xlsx/fonts/...) OR a file over 256 KB OR bytes that aren't valid UTF-8 are NEVER read as text (that would blow out browser memory) — the preview shows a 'binary file — <ext>, <size> — download to inspect' placeholder instead; only small valid-UTF-8 text files are decoded into the preview pane."
+      }
+    },
+    {
+      "key": "origin.explorerDelete",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.explorerDelete",
+        "segment": "origin",
+        "name": "origin.explorerDelete",
+        "kind": "native",
+        "description": "(state, path) - dispatch target for the explorer's 🗑 button: fs.delete the file, clear explorer.preview if it was showing that file, then refresh explorer.listing (reactive via the content formula — no hand-rolled repaint)."
+      }
+    },
+    {
+      "key": "origin.explorerRename",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.explorerRename",
+        "segment": "origin",
+        "name": "origin.explorerRename",
+        "kind": "native",
+        "description": "(state, path) - dispatch target for the explorer's ✎ button: prompt() for a new name in the same dir, fs.rename the file, follow explorer.preview if it moved, then refresh explorer.listing. No-op off-DOM (no prompt available)."
+      }
+    },
+    {
+      "key": "origin.explorerDownload",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.explorerDownload",
+        "segment": "origin",
+        "name": "origin.explorerDownload",
+        "kind": "native",
+        "description": "(state, path) - dispatch target for the explorer's ⬇ button (and the binary-preview download): reuses origin.download to read OPFS bytes into a browser file save."
       }
     },
     {
@@ -806,6 +842,18 @@
         "name": "origin.seedWallpaper",
         "kind": "native",
         "description": "(state) - write the shipped wallpaper (windows.wallpaper data-URI) into an OPFS file at /desktop/wallpaper.<ext> and point desktop.A2 at it, so the desktop background LOADS FROM A FILE in OPFS, not a hard-coded constant. Idempotent; preserves a user-set wallpaper path. Host-called once after boot."
+      }
+    },
+    {
+      "key": "origin.seedIndexHtml",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.seedIndexHtml",
+        "segment": "origin",
+        "name": "origin.seedIndexHtml",
+        "kind": "native",
+        "description": "(state) - seed the page's OWN served HTML (document.documentElement.outerHTML) into OPFS at /plastron/index.html so the file explorer isn't empty — it shows 'the index.html that plastron makes'. Best-effort; no-op off-DOM or when the file-store backend is none. Host-called once after boot. NOTE: only OPFS contents are reachable from the browser sandbox — the full repo tree is not."
       }
     },
     {

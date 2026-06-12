@@ -711,9 +711,35 @@ const parentPath = (p: string): string => {
   const i = norm.lastIndexOf("/");
   return i <= 0 ? "/" : norm.slice(0, i);
 };
+// --- binary-preview guard. Never text-preview a binary/huge file (decoding
+//     megabytes of bytes into a string blows out browser memory). A file is
+//     "previewable text" only when its extension isn't a known binary one AND
+//     it's under PREVIEW_MAX_BYTES AND its bytes are valid UTF-8.
+const PREVIEW_MAX_BYTES = 256 * 1024;
+const BINARY_EXTS = new Set([
+  "wasm", "wad", "png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "avif",
+  "zip", "甲", "xlsx", "xls", "pdf", "gz", "tar", "br", "db", "sqlite",
+  "woff", "woff2", "ttf", "otf", "eot", "mp3", "mp4", "wav", "ogg", "mov", "webm",
+]);
+const fileExt = (path: string): string => {
+  const base = path.split("/").pop() || path;
+  const i = base.lastIndexOf(".");
+  return i <= 0 ? "" : base.slice(i + 1).toLowerCase();
+};
+const fmtBytes = (n: number): string =>
+  n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / (1024 * 1024)).toFixed(1)} MB`;
+// strict UTF-8 validity probe (TextDecoder with fatal:true throws on invalid bytes)
+const isValidUtf8 = (bytes: Uint8Array): boolean => {
+  try { new TextDecoder("utf-8", { fatal: true }).decode(bytes); return true; }
+  catch { return false; }
+};
 const joinPath = (dir: string, name: string): string =>
   (dir === "/" ? "" : dir.replace(/\/+$/, "")) + "/" + name;
-const renderExplorer = (cwd: string, entries: { name: string; isDir: boolean }[], preview: string, previewText: string): V => {
+// per-file action button (🗑 / ✎ / ⬇) — a small dispatch control beside a file
+const feAction = (icon: string, title: string, dispatch: string, payload: string): V =>
+  el("button", { class: "fe-act", type: "button", title, style: "border:0;background:transparent;cursor:pointer;font-size:.8rem;padding:0 .15rem;line-height:1" },
+    [T(icon)], { click: { dispatch, payload } });
+const renderExplorer = (cwd: string, entries: { name: string; isDir: boolean }[], preview: string, previewText: string, previewBinary: boolean): V => {
   const rowStyle = "display:flex;align-items:center;gap:.4rem;padding:.25rem .4rem;border-radius:.3rem;cursor:pointer;font:.82rem ui-monospace,monospace";
   const rows: V[] = [];
   if (cwd !== "/") {
@@ -722,11 +748,20 @@ const renderExplorer = (cwd: string, entries: { name: string; isDir: boolean }[]
   }
   for (const e of entries) {
     const full = joinPath(cwd, e.name);
-    rows.push(e.isDir
-      ? el("div", { class: "fe-row fe-dir", style: rowStyle },
-          [T(`📁 ${e.name}/`)], { click: { dispatch: "origin.explorerNav", payload: full } })
-      : el("div", { class: "fe-row fe-file" + (full === preview ? " fe-sel" : ""), style: rowStyle + (full === preview ? ";background:#4a90d955" : "") },
-          [T(`📄 ${e.name}`)], { click: { dispatch: "origin.explorerOpen", payload: full } }));
+    if (e.isDir) {
+      rows.push(el("div", { class: "fe-row fe-dir", style: rowStyle },
+        [T(`📁 ${e.name}/`)], { click: { dispatch: "origin.explorerNav", payload: full } }));
+    } else {
+      // file row: clickable name (preview) + per-file actions (delete/rename/download)
+      rows.push(el("div", { class: "fe-row fe-file" + (full === preview ? " fe-sel" : ""), style: rowStyle + (full === preview ? ";background:#4a90d955" : "") },
+        [el("span", { class: "fe-name", style: "flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" },
+           [T(`📄 ${e.name}`)], { click: { dispatch: "origin.explorerOpen", payload: full } }),
+         el("span", { class: "fe-acts", style: "display:flex;gap:.1rem;flex:0 0 auto" }, [
+           feAction("🗑", `delete ${e.name}`, "origin.explorerDelete", full),
+           feAction("✎", `rename ${e.name}`, "origin.explorerRename", full),
+           feAction("⬇", `download ${e.name}`, "origin.explorerDownload", full),
+         ])]));
+    }
   }
   if (!entries.length) rows.push(el("div", { style: "opacity:.6;padding:.3rem;font:.8rem ui-monospace,monospace" }, [T("(empty)")]));
   const left: V[] = [
@@ -736,10 +771,17 @@ const renderExplorer = (cwd: string, entries: { name: string; isDir: boolean }[]
     el("div", { class: "fe-upload", style: "padding:.3rem .4rem;border-top:1px solid #8884;font:.75rem system-ui" },
       [T("upload here: "), el("input", { class: "opfs-upload", type: "file", title: `upload into ${cwd}` }, [], { change: { dispatch: "origin.upload", payload: cwd } })]),
   ];
+  // preview body: a binary/oversize file shows a placeholder + download button
+  // (never the bytes); a text file shows its content in a <pre>.
+  const previewBody: V[] = previewBinary
+    ? [el("div", { class: "fe-binary", style: "flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;padding:1rem;text-align:center;font:.8rem system-ui;opacity:.85" },
+        [T(previewText), el("button", { class: "opfs-btn fe-dl", type: "button", title: `download ${preview}` },
+           [T(`⬇ download ${preview.split("/").pop() || preview}`)], { click: { dispatch: "origin.explorerDownload", payload: preview } })])]
+    : [el("pre", { style: "flex:1 1 auto;overflow:auto;margin:0;padding:.4rem;font:.78rem ui-monospace,monospace;white-space:pre-wrap;word-break:break-word" }, [T(previewText)])];
   const right: V[] = preview
     ? [el("div", { class: "fe-preview", style: "flex:1 1 50%;min-width:0;border-left:1px solid #8884;display:flex;flex-direction:column" },
         [el("div", { style: "padding:.25rem .4rem;border-bottom:1px solid #8884;font:600 .78rem ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(preview.split("/").pop() || preview)]),
-         el("pre", { style: "flex:1 1 auto;overflow:auto;margin:0;padding:.4rem;font:.78rem ui-monospace,monospace;white-space:pre-wrap;word-break:break-word" }, [T(previewText)])])]
+         ...previewBody])]
     : [];
   return el("div", { class: "file-explorer", style: "display:flex;height:100%;min-height:0" },
     [el("div", { class: "fe-pane", style: "flex:1 1 50%;min-width:0;display:flex;flex-direction:column" }, left), ...right]);
@@ -747,14 +789,14 @@ const renderExplorer = (cwd: string, entries: { name: string; isDir: boolean }[]
 const explorerFn: Fn = (cwd?: unknown, preview?: unknown, listing?: unknown): V => {
   const c = cwd == null || cwd === "" ? "/" : String(cwd);
   const pv = preview == null ? "" : String(preview);
-  const lst = (listing && typeof listing === "object") ? listing as { entries?: { name: string; isDir: boolean }[]; previewText?: string } : {};
-  return renderExplorer(c, Array.isArray(lst.entries) ? lst.entries : [], pv, String(lst.previewText ?? ""));
+  const lst = (listing && typeof listing === "object") ? listing as { entries?: { name: string; isDir: boolean }[]; previewText?: string; previewBinary?: boolean } : {};
+  return renderExplorer(c, Array.isArray(lst.entries) ? lst.entries : [], pv, String(lst.previewText ?? ""), !!lst.previewBinary);
 };
 
 // explorerListing — the async OPFS read the nav/open handlers share: list the
 // cwd (fs.list + fs.stat), sort folders-first, and cat the preview file. Lands
 // as explorer.listing, which the content formula references → reactive repaint.
-const explorerListing = async (state: State, cwd: string, preview: string): Promise<{ entries: { name: string; isDir: boolean }[]; previewText: string }> => {
+const explorerListing = async (state: State, cwd: string, preview: string): Promise<{ entries: { name: string; isDir: boolean }[]; previewText: string; previewBinary: boolean }> => {
   await ensureSegments(state, ["file-store"]);
   const list = resolveFn(state, "fs.list") as Fn, fstat = resolveFn(state, "fs.stat") as Fn;
   const names = ((await (list(cwd) as Promise<string[]>).catch(() => [])) as string[]).slice();
@@ -764,9 +806,24 @@ const explorerListing = async (state: State, cwd: string, preview: string): Prom
     entries.push({ name: n, isDir: !!st?.isDir });
   }
   entries.sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1));
-  let previewText = "";
-  if (preview) previewText = String(await ((resolveFn(state, "fs.readText") as Fn)(preview) as Promise<string>).catch(() => "(cannot preview — binary or missing)"));
-  return { entries, previewText };
+  let previewText = "", previewBinary = false;
+  if (preview) {
+    const ext = fileExt(preview);
+    const st = (await ((fstat(preview)) as Promise<{ size?: number; isDir?: boolean }>).catch(() => null)) as { size?: number; isDir?: boolean } | null;
+    const size = Number(st?.size ?? 0);
+    if (BINARY_EXTS.has(ext) || size > PREVIEW_MAX_BYTES) {
+      // known-binary extension or oversize → never read it as text (memory).
+      previewBinary = true;
+      previewText = `binary file — ${ext || "no ext"}, ${fmtBytes(size)} — ⬇ download to inspect`;
+    } else {
+      // small + non-binary-ext: read RAW bytes and only decode if valid UTF-8.
+      const bytes = (await ((resolveFn(state, "fs.read") as Fn)(preview) as Promise<Uint8Array>).catch(() => null)) as Uint8Array | null;
+      if (bytes == null) { previewBinary = true; previewText = "(cannot read file)"; }
+      else if (!isValidUtf8(bytes)) { previewBinary = true; previewText = `binary file — ${ext || "no ext"}, ${fmtBytes(bytes.byteLength)} — ⬇ download to inspect`; }
+      else previewText = new TextDecoder("utf-8").decode(bytes);
+    }
+  }
+  return { entries, previewText, previewBinary };
 };
 
 // --- segment/sheet manager — persist the WHOLE sheet (the collectArchive
@@ -875,6 +932,61 @@ const explorerOpen: Fn = async (stateArg: unknown, path: unknown) => {
 const explorerRefresh: Fn = async (stateArg: unknown) => {
   const state = stateArg as State;
   if (state.cels.get("explorer.cwd")) await refreshExplorer(state);
+  return state;
+};
+
+// explorerDelete — fs.delete a file, clear the preview if it was showing, then
+// refresh the listing (reactive via explorer.listing).
+const explorerDelete: Fn = async (stateArg: unknown, path: unknown) => {
+  const state = stateArg as State;
+  const p = String(path ?? "");
+  if (!p) return state;
+  await ensureSegments(state, ["file-store"]);
+  await ((resolveFn(state, "fs.delete") as Fn)(p) as Promise<unknown>).catch(() => {});
+  if (String(state.cels.get("explorer.preview")?.v ?? "") === p) await setOrCreate(state, "explorer.preview", "");
+  await refreshExplorer(state);
+  return state;
+};
+
+// explorerRename — prompt for a new NAME (same dir), fs.rename, follow the
+// preview if it moved, then refresh. No-op off-DOM (no prompt available).
+type DomPrompt = { prompt?: (msg: string, def?: string) => string | null };
+const explorerRename: Fn = async (stateArg: unknown, path: unknown) => {
+  const state = stateArg as State;
+  const p = String(path ?? "");
+  if (!p) return state;
+  const g = globalThis as DomPrompt;
+  if (typeof g.prompt !== "function") return state;
+  const old = p.split("/").pop() || p;
+  const next = g.prompt(`Rename "${old}" to:`, old);
+  if (next == null || next === "" || next === old) return state;
+  await ensureSegments(state, ["file-store"]);
+  const dest = joinPath(parentPath(p), String(next).replace(/^\/+/, ""));
+  await ((resolveFn(state, "fs.rename") as Fn)(p, dest) as Promise<unknown>).catch(() => {});
+  if (String(state.cels.get("explorer.preview")?.v ?? "") === p) await setOrCreate(state, "explorer.preview", dest);
+  await refreshExplorer(state);
+  return state;
+};
+
+// explorerDownload — per-file download from the explorer; reuses the existing
+// download dispatch (read OPFS bytes → browser save).
+const explorerDownload: Fn = async (stateArg: unknown, path: unknown) =>
+  downloadHandler(stateArg, path);
+
+// origin.seedIndexHtml — seed the page's own served HTML into OPFS at
+// /plastron/index.html so the explorer isn't empty: it shows "the index.html
+// that plastron makes". Best-effort; no-op off-DOM. Idempotent-ish: overwrites
+// /plastron/index.html each boot with the current document.
+type DomHtml = { document?: { documentElement?: { outerHTML?: string } } };
+const seedIndexHtml: Fn = async (state: State): Promise<State> => {
+  const backend = state.cels.get("file-store.backend")?.v;
+  if (backend === "none" || backend === undefined) return state;
+  const g = globalThis as DomHtml;
+  const html = g.document?.documentElement?.outerHTML;
+  if (typeof html !== "string" || html.length === 0) return state;
+  await ensureSegments(state, ["file-store"]);
+  await ((resolveFn(state, "fs.mkdir") as Fn)("/plastron") as Promise<unknown>).catch(() => {});
+  await ((resolveFn(state, "fs.write") as Fn)("/plastron/index.html", `<!doctype html>\n${html}`) as Promise<unknown>).catch(() => {});
   return state;
 };
 
@@ -1198,6 +1310,9 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.explorerNav",  explorerNav],
   ["origin.explorerOpen", explorerOpen],
   ["origin.explorerRefresh", explorerRefresh],
+  ["origin.explorerDelete", explorerDelete],
+  ["origin.explorerRename", explorerRename],
+  ["origin.explorerDownload", explorerDownload],
   ["segs",           segsFn],
   ["saveSeg",        saveSegFn],
   ["openSeg",        openSegFn],
@@ -1217,4 +1332,5 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["open",           openFn],
   ["origin.autoload", autoload],
   ["origin.seedWallpaper", seedWallpaper],
+  ["origin.seedIndexHtml", seedIndexHtml],
 ]));
