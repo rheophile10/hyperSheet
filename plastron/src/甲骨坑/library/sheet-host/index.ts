@@ -67,8 +67,11 @@ const displayCell = (v: unknown): V => {
   if (isVnode(v)) return v as V;
   if (v === null || v === undefined || v === "") return T("");
   if (typeof v === "object") {
-    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; cels?: unknown; defn?: unknown; name?: unknown; __mount?: unknown };
+    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; cels?: unknown; defn?: unknown; name?: unknown; __mount?: unknown; __client?: unknown; provider?: unknown; status?: unknown; error?: unknown };
     if (o.kind === "error") return T(/undefined symbol|not a function/.test(String(o.message)) ? "#NAME?" : "#ERR!");
+    // a captured llm CLIENT handle (makeclient) — show provider + status, never
+    // the key: "claude ✓ ready" when armed, "grok ✗ no key" on error.
+    if (o.__client === true) return T(`${String(o.provider ?? "client")} ${o.status === "ready" ? "✓ ready" : String(o.error ?? "✗ error")}`);
     if (o.genesis === true) return el("pre", { class: "cell-pre", style: SX.pre }, [T(genesisSummary(o.cels as Record<string, unknown> | undefined))]);
     if (o.defn === true) return T(`ƒ ${String(o.name ?? "")}`);
     if (isSecretHandleRef(v)) return T(`🔑 ${(v as { name: string }).name}`); // wallet handle (or persisted ref) — never the secret

@@ -33,7 +33,7 @@
         "segment": "llm",
         "name": "makeclient",
         "kind": "native",
-        "description": "(provider, key, model?) — capture an llm client from a key (claude/grok). Returns a CLIENT HANDLE; the key is NEVER in the value (it lives in a keystore). =makeclient(\"claude\", key(\"anthropic\"))"
+        "description": "(provider, key, model?) — capture an llm client from a key (claude/grok). Returns a CLIENT HANDLE whose VALUE shows status (non-secret): status 'ready' when the resolved key is real, else status 'error' + error '✗ no key'. The key is NEVER in the value (it lives in a keystore); the grid shows e.g. 'claude ✓ ready' / 'grok ✗ no key'. =makeclient(\"claude\", apiKey(\"anthropic\"))"
       },
       "locked": true
     },
@@ -46,6 +46,78 @@
         "name": "client.send",
         "kind": "native",
         "description": "(client, message) — send a message via a captured client; resolves the key at the effect site"
+      },
+      "locked": true
+    },
+    {
+      "key": "clientlight",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "clientlight",
+        "segment": "llm",
+        "name": "clientlight",
+        "kind": "native",
+        "description": "(client) — a dom 🟢 (ready) / 🔴 (error) indicator reading the client's non-secret `status`. =clientlight(clients.A1)"
+      },
+      "locked": true
+    },
+    {
+      "key": "messages",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "messages",
+        "segment": "llm",
+        "name": "messages",
+        "kind": "native",
+        "description": "(from1, text1, …) — build a message LIST [{from, text}, …] (renders as JSON in the grid). Seeds the chat conversation cell; chat.cellsend appends to it. =messages(\"system\", \"ask the bots anything\")"
+      },
+      "locked": true
+    },
+    {
+      "key": "chathistory",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "chathistory",
+        "segment": "llm",
+        "name": "chathistory",
+        "kind": "native",
+        "description": "(messages) — a scrollable dom rendering of a [{from, text}, …] message list; one bubble per message, the sender labeled. =chathistory(clients.C1)"
+      },
+      "locked": true
+    },
+    {
+      "key": "chatpanel",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "chatpanel",
+        "segment": "llm",
+        "name": "chatpanel",
+        "kind": "native",
+        "description": "(messages, entry, bots…) — the chat UI as one dom value: bots listed LEFT (each client + its clientlight), BODY = chathistory + a text entry + a send button. Send appends the entry to the messages cell (clients.C1) and asks an armed client. =chatpanel(clients.C1, clients.D1, clients.A1, clients.A2)"
+      },
+      "locked": true
+    },
+    {
+      "key": "chat.cellsend",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "chat.cellsend",
+        "segment": "llm",
+        "name": "chat.cellsend",
+        "kind": "native",
+        "description": "(state) — chat send handler: append the clients.D1 text to the messages cell (clients.C1) as {from:'me'}, ask the first armed client, and append its reply. The message list + entry are CELS the graph owns."
+      },
+      "locked": true
+    },
+    {
+      "key": "chat.cellkey",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "chat.cellkey",
+        "segment": "llm",
+        "name": "chat.cellkey",
+        "kind": "native",
+        "description": "(state, payload, event) — Enter in the chat entry fires chat.cellsend."
       },
       "locked": true
     },

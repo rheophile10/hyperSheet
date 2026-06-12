@@ -122,6 +122,39 @@ test("Chat renders from the clients sheet: chat.A1 builds the panel from clients
   assert.equal(canGet(state, "chat", "clients"), true, "chat reads the clients sheet via the tab bundle");
 });
 
+test("the chat window composes [clients | chat]: status cells + clientlights + a messages cell, and a bots-left/history/entry/send panel", async () => {
+  const { state } = await boot();
+  const txt = (n) => (n?.type === "text" ? n.text : (n?.children ?? []).map(txt).join(""));
+  const walkV = (n, p, o = []) => { if (n?.type === "el") { if (p(n)) o.push(n); for (const c of n.children ?? []) walkV(c, p, o); } else if (n?.type === "text" && p(n)) o.push(n); return o; };
+
+  // CLIENTS sheet: A1/A2 are status-bearing client handles; grok shows ✗ no key
+  // (no xai key set at boot) while claude is also error until a key is set —
+  // BOTH are error at boot (no secrets stored). The handles carry a status field.
+  const claude = state.cels.get("clients.A1")?.v, grok = state.cels.get("clients.A2")?.v;
+  assert.equal(claude?.provider, "claude");
+  assert.equal(grok?.provider, "grok");
+  assert.ok(["ready", "error"].includes(claude?.status), "claude handle carries a status");
+  assert.equal(grok?.status, "error", "grok shows error (no xai key)");
+  assert.equal(grok?.error, "✗ no key", "grok's non-secret error reads ✗ no key");
+
+  // B1/B2 are clientlights (dom spans); C1 is the messages list; D1 the entry buffer
+  assert.equal(state.cels.get("clients.B1")?.v?.tag, "span", "clients.B1 = a clientlight span for claude");
+  assert.equal(state.cels.get("clients.B2")?.v?.tag, "span", "clients.B2 = a clientlight span for grok");
+  assert.ok(Array.isArray(state.cels.get("clients.C1")?.v), "clients.C1 is the messages list");
+  assert.ok(state.cels.get("clients.D1"), "clients.D1 is the entry buffer cell");
+
+  // CHAT sheet: A1 is the assembled panel — bots LEFT, body = history + entry + send
+  const panel = state.cels.get("chat.A1")?.v;
+  assert.equal(panel?.tag, "div", "chat.A1 is the chatpanel div");
+  assert.ok(walkV(panel, (n) => String(n.attrs?.class ?? "") === "chat-bots")[0], "bots column on the left");
+  assert.ok(walkV(panel, (n) => String(n.attrs?.class ?? "") === "chat-history")[0], "a chat history");
+  assert.ok(walkV(panel, (n) => n.tag === "input")[0], "a text entry input");
+  const send = walkV(panel, (n) => n.tag === "button" && /send/.test(txt(n)))[0];
+  assert.ok(send, "a send button");
+  // the send button dispatches the spreadsheet-native chat handler
+  assert.equal(send.events?.click?.dispatch, "chat.cellsend", "send wired to chat.cellsend");
+});
+
 test('the new tab SHARES memory with its host (bundled), but is a closure to others', async () => {
   const { state, m } = await boot();
   await resolveFn(state, "winsheet.newtab")(state, "turtles"); m.run();
