@@ -309,7 +309,7 @@
         "segment": "windows",
         "name": "winx.max",
         "kind": "native",
-        "description": "toggle maximize in the state cel"
+        "description": "(state, ref) - toggle the state cel's max flag (maximize <-> restore). The titlebar shows exactly one button by this state: ◱ (mid/restore) when maximized, ⛶ (maximize) when not."
       },
       "locked": true
     },

@@ -58,6 +58,17 @@
       "v": null
     },
     {
+      "key": "元.selected",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.selected",
+        "segment": "origin",
+        "name": "元.selected",
+        "description": "key of the currently SELECTED cell (Excel single-click). The cell keeps rendering its VALUE; the formula bar shows this cell's source and edits commit here. null = no selection."
+      },
+      "v": null
+    },
+    {
       "key": "元.cells",
       "celType": "ValueCel",
       "metadata": {
@@ -106,11 +117,12 @@
           ],
           "srcs": "元.srcs",
           "config": "元.viewConfig",
-          "geom": "win.geom"
+          "geom": "win.geom",
+          "selected": "元.selected"
         },
         "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place."
       },
-      "f": "(sheetView 元.viewConfig editing draft mount error keys vals srcs geom)"
+      "f": "(sheetView 元.viewConfig editing draft mount error keys vals srcs geom selected)"
     },
     {
       "key": "cel",
@@ -197,7 +209,31 @@
         "segment": "origin",
         "name": "origin.edit",
         "kind": "native",
-        "description": "(state, cellKeyOrForceSpec) - start editing a cell (seed draft with its source); click the active cell's label again to close. Payload is the cell key, or { key, force: true } from the explicit pencil affordance to start editing past the form-control guard."
+        "description": "(state, cellKeyOrForceSpec) - start INLINE editing a cell (seed draft with its source); the Excel double-click path (single-click SELECTS via origin.select). Payload is the cell key, or { key, force: true } to start editing past the form-control guard."
+      }
+    },
+    {
+      "key": "origin.select",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.select",
+        "segment": "origin",
+        "name": "origin.select",
+        "kind": "native",
+        "description": "(state, cellKey, event) - SELECT a cell (Excel single-click): set 元.selected + 元.selectedSrc + seed 元.draft from its source, WITHOUT swapping it to the inline editor, so the grid keeps showing the value while the formula bar shows the source. A click on a form control a formula rendered is left alone."
+      }
+    },
+    {
+      "key": "origin.fire",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.fire",
+        "segment": "origin",
+        "name": "origin.fire",
+        "kind": "native",
+        "description": "(state, cellKey?) - FIRE (re-evaluate) the selected cell (or the given key): a FormulaCel re-applies its source via setValue (recompile + re-cascade); a ValueCel re-writes its own value (re-cascades dependents). Wired to the 🔫 button on the formula bar."
       }
     },
     {

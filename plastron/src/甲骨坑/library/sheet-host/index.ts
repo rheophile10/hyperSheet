@@ -59,8 +59,7 @@ const SX = {
   edit: "width:100%;box-sizing:border-box;max-width:100%;min-height:2.6rem;resize:vertical;font-family:ui-monospace,monospace;font-size:.85rem;padding:.15rem .4rem;border:0;background:#4a90d922;white-space:pre-wrap;line-height:1.4",
   fxbar: "flex:0 0 auto;display:flex;align-items:stretch;gap:.3rem;padding:.2rem .4rem;background:#8881;border-bottom:1px solid #8883",
   fxlabel: "flex:0 0 auto;align-self:center;color:#888;font:600 .76rem ui-monospace,monospace",
-  fxinput: "flex:1 1 auto;box-sizing:border-box;min-height:1.6rem;height:1.7rem;max-height:14rem;resize:vertical;overflow:auto;font-family:ui-monospace,monospace;font-size:.82rem;padding:.15rem .35rem;border:1px solid #8884;border-radius:.25rem;background:Canvas;color:CanvasText;white-space:pre",
-  cellGlyph: "position:absolute;top:.05rem;right:.1rem;display:flex;gap:.1rem;z-index:2",
+  fxinput: "flex:1 1 auto;box-sizing:border-box;min-height:1.6rem;height:1.7rem;resize:vertical;overflow:auto;font-family:ui-monospace,monospace;font-size:.82rem;padding:.15rem .35rem;border:1px solid #8884;border-radius:.25rem;background:Canvas;color:CanvasText;white-space:pre",
   glyphBtn: "border:0;background:#8882;border-radius:.2rem;cursor:pointer;font:600 .72rem ui-monospace,monospace;line-height:1;padding:.05rem .2rem;color:#888",
 } as const;
 
@@ -116,22 +115,26 @@ const addrOf = (key: string): { col: number; row: number } | null => {
 };
 
 const sheetView: Fn = ((
-  cfg: unknown, editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown, srcs: unknown, geom?: unknown,
+  cfg: unknown, editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown, srcs: unknown, geom?: unknown, selected?: unknown,
 ) => {
-  const c = (cfg ?? {}) as { base?: string; draftCel?: string; editHandler?: string; keyHandler?: string };
+  const c = (cfg ?? {}) as { base?: string; draftCel?: string; editHandler?: string; keyHandler?: string; selectHandler?: string; fireHandler?: string };
   const BASE = c.base ?? "元", DRAFT = c.draftCel ?? "元.draft", EDIT = c.editHandler ?? "origin.edit", KEYH = c.keyHandler ?? "origin.key";
-  const activeEditing = typeof editing === "string" ? editing : null;   // the currently-editing cell key (or none)
-  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string }> : {};
+  const SELH = c.selectHandler ?? "origin.select", FIREH = c.fireHandler ?? "origin.fire";
+  const selectedKey = typeof selected === "string" ? selected : null;   // the SELECTED cell key (Excel single-click; value stays in the grid)
+  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number }> : {};
   // wrap a worksheet's table in a draggable window frame, positioned by win.geom
   // (default staggered by index). Drag/resize/raise/minimize dispatch to the
   // winsheet.* handlers; the table inside is unchanged, so cells stay editable.
   const gnum = (v: unknown, d: number): number => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const BTN = "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .28rem;line-height:1";
-  const titlebar = (host: string): V => el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
+  // ONE of ◱ (mid/restore) and ⛶ (maximize) shows, by state: maximized → ◱
+  // (go medium), not maximized → ⛶ (maximize). Never both.
+  const titlebar = (host: string, maxed: boolean): V => el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
     el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(host)]),
     el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
-      el("button", { class: "pl-win-btn", title: "mid size", style: BTN }, [T("◱")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.mid", payload: host } }),
-      el("button", { class: "pl-win-btn", title: "maximize", style: BTN }, [T("⛶")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.maximize", payload: host } }),
+      maxed
+        ? el("button", { class: "pl-win-btn", title: "mid size", style: BTN }, [T("◱")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.mid", payload: host } })
+        : el("button", { class: "pl-win-btn", title: "maximize", style: BTN }, [T("⛶")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.maximize", payload: host } }),
       el("button", { class: "pl-min-btn", title: "minimize", style: BTN }, [T("–")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.minimize", payload: host } }),
       el("button", { class: "pl-close-btn", title: "close", style: BTN + ";color:#d4453e" }, [T("✕")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.close", payload: host } }),
     ]),
@@ -141,24 +144,25 @@ const sheetView: Fn = ((
   // does cell `key` belong to worksheet segment `seg`? (base 元 is its own
   // segment; a grid cell is `<seg>.A1`.)
   const keyInSeg = (key: string, seg: string): boolean => key === seg || key.startsWith(seg + ".");
-  // a source is a FORMULA when it starts with `=` or `(` (sniff's rule).
-  const isFormulaSrc = (src: string): boolean => { const t = src.trim(); return t.startsWith("=") || t.startsWith("("); };
-  // the resizable formula bar under a window's titlebar. Bound to the SAME draft
-  // the inline editor uses (元.draft) when this window holds the editing cell, so
-  // typing in the bar or the cell stays in sync; commits on Enter via origin.key.
-  // No cell editing in this window → an empty bar with a hint.
+  // the resizable formula bar under a window's titlebar — the Excel edit surface.
+  // It shows the SELECTED cell's source (元.selectedSrc, seeded into 元.draft on
+  // select) when that cell belongs to one of this window's tabs, so the grid keeps
+  // rendering the value while the bar shows the formula. The textarea binds 元.draft
+  // and commits on Enter (origin.key) to the selected cell. A 🔫 button on the LEFT
+  // fires (re-evaluates) the selected cell; the ? on the right opens the wiki.
   const formulaBar = (tabSegs: string[]): V => {
-    const editKey = activeEditing && tabSegs.some((s) => keyInSeg(activeEditing!, s)) ? activeEditing : null;
-    const shown = editKey ? String(draft ?? "") : "";
-    const input = editKey
-      ? el("textarea", { class: "pl-fxbar-input", style: SX.fxinput, rows: 1, value: shown, "data-key": editKey }, [], {
+    const barKey = selectedKey && tabSegs.some((s) => keyInSeg(selectedKey!, s)) ? selectedKey : null;
+    const shown = barKey ? String(draft ?? "") : "";
+    const input = barKey
+      ? el("textarea", { class: "pl-fxbar-input", style: SX.fxinput, rows: 1, value: shown, "data-key": barKey }, [], {
           input: { set: DRAFT, extract: "value" },
-          keydown: { dispatch: KEYH, payload: editKey },   // origin.key commits on Enter
+          keydown: { dispatch: KEYH, payload: barKey },   // origin.key commits on Enter to the selected cell
         })
-      : el("textarea", { class: "pl-fxbar-input", style: SX.fxinput + ";color:#888;font-style:italic", rows: 1, readonly: "", placeholder: "click a cell to edit its formula here" }, []);
-    const wikiBtn = el("button", { class: "pl-fxbar-wiki", title: "wiki — what is this cell?", style: SX.glyphBtn + ";align-self:center;font-family:Georgia,serif;color:CanvasText" }, [T("?")], { click: { dispatch: "wiki.open", payload: editKey ?? tabSegs[0] ?? "元" } });
+      : el("textarea", { class: "pl-fxbar-input", style: SX.fxinput + ";color:#888;font-style:italic", rows: 1, readonly: "", placeholder: "click a cell to see and edit its formula here" }, []);
+    const fireBtn = el("button", { class: "pl-fxbar-fire", title: "fire — re-evaluate this cell", style: SX.glyphBtn + ";align-self:center" }, [T("🔫")], { click: { dispatch: FIREH, payload: barKey ?? "" } });
+    const wikiBtn = el("button", { class: "pl-fxbar-wiki", title: "wiki — what is this cell?", style: SX.glyphBtn + ";align-self:center;font-family:Georgia,serif;color:CanvasText" }, [T("?")], { click: { dispatch: "wiki.open", payload: barKey ?? tabSegs[0] ?? "元" } });
     return el("div", { class: "pl-fxbar", style: SX.fxbar }, [
-      el("span", { class: "pl-fxbar-label", style: SX.fxlabel }, [T(editKey ?? "ƒx")]),
+      fireBtn,
       input,
       wikiBtn,
     ]);
@@ -177,7 +181,7 @@ const sheetView: Fn = ((
       el("button", { class: "pl-tab" + (seg === active ? " active" : ""), "data-tab": seg, style: `flex:0 0 auto;border:1px solid #8884;border-bottom:0;border-radius:.3rem .3rem 0 0;background:${seg === active ? "Canvas" : "#8882"};color:CanvasText;cursor:pointer;font:600 .74rem ui-monospace,monospace;padding:.18rem .55rem;white-space:nowrap;opacity:${seg === active ? "1" : ".7"}` }, [T(seg)], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.tab", payload: { host, tab: seg } }, dblclick: { dispatch: "winsheet.tearoff", payload: seg } })) : [];
     const tabStrip = el("div", { class: "pl-tabs", style: "flex:0 0 auto;display:flex;gap:.15rem;padding:.25rem .3rem 0;background:#8881;overflow-x:auto" }, [...tabChips, plusBtn]);
     return el("div", { class: "pl-window", "data-win": host, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas;box-shadow:0 4px 16px #0004;overflow:hidden` }, [
-      titlebar(host),
+      titlebar(host, !!g.max),
       ...(tabStrip ? [tabStrip] : []),
       formulaBar(tabs),
       el("div", { class: "pl-window-body", style: "flex:1 1 auto;overflow:auto;padding:.25rem;min-height:0" }, [activeTable]),
@@ -217,42 +221,17 @@ const sheetView: Fn = ((
 
   const isMountVal = (v: unknown): boolean => !!v && typeof v === "object" && typeof (v as { __mount?: unknown }).__mount === "string";
 
-  // wiki "?" glyph — opens the docgraph wiki for this cell's value (no-op if
-  // docgraph absent, mirroring the windows-frame "W" button). dispatched with
-  // the cell key so the wiki resolves the right article.
-  const wikiGlyph = (key: string): V =>
-    el("button", { class: "pl-cell-wiki", title: "wiki — what is this cell?", style: SX.glyphBtn + ";font-family:Georgia,serif" }, [T("?")],
-      { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "wiki.open", payload: key } });
-  // pencil ✎ on a FORMULA cell — starts editing (dispatch the edit handler), so a
-  // cell toggles its rendered VALUE for its formula-editing surface.
-  const pencilGlyph = (key: string): V =>
-    el("button", { class: "pl-cell-edit", title: "edit formula", style: SX.glyphBtn }, [T("✎")],
-      { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: EDIT, payload: { key, force: true } } });
-  // ✓ view — exits editing back to the value view by COMMITTING the draft (so the
-  // edit persists), the inverse of the pencil.
-  const viewGlyph = (key: string): V =>
-    el("button", { class: "pl-cell-view", title: "done — view value", style: SX.glyphBtn + ";color:#2a8a4a" }, [T("✓")],
-      { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "origin.commit", payload: key } });
-
-  // the upper-right glyph cluster overlaid on a cell (a sibling of the value, NOT
-  // inside .cell-value, so it never counts as the cell's value text). Editing → a
-  // ✓ done button (commit, back to value); viewing a FORMULA cell → a ✎ pencil
-  // (start editing). Both modes carry the ? wiki link.
-  const cellGlyphs = (key: string): V => {
-    const isFormula = isFormulaSrc(srcOf.get(key) ?? "");
-    const lead = active === key ? [viewGlyph(key)] : (isFormula ? [pencilGlyph(key)] : []);
-    return el("div", { class: "pl-cell-glyphs", style: SX.cellGlyph }, [...lead, wikiGlyph(key)]);
-  };
-
-  // the inner of a cell: inline editor when active, else the value. A cell
-  // whose value renders ELSEWHERE (a mount — e.g. the readme in 元) shows its
-  // SOURCE here, so the formula is visible + editable. Click to edit.
+  // the inner of a cell: inline editor when active (double-click), else the VALUE.
+  // A cell whose value renders ELSEWHERE (a mount — e.g. the readme in 元) shows
+  // its SOURCE here, so the formula is visible. Single-click SELECTS (origin.select
+  // — the value stays, the formula bar shows the source); double-click opens the
+  // inline editor (origin.edit).
   const body = (key: string, value: unknown): V => {
     if (active === key) return editor(key);
     const shown = isMountVal(value) ? el("pre", { class: "cell-pre cell-src", style: SX.src }, [T(srcOf.get(key) ?? "")]) : displayCell(value);
     const valEl = shown.type === "text" ? el("span", { class: "cell-val-text", style: SX.valFirst }, [shown]) : shown;
-    return el("div", { class: "cell-value", title: "click to edit", style: SX.cellValue }, [valEl],
-      { click: { dispatch: EDIT, payload: key } });
+    return el("div", { class: "cell-value", title: "click to select; double-click to edit", style: SX.cellValue }, [valEl],
+      { click: { dispatch: SELH, payload: key }, dblclick: { dispatch: EDIT, payload: key } });
   };
 
   // ANY set of cels → one Excel-style table (corner label + column letters +
@@ -272,17 +251,18 @@ const sheetView: Fn = ((
           if (!k) return el("td", { class: "cell", "data-key": "", style: `${SX.td};min-width:4.5rem` }, []);
           const v = valOf.get(k);
           const isActive = active === k;
-          // mount cells (showing a long source) get a roomier min-width;
-          // the active cell gets the editing outline — both inline.
-          const tdStyle = `${SX.td};position:relative;min-width:${isMountVal(v) ? "26rem" : "4.5rem"}${isActive ? ";outline:2px solid #4a90d9;outline-offset:-2px" : ""}`;
-          // the glyph cluster (✎/✓/?) overlays the cell as a td child, a SIBLING of
-          // the value — so it never reads as the cell's value text.
-          const td = el("td", { class: isActive ? "cell editing" : "cell", "data-key": k, style: tdStyle }, [body(k, v), cellGlyphs(k)]);
+          const isSelected = selectedKey === k;
+          // mount cells (showing a long source) get a roomier min-width; the active
+          // (editing) cell gets the blue outline; a SELECTED-but-not-editing cell
+          // gets a lighter selection outline — the value still renders.
+          const outline = isActive ? ";outline:2px solid #4a90d9;outline-offset:-2px"
+            : (isSelected ? ";outline:2px solid #4a90d999;outline-offset:-2px" : "");
+          const tdStyle = `${SX.td};position:relative;min-width:${isMountVal(v) ? "26rem" : "4.5rem"}${outline}`;
+          const td = el("td", { class: isActive ? "cell editing" : (isSelected ? "cell selected" : "cell"), "data-key": k, style: tdStyle }, [body(k, v)]);
           // memo hint → dom's diff skips an unchanged cell's deep compare
-          // (O(changed), library-level). The ACTIVE cell gets NO memo — its editor
-          // depends on draft/error — so it's always deep-diffed. The src is in the
-          // key so the pencil appears/disappears when value↔formula changes.
-          return isActive ? td : (memo(td as unknown as VElement, [v, srcOf.get(k)]) as unknown as V);
+          // (O(changed), library-level). The ACTIVE/SELECTED cell gets NO memo — its
+          // editor/outline depends on draft/selection — so it's always deep-diffed.
+          return (isActive || isSelected) ? td : (memo(td as unknown as VElement, [v, srcOf.get(k)]) as unknown as V);
         })]));
     // wrap in a horizontal scroller so a wide grid reaches column A
     // (a centered overflowing table clips its left edge unreachably).
@@ -399,7 +379,7 @@ const sheetView: Fn = ((
 // {x,y,w,h,z,min} } — so the cell set isn't cluttered with per-axis cels and
 // sheetView gets it as one input. The handlers update that map; the cells inside
 // a window are unchanged, so editing/selection still work as before.
-interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string }
+interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number }
 interface WEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void }; stopPropagation?: () => void }
 // win.geom is in 元.view's inputMap, so a geom change re-fires the view — but
 // that re-fire must propagate through the cycle BEFORE we paint, or the first
@@ -462,8 +442,8 @@ const wsMin: Fn = (async (state: State, seg: unknown): Promise<void> => { const 
 // worksheet window is NEVER destroyed (元 must stay restorable).
 const wsClose: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), closed: 1 }; await setGeom(state, m); }) as Fn;
 const wsRestore: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 0, closed: 0, z }; await setGeom(state, m); }) as Fn;
-const wsMax: Fn = (async (state: State, seg: unknown): Promise<void> => { const g = globalThis as { innerWidth?: number; innerHeight?: number }; const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { x: 0, y: 0, w: wnum(g.innerWidth, 1200), h: Math.max(160, wnum(g.innerHeight, 800) - 46), z, min: 0 }; await setGeom(state, m); }) as Fn;
-const wsMid: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { x: 90, y: 70, w: 540, h: 380, z, min: 0 }; await setGeom(state, m); }) as Fn;
+const wsMax: Fn = (async (state: State, seg: unknown): Promise<void> => { const g = globalThis as { innerWidth?: number; innerHeight?: number }; const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { x: 0, y: 0, w: wnum(g.innerWidth, 1200), h: Math.max(160, wnum(g.innerHeight, 800) - 46), z, min: 0, max: 1 }; await setGeom(state, m); }) as Fn;
+const wsMid: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { x: 90, y: 70, w: 540, h: 380, z, min: 0, max: 0 }; await setGeom(state, m); }) as Fn;
 const wsStop: Fn = ((_state: State, _p: unknown, event?: WEvt): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
 
 // winsheet.syncBundles — make a SEEDED tab relationship grant shared memory, the

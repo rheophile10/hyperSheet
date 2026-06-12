@@ -217,7 +217,10 @@ const frameFn: Fn = ((st: unknown, active: unknown, content: unknown): V => {
         // without docgraph logs "not registered" on click; nothing breaks.
         el("button", { class: "pl-wiki-btn", title: "wiki — what is this window?", style: XBTN + ";font-family:Georgia,serif" }, [T("W")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "wiki.open", payload: ref } }),
         el("button", { class: "pl-win-btn", title: "minimize", style: XBTN }, [T("–")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "winx.min", payload: ref } }),
-        el("button", { class: "pl-win-btn", title: "maximize", style: XBTN }, [T("⛶")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "winx.max", payload: ref } }),
+        // ONE of ◱ (mid/restore, when maximized) and ⛶ (maximize, when not); winx.max toggles s.max.
+        s.max
+          ? el("button", { class: "pl-win-btn", title: "mid size", style: XBTN }, [T("◱")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "winx.max", payload: ref } })
+          : el("button", { class: "pl-win-btn", title: "maximize", style: XBTN }, [T("⛶")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "winx.max", payload: ref } }),
         el("button", { class: "pl-close-btn", title: "close", style: XBTN + ";color:#d4453e" }, [T("✕")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "winx.close", payload: ref } }),
       ]),
     ], { pointerdown: { dispatch: "winx.grab", payload: ref }, pointermove: { dispatch: "winx.move" }, pointerup: { dispatch: "winx.drop" } }),

@@ -9,7 +9,7 @@
         "segment": "sheet-host",
         "name": "sheetView",
         "kind": "native",
-        "description": "(cfg editing draft mount error keys vals srcs geom) - spreadsheet RenderSpec producer: each worksheet table wrapped in a draggable window frame. Each window carries a resizable (resize:vertical) formula bar under its titlebar, bound to 元.draft for the window's editing cell (commits on Enter via origin.key); each cell shows an upper-right ✎ pencil (edit a formula cell) when viewing and a ✓ done button (commit, back to value) when editing, plus a ? wiki glyph dispatching wiki.open with the cell key (no-op if docgraph absent)."
+        "description": "(cfg editing draft mount error keys vals srcs geom selected selectedSrc) - spreadsheet RenderSpec producer: each worksheet table wrapped in a draggable window frame. Single-click SELECTS a cell (origin.select sets 元.selected) and the cell KEEPS rendering its value; the window's formula bar shows the SELECTED cell's source (bound to 元.draft) and commits on Enter (origin.key) to 元.selected. Double-click opens the inline editor. The bar's LEFT button is 🔫 fire (origin.fire — re-evaluate the selected cell); the right is ? wiki. The bar textarea has no max-height (resize:vertical, box-sizing:border-box) so it can fill the window. Cells render clean (no per-cell ✎/? glyphs). The titlebar shows exactly one of ◱ (mid/restore, when maximized) and ⛶ (maximize, when not), plus – minimize and ✕ close."
       },
       "locked": true
     },
@@ -141,7 +141,7 @@
         "segment": "sheet-host",
         "name": "winsheet.maximize",
         "kind": "native",
-        "description": "maximize a worksheet window to the viewport"
+        "description": "(state, seg) - maximize a worksheet window to the viewport and set win.geom[seg].max=1 so the titlebar swaps ⛶ for ◱ (mid/restore)."
       },
       "locked": true
     },
@@ -153,7 +153,7 @@
         "segment": "sheet-host",
         "name": "winsheet.mid",
         "kind": "native",
-        "description": "reset a worksheet window to a mid size"
+        "description": "(state, seg) - reset a worksheet window to a mid size and clear win.geom[seg].max so the titlebar shows ⛶ (maximize) again."
       },
       "locked": true
     },

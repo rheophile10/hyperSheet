@@ -325,6 +325,40 @@ const edit: Fn = async (state: State, payload?: unknown, event?: unknown) => {
   return state;
 };
 
+// select — Excel single-click: mark a cell SELECTED (元.selected) WITHOUT
+// swapping it to the inline editor, so the grid keeps showing the value. The
+// selected cell's source is seeded into 元.draft so the formula bar (the edit
+// surface) shows it; the bar's textarea binds 元.draft and commits on Enter to
+// 元.selected. A click on a form control a formula rendered is left alone.
+const select: Fn = async (state: State, payload?: unknown, event?: unknown) => {
+  if (isFormControl(event)) return state;
+  const key = typeof payload === "string" ? payload : null;
+  if (!key) return state;
+  await (resolveFn(state, "setValueBatch") as Fn)(state,
+    [["元.selected", key], ["元.draft", cellSource(state, key)], ["元.error", null]]);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+};
+
+// fire — re-evaluate (recompute) the selected cell. A FormulaCel re-applies its
+// source through setValue (which recompiles + re-cascades); a ValueCel re-writes
+// its own value (a harmless re-cascade that repaints dependents). The 🔫 button
+// on the formula bar dispatches this.
+const fire: Fn = async (state: State, payload?: unknown) => {
+  const key = typeof payload === "string" && payload ? payload
+    : String(state.cels.get("元.selected")?.v ?? "");
+  if (!key) return state;
+  const c = state.cels.get(key);
+  if (!c) return state;
+  const setValue = resolveFn(state, "setValue") as Fn;
+  const f = (c as { f?: string }).f;
+  await setValue(state, key, f !== undefined ? f : c.v);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+};
+
 /** commit — set the edited cell's content from the draft and re-evaluate.
  *  Every cell (元 included) executes its formula/value like A1. 元 is
  *  un-deletable: clearing it restores the readme. A structure formula
@@ -362,7 +396,9 @@ const commit: Fn = async (state: State, payload?: unknown) => {
     return state;
   }
 
-  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["元.draft", ""], ["元.error", null]]);
+  // keep the selection on the committed cell and refresh the bar's draft to its
+  // (now re-evaluated) source; clear inline editing.
+  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["元.error", null], ["元.selected", key], ["元.draft", src]]);
   // fire generators so they enqueue, then commit structure + sweep. Loop until
   // quiescent: an effect can create a cel whose own formula is a request (e.g.
   // cel("cel(\"banana\")") → c1 = =cel("banana") → another cel) — keep draining
@@ -938,6 +974,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["mount",          mount],
   ["origin.commit",  commit],
   ["origin.edit",    edit],
+  ["origin.select",  select],
+  ["origin.fire",    fire],
   ["origin.key",     key],
   ["cels",           celsGen],
   ["cel",            celFn],
