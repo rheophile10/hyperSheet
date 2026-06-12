@@ -168,8 +168,20 @@ const chatPanelFn: Fn = ((messages: unknown, entry: unknown, ...bots: unknown[])
 // (clients.C1) and ask an available client; the reply appends too. Spreadsheet-
 // native chat send: the message list and entry are CELS the graph owns.
 const readMsgs = (state: State): Msg[] => { const v = state.cels.get(MSGS)?.v; return Array.isArray(v) ? v as Msg[] : []; };
-const setMsgs = (state: State, log: Msg[]): Promise<unknown> =>
-  Promise.resolve((resolveFn(state, "setValue") as Fn)(state, MSGS, log)).then(() => (resolveFn(state, "drain") as Fn)(state, "dom.paint"));
+// the messages cell seeds as a FormulaCel `(messages …)` so it renders a starter
+// conversation; appending an ARRAY to it can't go through setValue (a FormulaCel
+// takes a string source). The FIRST append converts it to a ValueCel holding the
+// array (setCel, structure tier) — seeded from the formula's current value above;
+// later appends are plain setValue writes to the now-ValueCel. chathistory reads
+// the growing list either way.
+const setMsgs = (state: State, log: Msg[]): Promise<unknown> => {
+  const cel = state.cels.get(MSGS) as { f?: unknown; v?: unknown } | undefined;
+  const isFormula = !!cel && typeof cel.f === "string";
+  const write = isFormula
+    ? Promise.resolve((resolveFn(state, "setCel") as Fn)(state, MSGS, { celType: "ValueCel", v: log, metadata: { key: MSGS, segment: "clients", name: "C1" } }))
+    : Promise.resolve((resolveFn(state, "setValue") as Fn)(state, MSGS, log));
+  return write.then(() => (resolveFn(state, "drain") as Fn)(state, "dom.paint"));
+};
 const firstClient = (state: State): ClientHandle | undefined => {
   for (const k of ["clients.A1", "clients.A2"]) { const v = state.cels.get(k)?.v as ClientHandle | undefined; if (v && v.__client === true && v.status === "ready") return v; }
   return undefined;

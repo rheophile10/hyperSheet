@@ -304,3 +304,91 @@ test("max/mid toggle: a maximized window shows ◱ (mid) and NOT ⛶", async () 
   const after = winBtns(root, "turtles").map(txt);
   assert.ok(after.includes("⛶") && !after.includes("◱"), "back to ⛶ after mid");
 });
+
+// ── 8) grab does NOT snap the window under the mouse (read the live rect) ─────
+
+test("grab: offset is measured from the window's ACTUAL position (offsetLeft/Top), so the first move doesn't jump", async () => {
+  const { state, m } = await boot();
+  // a geom-less window renders staggered by index (~gnum(g.x, 40+i*34)), NOT at the
+  // grab default 60. Stub the grabbed titlebar's currentTarget.closest(".pl-window")
+  // to report the window's .origin-relative offset; wsGrab computes ox/oy from THAT.
+  const win = { offsetLeft: 137, offsetTop: 211 };
+  const event = {
+    clientX: 200, clientY: 250, pointerId: 1,
+    currentTarget: {
+      setPointerCapture() {},
+      closest: (s) => (s === ".pl-window" ? win : null),
+    },
+  };
+  await resolveFn(state, "winsheet.grab")(state, "turtles", event); m.run();
+  const d = state.cels.get("winsheet.drag")?.v;
+  assert.ok(d, "a drag started");
+  assert.equal(d.ox, event.clientX - win.offsetLeft, "ox is grab.clientX − offsetLeft (from where the window SITS)");
+  assert.equal(d.oy, event.clientY - win.offsetTop, "oy is grab.clientY − offsetTop");
+  // and a move places the window so its origin = pointer − offset = the live spot,
+  // i.e. it does NOT snap to the 60 default.
+  await resolveFn(state, "winsheet.move")(state, "turtles", { clientX: 200, clientY: 250 }); m.run();
+  const g = state.cels.get("win.geom")?.v?.turtles;
+  assert.equal(g.x, win.offsetLeft, "no jump: the window stays where it was grabbed (x = offsetLeft)");
+  assert.equal(g.y, win.offsetTop, "no jump: y = offsetTop");
+});
+
+test("grab: with NO live rect (off-DOM) wsGrab falls back to win.geom default 60", async () => {
+  const { state, m } = await boot();
+  // no currentTarget.closest → fall back to win.geom (default 60) — the test path.
+  await resolveFn(state, "winsheet.grab")(state, "turtles", { clientX: 100, clientY: 100, pointerId: 1 }); m.run();
+  const d = state.cels.get("winsheet.drag")?.v;
+  const g = state.cels.get("win.geom")?.v?.turtles ?? {};
+  const baseX = Number.isFinite(g.x) ? g.x : 60, baseY = Number.isFinite(g.y) ? g.y : 60;
+  assert.equal(d.ox, 100 - baseX, "fallback ox from win.geom (default 60)");
+  assert.equal(d.oy, 100 - baseY, "fallback oy from win.geom (default 60)");
+});
+
+// ── 9) formula-bar icons are comfortably large ───────────────────────────────
+
+test("formula-bar icons: the W wiki + gun buttons are noticeably larger (glyphBtn ~1.1rem, gun svg 22px)", async () => {
+  const { root } = await boot();
+  const bar = fxbarOf(root, "turtles");
+  const wiki = byClass(bar, "pl-fxbar-wiki")[0];
+  const fire = byClass(bar, "pl-fxbar-fire")[0];
+  assert.ok(wiki && fire, "wiki + fire buttons present");
+  // glyphBtn font-size bumped from .72rem → ~1.1rem on both buttons
+  assert.match(String(wiki.attrs?.style ?? ""), /font:600 1\.1rem/, "W wiki button uses the larger ~1.1rem glyphBtn font");
+  assert.match(String(fire.attrs?.style ?? ""), /font:600 1\.1rem/, "gun button uses the larger ~1.1rem glyphBtn font");
+  assert.ok(!/\.72rem/.test(String(wiki.attrs?.style ?? "")), "no longer the tiny .72rem size");
+  // the gun svg is 22px (was 16)
+  const svg = walk(fire, (n) => n.tag === "svg")[0];
+  assert.equal(String(svg.attrs?.width), "22", "gun svg width is 22px");
+  assert.equal(String(svg.attrs?.height), "22", "gun svg height is 22px");
+});
+
+// ── 10) the dragged tab chip highlights in the drop-target blue ──────────────
+
+test("dragged tab: while winsheet.tabdrag is set, the matching chip highlights blue (.drop-target)", async () => {
+  const { state, root, m } = await boot();
+  // tab a fresh sheet into turtles so there is a tab strip with >1 chip
+  await resolveFn(state, "winsheet.newtab")(state, "turtles"); m.run();
+  const chipFor = (seg) => walk(root, (n) => hasClass(n, "pl-tab") && n.attrs["data-tab"] === seg)[0];
+  // before any drag, no chip carries the drop-target highlight
+  assert.ok(chipFor("turtles") && !hasClass(chipFor("turtles"), "drop-target"), "no highlight before a drag");
+  // start dragging the turtlecharts tab → its chip (and ONLY its chip) lights up
+  await resolveFn(state, "winsheet.tabGrab")(state, { host: "turtles", tab: "turtlecharts" }, { clientX: 0, clientY: 0, pointerId: 1 }); m.run();
+  assert.equal(state.cels.get("winsheet.tabdrag")?.v?.tab, "turtlecharts", "winsheet.tabdrag records the dragged tab");
+  const dragged = chipFor("turtlecharts");
+  assert.ok(hasClass(dragged, "drop-target"), "the dragged chip gets the .drop-target class");
+  // it uses the SAME blue as the window glow (#4a90d9 outline + box-shadow)
+  assert.match(String(dragged.attrs?.style ?? ""), /outline:3px solid #4a90d9/, "the chip outline is the drop-target blue");
+  assert.match(String(dragged.attrs?.style ?? ""), /box-shadow:0 0 0 3px #4a90d955/, "the chip's box-shadow matches the window glow");
+  // a sibling chip is NOT highlighted
+  const sibling = chipFor("turtles");
+  assert.ok(sibling && !hasClass(sibling, "drop-target"), "a non-dragged sibling chip stays plain");
+  // dropping over the host (elementsFromPoint absent → not a tear-off) clears the
+  // drag → the highlight is gone.
+  globalThis.document.elementsFromPoint = () => [{ closest: (s) => (s === ".pl-window" ? { getAttribute: () => "turtles" } : null) }];
+  try {
+    await resolveFn(state, "winsheet.tabDrop")(state, { host: "turtles", tab: "turtlecharts" }, { clientX: 0, clientY: 0 }); m.run();
+  } finally { delete globalThis.document.elementsFromPoint; }
+  assert.equal(state.cels.get("winsheet.tabdrag")?.v, null, "drop cleared winsheet.tabdrag");
+  const afterDrop = chipFor("turtlecharts");
+  assert.ok(afterDrop && !hasClass(afterDrop, "drop-target"), "the highlight cleared after drop");
+});

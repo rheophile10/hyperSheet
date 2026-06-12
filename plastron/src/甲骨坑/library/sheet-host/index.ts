@@ -60,7 +60,7 @@ const SX = {
   fxbar: "flex:0 0 auto;display:flex;align-items:stretch;gap:.3rem;padding:.2rem .4rem;background:#8881;border-bottom:1px solid #8883",
   fxlabel: "flex:0 0 auto;align-self:center;color:#888;font:600 .76rem ui-monospace,monospace",
   fxinput: "flex:1 1 auto;box-sizing:border-box;min-height:7.5rem;resize:vertical;overflow-y:auto;overflow-x:hidden;font-family:ui-monospace,monospace;font-size:.82rem;padding:.15rem .35rem;border:1px solid #8884;border-radius:.25rem;background:Canvas;color:CanvasText;white-space:pre-wrap;word-break:break-word",
-  glyphBtn: "border:0;background:#8882;border-radius:.2rem;cursor:pointer;font:600 .72rem ui-monospace,monospace;line-height:1;padding:.05rem .2rem;color:#888",
+  glyphBtn: "border:0;background:#8882;border-radius:.2rem;cursor:pointer;font:600 1.1rem ui-monospace,monospace;line-height:1;padding:.2rem .4rem;color:#888",
 } as const;
 
 const displayCell = (v: unknown): V => {
@@ -118,13 +118,16 @@ const addrOf = (key: string): { col: number; row: number } | null => {
 };
 
 const sheetView: Fn = ((
-  cfg: unknown, editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown, srcs: unknown, geom?: unknown, selected?: unknown,
+  cfg: unknown, editing: unknown, draft: unknown, mount: unknown, error: unknown, keys: unknown, vals: unknown, srcs: unknown, geom?: unknown, selected?: unknown, tabdrag?: unknown,
 ) => {
   const c = (cfg ?? {}) as { base?: string; draftCel?: string; editHandler?: string; keyHandler?: string; selectHandler?: string; fireHandler?: string };
   const BASE = c.base ?? "元", DRAFT = c.draftCel ?? "元.draft", EDIT = c.editHandler ?? "origin.edit", KEYH = c.keyHandler ?? "origin.key";
   const SELH = c.selectHandler ?? "origin.select", FIREH = c.fireHandler ?? "origin.fire";
   const selectedKey = typeof selected === "string" ? selected : null;   // the SELECTED cell key (Excel single-click; value stays in the grid)
   const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number }> : {};
+  // the tab chip currently being dragged (winsheet.tabdrag = {host, tab}); its
+  // chip lights up in the SAME blue as a window's drop-target glow.
+  const draggedTab = (tabdrag && typeof tabdrag === "object" && !Array.isArray(tabdrag)) ? (tabdrag as { tab?: unknown }).tab : undefined;
   // wrap a worksheet's table in a draggable window frame, positioned by win.geom
   // (default staggered by index). Drag/resize/raise/minimize dispatch to the
   // winsheet.* handlers; the table inside is unchanged, so cells stay editable.
@@ -165,7 +168,7 @@ const sheetView: Fn = ((
     // a side-view pistol silhouette — an inline SVG (currentColor) so it reads
     // as an actual gun, not the water-pistol emoji. (svg/path render via the
     // painter's createElementNS path.)
-    const gunIcon = el("svg", { class: "pl-fxbar-gun-svg", width: "16", height: "16", viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": "true", style: "display:block" }, [
+    const gunIcon = el("svg", { class: "pl-fxbar-gun-svg", width: "22", height: "22", viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": "true", style: "display:block" }, [
       el("path", { d: "M2 7h17a2 2 0 0 1 2 2v3h-3l-2 3h-5l-1-3H6l-1 4H3l1-4H2V7zm4 2v2h2V9H6z" }, []),
     ]);
     const fireBtn = el("button", { class: "pl-fxbar-fire", title: "fire — re-evaluate this cell", style: SX.glyphBtn + ";align-self:center;display:flex;align-items:center" }, [gunIcon], { click: { dispatch: FIREH, payload: barKey ?? "" } });
@@ -191,8 +194,11 @@ const sheetView: Fn = ((
     // draggable: pointerdown starts a tab-drag (winsheet.tabGrab), pointermove
     // reorders among siblings or marks a tear-off, pointerup commits.
     const ordered = tabs.length > 1 ? [...tabs].sort((a, b) => gnum(GM[a]?.order, tabs.indexOf(a)) - gnum(GM[b]?.order, tabs.indexOf(b))) : tabs;
-    const tabChips = ordered.length > 1 ? ordered.map((seg) =>
-      el("button", { class: "pl-tab" + (seg === active ? " active" : ""), "data-tab": seg, style: `flex:0 0 auto;border:1px solid #8884;border-bottom:0;border-radius:.3rem .3rem 0 0;background:${seg === active ? "Canvas" : "#8882"};color:CanvasText;cursor:grab;touch-action:none;user-select:none;font:600 .74rem ui-monospace,monospace;padding:.18rem .55rem;white-space:nowrap;opacity:${seg === active ? "1" : ".7"}` }, [T(seg)], { pointerdown: { dispatch: "winsheet.tabGrab", payload: { host, tab: seg } }, pointermove: { dispatch: "winsheet.tabMove", payload: { host, tab: seg } }, pointerup: { dispatch: "winsheet.tabDrop", payload: { host, tab: seg } }, click: { dispatch: "winsheet.tab", payload: { host, tab: seg } }, dblclick: { dispatch: "winsheet.tearoff", payload: seg } })) : [];
+    const tabChips = ordered.length > 1 ? ordered.map((seg) => {
+      const dragging = seg === draggedTab;   // the dragged chip glows blue (matches .drop-target)
+      const dragGlow = dragging ? ";outline:3px solid #4a90d9;outline-offset:1px;box-shadow:0 0 0 3px #4a90d955" : "";
+      return el("button", { class: "pl-tab" + (seg === active ? " active" : "") + (dragging ? " drop-target" : ""), "data-tab": seg, style: `flex:0 0 auto;border:1px solid #8884;border-bottom:0;border-radius:.3rem .3rem 0 0;background:${dragging ? "#4a90d922" : (seg === active ? "Canvas" : "#8882")};color:CanvasText;cursor:grab;touch-action:none;user-select:none;font:600 .74rem ui-monospace,monospace;padding:.18rem .55rem;white-space:nowrap;opacity:${dragging ? "1" : (seg === active ? "1" : ".7")}${dragGlow}` }, [T(seg)], { pointerdown: { dispatch: "winsheet.tabGrab", payload: { host, tab: seg } }, pointermove: { dispatch: "winsheet.tabMove", payload: { host, tab: seg } }, pointerup: { dispatch: "winsheet.tabDrop", payload: { host, tab: seg } }, click: { dispatch: "winsheet.tab", payload: { host, tab: seg } }, dblclick: { dispatch: "winsheet.tearoff", payload: seg } });
+    }) : [];
     const tabStrip = el("div", { class: "pl-tabs", style: "flex:0 0 auto;display:flex;gap:.15rem;padding:.25rem .3rem 0;background:#8881;overflow-x:auto" }, [...tabChips, plusBtn], { pointerup: { dispatch: "winsheet.tabDrop", payload: { host } } });
     // a drop-target GLOW (win.geom[host].glow) while a window/tab is dragged
     // over this one, so the user sees where it will land (tab/stack).
@@ -397,7 +403,8 @@ const sheetView: Fn = ((
 // sheetView gets it as one input. The handlers update that map; the cells inside
 // a window are unchanged, so editing/selection still work as before.
 interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number }
-interface WEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void }; stopPropagation?: () => void }
+interface WWinEl { offsetLeft?: number; offsetTop?: number }
+interface WEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void; closest?: (s: string) => WWinEl | null }; stopPropagation?: () => void }
 // win.geom is in 元.view's inputMap, so a geom change re-fires the view — but
 // that re-fire must propagate through the cycle BEFORE we paint, or the first
 // drain repaints the stale frame (a just-closed/minimized window not yet swapped
@@ -437,7 +444,10 @@ const markGlow = (m: Record<string, WGeom>, target?: string): boolean => {
 };
 interface TabDrag { host: string; tab: string }
 const wtabdrag = (state: State): TabDrag | null | undefined => state.cels.get("winsheet.tabdrag")?.v as TabDrag | null | undefined;
-const setWtabdrag = (state: State, v: unknown): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winsheet.tabdrag", v));
+// winsheet.tabdrag is in 元.view's inputMap (the dragged chip glows blue), so
+// writing it must propagate through the cycle and repaint — the highlight lands
+// on grab and clears on drop.
+const setWtabdrag = (state: State, v: unknown): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winsheet.tabdrag", v)).then(() => wrepaint(state));
 // the data-tab of a tab chip under (x,y), if any.
 const tabAtPoint = (x: number, y: number): string | undefined => {
   const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => { getAttribute?: (a: string) => string | null } | null }> } }).document;
@@ -461,7 +471,19 @@ const nextZ = async (state: State): Promise<number> => {
   return z;
 };
 
-const wsGrab: Fn = (async (state: State, seg: unknown, event?: WEvt): Promise<void> => { wcap(event); const g = geomMap(state)[String(seg)] ?? {}; await setWdrag(state, { seg: String(seg), ox: wnum(event?.clientX) - wnum(g.x, 60), oy: wnum(event?.clientY) - wnum(g.y, 60) }); }) as Fn;
+// read the window's ACTUAL position from the DOM (a geom-less window renders
+// staggered by index, not at the grab default), so the drag offset is measured
+// from where the window SITS — no jump on the first move. offsetLeft/offsetTop
+// are relative to the positioned .origin container, the SAME frame win.geom.x/y
+// (the `left:${x}px` the move writes) uses — so the math stays consistent.
+// Falls back to win.geom (default 60) when there's no DOM (tests).
+const winOriginAt = (state: State, seg: string, event?: WEvt): { x: number; y: number } => {
+  const w = event?.currentTarget?.closest?.(".pl-window");
+  if (w && Number.isFinite(w.offsetLeft) && Number.isFinite(w.offsetTop)) return { x: Number(w.offsetLeft), y: Number(w.offsetTop) };
+  const g = geomMap(state)[seg] ?? {};
+  return { x: wnum(g.x, 60), y: wnum(g.y, 60) };
+};
+const wsGrab: Fn = (async (state: State, seg: unknown, event?: WEvt): Promise<void> => { wcap(event); const o = winOriginAt(state, String(seg), event); await setWdrag(state, { seg: String(seg), ox: wnum(event?.clientX) - o.x, oy: wnum(event?.clientY) - o.y }); }) as Fn;
 const wsMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d || d.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), x: wnum(event?.clientX) - d.ox, y: wnum(event?.clientY) - d.oy }; markGlow(m, winAtPoint(wnum(event?.clientX), wnum(event?.clientY), d.seg)); await setGeom(state, m); }) as Fn;
 const wsGrabResize: Fn = (async (state: State, seg: unknown, event?: WEvt): Promise<void> => { wcap(event); const g = geomMap(state)[String(seg)] ?? {}; await setWdrag(state, { seg: String(seg), ox: wnum(event?.clientX) - wnum(g.w, 360), oy: wnum(event?.clientY) - wnum(g.h, 260), resize: true }); }) as Fn;
 const wsResizeMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d?.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), w: Math.max(160, wnum(event?.clientX) - d.ox), h: Math.max(90, wnum(event?.clientY) - d.oy) }; await setGeom(state, m); }) as Fn;

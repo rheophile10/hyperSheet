@@ -153,6 +153,41 @@ test("the chat window composes [clients | chat]: status cells + clientlights + a
   assert.equal(send.events?.click?.dispatch, "chat.cellsend", "send wired to chat.cellsend");
 });
 
+test("chat send: appends a user msg + a reply to the messages cell — clients.C1 becomes a VALUE cel (no FormulaCel error)", async () => {
+  const { state, m } = await boot();
+  // clients.C1 seeds as the FORMULA `(messages …)` — appending an array to it via
+  // setValue used to throw "FormulaCel takes a formula source (a string); got object".
+  const before = state.cels.get("clients.C1");
+  assert.ok(typeof before?.f === "string", "clients.C1 starts as a FormulaCel (messages …)");
+  const seedLen = Array.isArray(before?.v) ? before.v.length : 0;
+
+  // capture any console.error so an in-handler throw surfaces
+  const errs = [];
+  const origErr = console.error;
+  console.error = (...a) => { errs.push(a.map(String).join(" ")); };
+  try {
+    // type into the entry buffer, then send. No armed client at boot → the reply
+    // is the "(no armed client …)" system line, but it STILL appends with no error.
+    await resolveFn(state, "setValue")(state, "clients.D1", "hello bots"); m.run();
+    await resolveFn(state, "chat.cellsend")(state); m.run();
+  } finally { console.error = origErr; }
+
+  assert.ok(!errs.some((e) => /takes a formula source|got object/.test(e)),
+    `no FormulaCel "takes a formula source" error (saw: ${errs.join(" | ")})`);
+  const after = state.cels.get("clients.C1");
+  assert.ok(Array.isArray(after?.v), "clients.C1 now holds the message ARRAY as a value");
+  assert.ok(typeof after?.f !== "string", "clients.C1 was converted from a FormulaCel to a ValueCel");
+  // the user message AND a reply landed (2 new rows on top of the seed)
+  assert.equal(after.v.length, seedLen + 2, "a user message + a reply were appended");
+  assert.equal(after.v[after.v.length - 2]?.from, "me", "the user message is second-last");
+  assert.equal(after.v[after.v.length - 2]?.text, "hello bots", "with the typed text");
+  assert.ok(after.v[after.v.length - 1]?.text, "a reply row followed it");
+  // a second send keeps appending (now a plain ValueCel setValue path) — still no error
+  await resolveFn(state, "setValue")(state, "clients.D1", "again"); m.run();
+  await resolveFn(state, "chat.cellsend")(state); m.run();
+  assert.equal(state.cels.get("clients.C1").v.length, seedLen + 4, "a second send appends two more rows");
+});
+
 test('the new tab SHARES memory with its host (bundled), but is a closure to others', async () => {
   const { state, m } = await boot();
   await resolveFn(state, "winsheet.newtab")(state, "turtles"); m.run();

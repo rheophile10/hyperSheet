@@ -118,11 +118,12 @@
           "srcs": "元.srcs",
           "config": "元.viewConfig",
           "geom": "win.geom",
-          "selected": "元.selected"
+          "selected": "元.selected",
+          "tabdrag": "winsheet.tabdrag"
         },
-        "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place."
+        "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place. Reads winsheet.tabdrag so the chip being dragged highlights in the drop-target blue."
       },
-      "f": "(sheetView 元.viewConfig editing draft mount error keys vals srcs geom selected)"
+      "f": "(sheetView 元.viewConfig editing draft mount error keys vals srcs geom selected tabdrag)"
     },
     {
       "key": "cel",

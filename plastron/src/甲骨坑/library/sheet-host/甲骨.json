@@ -9,7 +9,7 @@
         "segment": "sheet-host",
         "name": "sheetView",
         "kind": "native",
-        "description": "(cfg editing draft mount error keys vals srcs geom selected selectedSrc) - spreadsheet RenderSpec producer: each worksheet table wrapped in a draggable window frame. Single-click SELECTS a cell (origin.select sets 元.selected) and the cell KEEPS rendering its value; the window's formula bar shows the SELECTED cell's source (bound to 元.draft) and commits on Enter (origin.key) to 元.selected. Double-click opens the inline editor. Formula bar order is left-to-right [W wiki][gun fire][textarea]: the gun is an inline SVG pistol (origin.fire — re-evaluate the selected cell), the W opens the wiki. The bar textarea defaults to a tall multi-line box (min-height ~7.5rem) and wraps (pre-wrap, no horizontal scrollbar); resize:vertical lets the user grow it further. Tabs render by win.geom[seg].order; dragging a tab chip reorders it among siblings (winsheet.tabMove) or, released off the window, tears it into its own window (winsheet.tabDrop -> tearoff). Dragging a window/tab over another window glows the target (win.geom[seg].glow) to show where it will land. Cells render clean (no per-cell glyphs). The titlebar shows exactly one of ◱ (mid/restore, when maximized) and ⛶ (maximize, when not), plus – minimize and ✕ close."
+        "description": "(cfg editing draft mount error keys vals srcs geom selected tabdrag) - spreadsheet RenderSpec producer: each worksheet table wrapped in a draggable window frame. Single-click SELECTS a cell (origin.select sets 元.selected) and the cell KEEPS rendering its value; the window's formula bar shows the SELECTED cell's source (bound to 元.draft) and commits on Enter (origin.key) to 元.selected. Double-click opens the inline editor. Formula bar order is left-to-right [W wiki][gun fire][textarea]: the gun is an inline SVG pistol (origin.fire — re-evaluate the selected cell), the W opens the wiki. The bar textarea defaults to a tall multi-line box (min-height ~7.5rem) and wraps (pre-wrap, no horizontal scrollbar); resize:vertical lets the user grow it further. Tabs render by win.geom[seg].order; dragging a tab chip reorders it among siblings (winsheet.tabMove) or, released off the window, tears it into its own window (winsheet.tabDrop -> tearoff). While a tab is being dragged (winsheet.tabdrag), its chip highlights in the SAME blue as a window's drop-target glow. Dragging a window/tab over another window glows the target (win.geom[seg].glow) to show where it will land. The formula bar's W wiki + gun buttons are sized for a comfortable hit target (glyphBtn ~1.1rem, gun svg ~22px). Cells render clean (no per-cell glyphs). The titlebar shows exactly one of ◱ (mid/restore, when maximized) and ⛶ (maximize, when not), plus – minimize and ✕ close."
       },
       "locked": true
     },
@@ -21,7 +21,7 @@
         "segment": "sheet-host",
         "name": "winsheet.grab",
         "kind": "native",
-        "description": "start dragging worksheet window"
+        "description": "start dragging a worksheet window. The drag offset is measured from the window's ACTUAL position (the titlebar's .pl-window offsetLeft/offsetTop — same .origin-relative frame as win.geom.x/y) so a geom-less window — which renders staggered by index, not at the grab default — moves from where it sits instead of jumping. Falls back to win.geom (default 60) when there's no DOM (tests)."
       },
       "locked": true
     },
@@ -188,7 +188,7 @@
         "key": "winsheet.tabdrag",
         "segment": "sheet-host",
         "name": "winsheet.tabdrag",
-        "description": "in-progress tab drag { host, tab } (null when idle); set on a tab chip's pointerdown, drives reorder/tear-off, cleared on pointerup."
+        "description": "in-progress tab drag { host, tab } (null when idle); set on a tab chip's pointerdown, drives reorder/tear-off, cleared on pointerup. In 元.view's inputMap: the dragged tab's chip highlights in the drop-target blue while this is set."
       },
       "v": null
     },
