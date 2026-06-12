@@ -91,8 +91,15 @@ const clientSendFn: Fn = (async (client: unknown, message: unknown): Promise<str
 // stored). This segment READS the wallet (apiKey) but never writes it; the chat
 // reads these client cels. =clientsheet() then =chatapp("claude","Claude") talks
 // to Claude through clients.claude — the key never in the chat's reach.
+// The `clients` segment is minted with a STATIC get-whitelist: itself (so its
+// makeclient formulas can read the wallet's apiKey via the secrets gate) PLUS
+// `win.chat-claude` (the Claude chat's segment), so a chat formula may read
+// clients.* — but NOT secrets.* (the secrets segment is sealed; bundling never
+// opens a seal, and the chat is not in secrets.get). Claude gets the safe
+// CLIENT handle, never the key.
 const clientsheetFn: Fn = ((): unknown => ({
   genesis: true, layer: "clients",
+  access: { get: ["clients", "win.chat-claude"], set: "private" },
   cels: {
     "clients.claude": { celType: "FormulaCel", f: '(makeclient "claude" (apiKey "anthropic"))', metadata: { name: "claude", parser: "f" } },
     "clients.grok": { celType: "FormulaCel", f: '(makeclient "grok" (apiKey "xai"))', metadata: { name: "grok", parser: "f" } },

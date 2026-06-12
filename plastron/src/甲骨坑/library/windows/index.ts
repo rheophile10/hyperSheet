@@ -271,13 +271,22 @@ const makeFn: Fn = ((id: unknown, title: unknown, content: unknown): unknown => 
 
 // winapp(id, title, contentSource) — like winmake, but the content is a FORMULA,
 // not a string: it creates win.<id>.content as a FormulaCel and the frame mounts
-// THAT cel, so a window can hold a real app — the wallet panel, a chat, the
+// THAT cel, so a window can hold a real app — the secrets panel, a chat, the
 // readme, anything renderable.
-//   =winapp("wallet","Wallet","(domWallet (locked walletNote) (apiKeys))")
+//   =winapp("secrets","Secrets","(secrets (locked secretsNote) (apiKeys))")
 // The content formula must REFERENCE the cels it should react to (inputMap
-// doctrine): a bare "(domWallet)" renders the locked panel and never re-fires,
+// doctrine): a bare "(secrets)" renders the locked panel and never re-fires,
 // so unlocking appears to do nothing.
-const appFn: Fn = ((id: unknown, title: unknown, contentSource: unknown): unknown => {
+// linkList — normalize an optional `linked` arg (an array, or a space/comma-
+// separated string of segment names) into a string[] | undefined. Used by
+// winapp/chatapp to seed state.linked at creation (a 🔗 titlebar).
+const linkList = (linked: unknown): string[] | undefined => {
+  if (Array.isArray(linked)) { const a = linked.map(String).filter(Boolean); return a.length ? a : undefined; }
+  if (typeof linked === "string") { const a = linked.split(/[\s,]+/).filter(Boolean); return a.length ? a : undefined; }
+  return undefined;
+};
+
+const appFn: Fn = ((id: unknown, title: unknown, contentSource: unknown, linked?: unknown): unknown => {
   const lay = `win.${String(id ?? "w")}`;
   const sref = `${lay}.state`, cref = `${lay}.content`;
   let hsh = 0; for (const ch of String(id ?? "w")) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
@@ -285,8 +294,13 @@ const appFn: Fn = ((id: unknown, title: unknown, contentSource: unknown): unknow
   const t = String(title ?? id ?? "window").replace(/"/g, "'");
   const src = String(contentSource ?? "");
   const parser = src.trim().startsWith("=") ? "infix" : "f";
+  // optional `linked` (array OR a space-separated string of segment names) seeds
+  // state.linked at creation so the titlebar shows 🔗 — a STATIC declaration of a
+  // link, the seeded twin of winx.drop's runtime bundling. Pure cosmetic
+  // indicator; no bundle is granted.
+  const link = linkList(linked);
   return { genesis: true, layer: lay, cels: {
-    [sref]: { celType: "ValueCel", v: { ref: sref, x: dx, y: dy, w: 440, h: 320, z: 1, min: 0, max: 0, closed: 0, title: t }, metadata: { name: "state" } },
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: dx, y: dy, w: 440, h: 320, z: 1, min: 0, max: 0, closed: 0, title: t, ...(link && link.length ? { linked: link } : {}) }, metadata: { name: "state" } },
     [cref]: { celType: "FormulaCel", f: src, metadata: { name: "content", parser } },
     [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f" } },
   } };
@@ -390,16 +404,22 @@ const chatKey: Fn = (async (state: State, channel: unknown, event?: { key?: stri
 
 // chatapp(channel, title) — a chat WINDOW: seeds the log/input + a winframe whose
 // content is (chat channel …). =chatapp("claude","Claude") / chatapp("grok","Grok").
-const chatappFn: Fn = ((channel: unknown, title: unknown): unknown => {
+// An LLM channel (claude/grok) reads its client via clients.<channel> (the
+// clientsheet whitelists win.chat-<channel> into the clients get-policy), so its
+// titlebar seeds 🔗 to surface that link. An explicit `linked` overrides.
+const chatappFn: Fn = ((channel: unknown, title: unknown, linked?: unknown): unknown => {
   const ch = String(channel ?? "chat");
   const lay = `win.chat-${ch}`, sref = `${lay}.state`;
   let hsh = 0; for (const c of ch) hsh = (hsh * 31 + c.charCodeAt(0)) >>> 0;
   const dx = 70 + (hsh % 6) * 50, dy = 60 + (hsh % 4) * 44;
   const t = String(title ?? ch).replace(/"/g, "'");
+  // optional `linked` seeds state.linked → titlebar 🔗 (see appFn). For an LLM
+  // channel, default it to the clients ↔ chat link so the boot call stays bare.
+  const link = linkList(linked) ?? ((ch === "claude" || ch === "grok") ? ["clients", lay] : undefined);
   return { genesis: true, layer: lay, cels: {
     [`chat.${ch}.log`]: { celType: "ValueCel", v: [], metadata: { name: "log" } },
     [`chat.${ch}.input`]: { celType: "ValueCel", v: "", metadata: { name: "input" } },
-    [sref]: { celType: "ValueCel", v: { ref: sref, x: dx, y: dy, w: 360, h: 460, z: 1, min: 0, max: 0, closed: 0, title: t }, metadata: { name: "state" } },
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: dx, y: dy, w: 360, h: 460, z: 1, min: 0, max: 0, closed: 0, title: t, ...(link && link.length ? { linked: link } : {}) }, metadata: { name: "state" } },
     [`${lay}.content`]: { celType: "FormulaCel", f: `(chatui "${ch}" chat.${ch}.log chat.${ch}.input)`, metadata: { name: "content", parser: "f" } },
     [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${lay}.content))`, metadata: { name: "frame", parser: "f" } },
   } };
@@ -418,7 +438,7 @@ const readmeFn: Fn = ((): V => el("div", { class: "readme", style: "font:13px/1.
   el("h2", { style: "margin:.15rem 0;font-size:1.1rem" }, [T("元 · plastron")]),
   el("p", { style: "margin:.3rem 0;opacity:.85" }, [T("A reactive cel substrate. Every worksheet is a window; formulas build apps; chat treats claude / grok / peers as users.")]),
   el("p", { style: "margin:.3rem 0 .15rem" }, [T("Type a formula in any cell:")]),
-  el("pre", { style: "background:#8881;padding:.45rem;border-radius:.35rem;white-space:pre-wrap;margin:.15rem 0" }, [T('=cels(3, 3)                              a sheet, in its own window\n=chatapp("claude", "Claude")             a chat window\n=winapp("wallet", "Wallet", "(domWallet (locked walletNote) (apiKeys))")   the wallet\n=desktop()                               the wallpaper')]),
+  el("pre", { style: "background:#8881;padding:.45rem;border-radius:.35rem;white-space:pre-wrap;margin:.15rem 0" }, [T('=cels(3, 3)                              a sheet, in its own window\n=chatapp("claude", "Claude")             a chat window\n=winapp("secrets", "Secrets", "(secrets (locked secretsNote) (apiKeys))")   the secrets panel\n=desktop()                               the wallpaper')]),
   el("p", { style: "margin:.35rem 0;opacity:.85" }, [T("Drag a titlebar onto another window's titlebar to make tabs; double-click a tab to pop it back out. ◱ mid · ⛶ max · – min · ✕ close.")]),
 ]) ) as Fn;
 

@@ -13,6 +13,17 @@
       }
     },
     {
+      "key": "secretsNote",
+      "celType": "ValueCel",
+      "v": "(secrets locked — unlock to add keys)",
+      "metadata": {
+        "key": "secretsNote",
+        "segment": "unsafe-wallet",
+        "name": "secretsNote",
+        "description": "neutral status trigger, bumped on every lock/unlock/set (mirror of walletNote with no wallet wording). reference it to react: =secrets(locked(secretsNote), apiKeys())."
+      }
+    },
+    {
       "key": "wallet.newName",
       "celType": "ValueCel",
       "v": "",

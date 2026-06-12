@@ -151,6 +151,9 @@ const fsCall = async (state: State, k: string, ...a: unknown[]): Promise<unknown
 
 const note = async (state: State, msg: string): Promise<void> => {
   await (resolveFn(state, "setValue") as Fn)(state, "walletNote", msg);
+  // mirror to a neutrally-named trigger so a Secrets panel can react without
+  // referencing a wallet-named cel: =secrets(locked(secretsNote), apiKeys()).
+  await (resolveFn(state, "setValue") as Fn)(state, "secretsNote", msg);
   // setValue re-fires walletNote-dependent cels via the cascade — including any
   // =walletKeys(walletNote) genesis cel, whose request updates but isn't
   // materialized until genesis.commit drains. Drain it so per-key cels

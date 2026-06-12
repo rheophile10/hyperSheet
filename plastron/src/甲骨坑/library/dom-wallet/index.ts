@@ -152,8 +152,94 @@ const domWalletFn: Fn = (lock?: unknown, names?: unknown): Vnode => {
   );
 };
 
+// secrets(lock, names?) — the SECRETS panel: the SAME re-backed rendering as
+// domWallet (it wires the identical unsafe-wallet handlers — wallet.unlock /
+// .lock / .setNamed / .del), but with NO "wallet" wording anywhere the user
+// sees: the status reads "Secrets", keys are "keys", the unlock caption talks
+// about a "secrets password". Reactive exactly like domWallet — pass
+// (locked secretsNote) and (apiKeys) so lock/unlock/set re-fire the cel through
+// inputMap (those verbs ARE the deps); the secretsNote trigger carries no
+// wallet name.
+const secretsFn: Fn = (lock?: unknown, names?: unknown): Vnode => {
+  const locked = lock === undefined ? true : Boolean(lock);
+
+  if (locked) {
+    return dom("div", styleOf(PANEL),
+      dom("span", styleOf(STAT), "🔒 locked"),
+      pwBox("wallet.unlock", undefined, "secrets password…",
+        "Enter = unlock (first password creates your secrets)"),
+    );
+  }
+
+  const raw = String(names ?? "");
+  const keyNames = raw.startsWith("(") ? [] : raw.split("\n").map((s) => s.trim()).filter(Boolean);
+  const n = keyNames.length;
+
+  const chips = keyNames.map((name) =>
+    dom("span", styleOf(CHIP),
+      `🔑 ${name}`,
+      dom("button",
+        attr("type", "button", "title", `edit "${name}"`),
+        styleOf(EDIT),
+        on("click", "wallet.startEdit", name),
+        "✎",
+      ),
+      dom("button",
+        attr("type", "button", "title", `delete "${name}"`),
+        styleOf(DEL),
+        on("click", "wallet.del", name),
+        "✕",
+      ),
+    ));
+
+  const addRow = dom("div", styleOf(PANEL),
+    dom("input",
+      attr("type", "text", "placeholder", "new key name"),
+      styleOf(NAME),
+      setOn("input", { set: "wallet.newName", extract: "value" }),
+    ),
+    dom("input",
+      attr("type", "password", "placeholder", "secret… (Enter to add)"),
+      styleOf(PW),
+      on("change", "wallet.setNamed"),
+      on("keydown", "wallet.setNamed"),
+    ),
+  );
+
+  return dom("div", styleOf(COL),
+    dom("div", styleOf(PANEL),
+      dom("span", styleOf(STAT), `🔓 unlocked — ${n} key${n === 1 ? "" : "s"}`),
+      dom("button", attr("type", "button"), styleOf(BTN), on("click", "wallet.lock"), "🔒 lock"),
+    ),
+    ...(chips.length ? [dom("div", styleOf(PANEL), ...chips)] : []),
+    addRow,
+  );
+};
+
+// domClients(claude, grok) — a read-only CLIENTS panel. Pass the two client
+// cells (clients.claude / clients.grok) so it re-fires when they (re)mint; each
+// is a captured client HANDLE { __client } when ready, or a #DENIED/locked hint
+// string while the secrets are locked. Shows a 🟢 ready / 🔒 locked indicator
+// per provider. It reads CLIENT handles, never the key — the handle is the safe
+// thing a downstream (the chat) needs.
+const clientRow = (label: string, client: unknown): Vnode => {
+  const ready = !!(client && typeof client === "object" && (client as { __client?: boolean }).__client === true);
+  return dom("div", styleOf(PANEL),
+    dom("span", styleOf(STAT), `${ready ? "🟢" : "🔒"} ${label}`),
+    dom("span", styleOf(CAP), ready ? "ready" : "locked — unlock secrets to arm"),
+  );
+};
+const domClientsFn: Fn = (claude?: unknown, grok?: unknown): Vnode =>
+  dom("div", styleOf(COL),
+    dom("span", styleOf(STAT), "clients"),
+    clientRow("claude", claude),
+    clientRow("grok", grok),
+  );
+
 export const name = "dom-wallet" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["domWallet", domWalletFn],
+  ["secrets", secretsFn],
+  ["domClients", domClientsFn],
 ]));
