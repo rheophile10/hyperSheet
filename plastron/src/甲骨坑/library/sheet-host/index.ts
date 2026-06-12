@@ -59,7 +59,7 @@ const SX = {
   edit: "width:100%;box-sizing:border-box;max-width:100%;min-height:2.6rem;resize:vertical;font-family:ui-monospace,monospace;font-size:.85rem;padding:.15rem .4rem;border:0;background:#4a90d922;white-space:pre-wrap;line-height:1.4",
   fxbar: "flex:0 0 auto;display:flex;align-items:stretch;gap:.3rem;padding:.2rem .4rem;background:#8881;border-bottom:1px solid #8883",
   fxlabel: "flex:0 0 auto;align-self:center;color:#888;font:600 .76rem ui-monospace,monospace",
-  fxinput: "flex:1 1 auto;box-sizing:border-box;min-height:1.6rem;height:1.7rem;resize:vertical;overflow:auto;font-family:ui-monospace,monospace;font-size:.82rem;padding:.15rem .35rem;border:1px solid #8884;border-radius:.25rem;background:Canvas;color:CanvasText;white-space:pre",
+  fxinput: "flex:1 1 auto;box-sizing:border-box;min-height:7.5rem;resize:vertical;overflow-y:auto;overflow-x:hidden;font-family:ui-monospace,monospace;font-size:.82rem;padding:.15rem .35rem;border:1px solid #8884;border-radius:.25rem;background:Canvas;color:CanvasText;white-space:pre-wrap;word-break:break-word",
   glyphBtn: "border:0;background:#8882;border-radius:.2rem;cursor:pointer;font:600 .72rem ui-monospace,monospace;line-height:1;padding:.05rem .2rem;color:#888",
 } as const;
 
@@ -124,7 +124,7 @@ const sheetView: Fn = ((
   const BASE = c.base ?? "元", DRAFT = c.draftCel ?? "元.draft", EDIT = c.editHandler ?? "origin.edit", KEYH = c.keyHandler ?? "origin.key";
   const SELH = c.selectHandler ?? "origin.select", FIREH = c.fireHandler ?? "origin.fire";
   const selectedKey = typeof selected === "string" ? selected : null;   // the SELECTED cell key (Excel single-click; value stays in the grid)
-  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number }> : {};
+  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number }> : {};
   // wrap a worksheet's table in a draggable window frame, positioned by win.geom
   // (default staggered by index). Drag/resize/raise/minimize dispatch to the
   // winsheet.* handlers; the table inside is unchanged, so cells stay editable.
@@ -151,8 +151,8 @@ const sheetView: Fn = ((
   // It shows the SELECTED cell's source (元.selectedSrc, seeded into 元.draft on
   // select) when that cell belongs to one of this window's tabs, so the grid keeps
   // rendering the value while the bar shows the formula. The textarea binds 元.draft
-  // and commits on Enter (origin.key) to the selected cell. A 🔫 button on the LEFT
-  // fires (re-evaluates) the selected cell; the ? on the right opens the wiki.
+  // and commits on Enter (origin.key) to the selected cell. Left-to-right: a W wiki
+  // button, a gun (SVG) fire button, then the formula textarea.
   const formulaBar = (tabSegs: string[]): V => {
     const barKey = selectedKey && tabSegs.some((s) => keyInSeg(selectedKey!, s)) ? selectedKey : null;
     const shown = barKey ? String(draft ?? "") : "";
@@ -162,12 +162,18 @@ const sheetView: Fn = ((
           keydown: { dispatch: KEYH, payload: barKey },   // origin.key commits on Enter to the selected cell
         })
       : el("textarea", { class: "pl-fxbar-input", style: SX.fxinput + ";color:#888;font-style:italic", rows: 1, readonly: "", placeholder: "click a cell to see and edit its formula here" }, []);
-    const fireBtn = el("button", { class: "pl-fxbar-fire", title: "fire — re-evaluate this cell", style: SX.glyphBtn + ";align-self:center" }, [T("🔫")], { click: { dispatch: FIREH, payload: barKey ?? "" } });
-    const wikiBtn = el("button", { class: "pl-fxbar-wiki", title: "wiki — what is this cell?", style: SX.glyphBtn + ";align-self:center;font-family:Georgia,serif;color:CanvasText" }, [T("?")], { click: { dispatch: "wiki.open", payload: barKey ?? tabSegs[0] ?? "元" } });
+    // a side-view pistol silhouette — an inline SVG (currentColor) so it reads
+    // as an actual gun, not the water-pistol emoji. (svg/path render via the
+    // painter's createElementNS path.)
+    const gunIcon = el("svg", { class: "pl-fxbar-gun-svg", width: "16", height: "16", viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": "true", style: "display:block" }, [
+      el("path", { d: "M2 7h17a2 2 0 0 1 2 2v3h-3l-2 3h-5l-1-3H6l-1 4H3l1-4H2V7zm4 2v2h2V9H6z" }, []),
+    ]);
+    const fireBtn = el("button", { class: "pl-fxbar-fire", title: "fire — re-evaluate this cell", style: SX.glyphBtn + ";align-self:center;display:flex;align-items:center" }, [gunIcon], { click: { dispatch: FIREH, payload: barKey ?? "" } });
+    const wikiBtn = el("button", { class: "pl-fxbar-wiki", title: "wiki — what is this cell?", style: SX.glyphBtn + ";align-self:center;font-family:Georgia,serif;color:CanvasText" }, [T("W")], { click: { dispatch: "wiki.open", payload: barKey ?? tabSegs[0] ?? "元" } });
     return el("div", { class: "pl-fxbar", style: SX.fxbar }, [
+      wikiBtn,
       fireBtn,
       input,
-      wikiBtn,
     ]);
   };
   const windowed = (host: string, tabs: string[], activeTable: V, active: string, i: number): V => {
@@ -180,10 +186,18 @@ const sheetView: Fn = ((
     // single-sheet window shows just "+" (no self-chip), so the chips still read
     // [host, …tabs] only when there's a real tab group.
     const plusBtn = el("button", { class: "pl-tab-add", title: "new sheet (tab)", style: "flex:0 0 auto;border:1px solid #8884;border-bottom:0;border-radius:.3rem .3rem 0 0;background:#8882;color:CanvasText;cursor:pointer;font:600 .82rem ui-monospace,monospace;padding:.18rem .5rem;line-height:1" }, [T("+")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.newtab", payload: host } });
-    const tabChips = tabs.length > 1 ? tabs.map((seg) =>
-      el("button", { class: "pl-tab" + (seg === active ? " active" : ""), "data-tab": seg, style: `flex:0 0 auto;border:1px solid #8884;border-bottom:0;border-radius:.3rem .3rem 0 0;background:${seg === active ? "Canvas" : "#8882"};color:CanvasText;cursor:pointer;font:600 .74rem ui-monospace,monospace;padding:.18rem .55rem;white-space:nowrap;opacity:${seg === active ? "1" : ".7"}` }, [T(seg)], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.tab", payload: { host, tab: seg } }, dblclick: { dispatch: "winsheet.tearoff", payload: seg } })) : [];
-    const tabStrip = el("div", { class: "pl-tabs", style: "flex:0 0 auto;display:flex;gap:.15rem;padding:.25rem .3rem 0;background:#8881;overflow-x:auto" }, [...tabChips, plusBtn]);
-    return el("div", { class: "pl-window", "data-win": host, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas;box-shadow:0 4px 16px #0004;overflow:hidden` }, [
+    // render tabs by their win.geom[seg].order (the explicit tab-order a drag
+    // rewrites); ties / unset fall back to the incoming order. A tab chip is
+    // draggable: pointerdown starts a tab-drag (winsheet.tabGrab), pointermove
+    // reorders among siblings or marks a tear-off, pointerup commits.
+    const ordered = tabs.length > 1 ? [...tabs].sort((a, b) => gnum(GM[a]?.order, tabs.indexOf(a)) - gnum(GM[b]?.order, tabs.indexOf(b))) : tabs;
+    const tabChips = ordered.length > 1 ? ordered.map((seg) =>
+      el("button", { class: "pl-tab" + (seg === active ? " active" : ""), "data-tab": seg, style: `flex:0 0 auto;border:1px solid #8884;border-bottom:0;border-radius:.3rem .3rem 0 0;background:${seg === active ? "Canvas" : "#8882"};color:CanvasText;cursor:grab;touch-action:none;user-select:none;font:600 .74rem ui-monospace,monospace;padding:.18rem .55rem;white-space:nowrap;opacity:${seg === active ? "1" : ".7"}` }, [T(seg)], { pointerdown: { dispatch: "winsheet.tabGrab", payload: { host, tab: seg } }, pointermove: { dispatch: "winsheet.tabMove", payload: { host, tab: seg } }, pointerup: { dispatch: "winsheet.tabDrop", payload: { host, tab: seg } }, click: { dispatch: "winsheet.tab", payload: { host, tab: seg } }, dblclick: { dispatch: "winsheet.tearoff", payload: seg } })) : [];
+    const tabStrip = el("div", { class: "pl-tabs", style: "flex:0 0 auto;display:flex;gap:.15rem;padding:.25rem .3rem 0;background:#8881;overflow-x:auto" }, [...tabChips, plusBtn], { pointerup: { dispatch: "winsheet.tabDrop", payload: { host } } });
+    // a drop-target GLOW (win.geom[host].glow) while a window/tab is dragged
+    // over this one, so the user sees where it will land (tab/stack).
+    const glow = g.glow ? ";outline:3px solid #4a90d9;outline-offset:1px;box-shadow:0 0 0 3px #4a90d955,0 4px 16px #0004" : ";box-shadow:0 4px 16px #0004";
+    return el("div", { class: "pl-window" + (g.glow ? " drop-target" : ""), "data-win": host, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas${glow};overflow:hidden` }, [
       titlebar(host, !!g.max),
       ...(tabStrip ? [tabStrip] : []),
       formulaBar(tabs),
@@ -382,7 +396,7 @@ const sheetView: Fn = ((
 // {x,y,w,h,z,min} } — so the cell set isn't cluttered with per-axis cels and
 // sheetView gets it as one input. The handlers update that map; the cells inside
 // a window are unchanged, so editing/selection still work as before.
-interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number }
+interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number }
 interface WEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void }; stopPropagation?: () => void }
 // win.geom is in 元.view's inputMap, so a geom change re-fires the view — but
 // that re-fire must propagate through the cycle BEFORE we paint, or the first
@@ -399,6 +413,43 @@ const wdrag = (state: State): { seg: string; ox: number; oy: number; resize?: bo
 const setWdrag = (state: State, v: unknown): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winsheet.drag", v));
 const wnum = (v: unknown, d = 0): number => { const n = Number(v); return Number.isFinite(n) ? n : d; };
 const wcap = (e?: WEvt): void => { try { e?.currentTarget?.setPointerCapture?.(wnum(e?.pointerId)); } catch { /* off-DOM */ } };
+// the data-win of a worksheet window whose titlebar/tab-strip sits under (x,y),
+// excluding `selfSeg` (and its ultimate host) — the consolidate/stack target.
+const winAtPoint = (x: number, y: number, selfSeg?: string): string | undefined => {
+  const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => { getAttribute?: (a: string) => string | null } | null }> } }).document;
+  for (const e of doc?.elementsFromPoint?.(x, y) ?? []) {
+    if (!e.closest?.(".pl-titlebar") && !e.closest?.(".pl-tabs")) continue;
+    const w = e.closest?.(".pl-window"); const dw = (w as { getAttribute?: (a: string) => string | null } | null)?.getAttribute?.("data-win") ?? undefined;
+    if (dw && dw !== selfSeg) return dw;
+  }
+  return undefined;
+};
+// mark exactly one window's geom.glow (the live drop target) and clear the rest,
+// so the view paints a single highlight. Returns the patched map (caller persists).
+const markGlow = (m: Record<string, WGeom>, target?: string): boolean => {
+  let changed = false;
+  for (const k of Object.keys(m)) {
+    const want = k === target ? 1 : undefined;
+    if ((m[k]?.glow ? 1 : undefined) !== want) { m[k] = { ...m[k], glow: want }; changed = true; }
+  }
+  if (target && !m[target]) { m[target] = { glow: 1 }; changed = true; }
+  return changed;
+};
+interface TabDrag { host: string; tab: string }
+const wtabdrag = (state: State): TabDrag | null | undefined => state.cels.get("winsheet.tabdrag")?.v as TabDrag | null | undefined;
+const setWtabdrag = (state: State, v: unknown): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winsheet.tabdrag", v));
+// the data-tab of a tab chip under (x,y), if any.
+const tabAtPoint = (x: number, y: number): string | undefined => {
+  const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => { getAttribute?: (a: string) => string | null } | null }> } }).document;
+  for (const e of doc?.elementsFromPoint?.(x, y) ?? []) { const chip = e.closest?.(".pl-tab"); const dt = (chip as { getAttribute?: (a: string) => string | null } | null)?.getAttribute?.("data-tab"); if (dt) return dt; }
+  return undefined;
+};
+// the live tab-order of a host's tab clique (host + its hosted children), sorted
+// by win.geom[seg].order with the incoming sibling order as the tiebreak.
+const tabOrderOf = (m: Record<string, WGeom>, host: string): string[] => {
+  const sibs = [host, ...Object.keys(m).filter((k) => m[k]?.host === host)];
+  return sibs.sort((a, b) => wnum(m[a]?.order, sibs.indexOf(a)) - wnum(m[b]?.order, sibs.indexOf(b)));
+};
 // SHARED z fountain: the same `win.topz` cel the windows segment's winx.*
 // handlers bump, so a worksheet window raised here can rise above state-cel
 // windows (and vice-versa). Default 100. (No private counter — both kinds read
@@ -411,21 +462,19 @@ const nextZ = async (state: State): Promise<number> => {
 };
 
 const wsGrab: Fn = (async (state: State, seg: unknown, event?: WEvt): Promise<void> => { wcap(event); const g = geomMap(state)[String(seg)] ?? {}; await setWdrag(state, { seg: String(seg), ox: wnum(event?.clientX) - wnum(g.x, 60), oy: wnum(event?.clientY) - wnum(g.y, 60) }); }) as Fn;
-const wsMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d || d.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), x: wnum(event?.clientX) - d.ox, y: wnum(event?.clientY) - d.oy }; await setGeom(state, m); }) as Fn;
+const wsMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d || d.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), x: wnum(event?.clientX) - d.ox, y: wnum(event?.clientY) - d.oy }; markGlow(m, winAtPoint(wnum(event?.clientX), wnum(event?.clientY), d.seg)); await setGeom(state, m); }) as Fn;
 const wsGrabResize: Fn = (async (state: State, seg: unknown, event?: WEvt): Promise<void> => { wcap(event); const g = geomMap(state)[String(seg)] ?? {}; await setWdrag(state, { seg: String(seg), ox: wnum(event?.clientX) - wnum(g.w, 360), oy: wnum(event?.clientY) - wnum(g.h, 260), resize: true }); }) as Fn;
 const wsResizeMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d?.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), w: Math.max(160, wnum(event?.clientX) - d.ox), h: Math.max(90, wnum(event?.clientY) - d.oy) }; await setGeom(state, m); }) as Fn;
 // dropping a window ONTO another consolidates it as a tab; a host's own children
 // re-home to the new ultimate host. Dropped in empty space → just repositioned.
 const wsDrop: Fn = (async (state: State, _p: unknown, event?: WEvt & { clientX?: number; clientY?: number }): Promise<void> => {
   const d = wdrag(state); await setWdrag(state, null);
-  if (!d || d.resize || !event) return;
-  const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => { getAttribute?: (a: string) => string | null } | null }> } }).document;
-  const els = doc?.elementsFromPoint?.(wnum(event.clientX), wnum(event.clientY)) ?? [];
-  let target: string | undefined;
-  for (const e of els) { if (!e.closest?.(".pl-titlebar") && !e.closest?.(".pl-tabs")) continue; const w = e.closest?.(".pl-window"); const dw = (w as { getAttribute?: (a: string) => string | null } | null)?.getAttribute?.("data-win") ?? undefined; if (dw && dw !== d.seg) { target = dw; break; } }
-  if (!target) return;                                  // no window under the drop → keep the new position
-  const ult = (geomMap(state)[target]?.host as string | undefined) ?? target;   // tab into the target's ultimate host
+  if (!d || d.resize || !event) { const m0 = geomMap(state); if (markGlow(m0)) await setGeom(state, m0); return; }
+  const target = winAtPoint(wnum(event.clientX), wnum(event.clientY), d.seg);
   const m = geomMap(state);
+  markGlow(m);                                          // clear any drop-target glow
+  if (!target) { await setGeom(state, m); return; }     // no window under the drop → keep the new position
+  const ult = (m[target]?.host as string | undefined) ?? target;   // tab into the target's ultimate host
   for (const sgk of Object.keys(m)) if (m[sgk]?.host === d.seg) m[sgk] = { ...m[sgk], host: ult };  // d.seg's children re-home
   m[d.seg] = { ...(m[d.seg] ?? {}), host: ult };
   m[ult] = { ...(m[ult] ?? {}), tab: d.seg, min: 0 };
@@ -437,6 +486,40 @@ const wsDrop: Fn = (async (state: State, _p: unknown, event?: WEvt & { clientX?:
   bundleSegments(state, members);
 }) as Fn;
 const wsTab: Fn = (async (state: State, payload: unknown): Promise<void> => { const p = payload as { host?: string; tab?: string }; if (!p?.host || !p?.tab) return; const m = geomMap(state); m[p.host] = { ...(m[p.host] ?? {}), tab: p.tab }; await setGeom(state, m); }) as Fn;
+// ── tab drag: reorder among siblings, or tear OFF into a standalone window ────
+// pointerdown on a tab chip records {host, tab} (so a click is still a click —
+// tabDrop with no move re-selects the tab). pointermove over a SIBLING chip
+// rewrites win.geom[seg].order so the strip re-renders in the dragged order;
+// pointerup OUTSIDE the host window tears the tab off (reuse winsheet.tearoff).
+const wsTabGrab: Fn = (async (state: State, payload: unknown, event?: WEvt): Promise<void> => {
+  const p = payload as TabDrag | undefined; if (!p?.host || !p?.tab) return; wcap(event);
+  await setWtabdrag(state, { host: p.host, tab: p.tab });
+}) as Fn;
+const wsTabMove: Fn = (async (state: State, _payload: unknown, event?: WEvt & { clientX?: number; clientY?: number }): Promise<void> => {
+  const d = wtabdrag(state); if (!d) return;
+  const over = tabAtPoint(wnum(event?.clientX), wnum(event?.clientY));
+  if (!over || over === d.tab) return;                  // not over a different sibling → nothing to reorder
+  const m = geomMap(state);
+  const order = tabOrderOf(m, d.host);
+  const from = order.indexOf(d.tab), to = order.indexOf(over);
+  if (from < 0 || to < 0 || from === to) return;
+  order.splice(to, 0, order.splice(from, 1)[0]!);       // move the dragged tab into the hovered slot
+  order.forEach((seg, i) => { m[seg] = { ...(m[seg] ?? {}), order: i }; });
+  await setGeom(state, m);
+}) as Fn;
+const wsTabDrop: Fn = (async (state: State, _payload: unknown, event?: WEvt & { clientX?: number; clientY?: number }): Promise<void> => {
+  const d = wtabdrag(state); await setWtabdrag(state, null);
+  if (!d) return;
+  // released OFF the host window (not over its titlebar/tabs/body) → tear off.
+  const overWin = winAtPoint(wnum(event?.clientX), wnum(event?.clientY));
+  const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => unknown }> } }).document;
+  const overOwnHost = (doc?.elementsFromPoint?.(wnum(event?.clientX), wnum(event?.clientY)) ?? []).some((e) => {
+    const w = e.closest?.(".pl-window") as { getAttribute?: (a: string) => string | null } | null; return w?.getAttribute?.("data-win") === d.host;
+  });
+  if (!overOwnHost && (overWin === undefined || overWin !== d.host)) { await (wsTearoff as unknown as (s: State, seg: unknown) => Promise<void>)(state, d.tab); return; }
+  // dropped in place over the host → keep the (already-applied) order; ensure active.
+  const m = geomMap(state); m[d.host] = { ...(m[d.host] ?? {}), tab: d.tab }; await setGeom(state, m);
+}) as Fn;
 const wsTearoff: Fn = (async (state: State, seg: unknown): Promise<void> => { const k = String(seg); const m = geomMap(state); const g = m[k] ?? {}; m[k] = { ...g, host: undefined, x: wnum(g.x, 80) + 40, y: wnum(g.y, 80) + 40, z: await nextZ(state) }; await setGeom(state, m); }) as Fn;
 const wsRaise: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), z }; await setGeom(state, m); }) as Fn;
 const wsMin: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 1 }; await setGeom(state, m); }) as Fn;
@@ -526,5 +609,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["sheetView", sheetView],
   ["winsheet.grab", wsGrab], ["winsheet.move", wsMove], ["winsheet.grabResize", wsGrabResize], ["winsheet.resizeMove", wsResizeMove],
   ["winsheet.drop", wsDrop], ["winsheet.tab", wsTab], ["winsheet.tearoff", wsTearoff], ["winsheet.raise", wsRaise], ["winsheet.minimize", wsMin], ["winsheet.close", wsClose], ["winsheet.restore", wsRestore], ["winsheet.maximize", wsMax], ["winsheet.mid", wsMid], ["winsheet.stop", wsStop],
+  ["winsheet.tabGrab", wsTabGrab], ["winsheet.tabMove", wsTabMove], ["winsheet.tabDrop", wsTabDrop],
   ["winsheet.syncBundles", wsSyncBundles], ["winsheet.newtab", wsNewtab],
 ]));

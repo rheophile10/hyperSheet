@@ -230,7 +230,7 @@ test("editing 元's formula RE-DRAINS genesis: a genesis-producing formula re-cr
   // the boot desktop is now SHEETS (the turtles pattern): readme/clients/turtles
   // worksheet windows, not state-cel windows.
   assert.ok(state.cels.get("turtles.A1"), "boot desktop materialized the turtles sheet");
-  assert.ok(state.cels.get("readmedata.A1"), "…and the readme data sheet");
+  assert.ok(state.cels.get("readme.A1"), "…and the readme sheet");
   // edit 元 to a DIFFERENT genesis formula → its windows must appear and the
   // old desktop's sheets (owned by 元) sweep
   await put(state, root, m, '=winapp("hello", "Hello", "(dom \\"p\\" \\"hi\\")")');
@@ -239,7 +239,7 @@ test("editing 元's formula RE-DRAINS genesis: a genesis-producing formula re-cr
   assert.ok(!state.cels.get("turtles.A1"), "the old desktop's sheets swept (元 is authoritative)");
   // clear 元 → the readme/desktop seed restores its sheets again
   await put(state, root, m, "");
-  assert.ok(state.cels.get("readmedata.A1"), "clearing 元 re-drains the desktop genesis (sheets back)");
+  assert.ok(state.cels.get("readme.A1"), "clearing 元 re-drains the desktop genesis (sheets back)");
   assert.ok(!state.cels.get("win.hello.state"), "the interim window is gone with its formula");
 });
 

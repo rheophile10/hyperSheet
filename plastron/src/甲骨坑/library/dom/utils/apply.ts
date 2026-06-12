@@ -39,8 +39,17 @@ interface ElementLike extends NodeLike, Listenable {
 
 export interface DocLike {
   createElement(tag: string): ElementLike;
+  createElementNS?(ns: string, tag: string): ElementLike;
   createTextNode(s: string): TextLike;
 }
+
+// svg/path/g/… live in the SVG namespace; createElement makes inert HTML
+// elements that never render. Once inside an <svg>, every descendant is built
+// with createElementNS so a formula's inline icon paints.
+const SVG_NS = "http://www.w3.org/2000/svg";
+const isSvgRoot = (tag: string): boolean => tag === "svg";
+const makeEl = (doc: DocLike, tag: string, svg: boolean): ElementLike =>
+  (svg && doc.createElementNS) ? doc.createElementNS(SVG_NS, tag) : doc.createElement(tag);
 
 export const applyPatch = (
   target: ElementLike,
@@ -161,14 +170,15 @@ const applyPatchToChild = (
   }
 };
 
-const createNode = (v: VNode, reg: ListenerRegistry, state: State, doc: DocLike): NodeLike => {
+const createNode = (v: VNode, reg: ListenerRegistry, state: State, doc: DocLike, svg = false): NodeLike => {
   if (v.type === "text") return doc.createTextNode((v as VText).text);
   const ve = v as VElement;
-  const el = doc.createElement(ve.tag);
+  const inSvg = svg || isSvgRoot(ve.tag);
+  const el = makeEl(doc, ve.tag, inSvg);
   if (ve.attrs) for (const [k, val] of Object.entries(ve.attrs)) writeAttr(el, k, val);
   if (ve.style) for (const [k, val] of Object.entries(ve.style)) writeStyle(el, k, val);
   if (ve.events) attachEvents(el, ve.events, reg, state);
-  if (ve.children) for (const c of ve.children) el.appendChild(createNode(c, reg, state, doc));
+  if (ve.children) for (const c of ve.children) el.appendChild(createNode(c, reg, state, doc, inSvg));
   return el;
 };
 

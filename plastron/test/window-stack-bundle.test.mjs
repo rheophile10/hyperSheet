@@ -52,3 +52,17 @@ test("releasing in empty space (no window under the pointer) does NOT bundle", a
   await drop(s, "win.a.state");
   assert.equal(canGet(s, "win.a", "win.b"), false, "no titlebar under the drop → no stack");
 });
+
+test("drop-target GLOW: dragging a window over another sets the target's glow; drop clears it", async () => {
+  const s = createInitialState();
+  await mkWin(s, "win.a"); await mkWin(s, "win.b");
+  // begin a drag of win.a and move it over win.b's titlebar (stubbed)
+  await resolveFn(s, "setCel")(s, "winx.drag", { celType: "ValueCel", v: { ref: "win.a.state", ox: 0, oy: 0 }, metadata: { segment: "windows", name: "drag" } });
+  stubDrop("win.b.state");
+  await resolveFn(s, "winx.move")(s, null, { clientX: 100, clientY: 30 });
+  assert.equal(s.cels.get("win.b.state").v.glow, 1, "the window under the pointer GLOWS (drop target)");
+  assert.ok(!s.cels.get("win.a.state").v.glow, "the dragged window itself does not glow");
+  // drop clears all glow
+  await resolveFn(s, "winx.drop")(s, null, { clientX: 100, clientY: 30 });
+  assert.ok(!s.cels.get("win.b.state").v.glow, "glow cleared on drop");
+});

@@ -100,17 +100,15 @@ test('the "+" newtab handler creates a blank 10×10 sheet TABBED into the clicke
   assert.equal(state.cels.get("win.geom")?.v?.tab1?.host, "turtles", "tab1 hosted by turtles");
 });
 
-test("README renders from its data sheet: readme.A1 mounts readmedata.A1 (tabbed pair)", async () => {
+test("README is ONE sheet: readme.A1 holds the dom vnode and renders directly in its cell (no separate render formula)", async () => {
   const { state, root } = await boot();
-  // the data sheet holds the readme dom; the formula sheet mounts it
-  assert.equal(state.cels.get("readmedata.A1")?.v?.tag, "div", "readmedata.A1 holds the readme dom vnode");
-  const readmeVal = state.cels.get("readme.A1")?.v;
-  assert.equal(readmeVal?.__mount, ".origin", "readme.A1 is a mount of the data sheet's content");
-  assert.equal(readmeVal?.vnode?.attrs?.class, "readme", "…mounting the readme div from readmedata");
-  // it's tabbed [readmedata | readme] and the readme actually renders in the DOM
-  assert.equal(state.cels.get("win.geom")?.v?.readme?.host, "readmedata", "readme tabbed into readmedata");
-  assert.equal(canGet(state, "readme", "readmedata"), true, "readme reads its data sheet via the tab bundle");
-  assert.ok(walk(root, (n) => String(n.attrs?.class ?? "") === "readme")[0], "the readme rendered (mounted under .origin)");
+  // one readme sheet; A1 IS the readme dom vnode, rendered in place in the cell.
+  assert.equal(state.cels.get("readme.A1")?.v?.tag, "div", "readme.A1 holds the readme dom vnode");
+  assert.equal(state.cels.get("readme.A1")?.v?.attrs?.class, "readme", "…the readme div");
+  // no separate readmedata sheet, and readme is NOT tabbed into another sheet.
+  assert.equal(state.cels.get("readmedata.A1"), undefined, "the readmedata sheet is gone (merged into readme)");
+  assert.equal(state.cels.get("win.geom")?.v?.readme, undefined, "readme is its OWN standalone window (not tabbed)");
+  assert.ok(walk(root, (n) => String(n.attrs?.class ?? "") === "readme")[0], "the readme rendered in its cell");
 });
 
 test("Chat renders from the clients sheet: chat.A1 builds the panel from clients.A1/A2 (tabbed pair)", async () => {

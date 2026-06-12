@@ -139,15 +139,25 @@ test("double-click: opens the inline editor for the cell", async () => {
   assert.ok(hasEditor(root, "turtles.B4"), "the inline editor opened");
 });
 
-// ── 3) the fire (🔫) button ──────────────────────────────────────────────────
+// ── 3) the fire (gun) button ──────────────────────────────────────────────────
 
-test("fire: the bar's LEFT 🔫 button dispatches origin.fire for the selected cell", async () => {
+test("fire: the bar's gun (SVG) button dispatches origin.fire; bar order is [W wiki][gun][textarea]", async () => {
   const { state, root, m } = await boot();
   await resolveFn(state, "origin.select")(state, "turtles.B4"); m.run();
   const bar = fxbarOf(root, "turtles");
   const fire = byClass(bar, "pl-fxbar-fire")[0];
-  assert.ok(fire, "the formula bar has a 🔫 fire button on the left");
-  assert.equal(txt(fire), "🔫", "the fire glyph");
+  assert.ok(fire, "the formula bar has a gun fire button");
+  // the gun is an inline SVG pistol, not the 🔫 emoji
+  const svg = walk(fire, (n) => n.tag === "svg")[0];
+  assert.ok(svg, "the fire button holds an inline <svg> gun (not the emoji)");
+  assert.ok(walk(svg, (n) => n.tag === "path" && !!n.attrs?.d)[0], "the svg has a <path> with a d");
+  assert.ok(!/🔫/.test(txt(fire)), "no water-pistol emoji");
+  // left-to-right order in the bar: W wiki, then gun fire, then the textarea
+  const kids = bar.childNodes.filter((n) => n.nodeType === 1);
+  const cls = (n) => String(n.attrs?.class ?? "");
+  assert.ok(cls(kids[0]).includes("pl-fxbar-wiki"), "W wiki is leftmost");
+  assert.ok(cls(kids[1]).includes("pl-fxbar-fire"), "gun fire is next");
+  assert.ok(cls(kids[2]).includes("pl-fxbar-input"), "the formula textarea is last");
   // spy on origin.fire — clicking the button must dispatch it with the selected key
   const cel = state.cels.get("origin.fire");
   let fired = null;
@@ -156,10 +166,10 @@ test("fire: the bar's LEFT 🔫 button dispatches origin.fire for the selected c
   try {
     fire.fire("click");
     await new Promise((r) => setTimeout(r, 0));
-    assert.equal(fired, "turtles.B4", "the 🔫 button dispatches origin.fire with the selected cell key");
+    assert.equal(fired, "turtles.B4", "the gun button dispatches origin.fire with the selected cell key");
   } finally { cel._fn = orig; }
   // there is NO ƒx label any more
-  assert.ok(!byClass(bar, "pl-fxbar-label")[0], "the ƒx label is gone (replaced by 🔫)");
+  assert.ok(!byClass(bar, "pl-fxbar-label")[0], "the ƒx label is gone");
 });
 
 test("fire: origin.fire re-evaluates a formula cell", async () => {
@@ -202,7 +212,7 @@ test("cell value: selection does NOT inject text into .cell-value", async () => 
 
 // ── 5) the bar's wiki affordance ─────────────────────────────────────────────
 
-test("wiki: the formula bar carries a ? wiki affordance dispatching wiki.open for the selected cell", async () => {
+test("wiki: the formula bar carries a W wiki affordance dispatching wiki.open for the selected cell", async () => {
   const { state, root, m } = await boot();
   await resolveFn(state, "origin.select")(state, "turtles.B4"); m.run();
   const cel = state.cels.get("wiki.open");
@@ -212,11 +222,62 @@ test("wiki: the formula bar carries a ? wiki affordance dispatching wiki.open fo
   try {
     const bar = fxbarOf(root, "turtles");
     const wiki = byClass(bar, "pl-fxbar-wiki")[0];
-    assert.ok(wiki, "the formula bar has a ? wiki affordance");
+    assert.ok(wiki, "the formula bar has a W wiki affordance");
+    assert.equal(txt(wiki), "W", "the wiki glyph is W");
     wiki.fire("click");
     await new Promise((r) => setTimeout(r, 0));
     assert.equal(opened, "turtles.B4", "the bar's wiki affordance dispatches wiki.open for the selected cell");
   } finally { cel._fn = orig; }
+});
+
+// ── 6) formula bar default height + wrapping ─────────────────────────────────
+
+test("formula bar: default is a TALL multi-line box that wraps (no horizontal scrollbar)", async () => {
+  const { state, root, m } = await boot();
+  await resolveFn(state, "origin.select")(state, "turtles.B4"); m.run();
+  const input = fxInput(root, "turtles");
+  assert.ok(input, "the bar has a textarea");
+  const style = String(input.attrs?.style ?? "");
+  assert.match(style, /min-height:7\.5rem/, "default min-height is substantially tall (~7.5rem)");
+  assert.match(style, /white-space:pre-wrap/, "text wraps (pre-wrap)");
+  assert.match(style, /overflow-x:hidden/, "no horizontal scrollbar");
+  assert.match(style, /word-break:break-word/, "long tokens break");
+  assert.match(style, /resize:vertical/, "still user-resizable (vertical)");
+  assert.doesNotMatch(style, /max-height/, "no max-height cap — drag it as tall as you like");
+});
+
+// ── 7) tab drag: reorder + tear-off ──────────────────────────────────────────
+
+test("tab reorder: dragging a tab over a sibling rewrites win.geom order; the strip renders by it", async () => {
+  const { state, m } = await boot();
+  // tab a fresh blank sheet into turtles so the strip is [turtles | turtlecharts | tab1]
+  await resolveFn(state, "winsheet.newtab")(state, "turtles"); m.run();
+  const sibs = () => Object.keys(state.cels.get("win.geom").v).filter((k) => k === "turtles" || state.cels.get("win.geom").v[k]?.host === "turtles");
+  const tabs = sibs();
+  assert.ok(tabs.length >= 3, "turtles now hosts >=2 tabs");
+  // stub elementsFromPoint so tabAtPoint(...) reports we're hovering turtles' chip
+  const hovered = "turtles";
+  globalThis.document.elementsFromPoint = () => [{ closest: (s) => (s === ".pl-tab" ? { getAttribute: () => hovered } : null) }];
+  const dragged = tabs.find((t) => t !== "turtles"); // drag a non-turtles tab onto turtles' slot
+  await resolveFn(state, "winsheet.tabGrab")(state, { host: "turtles", tab: dragged }, { clientX: 0, clientY: 0, pointerId: 1 });
+  await resolveFn(state, "winsheet.tabMove")(state, { host: "turtles", tab: dragged }, { clientX: 10, clientY: 0 });
+  const geom = state.cels.get("win.geom").v;
+  assert.equal(typeof geom[dragged]?.order, "number", "the dragged tab got an explicit order");
+  // dragged should now sort before turtles (it took turtles' slot)
+  const ordered = sibs().sort((a, b) => (geom[a]?.order ?? 99) - (geom[b]?.order ?? 99));
+  assert.ok(ordered.indexOf(dragged) < ordered.indexOf("turtles"), "the dragged tab moved ahead of turtles");
+  delete globalThis.document.elementsFromPoint;
+});
+
+test("tab tear-off (drag): releasing a tab OFF its window clears its host → standalone window", async () => {
+  const { state, m } = await boot();
+  await resolveFn(state, "winsheet.newtab")(state, "turtles"); m.run();
+  const tab = Object.keys(state.cels.get("win.geom").v).find((k) => state.cels.get("win.geom").v[k]?.host === "turtles");
+  assert.ok(tab, "a tab hosted by turtles exists");
+  // no elementsFromPoint on the mock document → drop lands in empty space → tear off
+  await resolveFn(state, "winsheet.tabGrab")(state, { host: "turtles", tab }, { clientX: 0, clientY: 0, pointerId: 1 });
+  await resolveFn(state, "winsheet.tabDrop")(state, { host: "turtles", tab }, { clientX: 900, clientY: 600 });
+  assert.equal(state.cels.get("win.geom").v[tab]?.host, undefined, "the torn-off tab has no host (standalone)");
 });
 
 // ── 6) the max / mid titlebar toggle ─────────────────────────────────────────

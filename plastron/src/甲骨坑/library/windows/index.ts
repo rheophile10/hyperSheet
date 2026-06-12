@@ -186,7 +186,7 @@ const winFn: Fn = ((key: unknown, title: unknown, content: unknown, x?: unknown,
 // write to that cel BY ITS REF, so to close/open/move/repaint a window you just
 // modify its state value; the frame re-renders. winmake() genesis-creates the
 // state cel + the frame; sheetView ignores it (no grid cells), so no double-window.
-interface WinState { ref?: string; x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; max?: number; closed?: number; title?: string; linked?: string[] }
+interface WinState { ref?: string; x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; max?: number; closed?: number; title?: string; linked?: string[]; glow?: number }
 const segOf = (ref: string): string => ref.replace(/\.state$/, "");
 const stateOf = (state: State, ref: string): WinState => { const v = state.cels.get(ref)?.v; return (v && typeof v === "object" && !Array.isArray(v)) ? { ...(v as WinState) } : {}; };
 const setState = (state: State, ref: string, patch: WinState): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, ref, { ...stateOf(state, ref), ...patch })).then(() => repaint(state));
@@ -209,7 +209,10 @@ const frameFn: Fn = ((st: unknown, active: unknown, content: unknown): V => {
   const gg = globalThis as { innerWidth?: number; innerHeight?: number };
   const x = s.max ? 0 : num(s.x, 80), y = s.max ? 0 : num(s.y, 80), w = s.max ? num(gg.innerWidth, 1200) : num(s.w, 380), h = s.max ? num(gg.innerHeight, 800) - 46 : num(s.h, 260), z = num(s.z, 1);
   const body = isVnode(content) ? content : T(content == null ? "" : String(content));
-  return el("div", { class: "pl-window" + (isActive ? " active" : ""), "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:${isActive ? "2px solid #4a90d9" : "1px solid #8886"};border-radius:6px;background:Canvas;box-shadow:${isActive ? "0 6px 22px #4a90d966" : "0 4px 16px #0004"};overflow:hidden` }, [
+  // a drop-target GLOW while another window is dragged over this one (winx.drop
+  // stacks them); cleared on leave/drop. Wins over the active highlight.
+  const glowOutline = s.glow ? ";outline:3px solid #4a90d9;outline-offset:1px" : "";
+  return el("div", { class: "pl-window" + (isActive ? " active" : "") + (s.glow ? " drop-target" : ""), "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:${isActive ? "2px solid #4a90d9" : "1px solid #8886"};border-radius:6px;background:Canvas;box-shadow:${s.glow ? "0 0 0 3px #4a90d955,0 6px 22px #4a90d966" : (isActive ? "0 6px 22px #4a90d966" : "0 4px 16px #0004")}${glowOutline};overflow:hidden` }, [
     el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
       el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(String((s.linked?.length ? "🔗 " : "") + (s.title ?? ref)))]),
       el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
@@ -229,8 +232,28 @@ const frameFn: Fn = ((st: unknown, active: unknown, content: unknown): V => {
   ], { pointerdown: { dispatch: "winx.raise", payload: ref } });
 }) as Fn;
 
+// the data-win of a state-cel window's titlebar under (x,y), excluding selfRef.
+const winRefAtPoint = (x: number, y: number, selfRef?: string): string | undefined => {
+  const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => { getAttribute?: (a: string) => string | null } | null }> } }).document;
+  for (const e of doc?.elementsFromPoint?.(x, y) ?? []) {
+    if (!e.closest?.(".pl-titlebar")) continue;
+    const w = e.closest?.(".pl-window"); const dw = (w as { getAttribute?: (a: string) => string | null } | null)?.getAttribute?.("data-win") ?? undefined;
+    if (dw && dw !== selfRef) return dw;
+  }
+  return undefined;
+};
+// set/clear the glow flag across all state-cel windows so exactly `target` (a
+// .state ref) glows. Repaints once via setState's drain.
+const setGlowState = async (state: State, target?: string): Promise<void> => {
+  for (const [k, cel] of state.cels) {
+    if (!k.endsWith(".state")) continue;
+    const v = cel.v as WinState | undefined; if (!v || typeof v !== "object") continue;
+    const want = k === target ? 1 : undefined;
+    if ((v.glow ? 1 : undefined) !== want) await setState(state, k, { glow: want });
+  }
+};
 const xGrab: Fn = (async (state: State, ref: unknown, event?: DomEvt): Promise<void> => { capture(event); const s = stateOf(state, String(ref)); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", { ref: String(ref), ox: num(event?.clientX) - num(s.x, 80), oy: num(event?.clientY) - num(s.y, 80) })); }) as Fn;
-const xMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d || d.resize) return; await setState(state, d.ref, { x: num(event?.clientX) - d.ox, y: num(event?.clientY) - d.oy }); }) as Fn;
+const xMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d || d.resize) return; await setState(state, d.ref, { x: num(event?.clientX) - d.ox, y: num(event?.clientY) - d.oy }); await setGlowState(state, winRefAtPoint(num(event?.clientX), num(event?.clientY), d.ref)); }) as Fn;
 const xGrabResize: Fn = (async (state: State, ref: unknown, event?: DomEvt): Promise<void> => { capture(event); const s = stateOf(state, String(ref)); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", { ref: String(ref), ox: num(event?.clientX) - num(s.w, 380), oy: num(event?.clientY) - num(s.h, 260), resize: true })); }) as Fn;
 const xResizeMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d?.resize) return; await setState(state, d.ref, { w: Math.max(160, num(event?.clientX) - d.ox), h: Math.max(90, num(event?.clientY) - d.oy) }); }) as Fn;
 // xDrop — release. If a window was dropped ONTO another window's titlebar, STACK
@@ -242,16 +265,9 @@ const xResizeMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Prom
 const xDrop: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => {
   const d = xdrag(state);
   await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", null));
+  await setGlowState(state);                            // clear any drop-target glow
   if (!d || d.resize || !event) return;
-  const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => { getAttribute?: (a: string) => string | null } | null }> } }).document;
-  const els = doc?.elementsFromPoint?.(num(event.clientX), num(event.clientY)) ?? [];
-  let target: string | undefined;
-  for (const e of els) {
-    if (!e.closest?.(".pl-titlebar")) continue;
-    const w = e.closest?.(".pl-window");
-    const dw = (w as { getAttribute?: (a: string) => string | null } | null)?.getAttribute?.("data-win") ?? undefined;
-    if (dw && dw !== d.ref) { target = dw; break; }
-  }
+  const target = winRefAtPoint(num(event.clientX), num(event.clientY), d.ref);
   if (!target) return;
   const a = segOf(d.ref), b = segOf(target);
   bundleSegments(state, [a, b]);

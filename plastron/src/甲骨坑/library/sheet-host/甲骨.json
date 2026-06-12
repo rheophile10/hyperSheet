@@ -9,7 +9,7 @@
         "segment": "sheet-host",
         "name": "sheetView",
         "kind": "native",
-        "description": "(cfg editing draft mount error keys vals srcs geom selected selectedSrc) - spreadsheet RenderSpec producer: each worksheet table wrapped in a draggable window frame. Single-click SELECTS a cell (origin.select sets 元.selected) and the cell KEEPS rendering its value; the window's formula bar shows the SELECTED cell's source (bound to 元.draft) and commits on Enter (origin.key) to 元.selected. Double-click opens the inline editor. The bar's LEFT button is 🔫 fire (origin.fire — re-evaluate the selected cell); the right is ? wiki. The bar textarea has no max-height (resize:vertical, box-sizing:border-box) so it can fill the window. Cells render clean (no per-cell ✎/? glyphs). The titlebar shows exactly one of ◱ (mid/restore, when maximized) and ⛶ (maximize, when not), plus – minimize and ✕ close."
+        "description": "(cfg editing draft mount error keys vals srcs geom selected selectedSrc) - spreadsheet RenderSpec producer: each worksheet table wrapped in a draggable window frame. Single-click SELECTS a cell (origin.select sets 元.selected) and the cell KEEPS rendering its value; the window's formula bar shows the SELECTED cell's source (bound to 元.draft) and commits on Enter (origin.key) to 元.selected. Double-click opens the inline editor. Formula bar order is left-to-right [W wiki][gun fire][textarea]: the gun is an inline SVG pistol (origin.fire — re-evaluate the selected cell), the W opens the wiki. The bar textarea defaults to a tall multi-line box (min-height ~7.5rem) and wraps (pre-wrap, no horizontal scrollbar); resize:vertical lets the user grow it further. Tabs render by win.geom[seg].order; dragging a tab chip reorders it among siblings (winsheet.tabMove) or, released off the window, tears it into its own window (winsheet.tabDrop -> tearoff). Dragging a window/tab over another window glows the target (win.geom[seg].glow) to show where it will land. Cells render clean (no per-cell glyphs). The titlebar shows exactly one of ◱ (mid/restore, when maximized) and ⛶ (maximize, when not), plus – minimize and ✕ close."
       },
       "locked": true
     },
@@ -177,7 +177,54 @@
         "segment": "sheet-host",
         "name": "winsheet.tearoff",
         "kind": "native",
-        "description": "tear a tab out of its host into a standalone window"
+        "description": "(state, seg) - tear a tab out of its host into a standalone window: clear win.geom[seg].host and offset its position. Reached by double-clicking a tab OR by dragging a tab OUT of its window (winsheet.tabDrop)."
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.tabdrag",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "winsheet.tabdrag",
+        "segment": "sheet-host",
+        "name": "winsheet.tabdrag",
+        "description": "in-progress tab drag { host, tab } (null when idle); set on a tab chip's pointerdown, drives reorder/tear-off, cleared on pointerup."
+      },
+      "v": null
+    },
+    {
+      "key": "winsheet.tabGrab",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.tabGrab",
+        "segment": "sheet-host",
+        "name": "winsheet.tabGrab",
+        "kind": "native",
+        "description": "(state, { host, tab }, event) - pointerdown on a tab chip: capture the pointer and record winsheet.tabdrag so a drag can reorder the tab or tear it off (a plain click still selects the tab)."
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.tabMove",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.tabMove",
+        "segment": "sheet-host",
+        "name": "winsheet.tabMove",
+        "kind": "native",
+        "description": "(state, payload, event) - while a tab is dragging, if the pointer is over a SIBLING tab chip, rewrite win.geom[seg].order for the clique so the dragged tab takes the hovered slot — the tab strip re-renders in the new order."
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.tabDrop",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.tabDrop",
+        "segment": "sheet-host",
+        "name": "winsheet.tabDrop",
+        "kind": "native",
+        "description": "(state, payload, event) - pointerup ending a tab drag: if released OFF the host window it TEARS the tab off (winsheet.tearoff); otherwise it keeps the reordered order and activates the tab. Clears winsheet.tabdrag."
       },
       "locked": true
     },
