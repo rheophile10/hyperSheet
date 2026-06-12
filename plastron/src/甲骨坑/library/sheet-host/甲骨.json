@@ -251,6 +251,54 @@
         "description": "(state) - make SEEDED tab relationships grant shared memory like a runtime drop does: scan win.geom and bundleSegments each {host, tabs...} clique, so a sheet minted private-get (a closure) can read its host's cels when win.geom seeds seg.host (e.g. turtlecharts tabbed into turtles reads turtles!). Idempotent; the host calls it after the desktop genesis materializes."
       },
       "locked": true
+    },
+    {
+      "key": "winsheet.newsheet",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.newsheet",
+        "segment": "sheet-host",
+        "name": "winsheet.newsheet",
+        "kind": "native",
+        "description": "(state) - the 🆕 titlebar button: genesis-create a NEW STANDALONE blank 10x10 sheet window (its own fresh segment + private closure), placed untabbed and staggered, NOT tabbed into any host. Reuses the same genesis-materialization as winsheet.newtab but as its own window."
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.savefmt",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.savefmt",
+        "segment": "sheet-host",
+        "name": "winsheet.savefmt",
+        "kind": "native",
+        "description": "(state, seg) - the 💾 titlebar button: toggle the inline save-format chooser on the window (win.geom[seg].savemenu). The chooser shows three buttons CSV / XLSX / .甲 that dispatch winsheet.saveas."
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.saveas",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.saveas",
+        "segment": "sheet-host",
+        "name": "winsheet.saveas",
+        "kind": "native",
+        "description": "(state, { seg, fmt }) - serialize this window's worksheet segment in fmt (csv=values | xlsx=excel values | 甲=rich archive with cels+formulas) via the shared saveSheet, write it to OPFS (/<seg>.<ext>) AND offer a browser download, then close the chooser and refresh the explorer if open."
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.open",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.open",
+        "segment": "sheet-host",
+        "name": "winsheet.open",
+        "kind": "native",
+        "description": "(state) - the 📁 titlebar button: open a browser file picker (.csv/.xlsx/.甲); the chosen file's bytes are handed to the shared openAsSheet, which detects the format by extension and opens it as a NEW standalone sheet window (csv->values grid, xlsx->fromXlsx, 甲->rich archive reader)."
+      },
+      "locked": true
     }
   ]
 }

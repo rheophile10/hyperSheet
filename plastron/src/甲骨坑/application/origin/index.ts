@@ -8,6 +8,7 @@ import {
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
 // `memo` attaches the diff's O(changed) short-circuit hint (see dom).
 import { el as makeEl, text as T } from "../../library/dom/index.js";
+import { openAsSheet } from "../../library/sheet-host/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -755,7 +756,7 @@ const renderExplorer = (cwd: string, entries: { name: string; isDir: boolean }[]
       // file row: clickable name (preview) + per-file actions (delete/rename/download)
       rows.push(el("div", { class: "fe-row fe-file" + (full === preview ? " fe-sel" : ""), style: rowStyle + (full === preview ? ";background:#4a90d955" : "") },
         [el("span", { class: "fe-name", style: "flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" },
-           [T(`📄 ${e.name}`)], { click: { dispatch: "origin.explorerOpen", payload: full } }),
+           [T(`📄 ${e.name}`)], { click: { dispatch: "origin.explorerOpen", payload: full }, dblclick: { dispatch: "origin.explorerOpenSheet", payload: full } }),
          el("span", { class: "fe-acts", style: "display:flex;gap:.1rem;flex:0 0 auto" }, [
            feAction("🗑", `delete ${e.name}`, "origin.explorerDelete", full),
            feAction("✎", `rename ${e.name}`, "origin.explorerRename", full),
@@ -923,6 +924,22 @@ const explorerOpen: Fn = async (stateArg: unknown, path: unknown) => {
   const state = stateArg as State;
   await setOrCreate(state, "explorer.preview", String(path ?? ""));
   await refreshExplorer(state);
+  return state;
+};
+
+// explorerOpenSheet — double-click a file in the explorer: a .csv/.xlsx/.甲 file
+// OPENS as a new sheet WINDOW (read its OPFS bytes → openAsSheet, which detects
+// the format by extension and materializes a standalone sheet window). Any other
+// file falls back to the text-preview behavior.
+const SHEET_EXTS = new Set(["csv", "xlsx", "xls", "甲"]);
+const explorerOpenSheet: Fn = async (stateArg: unknown, path: unknown) => {
+  const state = stateArg as State;
+  const p = String(path ?? "");
+  if (!SHEET_EXTS.has(fileExt(p))) return explorerOpen(state, p);   // not a sheet → preview
+  await ensureSegments(state, ["file-store"]);
+  const bytes = (await ((resolveFn(state, "fs.read") as Fn)(p) as Promise<Uint8Array>).catch(() => null)) as Uint8Array | null;
+  if (!bytes) return state;
+  await openAsSheet(state, bytes, p.split("/").pop() || p);
   return state;
 };
 
@@ -1309,6 +1326,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["explorer",       explorerFn],
   ["origin.explorerNav",  explorerNav],
   ["origin.explorerOpen", explorerOpen],
+  ["origin.explorerOpenSheet", explorerOpenSheet],
   ["origin.explorerRefresh", explorerRefresh],
   ["origin.explorerDelete", explorerDelete],
   ["origin.explorerRename", explorerRename],

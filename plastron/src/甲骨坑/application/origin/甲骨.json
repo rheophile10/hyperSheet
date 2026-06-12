@@ -558,6 +558,18 @@
       }
     },
     {
+      "key": "origin.explorerOpenSheet",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.explorerOpenSheet",
+        "segment": "origin",
+        "name": "origin.explorerOpenSheet",
+        "kind": "native",
+        "description": "(state, path) - dispatch target on a file row's DOUBLE-click: a .csv/.xlsx/.甲 file is read from OPFS and opened as a NEW standalone sheet window via sheet-host's openAsSheet (format detected by extension: csv->values grid, xlsx->fromXlsx, 甲->rich archive with cels+formulas). Any other file falls back to the single-click text-preview behavior."
+      }
+    },
+    {
       "key": "origin.explorerRefresh",
       "celType": "LockedLambdaCel",
       "locked": true,

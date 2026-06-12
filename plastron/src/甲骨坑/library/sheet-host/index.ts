@@ -1,6 +1,8 @@
 import type { 甲骨, Cel, Fn, State, VElement } from "../../../types/index.js";
 import { bindNativeFns, isSecretHandleRef, resolveFn, bundleSegments, setAccessPolicy, precompute } from "../../../kernel/index.js";
 import { el as makeEl, text as T, memo } from "../dom/index.js";
+import { fromXlsx } from "../xlsx/index.js";
+import { zipBytes, unzipBytes } from "../segment-archive/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -128,7 +130,7 @@ const sheetView: Fn = ((
   const BASE = c.base ?? "元", DRAFT = c.draftCel ?? "元.draft", EDIT = c.editHandler ?? "origin.edit", KEYH = c.keyHandler ?? "origin.key";
   const SELH = c.selectHandler ?? "origin.select", FIREH = c.fireHandler ?? "origin.fire";
   const selectedKey = typeof selected === "string" ? selected : null;   // the SELECTED cell key (Excel single-click; value stays in the grid)
-  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number }> : {};
+  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number; savemenu?: number }> : {};
   // the tab chip currently being dragged (winsheet.tabdrag = {host, tab}); its
   // chip lights up in the SAME blue as a window's drop-target glow.
   const draggedTab = (tabdrag && typeof tabdrag === "object" && !Array.isArray(tabdrag)) ? (tabdrag as { tab?: unknown }).tab : undefined;
@@ -139,16 +141,33 @@ const sheetView: Fn = ((
   const BTN = "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .28rem;line-height:1";
   // ONE of ◱ (mid/restore) and ⛶ (maximize) shows, by state: maximized → ◱
   // (go medium), not maximized → ⛶ (maximize). Never both.
+  // a titlebar button that does NOT start a window drag (pointerdown stops, like
+  // the existing ◱⛶–✕ controls).
+  const tbBtn = (cls: string, glyph: string, title: string, dispatch: string, payload: unknown): V =>
+    el("button", { class: cls, title, style: BTN }, [T(glyph)], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch, payload } });
   const titlebar = (host: string, maxed: boolean): V => el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
     el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(host)]),
     el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
+      tbBtn("pl-save-btn", "💾", "save", "winsheet.savefmt", host),
+      tbBtn("pl-open-btn", "📁", "open", "winsheet.open", host),
+      tbBtn("pl-new-btn", "🆕", "new sheet", "winsheet.newsheet", host),
       maxed
-        ? el("button", { class: "pl-win-btn", title: "mid size", style: BTN }, [T("◱")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.mid", payload: host } })
-        : el("button", { class: "pl-win-btn", title: "maximize", style: BTN }, [T("⛶")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.maximize", payload: host } }),
-      el("button", { class: "pl-min-btn", title: "minimize", style: BTN }, [T("–")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.minimize", payload: host } }),
+        ? tbBtn("pl-win-btn", "◱", "mid size", "winsheet.mid", host)
+        : tbBtn("pl-win-btn", "⛶", "maximize", "winsheet.maximize", host),
+      tbBtn("pl-min-btn", "–", "minimize", "winsheet.minimize", host),
       el("button", { class: "pl-close-btn", title: "close", style: BTN + ";color:#d4453e" }, [T("✕")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.close", payload: host } }),
     ]),
   ], { pointerdown: { dispatch: "winsheet.grab", payload: host }, pointermove: { dispatch: "winsheet.move" }, pointerup: { dispatch: "winsheet.drop" } });
+  // the inline save-format chooser (shown under the titlebar when win.geom[seg]
+  // .savemenu is set): 3 buttons — CSV / XLSX / .甲 — each dispatching
+  // winsheet.saveas with { seg, fmt }. CSV = values; XLSX = values (excel);
+  // .甲 = the rich archive (cels + formulas).
+  const saveMenu = (host: string): V => {
+    const b = (label: string, fmt: string): V => el("button", { class: "pl-savefmt", "data-fmt": fmt, style: "flex:0 0 auto;border:1px solid #8884;border-radius:.3rem;background:Canvas;color:CanvasText;cursor:pointer;font:600 .74rem ui-monospace,monospace;padding:.2rem .55rem" }, [T(label)], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.saveas", payload: { seg: host, fmt } } });
+    return el("div", { class: "pl-savemenu", style: "flex:0 0 auto;display:flex;gap:.3rem;align-items:center;padding:.25rem .5rem;background:#8881;border-bottom:1px solid #8883;font:600 .72rem ui-monospace,monospace" }, [
+      el("span", { style: "color:#888;margin-right:.1rem" }, [T("save as:")]), b("CSV", "csv"), b("XLSX", "xlsx"), b(".甲", "甲"),
+    ]);
+  };
   // a window may HOST others as TABS (win.geom[seg].host === this). It renders a
   // tab strip + the active tab's table; the others' standalone windows are gone.
   // does cell `key` belong to worksheet segment `seg`? (base 元 is its own
@@ -209,6 +228,7 @@ const sheetView: Fn = ((
     const glow = g.glow ? ";outline:3px solid #4a90d9;outline-offset:1px;box-shadow:0 0 0 3px #4a90d955,0 4px 16px #0004" : ";box-shadow:0 4px 16px #0004";
     return el("div", { class: "pl-window" + (g.glow ? " drop-target" : ""), "data-win": host, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas${glow};overflow:hidden` }, [
       titlebar(host, !!g.max),
+      ...(g.savemenu ? [saveMenu(host)] : []),
       ...(tabStrip ? [tabStrip] : []),
       formulaBar(tabs),
       el("div", { class: "pl-window-body", style: "flex:1 1 auto;overflow:auto;padding:.25rem;min-height:0" }, [activeTable]),
@@ -406,7 +426,7 @@ const sheetView: Fn = ((
 // {x,y,w,h,z,min} } — so the cell set isn't cluttered with per-axis cels and
 // sheetView gets it as one input. The handlers update that map; the cells inside
 // a window are unchanged, so editing/selection still work as before.
-interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number }
+interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number; savemenu?: number }
 interface WWinEl { offsetLeft?: number; offsetTop?: number }
 interface WEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void; closest?: (s: string) => WWinEl | null }; stopPropagation?: () => void }
 // win.geom is in 元.view's inputMap, so a geom change re-fires the view — but
@@ -589,30 +609,47 @@ const wsSyncBundles: Fn = (async (state: State): Promise<void> => {
 // The sheet is owned by a stable generator cel (<seg>.maker) so its cells render
 // (generatedBy-stamped) and persist; the maker itself stays off the grid.
 const colA = (n: number): string => { let s = "", x = n + 1; while (x > 0) { s = String.fromCharCode(65 + (x - 1) % 26) + s; x = Math.floor((x - 1) / 26); } return s; };
-const wsNewtab: Fn = (async (state: State, host: unknown): Promise<void> => {
-  const h = String(host ?? "");
-  if (!h) return;
-  // a fresh, unused sheet segment name (tab1, tab2, …)
-  let n = 1; while (state.cels.get(`tab${n}.maker`) || geomMap(state)[`tab${n}`]) n++;
-  const seg = `tab${n}`, maker = `${seg}.maker`;
-  const cels: Record<string, unknown> = {};
-  for (let r = 0; r < 10; r++) for (let c = 0; c < 10; c++) {
+
+// a fresh, unused sheet segment name with the given prefix (sheet1, sheet2, …).
+const freshSeg = (state: State, prefix: string): string => {
+  let n = 1; while (state.cels.get(`${prefix}${n}.maker`) || geomMap(state)[`${prefix}${n}`]) n++;
+  return `${prefix}${n}`;
+};
+
+// materializeSheet — the shared "make a worksheet segment from a cels record"
+// engine behind newtab/newsheet/openAsSheet. `cells` maps full cel keys
+// (`<seg>.A1`) to CelSpecs ({celType, v|f, metadata}). It builds a maker cel
+// holding the genesis request, feeds it to genesis.drain (which stamps each cell
+// generatedBy=<maker>, mints the closure, materializes the grid), then asserts
+// the closure policy. The maker stays off the grid. Caller positions the window
+// + repaints. A blank N×N sheet is just blankCells(seg, n).
+const blankCells = (seg: string, rows: number, cols: number): Record<string, unknown> => {
+  const cells: Record<string, unknown> = {};
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const addr = `${colA(c)}${r + 1}`;
-    cels[`${seg}.${addr}`] = { celType: "ValueCel", v: "", metadata: { segment: seg, name: addr, parser: "infix" } };
+    cells[`${seg}.${addr}`] = { celType: "ValueCel", v: "", metadata: { segment: seg, name: addr, parser: "infix" } };
   }
-  // the maker is a ValueCel holding a genesis request; we feed it straight to the
-  // genesis drain (as one synthetic channel item), which stamps each cell
-  // generatedBy=<maker>, mints the segment's closure policy, and materializes the
-  // grid. A live maker cel keeps the bloom from being swept (its generator exists).
+  return cells;
+};
+const materializeSheet = async (state: State, seg: string, cells: Record<string, unknown>): Promise<void> => {
+  const maker = `${seg}.maker`;
   const makerCel = {
     celType: "ValueCel" as const,
-    v: { genesis: true, layer: seg, access: { get: ["origin"], set: "private" }, cels },
+    v: { genesis: true, layer: seg, access: { get: ["origin"], set: "private" }, cels: cells },
     metadata: { key: maker, segment: seg, name: "maker" },
     locked: false,
   };
   state.cels.set(maker, makerCel);
   const gd = resolveFn(state, "genesis.drain") as Fn | undefined;
   if (gd) await gd([{ cel: makerCel, state }], state);
+  setAccessPolicy(state, seg, { get: ["origin"], set: "private" });
+};
+
+const wsNewtab: Fn = (async (state: State, host: unknown): Promise<void> => {
+  const h = String(host ?? "");
+  if (!h) return;
+  const seg = freshSeg(state, "tab");
+  await materializeSheet(state, seg, blankCells(seg, 10, 10));
   // tab the new sheet into the clicked host + bundle the clique (shared memory)
   const ult = (geomMap(state)[h]?.host as string | undefined) ?? h;
   const m = geomMap(state);
@@ -620,16 +657,219 @@ const wsNewtab: Fn = (async (state: State, host: unknown): Promise<void> => {
   m[ult] = { ...(m[ult] ?? {}), tab: seg, min: 0, closed: 0 };
   await setGeom(state, m);
   bundleSegments(state, [ult, ...Object.keys(m).filter((k) => m[k]?.host === ult)]);
-  // setAccessPolicy already ran via genesis (mints), but assert it in case the
-  // segment was undeclared (defensive — a closure even if drain skipped). get
-  // lists `origin` so the host view renders the new sheet's cells.
-  setAccessPolicy(state, seg, { get: ["origin"], set: "private" });
   // rebuild the view's cell list so the new sheet's cells show, then repaint.
   if (state.cels.get("view.refresh")) await Promise.resolve((resolveFn(state, "view.refresh") as Fn)(state));
   await wrepaint(state);
 }) as Fn;
 
+// place a freshly-materialized sheet segment as a STANDALONE window (untabbed),
+// staggered so it doesn't sit exactly under the host. Then refresh the view +
+// repaint so its cells render.
+const placeStandalone = async (state: State, seg: string): Promise<void> => {
+  const m = geomMap(state);
+  const i = Object.keys(m).length;
+  m[seg] = { ...(m[seg] ?? {}), host: undefined, x: 60 + (i % 6) * 34, y: 60 + (i % 6) * 34, z: await nextZ(state), min: 0, closed: 0 };
+  await setGeom(state, m);
+  if (state.cels.get("view.refresh")) await Promise.resolve((resolveFn(state, "view.refresh") as Fn)(state));
+  await wrepaint(state);
+};
+
+// winsheet.newsheet — the 🆕 titlebar button: a NEW standalone blank 10×10 sheet
+// window (its own segment + closure), NOT tabbed into anything.
+const wsNewsheet: Fn = (async (state: State): Promise<void> => {
+  const seg = freshSeg(state, "sheet");
+  await materializeSheet(state, seg, blankCells(seg, 10, 10));
+  await placeStandalone(state, seg);
+}) as Fn;
+
+// ── format serialization: CSV / XLSX / .甲 (the shared saveSheet) ─────────────
+// the grid cels of a worksheet segment as { addr → {v, f} }, plus the grid's
+// extent. A grid cel is `<seg>.A1` (an A1-addressed Value/Formula cel).
+const A1RE = /^([A-Z]+)(\d+)$/;
+const colNum = (letters: string): number => { let n = 0; for (const ch of letters) n = n * 26 + (ch.charCodeAt(0) - 64); return n; };
+const gridCells = (state: State, seg: string): { addr: string; col: number; row: number; v: unknown; f?: string }[] => {
+  const out: { addr: string; col: number; row: number; v: unknown; f?: string }[] = [];
+  const prefix = `${seg}.`;
+  for (const [k, c] of state.cels) {
+    if (!k.startsWith(prefix)) continue;
+    if (c.celType !== "ValueCel" && c.celType !== "FormulaCel") continue;
+    const addr = (c.metadata as { name?: string }).name ?? k.slice(prefix.length);
+    const m = A1RE.exec(addr); if (!m) continue;
+    out.push({ addr, col: colNum(m[1]!), row: Number(m[2]!), v: c.v, f: (c as { f?: string }).f });
+  }
+  return out;
+};
+
+// CSV — a cell's VALUE per row×col (A1 order); a formula serializes its evaluated
+// VALUE (CSV is values-only). RFC-4180 quoting: wrap in quotes when the field
+// holds a comma, quote, or newline; double interior quotes.
+const csvField = (v: unknown): string => {
+  if (v === null || v === undefined) return "";
+  const s = typeof v === "object" ? JSON.stringify(v) : String(v);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+const toCsv = (state: State, seg: string): string => {
+  const cells = gridCells(state, seg);
+  let maxR = 0, maxC = 0;
+  const at = new Map<string, unknown>();
+  for (const c of cells) { at.set(`${c.col},${c.row}`, c.v); maxR = Math.max(maxR, c.row); maxC = Math.max(maxC, c.col); }
+  const lines: string[] = [];
+  for (let r = 1; r <= maxR; r++) {
+    const row: string[] = [];
+    for (let c = 1; c <= maxC; c++) row.push(csvField(at.get(`${c},${r}`)));
+    lines.push(row.join(","));
+  }
+  return lines.join("\n");
+};
+// CSV parse → rows of string fields (RFC-4180: quoted fields, "" escapes, CR/LF).
+const parseCsv = (text: string): string[][] => {
+  const rows: string[][] = []; let row: string[] = [], field = "", inQ = false;
+  const s = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]!;
+    if (inQ) {
+      if (ch === '"') { if (s[i + 1] === '"') { field += '"'; i++; } else inQ = false; }
+      else field += ch;
+    } else if (ch === '"') inQ = true;
+    else if (ch === ",") { row.push(field); field = ""; }
+    else if (ch === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+    else field += ch;
+  }
+  if (field !== "" || row.length) { row.push(field); rows.push(row); }
+  return rows;
+};
+// a CSV's rows → a worksheet cels record: each non-empty field a value cel at its
+// A1 address; numeric-looking fields become numbers (the grid's value model).
+const csvToCells = (seg: string, rows: string[][]): Record<string, unknown> => {
+  const cells: Record<string, unknown> = {};
+  rows.forEach((cols, r) => cols.forEach((field, c) => {
+    if (field === "") return;
+    const num = Number(field);
+    const v = field.trim() !== "" && !Number.isNaN(num) ? num : field;
+    const addr = `${colA(c)}${r + 1}`;
+    cells[`${seg}.${addr}`] = { celType: "ValueCel", v, metadata: { segment: seg, name: addr, parser: "infix" } };
+  }));
+  return cells;
+};
+
+// .甲 (single-sheet plastron archive) — a zip carrying the RICH form: every grid
+// cel's celType + value + formula + metadata, so formulas + types round-trip
+// (unlike CSV/XLSX which are values-only). Reuses the zero-dep zip core from
+// segment-archive. Layout: sheet.json = { format, cells: [{addr, celType, v, f}] }.
+const toJia = async (state: State, seg: string): Promise<Uint8Array> => {
+  const cells = gridCells(state, seg).map((c) => ({ addr: c.addr, celType: c.f !== undefined ? "FormulaCel" : "ValueCel", v: c.v, f: c.f }));
+  const body = JSON.stringify({ format: "plastron-sheet/1", segment: seg, cells }, null, 2);
+  return zipBytes([{ path: "sheet.json", bytes: new TextEncoder().encode(body) }]);
+};
+const jiaToCells = async (seg: string, bytes: Uint8Array): Promise<Record<string, unknown>> => {
+  const entries = await unzipBytes(bytes);
+  const sheet = entries.find((e) => e.path === "sheet.json" || e.path.endsWith("/sheet.json"));
+  if (!sheet) throw new Error("甲: no sheet.json in archive");
+  const doc = JSON.parse(new TextDecoder().decode(sheet.bytes)) as { cells?: { addr: string; celType?: string; v?: unknown; f?: string }[] };
+  const cells: Record<string, unknown> = {};
+  for (const c of doc.cells ?? []) {
+    if (!A1RE.test(c.addr)) continue;
+    const isF = c.celType === "FormulaCel" && typeof c.f === "string";
+    cells[`${seg}.${c.addr}`] = isF
+      ? { celType: "FormulaCel", f: c.f, metadata: { segment: seg, name: c.addr, parser: "infix" } }
+      : { celType: "ValueCel", v: c.v, metadata: { segment: seg, name: c.addr, parser: "infix" } };
+  }
+  return cells;
+};
+
+// saveSheet(seg, fmt) — serialize a worksheet segment to bytes + a string name.
+// fmt ∈ {csv, xlsx, 甲}. Returns { bytes, filename, text? } so the host can write
+// OPFS and/or offer a download. xlsx reuses the xlsx segment's exporter.
+type SaveOut = { bytes: Uint8Array; filename: string; text?: string };
+const saveSheet = async (state: State, seg: string, fmt: string): Promise<SaveOut> => {
+  if (fmt === "csv") { const text = toCsv(state, seg); return { bytes: new TextEncoder().encode(text), filename: `${seg}.csv`, text }; }
+  if (fmt === "甲" || fmt === "jia") { const bytes = await toJia(state, seg); return { bytes, filename: `${seg}.甲` }; }
+  // xlsx — reuse the xlsx exporter (base64) → bytes.
+  const b64 = String(await Promise.resolve((resolveFn(state, "xlsxexport") as Fn)(state, seg)));
+  const bin = atob(b64); const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { bytes, filename: `${seg}.xlsx` };
+};
+
+// openAsSheet(bytes, name) — detect the format by the name's extension, build a
+// worksheet cels record, materialize it as a NEW standalone sheet window. csv →
+// values grid; xlsx → fromXlsx; 甲 → the rich archive reader (cels + formulas).
+// Returns the new segment name.
+const extOf = (name: string): string => { const b = (name.split("/").pop() || name); const i = b.lastIndexOf("."); return i < 0 ? "" : b.slice(i + 1).toLowerCase(); };
+const openAsSheet = async (state: State, bytes: Uint8Array, name: string): Promise<string> => {
+  const ext = extOf(name);
+  const seg = freshSeg(state, "sheet");
+  let cells: Record<string, unknown>;
+  if (ext === "csv") cells = csvToCells(seg, parseCsv(new TextDecoder().decode(bytes)));
+  else if (ext === "甲" || ext === "jia") cells = await jiaToCells(seg, bytes);
+  else { // xlsx (default for spreadsheet-y bytes)
+    const xcells = await fromXlsx(bytes);
+    cells = {};
+    for (const c of xcells) if (A1RE.test(c.ref)) cells[`${seg}.${c.ref}`] = { celType: "ValueCel", v: c.value, metadata: { segment: seg, name: c.ref, parser: "infix" } };
+  }
+  if (Object.keys(cells).length === 0) cells = blankCells(seg, 10, 10);   // an empty file still opens a usable sheet
+  await materializeSheet(state, seg, cells);
+  await placeStandalone(state, seg);
+  return seg;
+};
+
+// ── browser file I/O for the titlebar save/open ──────────────────────────────
+type DomFile = {
+  document?: { createElement: (t: string) => { type?: string; accept?: string; href?: string; download?: string; files?: ArrayLike<{ name: string; arrayBuffer(): Promise<ArrayBuffer> }>; onchange?: () => void; click(): void } };
+  URL?: { createObjectURL(b: unknown): string; revokeObjectURL(u: string): void };
+  Blob?: new (parts: unknown[], opts?: unknown) => unknown;
+};
+const triggerDownload = (bytes: Uint8Array, filename: string): void => {
+  const g = globalThis as DomFile;
+  if (!g.document || !g.URL || !g.Blob) return;
+  const a = g.document.createElement("a");
+  a.href = g.URL.createObjectURL(new g.Blob([bytes], {}));
+  a.download = filename; a.click();
+  g.URL.revokeObjectURL(a.href!);
+};
+
+// winsheet.savefmt — the 💾 button toggles an inline format chooser on the
+// window (win.geom[seg].savemenu); the 3 buttons dispatch winsheet.saveas.
+const wsSavefmt: Fn = (async (state: State, seg: unknown): Promise<void> => {
+  const s = String(seg ?? ""); if (!s) return;
+  const m = geomMap(state); m[s] = { ...(m[s] ?? {}), savemenu: m[s]?.savemenu ? 0 : 1 }; await setGeom(state, m);
+}) as Fn;
+// winsheet.saveas — { seg, fmt }: serialize the segment, write it to OPFS
+// (/<seg>.<ext>) AND offer a browser download, then close the chooser.
+const wsSaveas: Fn = (async (state: State, payload: unknown): Promise<void> => {
+  const p = payload as { seg?: string; fmt?: string } | undefined;
+  const seg = String(p?.seg ?? ""), fmt = String(p?.fmt ?? "");
+  if (!seg || !fmt) return;
+  const out = await saveSheet(state, seg, fmt);
+  // write to OPFS (best-effort: file-store may be absent off-DOM/in tests)
+  const fsWrite = resolveFn(state, "fs.write") as Fn | undefined;
+  const ensure = resolveFn(state, "ensureSegments") as Fn | undefined;
+  if (fsWrite) { try { if (ensure) await ensure(state, ["file-store"]); await fsWrite(`/${out.filename}`, out.bytes); } catch { /* no fs here */ } }
+  triggerDownload(out.bytes, out.filename);
+  // refresh the explorer (if open) so the new file shows, and close the chooser.
+  const m = geomMap(state); m[seg] = { ...(m[seg] ?? {}), savemenu: 0 }; await setGeom(state, m);
+  const refresh = resolveFn(state, "origin.explorerRefresh") as Fn | undefined;
+  if (refresh && state.cels.get("explorer.cwd")) await Promise.resolve(refresh(state));
+  await wrepaint(state);
+}) as Fn;
+// winsheet.open — the 📁 button: pick a file from disk and openAsSheet it.
+const wsOpen: Fn = ((state: State): void => {
+  const g = globalThis as DomFile;
+  if (!g.document) return;
+  const input = g.document.createElement("input"); input.type = "file"; input.accept = ".csv,.xlsx,.甲";
+  input.onchange = async (): Promise<void> => {
+    const file = input.files?.[0]; if (!file) return;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    await openAsSheet(state, bytes, file.name);
+  };
+  input.click();
+}) as Fn;
+
 export const name = "sheet-host" as const;
+
+// direct surface for hosts (e.g. the explorer double-click) + tests, skipping
+// cel dispatch — they already hold the bytes / want the new segment name back.
+export { saveSheet, openAsSheet };
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["sheetView", sheetView],
@@ -637,4 +877,5 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["winsheet.drop", wsDrop], ["winsheet.tab", wsTab], ["winsheet.tearoff", wsTearoff], ["winsheet.raise", wsRaise], ["winsheet.minimize", wsMin], ["winsheet.close", wsClose], ["winsheet.restore", wsRestore], ["winsheet.maximize", wsMax], ["winsheet.mid", wsMid], ["winsheet.stop", wsStop],
   ["winsheet.tabGrab", wsTabGrab], ["winsheet.tabMove", wsTabMove], ["winsheet.tabDrop", wsTabDrop],
   ["winsheet.syncBundles", wsSyncBundles], ["winsheet.newtab", wsNewtab],
+  ["winsheet.newsheet", wsNewsheet], ["winsheet.savefmt", wsSavefmt], ["winsheet.saveas", wsSaveas], ["winsheet.open", wsOpen],
 ]));
