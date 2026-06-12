@@ -65,8 +65,14 @@ test("boot: the desktop renders — the README window + its rich content", async
   const rm = cls(root, "readme");
   assert.ok(rm, "readme rendered in its window");
   assert.ok(rm.style && Object.keys(rm.style.props).length > 0, "readme carries inline styles");
-  assert.match(txt(rm), /this readme is a few formulas/);
-  assert.ok(walk(root, (n) => n.tag === "table" && /(^| )fx( |$)/.test(String(n.attrs?.class ?? "")))[0], "formulas shown in a table");
+  // the header card explains the index.html product + the ⚡ / W controls legend
+  assert.match(txt(rm), /ONE index\.html/, "header states this is one index.html");
+  assert.match(txt(rm), /every row is a worked example/, "header explains the per-row layout");
+  assert.match(txt(rm), /RUNS that formula/, "header has the ⚡ run legend");
+  assert.match(txt(rm), /wiki button/, "header has the W wiki legend");
+  // examples render as code cards (A column), not one big table
+  assert.ok(walk(root, (n) => /(^| )fx-code( |$)/.test(String(n.attrs?.class ?? "")))[0], "example code shown in fx-code cards");
+  assert.ok(walk(root, (n) => /(^| )fx-desc( |$)/.test(String(n.attrs?.class ?? "")))[0], "each example carries a description card");
   assert.ok(walk(root, (n) => n.tag === "a" && String(n.attrs?.href ?? "").includes("github.com"))[0], "repo link present");
   // each example carries a yellow-lightning try-it button (the fire-bolt SVG)
   assert.ok(walk(root, (n) => n.tag === "path" && /M7 2v11h3v9l7-12h-4l4-8z/.test(String(n.attrs?.d ?? "")))[0], "try-it lightning buttons present");

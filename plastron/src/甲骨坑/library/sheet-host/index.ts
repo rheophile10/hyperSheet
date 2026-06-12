@@ -169,10 +169,10 @@ const sheetView: Fn = ((
           keydown: { dispatch: KEYH, payload: barKey },   // origin.key commits on Enter to the selected cell
         })
       : el("textarea", { class: "pl-fxbar-input", style: SX.fxinput + ";color:#888;font-style:italic", rows: 1, readonly: "", placeholder: "click a cell to see and edit its formula here" }, []);
-    // a side-view pistol silhouette — an inline SVG (currentColor) so it reads
-    // as an actual gun, not the water-pistol emoji. (svg/path render via the
-    // painter's createElementNS path.)
-    const boltIcon = el("svg", { class: "pl-fxbar-bolt-svg", width: "22", height: "22", viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": "true", style: "display:block" }, [
+    // a lightning bolt — inline SVG filled lightning yellow (#f5c518) to match
+    // the readme's ⚡ try-it buttons: the formula bar's ⚡ runs (re-evaluates)
+    // the selected cell. (svg/path render via the painter's createElementNS path.)
+    const boltIcon = el("svg", { class: "pl-fxbar-bolt-svg", width: "22", height: "22", viewBox: "0 0 24 24", fill: "#f5c518", "aria-hidden": "true", style: "display:block" }, [
       el("path", { d: "M7 2v11h3v9l7-12h-4l4-8z" }, []),
     ]);
     const fireBtn = el("button", { class: "pl-fxbar-fire", title: "fire — re-evaluate this cell", style: SX.glyphBtn + ";align-self:center;display:flex;align-items:center" }, [boltIcon], { click: { dispatch: FIREH, payload: barKey ?? "" } });

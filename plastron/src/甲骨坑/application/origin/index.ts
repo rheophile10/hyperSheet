@@ -376,9 +376,10 @@ const fire: Fn = async (state: State, payload?: unknown) => {
 };
 
 // ex(formula, target) — a try-it payload: the formula to run and the cell key
-// it should land in. Authored in the readme's ⚡ buttons: (on "click"
-// "tryexample" (ex "=cels(8, 5)" "readme.B2")). Returns a marker the painter
-// hands to tryexample verbatim as the event payload (no serialization).
+// it should land in. Authored in each readme ROW's ⚡ button, where target is
+// that ROW's OWN B cell: (on "click" "tryexample" (ex "=1+1" "readme.B2")).
+// Per-row targets keep the def/use examples from clobbering each other.
+// Returns a marker the painter hands to tryexample verbatim (no serialization).
 const ex: Fn = (formula?: unknown, target?: unknown) =>
   ({ __ex: { formula: String(formula ?? ""), target: String(target ?? "") } });
 
