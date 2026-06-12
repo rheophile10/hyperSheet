@@ -245,9 +245,12 @@ const buildAgentPrompt = (state: State, seg: string): string =>
 // the confined accessor then DENIES (the sealed-closure proof, not mere syntax).
 const colA = (n: number): string => { let s = "", x = n; while (x > 0) { s = String.fromCharCode(65 + (x - 1) % 26) + s; x = Math.floor((x - 1) / 26); } return s; };
 const expandRange = (chatSeg: string, range: string): { seg: string; keys: string[] } => {
-  const bang = range.indexOf("!");
-  const seg = bang >= 0 ? range.slice(0, bang) : chatSeg;
-  const body = bang >= 0 ? range.slice(bang + 1) : range;
+  // accept seg DOT or BANG addressing — the cel-state listing shows dot keys
+  // (clients.E1), so the bot naturally writes `set clients.E1 = …`; a bare A1 (E1)
+  // stays in the chat's own sheet. (greedy seg capture so win.chat-claude.E1 works)
+  const m = /^(?:(.+)[!.])?([A-Za-z]+[0-9]+(?::[A-Za-z]+[0-9]+)?)$/.exec(range.trim());
+  const seg = m?.[1] ?? chatSeg;
+  const body = m?.[2] ?? range;
   const [a, b] = body.split(":");
   const lo = parseA1(String(a ?? "").trim()); if (!lo) return { seg, keys: [] };
   const hi = b ? parseA1(String(b).trim()) : lo; if (!hi) return { seg, keys: [] };
@@ -277,7 +280,7 @@ const parseChatCommands = (body: string): { commands: ChatCmd[]; prose: string }
   }
   const kept: string[] = [];
   for (const line of rest.split("\n")) {
-    const m = /^\s*set\s+((?:[\w.-]+!)?[A-Za-z]+[0-9]+(?::[A-Za-z]+[0-9]+)?)\s*=\s*(.*)$/.exec(line);
+    const m = /^\s*set\s+((?:[\w.-]+[!.])?[A-Za-z]+[0-9]+(?::[A-Za-z]+[0-9]+)?)\s*=\s*(.*)$/.exec(line);
     if (m) {
       const addr = m[1]!, rhs = m[2]!.trim();
       const isFormula = /^[(=]/.test(rhs);

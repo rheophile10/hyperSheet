@@ -61,6 +61,21 @@ test("a command targeting a foreign sealed segment is REFUSED (#DENIED, not writ
   assert.equal(state.cels.get("secrets.A1")?.v, "TOPSECRET", "the foreign cel was NOT overwritten — the closure held");
 });
 
+// 3b. the bot writes DOT-keyed addresses (clients.E1) — exactly what the prompt's
+// cel-state listing shows — so the parser MUST accept dots, or the bot's commands
+// are silently ignored (appended as prose). A foreign dot is still #DENIED.
+test("dot-keyed addresses (set clients.E1 = …) parse + execute; a foreign dot is #DENIED", async () => {
+  const state = await seedChat();
+  await resolveFn(state, "setValue")(state, "clients.D1", "set clients.E1 = banana");
+  await resolveFn(state, "chat.cellsend")(state);
+  assert.equal(state.cels.get("clients.E1")?.v, "banana", "dot address clients.E1 parsed + wrote (not ignored as prose)");
+  await resolveFn(state, "setCel")(state, "secrets.A1", { celType: "ValueCel", v: "TOPSECRET", metadata: { key: "secrets.A1", segment: "secrets", name: "A1" } });
+  setAccessPolicy(state, "secrets", { get: "private", set: "private", setSealed: true });
+  const applied = await resolveFn(state, "chat.cellrun")(state, SEG, [{ op: "cel", addr: "secrets.A1", value: "pwned" }]);
+  assert.ok(applied[0].startsWith("#DENIED"), `foreign dot refused (got ${applied[0]})`);
+  assert.equal(state.cels.get("secrets.A1")?.v, "TOPSECRET", "foreign dot did not overwrite — closure held");
+});
+
 // 4. the SEND path: plain text appends; a set-line edits confined
 test("chat.cellsend: plain text appends, a set-line edits the scratch cel confined", async () => {
   const state = await seedChat();
