@@ -21,7 +21,7 @@
         "segment": "llm",
         "name": "llm.chat",
         "kind": "native",
-        "description": "(prompt, key [, model] [, url]) - a generic OpenAI-shaped chat completion; returns the reply text. Host chat()/grok() verbs delegate here."
+        "description": "(prompt, key [, model] [, url]) - a generic OpenAI-shaped chat completion; returns the reply text. Host chat()/grok() verbs delegate here. The response is parsed DEFENSIVELY: a non-ok / non-JSON answer (an HTML error page — browser CORS blocks x.ai/anthropic direct, or no key) returns a friendly '(grok unreachable — browser CORS blocks x.ai direct calls, or no api key)' instead of letting JSON.parse throw 'Unexpected token <' into the chat."
       },
       "locked": true
     },
@@ -105,7 +105,7 @@
         "segment": "llm",
         "name": "chat.cellsend",
         "kind": "native",
-        "description": "(state) — chat send handler: append the clients.D1 text to the messages cell (clients.C1) as {from:'me'}, ask the first armed client, and append its reply. The message list + entry are CELS the graph owns. clients.C1 seeds as a plain VALUE cell (empty string in the boot formula), so every append is a plain setValue write of the grown array — never setCel/structure churn. That structure churn previously re-materialized the clients genesis and swept the clients.D1 entry cel, throwing 'setValue: unknown cel clients.D1' on the second send; with a value-seeded C1 the entry cel survives across sends."
+        "description": "(state) — the AGENTIC chat send handler. The clients.D1 text is PARSED: any 'set RANGE = value/formula' lines (or a fenced ```plastron JSON block) become COMMANDS that edit the chat's cels via chat.cellrun (confined to the clients closure — a cross-segment addr is refused); the leftover prose appends to clients.C1 as {from:'me'}. Then the first armed client is asked with an agent system-prompt prepended; ITS reply is parsed the same way (in-segment commands run, foreign writes #DENIED, prose appends). So both the user and the bot can write the chat's scratch cels (E1+) but nothing outside its segment. clients.C1 stays a plain value cell (appends are setValue of the grown array); the entry cel survives across sends."
       },
       "locked": true
     },
@@ -118,6 +118,18 @@
         "name": "chat.cellkey",
         "kind": "native",
         "description": "(state, payload, event) — Enter in the chat entry fires chat.cellsend."
+      },
+      "locked": true
+    },
+    {
+      "key": "chat.cellrun",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "chat.cellrun",
+        "segment": "llm",
+        "name": "chat.cellrun",
+        "kind": "native",
+        "description": "(state, chatSeg, commands) — the AGENTIC executor: apply a list of {op:'cel',addr,formula|value} / {op:'msg',text} commands to the chat's worksheet, CONFINED. Every cel write runs under withAccessor(state, chatSeg, …) so Layer 1 refuses any write outside the chat's segment (an addr like 'secrets!A1' resolves to #DENIED, never landing — the sealed-closure guarantee window-sheet-isolation proves). addr is A1 or A1:B2; a formula is an s-expression. msg appends a {from:chatSeg,text} to the history (clients.C1). Both the user's send and the bot's reply parse into these commands and run through here. Returns a per-write log ('E1' applied, '#DENIED secrets.A1' refused)."
       },
       "locked": true
     },

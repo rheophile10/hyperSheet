@@ -1,5 +1,5 @@
 import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
-import { bindNativeFns, isSecretHandle, resolveFn } from "../../../kernel/index.js";
+import { bindNativeFns, isSecretHandle, resolveFn, withAccessor, parseA1 } from "../../../kernel/index.js";
 import { el, text as T } from "../dom/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
@@ -18,6 +18,28 @@ const elx = el as unknown as (tag: string, attrs?: Record<string, unknown>, chil
 // at the effect site and never enters the graph.
 // ============================================================================
 
+// readReply — parse an llm completion response DEFENSIVELY. A browser CORS
+// block (x.ai/anthropic direct), a missing key, or a captive-portal proxy
+// answers with an HTML error page, not JSON; JSON.parse then throws
+// "Unexpected token '<'" and the raw error leaks into the chat. So: check
+// res.ok, sniff the content-type, and try/catch the .json() — on any
+// non-JSON/non-ok response return a clear, friendly note instead of the throw.
+const readReply = async (res: Response, label: string): Promise<string> => {
+  const ct = res.headers.get("content-type") ?? "";
+  const looksJson = ct.includes("json");
+  if (!res.ok || !looksJson) {
+    let body = "";
+    try { body = (await res.text()).trim(); } catch { /* body unreadable */ }
+    const html = /^<|<!doctype/i.test(body);
+    if (html || !looksJson) return `(${label} unreachable — browser CORS blocks ${label} direct calls, or no api key)`;
+    return `(${label} ${res.status}: ${body.slice(0, 200)})`;
+  }
+  let j: { choices?: { message?: { content?: string } }[] } | undefined;
+  try { j = await res.json() as { choices?: { message?: { content?: string } }[] }; }
+  catch { return `(${label} unreachable — browser CORS blocks ${label} direct calls, or no api key)`; }
+  return j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
+};
+
 const claudeFn: Fn = async (prompt: unknown, key: unknown, model: unknown): Promise<string> => {
   const p = String(prompt ?? "").trim();
   // accept a kernel SecretHandle (from apiKey("…")) OR a literal key string /
@@ -28,21 +50,22 @@ const claudeFn: Fn = async (prompt: unknown, key: unknown, model: unknown): Prom
   if (!p) return "(ask something — the reply lands here when the prompt cel has text)";
   if (isHandle && !k) return `(wallet has no usable "${key.name}" — =unlockWallet(), then =apiKeys())`;
   if (!k) return "(no api key — put an sk-ant-… key in the key cel, or use key(\"anthropic\") with the wallet)";
-  const res = await fetch("https://api.anthropic.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${k}`,
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: model == null || model === "" ? "claude-fable-5" : String(model),
-      messages: [{ role: "user", content: p }],
-    }),
-  });
-  if (!res.ok) return `(claude ${res.status}: ${(await res.text()).slice(0, 200)})`;
-  const j = await res.json() as { choices?: { message?: { content?: string } }[] };
-  return j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
+  let res: Response;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${k}`,
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model: model == null || model === "" ? "claude-fable-5" : String(model),
+        messages: [{ role: "user", content: p }],
+      }),
+    });
+  } catch { return "(claude unreachable — browser CORS blocks claude direct calls, or no api key)"; }
+  return readReply(res, "claude");
 };
 
 // llm.chat — a generic OpenAI-shaped chat completion (POST messages, return the
@@ -55,13 +78,15 @@ const chatFn: Fn = (async (prompt: unknown, key: unknown, model: unknown, url: u
   if (!k) return `(no api key — pass one: =claude("hi", "sk-ant-…") / =grok("hi", "xai-…") or a cel holding it)`;
   const headers: Record<string, string> = { "content-type": "application/json", authorization: `Bearer ${k}` };
   if (u.includes("api.anthropic.com")) headers["anthropic-dangerous-direct-browser-access"] = "true";
-  const res = await fetch(u, {
-    method: "POST", headers,
-    body: JSON.stringify({ model: m, messages: [{ role: "user", content: String(prompt ?? "") }] }),
-  });
-  if (!res.ok) return `(chat ${res.status}: ${(await res.text()).slice(0, 200)})`;
-  const j = await res.json() as { choices?: { message?: { content?: string } }[] };
-  return j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
+  const label = u.includes("x.ai") ? "grok" : u.includes("anthropic") ? "claude" : "chat";
+  let res: Response;
+  try {
+    res = await fetch(u, {
+      method: "POST", headers,
+      body: JSON.stringify({ model: m, messages: [{ role: "user", content: String(prompt ?? "") }] }),
+    });
+  } catch { return `(${label} unreachable — browser CORS blocks ${label} direct calls, or no api key)`; }
+  return readReply(res, label);
 }) as Fn;
 
 // ── client — a CAPTURED llm client (capability C). makeclient(provider, key,
@@ -130,8 +155,119 @@ const messagesFn: Fn = ((...pairs: unknown[]): Msg[] => {
   return out;
 }) as Fn;
 
-const MSGS = "clients.C1", ENTRY = "clients.D1";
+const ENTRY = "clients.D1";
+const SHEET = "clients";   // the chat's worksheet — the prefix every command write is forced into; C1 holds the history
 type Msg = { from?: string; text?: string };
+
+// ── agentic command model (the "agentic chat in a sealed closure" goal) ──────
+// A message may EDIT CELS, not just append text. Plain text is the DEFAULT
+// (append a {from,text} to the history); a COMMAND names a cel RANGE + a
+// value/formula and WRITES it into that range — but ONLY into the chat's own
+// worksheet, because every write runs under withAccessor(state, "clients", …),
+// so Layer 1 CONFINES it (the kernel refuses a cross-segment write, the same
+// sealed-closure guarantee window-sheet-isolation.test.mjs proves). A range
+// outside reach resolves to a refused/#DENIED write, never landing.
+//
+// Two surfaces, ONE executor:
+//   • a human/bot LINE — `set <RANGE> = <value-or-formula>` (RANGE = A1 or
+//     A1:B2). A body that starts with ( or = becomes a FORMULA cel; else a
+//     VALUE cel. Any non-`set` text is the message that appends.
+//   • a fenced ```plastron JSON block — [{op:"cel",addr,formula|value},
+//     {op:"msg",text}] — the shape the bot is told to emit.
+type ChatCmd = { op: "cel"; addr: string; formula?: string; value?: unknown } | { op: "msg"; text: string };
+
+// appendMsg — push a {from,text} onto the chat's message block (<seg>.C1, the
+// history) and repaint. The DEFAULT for plain text and the carrier for msg
+// commands. A plain setValue of the grown array — the graph owns the log.
+const appendMsg = async (state: State, seg: string, m: Msg): Promise<void> => {
+  const key = `${seg}.C1`;
+  const cur = state.cels.get(key)?.v;
+  const log = Array.isArray(cur) ? [...cur as Msg[], m] : [m];
+  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, key, log));
+  await Promise.resolve((resolveFn(state, "drain") as Fn)(state, "dom.paint"));
+};
+
+const AGENT_PROMPT =
+  "You are in a plastron spreadsheet chat. You MAY edit THIS chat's worksheet cels (and ONLY this chat's — writes elsewhere are refused). To change a cell, put a line `set <RANGE> = <value-or-formula>` (RANGE is A1 or A1:B2; a body starting with ( or = is an s-expression formula, e.g. set E1 = (* 6 7)). Or end with a fenced ```plastron block holding a JSON array of {\"op\":\"cel\",\"addr\":\"E1\",\"formula\":\"(+ 1 2)\"} / {\"op\":\"cel\",\"addr\":\"E1\",\"value\":42} / {\"op\":\"msg\",\"text\":\"…\"}. Use a command ONLY when you actually want to change something; otherwise just reply in prose.\n\n";
+
+// expand an A1 RANGE to the sheet's dot-keyed cel keys (clients.E1, …) — the
+// boot grid keys cells <seg>.<A1>, not comma-coords, so this mirrors that
+// addressing rather than rangeToKeys' comma form. A bare range stays in the
+// chat's own sheet; an explicit `<seg>!<RANGE>` targets another segment — which
+// the confined accessor then DENIES (the sealed-closure proof, not mere syntax).
+const colA = (n: number): string => { let s = "", x = n; while (x > 0) { s = String.fromCharCode(65 + (x - 1) % 26) + s; x = Math.floor((x - 1) / 26); } return s; };
+const expandRange = (chatSeg: string, range: string): { seg: string; keys: string[] } => {
+  const bang = range.indexOf("!");
+  const seg = bang >= 0 ? range.slice(0, bang) : chatSeg;
+  const body = bang >= 0 ? range.slice(bang + 1) : range;
+  const [a, b] = body.split(":");
+  const lo = parseA1(String(a ?? "").trim()); if (!lo) return { seg, keys: [] };
+  const hi = b ? parseA1(String(b).trim()) : lo; if (!hi) return { seg, keys: [] };
+  const [r0, c0] = lo, [r1, c1] = hi;
+  const keys: string[] = [];
+  for (let r = Math.min(r0!, r1!); r <= Math.max(r0!, r1!); r++)
+    for (let c = Math.min(c0!, c1!); c <= Math.max(c0!, c1!); c++) keys.push(`${seg}.${colA(c)}${r}`);
+  return { seg, keys };
+};
+
+// parse a message body into commands + the leftover prose (which appends as a
+// message). Recognizes `set <RANGE> = <body>` lines and one fenced block.
+const parseChatCommands = (body: string): { commands: ChatCmd[]; prose: string } => {
+  const commands: ChatCmd[] = [];
+  let rest = body;
+  const fence = rest.match(/```(?:plastron|cmds|json)?\s*(\[[\s\S]*?\])\s*```/);
+  if (fence) {
+    rest = rest.replace(fence[0], "").trim();
+    try {
+      const j = JSON.parse(fence[1]!);
+      if (Array.isArray(j)) for (const c of j) {
+        const o = c as { op?: string; addr?: string; key?: string; formula?: string; value?: unknown; text?: string };
+        if (o.op === "msg" && o.text != null) commands.push({ op: "msg", text: String(o.text) });
+        else if (o.op === "cel" && (o.addr || o.key)) commands.push({ op: "cel", addr: String(o.addr ?? o.key), formula: o.formula != null ? String(o.formula) : undefined, value: o.value });
+      }
+    } catch { /* malformed block → ignored, prose still appends */ }
+  }
+  const kept: string[] = [];
+  for (const line of rest.split("\n")) {
+    const m = /^\s*set\s+((?:[\w.-]+!)?[A-Za-z]+[0-9]+(?::[A-Za-z]+[0-9]+)?)\s*=\s*(.*)$/.exec(line);
+    if (m) {
+      const addr = m[1]!, rhs = m[2]!.trim();
+      const isFormula = /^[(=]/.test(rhs);
+      commands.push({ op: "cel", addr, formula: isFormula ? rhs.replace(/^=/, "") : undefined, value: isFormula ? undefined : rhs });
+    } else kept.push(line);
+  }
+  return { commands, prose: kept.join("\n").trim() };
+};
+
+// runChatCommands — execute parsed commands CONFINED to the chat's worksheet.
+// Every setCel runs under withAccessor(state, seg, …); a target outside the
+// segment's set-policy is refused by the kernel (canSet false → throw / no
+// write), so a command can't escape the closure. Returns a per-command log.
+const runChatCommands: Fn = (async (state: State, seg: unknown, commands: unknown): Promise<string[]> => {
+  const chatSeg = String(seg ?? SHEET);
+  const setCel = resolveFn(state, "setCel") as Fn;
+  const applied: string[] = [];
+  for (const c of (Array.isArray(commands) ? commands : []) as ChatCmd[]) {
+    if (c.op === "msg") { await appendMsg(state, chatSeg, { from: chatSeg, text: c.text }); applied.push("msg"); continue; }
+    if (c.op === "cel") {
+      const { seg: targetSeg, keys } = expandRange(chatSeg, c.addr);
+      if (!keys.length) { applied.push(`bad range ${c.addr}`); continue; }
+      for (const key of keys) {
+        const name = key.slice(targetSeg.length + 1);
+        const spec = c.formula != null
+          ? { celType: "FormulaCel", f: c.formula, metadata: { key, segment: targetSeg, name, parser: "f" } }
+          : { celType: "ValueCel", v: c.value, metadata: { key, segment: targetSeg, name } };
+        try {
+          // ALWAYS confined to the CHAT's segment — a foreign targetSeg is
+          // refused by canSet (Layer 1), proving the sealed closure.
+          await withAccessor(state, chatSeg, () => Promise.resolve(setCel(state, key, spec)));
+          applied.push(targetSeg === chatSeg ? name : `${targetSeg}.${name}`);
+        } catch { applied.push(`#DENIED ${targetSeg}.${name}`); }
+      }
+    }
+  }
+  return applied;
+}) as Fn;
 
 // chat.cellinput — the entry input's `input` handler: stash the live typed text
 // in the clients.D1 buffer cel (read off the event target), so the input is an
@@ -141,27 +277,35 @@ const chatCellInput: Fn = (async (state: State, _p: unknown, event?: { target?: 
   await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, ENTRY, String(event?.target?.value ?? "")));
 }) as Fn;
 
-// chat.cellsend — append the `clients.D1` text to the messages cell
-// (clients.C1) and ask an available client; the reply appends too. Spreadsheet-
-// native chat send: the message list and entry are CELS the graph owns.
-const readMsgs = (state: State): Msg[] => { const v = state.cels.get(MSGS)?.v; return Array.isArray(v) ? v as Msg[] : []; };
-const setMsgs = (state: State, log: Msg[]): Promise<unknown> =>
-  Promise.resolve((resolveFn(state, "setValue") as Fn)(state, MSGS, log))
-    .then(() => (resolveFn(state, "drain") as Fn)(state, "dom.paint"));
 const firstClient = (state: State): ClientHandle | undefined => {
   for (const k of ["clients.A1", "clients.A2"]) { const v = state.cels.get(k)?.v as ClientHandle | undefined; if (v && v.__client === true && v.status === "ready") return v; }
   return undefined;
 };
+// chat.cellsend — the agentic send. The typed text is parsed: COMMANDS (set
+// lines / a fenced block) edit the chat's cels CONFINED to its closure; the
+// leftover PROSE appends as {from:'me'}. Then the bot is asked with AGENT_PROMPT
+// prepended, ITS reply is parsed the same way (commands run confined, prose
+// appends). So both the user and the bot can edit the chat's cels — and nothing
+// outside the chat's segment.
 const chatCellSend: Fn = (async (state: State): Promise<void> => {
   const text = String(state.cels.get(ENTRY)?.v ?? "").trim();
   if (!text) return;
   await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, ENTRY, ""));
-  await setMsgs(state, [...readMsgs(state), { from: "me", text }]);
+  const run = runChatCommands as unknown as (s: State, seg: unknown, cmds: unknown) => Promise<string[]>;
+  // user message → confined commands + appended prose
+  const { commands: userCmds, prose: userProse } = parseChatCommands(text);
+  if (userProse) await appendMsg(state, SHEET, { from: "me", text: userProse });
+  else if (!userCmds.length) await appendMsg(state, SHEET, { from: "me", text });   // pure whitespace-less edge
+  if (userCmds.length) { const a = await run(state, SHEET, userCmds); if (a.length) await appendMsg(state, SHEET, { from: "system", text: "✎ " + a.join("; ") }); }
+  // ask the bot — confined the same way
   const client = firstClient(state);
+  if (!client) { await appendMsg(state, SHEET, { from: "system", text: "(no armed client — set an api key in secrets)" }); return; }
   let reply: string;
-  if (client) { try { reply = String(await (resolveFn(state, "client.send") as Fn)(client, text)); } catch (e) { reply = "⚠ " + String((e as { message?: unknown })?.message ?? e); } }
-  else reply = "(no armed client — set an api key in secrets)";
-  await setMsgs(state, [...readMsgs(state), { from: client?.provider ?? "system", text: reply }]);
+  try { reply = String(await (resolveFn(state, "client.send") as Fn)(client, AGENT_PROMPT + (userProse || text))); }
+  catch (e) { reply = "⚠ " + String((e as { message?: unknown })?.message ?? e); }
+  const { commands: botCmds, prose: botProse } = parseChatCommands(reply);
+  await appendMsg(state, SHEET, { from: client.provider, text: botProse || reply });
+  if (botCmds.length) { const a = await run(state, SHEET, botCmds); if (a.length) await appendMsg(state, SHEET, { from: "system", text: "✎ " + a.join("; ") }); }
 }) as Fn;
 const chatCellKey: Fn = (async (state: State, _p: unknown, event?: { key?: string; preventDefault?: () => void }): Promise<void> => {
   if (event?.key === "Enter") { try { event.preventDefault?.(); } catch { /* */ } await (chatCellSend as unknown as (s: State) => Promise<void>)(state); }
@@ -200,5 +344,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["chat.cellinput", chatCellInput],
   ["chat.cellsend", chatCellSend],
   ["chat.cellkey", chatCellKey],
+  ["chat.cellrun", runChatCommands],
   ["clientsheet", clientsheetFn],
 ]));
