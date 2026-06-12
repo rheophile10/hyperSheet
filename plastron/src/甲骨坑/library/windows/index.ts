@@ -216,7 +216,11 @@ const frameFn: Fn = ((st: unknown, active: unknown, content: unknown): V => {
   const glowOutline = s.glow ? ";outline:3px solid #4a90d9;outline-offset:1px" : "";
   return el("div", { class: "pl-window" + (isActive ? " active" : "") + (s.glow ? " drop-target" : ""), "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:${isActive ? "2px solid #4a90d9" : "1px solid #8886"};border-radius:6px;background:Canvas;box-shadow:${s.glow ? "0 0 0 3px #4a90d955,0 6px 22px #4a90d966" : (isActive ? "0 6px 22px #4a90d966" : "0 4px 16px #0004")}${glowOutline};overflow:hidden` }, [
     el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
-      el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(String((s.linked?.length ? "🔗 " : "") + (s.title ?? ref)))]),
+      // 🔗 LINK GRIP (upper-left): pointerdown starts a corner-link drag — drag a
+      // line to another window to LINK (shared-memory bundle) them. stopPropagation
+      // in winx.linkGrab keeps it from also starting a titlebar MOVE.
+      el("button", { class: "pl-link-grip", title: "link — drag to another window to share memory", style: XBTN + ";flex:0 0 auto;cursor:crosshair;font-size:.78rem;touch-action:none" }, [T("🔗")], { pointerdown: { dispatch: "winx.linkGrab", payload: ref }, pointermove: { dispatch: "winx.linkMove" }, pointerup: { dispatch: "winx.linkDrop" } }),
+      el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto" }, [T(String(s.title ?? ref))]),
       el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
         // W — open this window's wiki article (docgraph's wiki.open). A host
         // without docgraph logs "not registered" on click; nothing breaks. The
@@ -259,12 +263,26 @@ const xGrab: Fn = (async (state: State, ref: unknown, event?: DomEvt): Promise<v
 const xMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d || d.resize) return; await setState(state, d.ref, { x: num(event?.clientX) - d.ox, y: num(event?.clientY) - d.oy }); await setGlowState(state, winRefAtPoint(num(event?.clientX), num(event?.clientY), d.ref)); }) as Fn;
 const xGrabResize: Fn = (async (state: State, ref: unknown, event?: DomEvt): Promise<void> => { capture(event); const s = stateOf(state, String(ref)); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", { ref: String(ref), ox: num(event?.clientX) - num(s.w, 380), oy: num(event?.clientY) - num(s.h, 260), resize: true })); }) as Fn;
 const xResizeMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d?.resize) return; await setState(state, d.ref, { w: Math.max(160, num(event?.clientX) - d.ox), h: Math.max(90, num(event?.clientY) - d.oy) }); }) as Fn;
+// linkWindows — the SHARED access bundle two window refs form, whether by
+// titlebar-stacking (xDrop) or by corner-grip drag (xLinkDrop). It (1) bundles
+// the two SEGMENTS (Layer-1 bundleSegments — shared memory; a SEALED direction
+// is never widened, the seal wins inside canGet), (2) marks both titlebars 🔗 via
+// state.linked, and (3) records the {a,b} ref pair in win.links so a persistent
+// edge can be drawn. Idempotent on the pair. `pair` defaults true (corner-link);
+// titlebar-stacking passes false (it predates the visible edge and only needs
+// the bundle + 🔗 marker, keeping its committed tests unchanged).
+const linkWindows = async (state: State, refA: string, refB: string, pair = true): Promise<void> => {
+  const a = segOf(refA), b = segOf(refB);
+  if (a === b) return;
+  bundleSegments(state, [a, b]);
+  const merge = (st: WinState): string[] => Array.from(new Set([...(st.linked ?? []), a, b]));
+  await setState(state, refA, { linked: merge(stateOf(state, refA)) });
+  await setState(state, refB, { linked: merge(stateOf(state, refB)) });
+  if (pair) await pushLinkPair(state, refA, refB);
+};
+
 // xDrop — release. If a window was dropped ONTO another window's titlebar, STACK
-// them: bundle the two window SEGMENTS (Layer-1 bundleSegments) so each can now
-// read the other's cels — "connecting windows into shared memory". Both titlebars
-// then show 🔗. A SEALED segment still can't be widened (bundling never opens a
-// seal; see segment-minting test) — so stacking a chat onto a sealed secrets
-// window does NOT leak the secret.
+// them: bundle the two window SEGMENTS — "connecting windows into shared memory".
 const xDrop: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => {
   const d = xdrag(state);
   await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", null));
@@ -272,11 +290,7 @@ const xDrop: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<vo
   if (!d || d.resize || !event) return;
   const target = winRefAtPoint(num(event.clientX), num(event.clientY), d.ref);
   if (!target) return;
-  const a = segOf(d.ref), b = segOf(target);
-  bundleSegments(state, [a, b]);
-  const merge = (st: WinState): string[] => Array.from(new Set([...(st.linked ?? []), a, b]));
-  await setState(state, d.ref, { linked: merge(stateOf(state, d.ref)) });
-  await setState(state, target, { linked: merge(stateOf(state, target)) });
+  await linkWindows(state, d.ref, target, false);       // stacking: bundle + 🔗, no drawn edge
 }) as Fn;
 const xRaise: Fn = (async (state: State, ref: unknown): Promise<void> => { const r = String(ref); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.active", r)); if (state.cels.get("keys.active")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "keys.active", r)); await setState(state, r, { z: await nextZ(state) }); }) as Fn;
 const xMin: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { min: s.min ? 0 : 1 }); }) as Fn;
@@ -284,6 +298,126 @@ const xMax: Fn = (async (state: State, ref: unknown): Promise<void> => { const s
 const xClose: Fn = (async (state: State, ref: unknown): Promise<void> => { await setState(state, String(ref), { closed: 1 }); }) as Fn;
 const xShow: Fn = (async (state: State, ref: unknown): Promise<void> => { const r = String(ref); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.active", r)); if (state.cels.get("keys.active")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "keys.active", r)); await setState(state, r, { closed: 0, min: 0, z: await nextZ(state) }); }) as Fn;
 const xStop: Fn = ((_state: State, _p: unknown, event?: { stopPropagation?: () => void }): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
+
+// ── window LINKS — the corner-grip drag (visual-edge twin of titlebar stacking) ─
+// A link is a {a,b} pair of window .state refs. The list lives in win.links so
+// the edge PERSISTS + dehydrates; forming one ALSO bundles the two segments
+// (linkWindows), identical shared-memory to stacking. The persistent edge is
+// drawn by the linkoverlay verb (mounted on .origin), which reads win.links +
+// each linked window's .state geometry — so it re-renders reactively as the
+// windows move (the overlay's `states` inputMap holds those .state cels).
+interface LinkPair { a: string; b: string }
+interface LinkDrag { from: string; x?: number; y?: number }
+const readLinks = (state: State): LinkPair[] => { const v = state.cels.get("win.links")?.v; return Array.isArray(v) ? (v as LinkPair[]).filter((p) => p && p.a && p.b) : []; };
+const samePair = (p: LinkPair, a: string, b: string): boolean => (p.a === a && p.b === b) || (p.a === b && p.b === a);
+const linkdragOf = (state: State): LinkDrag | null => (state.cels.get("win.linkdrag")?.v as LinkDrag | null) ?? null;
+
+// rewire the linkoverlay's `states` array-inputMap to EXACTLY the .state cels
+// named by win.links, so the overlay re-fires when any linked window moves
+// (inputMap doctrine — no hand-rolled repaint). Mirrors origin's rewireView.
+const rewireOverlay = async (state: State): Promise<void> => {
+  const cel = state.cels.get("linkfx.overlay"); if (!cel) return;
+  const refs = Array.from(new Set(readLinks(state).flatMap((p) => [p.a, p.b]))).filter((r) => state.cels.has(r));
+  const im = { ...(cel.metadata.inputMap as Record<string, string | string[]> | undefined) };
+  im.states = refs;
+  await Promise.resolve((resolveFn(state, "setCel") as Fn)(state, "linkfx.overlay", { metadata: { inputMap: im } }));
+};
+
+// push a {a,b} pair into win.links (idempotent) + rewire the overlay so the new
+// edge's endpoints are in its inputMap, then re-fire + repaint. The inputMap
+// edit is a recompile-tier change, so runCycle must recompute the overlay before
+// the paint lands the new edge (a bare drain only paints already-computed values).
+const pushLinkPair = async (state: State, refA: string, refB: string): Promise<void> => {
+  const links = readLinks(state);
+  if (links.some((p) => samePair(p, refA, refB))) return;
+  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.links", [...links, { a: refA, b: refB }]));
+  await rewireOverlay(state);
+  await Promise.resolve((resolveFn(state, "runCycle") as Fn)(state));
+  await repaint(state);
+};
+
+// xLinkGrab — pointerdown on a window's 🔗 corner grip: record the source ref +
+// start point as win.linkdrag, capture the pointer. stopPropagation so it does
+// NOT also start a titlebar MOVE (mirrors the titlebar buttons' winx.stop).
+const xLinkGrab: Fn = (async (state: State, ref: unknown, event?: DomEvt & { stopPropagation?: () => void }): Promise<void> => {
+  try { event?.stopPropagation?.(); } catch { /* off-DOM */ }
+  capture(event);
+  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.linkdrag", { from: String(ref), x: num(event?.clientX), y: num(event?.clientY) }));
+  await repaint(state);
+}) as Fn;
+
+// xLinkMove — pointermove while link-dragging: track the live pointer in
+// win.linkdrag (the overlay reads it to draw the transient line) + glow the
+// window under the cursor as a candidate drop target.
+const xLinkMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => {
+  const d = linkdragOf(state); if (!d) return;
+  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.linkdrag", { from: d.from, x: num(event?.clientX), y: num(event?.clientY) }));
+  await setGlowState(state, winAtPoint(num(event?.clientX), num(event?.clientY), d.from));
+}) as Fn;
+
+// xLinkDrop — pointerup. Over ANOTHER window (any part, not just the titlebar) →
+// LINK them: linkWindows bundles the segments + records the {a,b} pair (visible
+// edge). Over empty desktop → cancel. Always clears win.linkdrag + the glow.
+const xLinkDrop: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => {
+  const d = linkdragOf(state);
+  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.linkdrag", null));
+  await setGlowState(state);
+  if (!d || !event) { await repaint(state); return; }
+  const target = winAtPoint(num(event.clientX), num(event.clientY), d.from);
+  if (target) await linkWindows(state, d.from, target, true);
+  await repaint(state);
+}) as Fn;
+
+// the .state ref of ANY window (any region, not just the titlebar) under (x,y),
+// excluding selfRef — the link drop hit-test (a corner-link can land anywhere on
+// the target window, unlike the titlebar-only stack drop).
+const winAtPoint = (x: number, y: number, selfRef?: string): string | undefined => {
+  const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => { getAttribute?: (a: string) => string | null } | null }> } }).document;
+  for (const e of doc?.elementsFromPoint?.(x, y) ?? []) {
+    const w = e.closest?.(".pl-window"); const dw = (w as { getAttribute?: (a: string) => string | null } | null)?.getAttribute?.("data-win") ?? undefined;
+    if (dw && dw !== selfRef) return dw;
+  }
+  return undefined;
+};
+
+// linkoverlay(links, linkdrag, states) — a transparent SVG layer over the whole
+// desktop drawing one <line> per win.links pair (between the two windows' current
+// corners, read from `states` — the live .state values) PLUS a transient line
+// from the link-drag source to the live pointer. pointer-events:none so it never
+// blocks the windows under it. `states` is an array-inputMap kept in sync with
+// win.links by rewireOverlay, so moving a linked window re-fires this formula.
+const cornerOf = (st: WinState): { x: number; y: number; cx: number; cy: number } => {
+  const x = num(st.x, 80), y = num(st.y, 80), w = num(st.w, 380), h = num(st.h, 260);
+  return { x, y, cx: x + w / 2, cy: y + h / 2 };       // grip corner + window centre
+};
+const linkOverlayFn: Fn = ((links: unknown, linkdrag: unknown, states: unknown): V => {
+  const pairs: LinkPair[] = Array.isArray(links) ? (links as LinkPair[]).filter((p) => p && p.a && p.b) : [];
+  const sts: WinState[] = Array.isArray(states) ? (states as WinState[]).filter((s) => s && typeof s === "object") : [];
+  const byRef = new Map<string, WinState>(); for (const s of sts) if (s.ref) byRef.set(s.ref, s);
+  const lines: V[] = [];
+  for (const p of pairs) {
+    const a = byRef.get(p.a), b = byRef.get(p.b);
+    if (!a || !b || a.closed || a.min || b.closed || b.min) continue;
+    const ca = cornerOf(a), cb = cornerOf(b);
+    lines.push(el("line", { class: "pl-link-edge", x1: ca.x, y1: ca.y, x2: cb.x, y2: cb.y, stroke: "#4a90d9", "stroke-width": 2, "stroke-dasharray": "6 4", "stroke-linecap": "round" }, []));
+  }
+  const d = (linkdrag && typeof linkdrag === "object") ? linkdrag as LinkDrag : null;
+  if (d && d.from && byRef.get(d.from)) {
+    const c = cornerOf(byRef.get(d.from)!);
+    lines.push(el("line", { class: "pl-link-drag", x1: c.x, y1: c.y, x2: num(d.x, c.x), y2: num(d.y, c.y), stroke: "#4a90d9", "stroke-width": 2, "stroke-dasharray": "3 3", "stroke-linecap": "round" }, []));
+  }
+  return el("svg", { class: "pl-link-overlay", style: "position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:9000" }, lines);
+}) as Fn;
+
+// linkwins() — GENESIS: the persistent edge layer, on its OWN segment `linkfx`
+// (so it never collides with a window's `win.*` layer). win.links (the {a,b}
+// pair list) + win.linkdrag (the transient drag) are SEEDED empty by the windows
+// catalog; this only mints the linkfx.overlay FormulaCel that mounts the SVG
+// onto .origin and references both, plus a `states` array-inputMap (rewired by
+// rewireOverlay) of the linked windows' .state cels.
+const linkOverlayGenesisFn: Fn = ((): unknown => ({ genesis: true, layer: "linkfx", cels: {
+  "linkfx.overlay": { celType: "FormulaCel", f: "(mount \".origin\" (linkoverlay win.links win.linkdrag states))", metadata: { name: "linkoverlay", segment: "linkfx", parser: "f", inputMap: { states: [] } } },
+} })) as Fn;
 
 // winmake(id, title, content) — the formula: genesis a window-STATE cel + its
 // FRAME render (mounted). The state cel is the source of truth; modify it to
@@ -519,6 +653,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["winframe", frameFn],
   ["winx.grab", xGrab], ["winx.move", xMove], ["winx.grabResize", xGrabResize], ["winx.resizeMove", xResizeMove], ["winx.drop", xDrop],
   ["winx.raise", xRaise], ["winx.min", xMin], ["winx.max", xMax], ["winx.close", xClose], ["winx.show", xShow], ["winx.stop", xStop],
+  ["winx.linkGrab", xLinkGrab], ["winx.linkMove", xLinkMove], ["winx.linkDrop", xLinkDrop],
+  ["linkoverlay", linkOverlayFn], ["linkwins", linkOverlayGenesisFn],
   ["window", windowFn],
   ["win.grab", grabFn],
   ["win.move", moveFn],

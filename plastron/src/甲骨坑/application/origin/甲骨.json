@@ -906,6 +906,24 @@
         "genesis": true,
         "description": "genesis: compose a SEGMENT (document) from cels()/winapp()/chatapp()/def()/cel() parts in one formula, e.g. =segment(...). (was doc.)"
       }
+    },
+    {
+      "key": "linkfx.overlay",
+      "celType": "FormulaCel",
+      "f": "(mount \".origin\" (linkoverlay win.links win.linkdrag states))",
+      "metadata": {
+        "key": "linkfx.overlay",
+        "segment": "origin",
+        "name": "linkfx.overlay",
+        "parser": "f",
+        "channel": [
+          "dom.paint"
+        ],
+        "inputMap": {
+          "states": []
+        },
+        "description": "the corner-link EDGE overlay: a transparent SVG over .origin drawing one dashed line per win.links pair (between the two windows' corners) plus the transient link-drag line. `states` is an array-inputMap rewired to the linked windows' .state cels as links form, so the edges follow the windows reactively. Seeded (not genesis) so it survives 元 re-renders."
+      }
     }
   ]
 }
