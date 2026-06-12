@@ -365,7 +365,9 @@ const chatCellKey: Fn = (async (state: State, _p: unknown, event?: { key?: strin
 
 // clientsheet() — GENESIS: a "sheet of clients" minted from the wallet. Each cel
 // reactively makes a client from a wallet apiKey handle (the key is captured, not
-// stored). This segment READS the wallet (apiKey) but never writes it; the chat
+// stored). The trailing secretsGen ref inside apiKey wires a dep on the wallet's
+// version cel so a key add/del re-fires the client cel (error↔ready) through the
+// graph — apiKey reads secrets internally, so without it nothing re-fires. This segment READS the wallet (apiKey) but never writes it; the chat
 // reads these client cels. =clientsheet() then =chatapp("claude","Claude") talks
 // to Claude through clients.claude — the key never in the chat's reach.
 // The `clients` segment is minted with a STATIC get-whitelist: itself (so its
@@ -378,8 +380,8 @@ const clientsheetFn: Fn = ((): unknown => ({
   genesis: true, layer: "clients",
   access: { get: ["clients", "win.chat-claude"], set: "private" },
   cels: {
-    "clients.claude": { celType: "FormulaCel", f: '(makeclient "claude" (apiKey "anthropic"))', metadata: { name: "claude", parser: "f" } },
-    "clients.grok": { celType: "FormulaCel", f: '(makeclient "grok" (apiKey "xai"))', metadata: { name: "grok", parser: "f" } },
+    "clients.claude": { celType: "FormulaCel", f: '(makeclient "claude" (apiKey "anthropic" secretsGen))', metadata: { name: "claude", parser: "f" } },
+    "clients.grok": { celType: "FormulaCel", f: '(makeclient "grok" (apiKey "xai" secretsGen))', metadata: { name: "grok", parser: "f" } },
   },
 })) as Fn;
 

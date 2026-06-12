@@ -46,6 +46,7 @@ import seed from "./甲骨.json" with { type: "json" };
 // ============================================================================
 
 const SECRETS_SEGMENT = "secrets" as const;
+const GEN_KEY = "secretsGen" as const;
 // The reader allowlist — segments whose FORMULAS / whose apiKey() calls may
 // read a stored secret. `clients` (clientsheet's makeclient cels) is the seed
 // reader; getSealed makes the segment encrypt at rest; set: "private" keeps
@@ -60,6 +61,7 @@ const secretKey = (name: string): string => `${SECRETS_SEGMENT}.${name}`;
 let names: Set<string> | null = null;   // null = locked; else the stored key NAMES (not secret)
 let ephemeral = false;                   // seal/storage unavailable → session-only note
 let stateRef: State | null = null;       // last state seen by a handler — apiKey reads secrets through it
+let gen = 0;                             // secretsGen version — bumped on every key-set change
 
 // Capture the live state from any handler so the native apiKey verb (which the
 // formula evaluator calls with ONLY its formula args — no state) can reach the
@@ -98,6 +100,17 @@ const ensureSecretsPolicy = (state: State): void => {
   }
 };
 
+// bumpGen — advance the secretsGen version cel. apiKey() reads secrets
+// INTERNALLY (a native verb, no formula-dep edge), so a key change wouldn't
+// otherwise re-fire client cels. A client formula references secretsGen via
+// (apiKey "name" secretsGen); bumping it here forces those cels to re-fire
+// through the graph. Top-level ValueCel (outside the sealed `secrets` segment)
+// so any formula may reference it for reactivity without breaching the seal.
+const bumpGen = async (state: State): Promise<void> => {
+  gen += 1;
+  await (resolveFn(state, "setValue") as Fn)(state, GEN_KEY, gen);
+};
+
 // Store a secret: secrets.<name> = secret. Runs at TOP LEVEL (handlers aren't
 // wrapped in withAccessor → empty accessor → privileged), so the user can
 // always store a key even though set: "private". Creates the cel on first use
@@ -114,6 +127,7 @@ const storeSecret = async (state: State, name: string, secret: string): Promise<
     });
   }
   (names ??= new Set()).add(name);
+  await bumpGen(state);
 };
 
 const dropSecret = async (state: State, name: string): Promise<boolean> => {
@@ -124,6 +138,7 @@ const dropSecret = async (state: State, name: string): Promise<boolean> => {
   // wallet re-deriving names from cels would see the blank.)
   if (existed) await (resolveFn(state, "setValue") as Fn)(state, key, "");
   names?.delete(name);
+  if (existed) await bumpGen(state);
   return existed;
 };
 
@@ -198,11 +213,19 @@ const shouldSubmit = (event: unknown): boolean => {
  *  "secrets") — and refuses any non-whitelisted accessor. So only a formula in
  *  `clients` (or another listed segment) gets the real key; any other
  *  segment's apiKey call gets the refusal. Top-level calls (no accessor, e.g.
- *  the effect site of a whitelisted client's send) are privileged. */
-const keyFn: Fn = (name: unknown) => {
+ *  the effect site of a whitelisted client's send) are privileged.
+ *  The optional 2nd arg is a REACTIVITY TRIGGER: apiKey reads secrets
+ *  internally (no formula-dep edge), so a caller passes secretsGen — a cel the
+ *  wallet bumps on every key change — to wire the dep and re-fire on add/del. */
+const keyFn: Fn = (name: unknown, _gen?: unknown) => {
   const n = String(name ?? "");
   const state = stateRef;
   if (!state) return `#DENIED(apiKey "${n}": no wallet state — =unlockWallet() first)`;
+  // a LOCKED wallet exposes no keys — refuse even though the secret cel may
+  // still hold a value in memory (lock only forgets the runtime unlock; it
+  // doesn't blank the cel). So locking re-arms client cels to error via the
+  // secretsGen bump, and an apiKey call before unlock gets a clear refusal.
+  if (!names) return `#NOKEY(apiKey "${n}": wallet locked — =unlockWallet() first)`;
   const accessor = currentAccessor(state);
   if (!canGet(state, accessor, SECRETS_SEGMENT)) {
     return `#DENIED(apiKey "${n}": segment "${accessor ?? "?"}" is not in secrets.get)`;
@@ -336,6 +359,9 @@ const unlockHandler: Fn = async (stateArg: unknown, _payload: unknown, event: un
   // Runtime-unlock: surface whatever secrets already exist (decrypted on
   // hydrate) plus any added this session.
   names = namesFromState(state);
+  // re-arm any client cel that referenced secretsGen while the wallet was
+  // locked: unlocking surfaced the (decrypted) keys, so bump to re-fire them.
+  await bumpGen(state);
   const n = names.size;
   await note(state, sealed
     ? (n > 0
@@ -363,6 +389,7 @@ const lockHandler: Fn = async (stateArg: unknown) => {
   const state = remember(stateArg as State);
   names = null;
   await sealClear(state); // clear the seal hooks — secrets re-seal/stay sealed at rest
+  await bumpGen(state);   // re-fire client cels → they flip back to error (no key)
   await note(state, "(wallet locked)");
   return state;
 };

@@ -24,6 +24,17 @@
       }
     },
     {
+      "key": "secretsGen",
+      "celType": "ValueCel",
+      "v": 0,
+      "metadata": {
+        "key": "secretsGen",
+        "segment": "unsafe-wallet",
+        "name": "secretsGen",
+        "description": "key-set version counter, bumped on every unlock/lock/setKey/del. apiKey reads secrets INTERNALLY (a native verb, no formula-dep edge), so a key change wouldn't otherwise re-fire client cels. Reference it inside the apiKey call — =makeclient(\"claude\", apiKey(\"anthropic\", secretsGen)) — to wire the dep so a key add/del re-arms the client (error↔ready) through runCycle, no manual re-fire. It is a plain top-level cel (NOT in the sealed secrets segment), so referencing it never breaches the seal."
+      }
+    },
+    {
       "key": "wallet.newName",
       "celType": "ValueCel",
       "v": "",
@@ -116,7 +127,7 @@
         "segment": "unsafe-wallet",
         "name": "apiKey",
         "kind": "native",
-        "description": "(name) - a resolver HANDLE for a stored secret, not the secret. pass to api fns: =claude(chat!A1, apiKey(\"anthropic\")). saves/seeds/ranges only ever carry the name."
+        "description": "(name [, trigger]) - a resolver HANDLE for a stored secret, not the secret. pass to api fns: =claude(chat!A1, apiKey(\"anthropic\")). saves/seeds/ranges only ever carry the name. Optional 2nd arg is a REACTIVITY trigger (ignored by the resolver): pass secretsGen so the cel re-fires when a key is added/removed — =makeclient(\"claude\", apiKey(\"anthropic\", secretsGen))."
       }
     },
     {
