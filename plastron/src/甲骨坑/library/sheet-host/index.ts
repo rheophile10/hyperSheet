@@ -1,5 +1,5 @@
 import type { 甲骨, Cel, Fn, State, VElement } from "../../../types/index.js";
-import { bindNativeFns, isSecretHandleRef, resolveFn, bundleSegments } from "../../../kernel/index.js";
+import { bindNativeFns, isSecretHandleRef, resolveFn, bundleSegments, setAccessPolicy, precompute } from "../../../kernel/index.js";
 import { el as makeEl, text as T, memo } from "../dom/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
@@ -137,8 +137,14 @@ const sheetView: Fn = ((
     if (g.closed) return el("div", { class: "pl-window-closed", "data-win": host, style: "display:none" }, []);
     if (g.min) return el("div", { class: "pl-window-min", "data-win": host, style: "display:none" }, []);
     const x = gnum(g.x, 40 + i * 34), y = gnum(g.y, 40 + i * 34), w = gnum(g.w, 380), h = gnum(g.h, 260), z = gnum(g.z, 1);
-    const tabStrip = tabs.length > 1 ? el("div", { class: "pl-tabs", style: "flex:0 0 auto;display:flex;gap:.15rem;padding:.25rem .3rem 0;background:#8881;overflow-x:auto" }, tabs.map((seg) =>
-      el("button", { class: "pl-tab" + (seg === active ? " active" : ""), "data-tab": seg, style: `flex:0 0 auto;border:1px solid #8884;border-bottom:0;border-radius:.3rem .3rem 0 0;background:${seg === active ? "Canvas" : "#8882"};color:CanvasText;cursor:pointer;font:600 .74rem ui-monospace,monospace;padding:.18rem .55rem;white-space:nowrap;opacity:${seg === active ? "1" : ".7"}` }, [T(seg)], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.tab", payload: { host, tab: seg } }, dblclick: { dispatch: "winsheet.tearoff", payload: seg } }))) : null;
+    // the tab strip — a "+" that genesis-creates a new blank sheet tabbed into
+    // THIS window (winsheet.newtab), plus one chip per sheet WHEN tabbed (>1). A
+    // single-sheet window shows just "+" (no self-chip), so the chips still read
+    // [host, …tabs] only when there's a real tab group.
+    const plusBtn = el("button", { class: "pl-tab-add", title: "new sheet (tab)", style: "flex:0 0 auto;border:1px solid #8884;border-bottom:0;border-radius:.3rem .3rem 0 0;background:#8882;color:CanvasText;cursor:pointer;font:600 .82rem ui-monospace,monospace;padding:.18rem .5rem;line-height:1" }, [T("+")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.newtab", payload: host } });
+    const tabChips = tabs.length > 1 ? tabs.map((seg) =>
+      el("button", { class: "pl-tab" + (seg === active ? " active" : ""), "data-tab": seg, style: `flex:0 0 auto;border:1px solid #8884;border-bottom:0;border-radius:.3rem .3rem 0 0;background:${seg === active ? "Canvas" : "#8882"};color:CanvasText;cursor:pointer;font:600 .74rem ui-monospace,monospace;padding:.18rem .55rem;white-space:nowrap;opacity:${seg === active ? "1" : ".7"}` }, [T(seg)], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.tab", payload: { host, tab: seg } }, dblclick: { dispatch: "winsheet.tearoff", payload: seg } })) : [];
+    const tabStrip = el("div", { class: "pl-tabs", style: "flex:0 0 auto;display:flex;gap:.15rem;padding:.25rem .3rem 0;background:#8881;overflow-x:auto" }, [...tabChips, plusBtn]);
     return el("div", { class: "pl-window", "data-win": host, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas;box-shadow:0 4px 16px #0004;overflow:hidden` }, [
       titlebar(host),
       ...(tabStrip ? [tabStrip] : []),
@@ -398,10 +404,82 @@ const wsMax: Fn = (async (state: State, seg: unknown): Promise<void> => { const 
 const wsMid: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { x: 90, y: 70, w: 540, h: 380, z, min: 0 }; await setGeom(state, m); }) as Fn;
 const wsStop: Fn = ((_state: State, _p: unknown, event?: WEvt): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
 
+// winsheet.syncBundles — make a SEEDED tab relationship grant shared memory, the
+// same way a runtime drop (wsDrop) does. A sheet minted private-get is a closure;
+// when win.geom seeds seg.host = other (e.g. the boot tabs turtlecharts INTO
+// turtles), the two are visually tabbed but still isolated until bundled. This
+// scans win.geom and bundles every {host, tabs…} clique so a tabbed sheet can read
+// its host's cels (turtlecharts reads turtles!). The host (boot/commit) calls it
+// after the desktop genesis materializes; idempotent (re-bundling is harmless).
+const wsSyncBundles: Fn = (async (state: State): Promise<void> => {
+  const m = geomMap(state);
+  const hosts = new Map<string, Set<string>>();
+  for (const seg of Object.keys(m)) {
+    const host = m[seg]?.host;
+    if (typeof host === "string" && host !== seg) (hosts.get(host) ?? hosts.set(host, new Set([host])).get(host)!).add(seg);
+  }
+  let bundled = false;
+  for (const members of hosts.values()) if (members.size > 1) { bundleSegments(state, [...members]); bundled = true; }
+  // a tabbed sheet's formula captured the #DENIED sentinel at first eval (before
+  // the bundle existed). precompute re-resolves each inputMap ref through the now-
+  // open gate; the real cel has a different object identity than the deniedCel, so
+  // the incremental check invalidates the formula → it re-fires (with the value)
+  // on the caller's next runCycle. Without this the chart stays #DENIED.
+  if (bundled) precompute(state);
+}) as Fn;
+
+// winsheet.newtab — the "+" on a worksheet window's tab strip. Genesis-creates a
+// BLANK 10×10 sheet, mints it as its own private closure, and TABS it into the
+// clicked window (win.geom[new].host = host + host.tab = new), then bundles the
+// host clique so the new tab shares memory with its host (the turtles pattern).
+// The sheet is owned by a stable generator cel (<seg>.maker) so its cells render
+// (generatedBy-stamped) and persist; the maker itself stays off the grid.
+const colA = (n: number): string => { let s = "", x = n + 1; while (x > 0) { s = String.fromCharCode(65 + (x - 1) % 26) + s; x = Math.floor((x - 1) / 26); } return s; };
+const wsNewtab: Fn = (async (state: State, host: unknown): Promise<void> => {
+  const h = String(host ?? "");
+  if (!h) return;
+  // a fresh, unused sheet segment name (tab1, tab2, …)
+  let n = 1; while (state.cels.get(`tab${n}.maker`) || geomMap(state)[`tab${n}`]) n++;
+  const seg = `tab${n}`, maker = `${seg}.maker`;
+  const cels: Record<string, unknown> = {};
+  for (let r = 0; r < 10; r++) for (let c = 0; c < 10; c++) {
+    const addr = `${colA(c)}${r + 1}`;
+    cels[`${seg}.${addr}`] = { celType: "ValueCel", v: "", metadata: { segment: seg, name: addr, parser: "infix" } };
+  }
+  // the maker is a ValueCel holding a genesis request; we feed it straight to the
+  // genesis drain (as one synthetic channel item), which stamps each cell
+  // generatedBy=<maker>, mints the segment's closure policy, and materializes the
+  // grid. A live maker cel keeps the bloom from being swept (its generator exists).
+  const makerCel = {
+    celType: "ValueCel" as const,
+    v: { genesis: true, layer: seg, access: { get: ["origin"], set: "private" }, cels },
+    metadata: { key: maker, segment: seg, name: "maker" },
+    locked: false,
+  };
+  state.cels.set(maker, makerCel);
+  const gd = resolveFn(state, "genesis.drain") as Fn | undefined;
+  if (gd) await gd([{ cel: makerCel, state }], state);
+  // tab the new sheet into the clicked host + bundle the clique (shared memory)
+  const ult = (geomMap(state)[h]?.host as string | undefined) ?? h;
+  const m = geomMap(state);
+  m[seg] = { ...(m[seg] ?? {}), host: ult };
+  m[ult] = { ...(m[ult] ?? {}), tab: seg, min: 0, closed: 0 };
+  await setGeom(state, m);
+  bundleSegments(state, [ult, ...Object.keys(m).filter((k) => m[k]?.host === ult)]);
+  // setAccessPolicy already ran via genesis (mints), but assert it in case the
+  // segment was undeclared (defensive — a closure even if drain skipped). get
+  // lists `origin` so the host view renders the new sheet's cells.
+  setAccessPolicy(state, seg, { get: ["origin"], set: "private" });
+  // rebuild the view's cell list so the new sheet's cells show, then repaint.
+  if (state.cels.get("view.refresh")) await Promise.resolve((resolveFn(state, "view.refresh") as Fn)(state));
+  await wrepaint(state);
+}) as Fn;
+
 export const name = "sheet-host" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["sheetView", sheetView],
   ["winsheet.grab", wsGrab], ["winsheet.move", wsMove], ["winsheet.grabResize", wsGrabResize], ["winsheet.resizeMove", wsResizeMove],
   ["winsheet.drop", wsDrop], ["winsheet.tab", wsTab], ["winsheet.tearoff", wsTearoff], ["winsheet.raise", wsRaise], ["winsheet.minimize", wsMin], ["winsheet.close", wsClose], ["winsheet.restore", wsRestore], ["winsheet.maximize", wsMax], ["winsheet.mid", wsMid], ["winsheet.stop", wsStop],
+  ["winsheet.syncBundles", wsSyncBundles], ["winsheet.newtab", wsNewtab],
 ]));

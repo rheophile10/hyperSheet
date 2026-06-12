@@ -147,10 +147,19 @@ const collectValues = (args: unknown[], i: number): [Record<string, unknown> | u
  *    cels("in", 4, 3, at("a1","apple"), at("b2","cel(\"monkey\")"))  → a sheet
  *      with initial cell contents (a value, or a formula like cel(…) / =1+1).
  *  Delete the formula → swept. */
+// SHEET_CLOSURE — every cels() worksheet mints a CLOSURE: only the host view
+// (`origin`, which aggregates every cell's value to render the grid) may read it;
+// a formula in ANOTHER sheet/window can't, so cross-sheet reads are denied unless
+// the two sheets are tabbed together (tabbing → bundleSegments, the one opener —
+// the turtles pattern). set stays private (only the sheet itself writes). Listing
+// `origin` rather than going fully `private` keeps the renderer working while
+// still closing the sheet to every peer formula.
+const SHEET_CLOSURE = { get: ["origin"], set: "private" } as const;
 const celsGen: Fn = (...args: unknown[]): unknown => {
   if (typeof args[0] === "string") {
     // workbook: (name, rows, cols [, at()…])+ — at() markers belong to the
-    // preceding grid; the next string starts the next grid.
+    // preceding grid; the next string starts the next grid. A workbook's sheets
+    // all land in the generator's own segment (one closure), so they share memory.
     const cels: Record<string, unknown> = {};
     let i = 0, n = 0;
     while (i < args.length && typeof args[i] === "string") {
@@ -167,7 +176,8 @@ const celsGen: Fn = (...args: unknown[]): unknown => {
   const name = named ? String(args[2])
     : `g${Math.max(1, Math.min(100, Math.floor(Number(rows) || 1)))}x${Math.max(1, Math.min(50, Math.floor(Number(cols) || 1)))}`;
   const [values] = collectValues(args, named ? 3 : 2);
-  return { genesis: true, ...gridShape(rows, cols, name, values) };
+  // each standalone named sheet is its OWN private closure.
+  return { genesis: true, ...gridShape(rows, cols, name, values), access: SHEET_CLOSURE };
 };
 
 /** cel(content?) — create ONE new cel out of the origin cel. `cel()` makes an
@@ -264,6 +274,8 @@ const rewireView = async (state: State, keys: string[]): Promise<void> => {
 // (#17 render half — the abandoned walletKeys worksheet, future windows).
 const viewRefreshFn: Fn = (async (state: State): Promise<void> => {
   await rewireView(state, cellKeys(state));
+  const sync = resolveFn(state, "winsheet.syncBundles") as Fn | undefined;
+  if (sync) await sync(state);   // seeded tabs share memory (turtlecharts ← turtles)
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
 }) as Fn;
 
@@ -366,6 +378,11 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   }
   // …rebuild the cell list (new grids in, swept cels out), re-fire, paint.
   await rewireView(state, cellKeys(state));
+  // a SEEDED tab (win.geom[seg].host) must grant shared memory like a runtime
+  // drop — bundle each host clique so a tabbed private sheet reads its host
+  // (turtlecharts reads turtles!). Idempotent; safe to call every commit.
+  const sync = resolveFn(state, "winsheet.syncBundles") as Fn | undefined;
+  if (sync) await sync(state);
   await (resolveFn(state, "runCycle") as Fn)(state);
   await drain(state, "dom.paint");
   return state;

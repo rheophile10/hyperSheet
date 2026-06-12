@@ -186,6 +186,15 @@
     "role": "library"
   },
   {
+    "name": "charts",
+    "version": "0.0.1",
+    "description": "Charting vocabulary over the plastron-canvas draw-spec: barchart/linechart/piechart(labels, values [, x y w h]) turn column ranges into op LISTS that canvas() concats — =canvas(420, 260, barchart(turtles!A2:A8, turtles!B2:B8)). Pure fns, no module state; the range edges in inputMap re-render a chart when its sheet data changes.",
+    "dependencies": [
+      "plastron-canvas"
+    ],
+    "role": "library"
+  },
+  {
     "name": "unsafe-wallet",
     "version": "1.0.0",
     "description": "API keys out of the graph: module-held Map once unlocked, PBKDF2-SHA-256(600k)+AES-256-GCM encrypted file at /plastron/wallet.json otherwise (WebCrypto, no deps). key(name) returns a resolver HANDLE — consumers call resolve() at the effect site, so cel values / saves / seeds / LLM-bound ranges only carry the name. Secrets and the password enter via password-input dispatch handlers (wallet.*), never formula source. UNSAFE is honest: after unlock, same-page code can resolve handles — protects at-rest + accidental graph leakage; active malice is the review gate's job (agent-bridge Q3/Q4).",
@@ -229,8 +238,10 @@
       "html-template-parser",
       "dom",
       "plastron-canvas",
+      "charts",
       "checkpoint",
       "unsafe-wallet",
+      "dom-wallet",
       "llm",
       "sqlite",
       "sheet-host",

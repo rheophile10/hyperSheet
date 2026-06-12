@@ -35,6 +35,11 @@ const line: Fn = (x1, y1, x2, y2, stroke, lineWidth) =>
 const circle: Fn = (x, y, r, fill, stroke, lineWidth) =>
   ({ op: "circle", x: num(x), y: num(y), r: num(r), fill: str(fill), stroke: str(stroke), lineWidth: str(lineWidth) ? num(lineWidth) : undefined });
 
+/** wedge(cx, cy, r, a0, a1 [, fill] [, stroke] [, lineWidth]) — a pie slice
+ *  from angle a0 to a1 (radians, clockwise from 3 o'clock). */
+const wedge: Fn = (cx, cy, r, a0, a1, fill, stroke, lineWidth) =>
+  ({ op: "wedge", cx: num(cx), cy: num(cy), r: num(r), a0: num(a0), a1: num(a1), fill: str(fill), stroke: str(stroke), lineWidth: str(lineWidth) ? num(lineWidth) : undefined });
+
 /** orbit(cx, cy, orbitR, planetR, period [, color] [, phase]) — an ANIMATED
  *  op: a planet circling (cx,cy) at radius orbitR, once every `period` seconds.
  *  A canvas with any orbit op runs a rAF loop (see dom). Stack a few
@@ -44,13 +49,17 @@ const orbit: Fn = (cx, cy, orbitR, planetR, period, color, phase) =>
 
 /** canvas(width, height, …ops) — a <canvas> VNODE that draws `ops`. Use it
  *  as a cell value or inside mount/dom: `=canvas(600, 140, rect(…), text(…))`.
- *  Composes by concat — `(canvas 600 140 (bars data) (axes))` once you have
- *  vocabulary fns that return op lists. */
+ *  Composes by concat — vocabulary fns that return op LISTS (the charts
+ *  segment) flatten in: `=canvas(420, 260, barchart(t!A2:A8, t!B2:B8))`. */
 const canvas: Fn = (width, height, ...rest) => {
   // ops plus an optional (style …) child for inline styling of the <canvas>
   let style: Record<string, unknown> | undefined;
   const opList: unknown[] = [];
-  for (const c of rest) { if (isStyle(c)) { style = { ...style, ...c.__style }; continue; } if (isOp(c)) opList.push(c); }
+  for (const c of rest) {
+    if (isStyle(c)) { style = { ...style, ...c.__style }; continue; }
+    if (Array.isArray(c)) { for (const o of (c as unknown[]).flat(8)) if (isOp(o)) opList.push(o); continue; }
+    if (isOp(c)) opList.push(c);
+  }
   return {
     type: "el", tag: "canvas",
     attrs: { width: Math.max(1, num(width, 300)), height: Math.max(1, num(height, 150)), "data-ops": JSON.stringify(opList) },
@@ -66,6 +75,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["text",   text],
   ["line",   line],
   ["circle", circle],
+  ["wedge",  wedge],
   ["orbit",  orbit],
   ["canvas", canvas],
 ]));

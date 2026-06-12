@@ -99,7 +99,12 @@ test("=cels(3,3) makes a 3x3 worksheet of cels, each editable like 元", async (
   assert.equal(state.cels.get("g3x3.B1").v, 20, "g3x3.B1 computes from g3x3!A1*2 (bare-A1 scoping is a follow-up)");
   await put(state, root, m, "");
   assert.equal(state.cels.get("g3x3.A1"), undefined, "grid swept when its formula is gone");
-  assert.deepEqual(cells(root).map((c) => c.attrs["data-key"]), ["元"], "back to just A1");
+  // empty 元 restores the readme boot formula, whose bloom includes the
+  // turtles demo sheet — so the view is A1 + the demo, with g3x3 gone.
+  const back = cells(root).map((c) => c.attrs["data-key"]);
+  assert.ok(back.includes("元"), "A1 back");
+  assert.ok(back.includes("turtles.A1"), "boot demo sheet restored with the readme");
+  assert.ok(!back.some((k) => k.startsWith("g3x3.")), "no g3x3 cells remain");
 });
 
 test("a syntax error surfaces under the editor instead of doing nothing", async () => {
@@ -217,6 +222,25 @@ test("grid(name,r,c,…) makes a workbook of named grids in one formula", async 
   assert.ok(state.cels.get("budget.A1") && state.cels.get("actuals.C3"), "both sheets created");
   await put(state, root, m, "");
   assert.equal(state.cels.get("budget.A1"), undefined, "deleting the formula sweeps all sheets");
+});
+
+test("editing 元's formula RE-DRAINS genesis: a genesis-producing formula re-creates its windows/cels", async () => {
+  const { state, root, m } = await boot();
+  await resolveFn(state, "origin.commit")(state, "元"); m.run(); // boot desktop
+  // the boot desktop is now SHEETS (the turtles pattern): readme/clients/turtles
+  // worksheet windows, not state-cel windows.
+  assert.ok(state.cels.get("turtles.A1"), "boot desktop materialized the turtles sheet");
+  assert.ok(state.cels.get("readmedata.A1"), "…and the readme data sheet");
+  // edit 元 to a DIFFERENT genesis formula → its windows must appear and the
+  // old desktop's sheets (owned by 元) sweep
+  await put(state, root, m, '=winapp("hello", "Hello", "(dom \\"p\\" \\"hi\\")")');
+  assert.ok(state.cels.get("win.hello.state"), "the edited genesis re-created its window state cel");
+  assert.ok(state.cels.get("win.hello.frame"), "…and its frame");
+  assert.ok(!state.cels.get("turtles.A1"), "the old desktop's sheets swept (元 is authoritative)");
+  // clear 元 → the readme/desktop seed restores its sheets again
+  await put(state, root, m, "");
+  assert.ok(state.cels.get("readmedata.A1"), "clearing 元 re-drains the desktop genesis (sheets back)");
+  assert.ok(!state.cels.get("win.hello.state"), "the interim window is gone with its formula");
 });
 
 test("def(name, kind, source) defines a callable JS function", async () => {

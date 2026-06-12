@@ -133,8 +133,11 @@ test("FIX C: boot seeds a turtlecharts worksheet tabbed with turtles (no standal
   assert.ok(!state.cels.get("win.chart-pie.state"), "old chart-pie window removed");
   // tabbing: turtlecharts rides turtles' window
   assert.equal(state.cels.get("win.geom")?.v?.turtlecharts?.host, "turtles", "turtlecharts hosted by turtles");
+  // the data|formula pair renders as ONE tabbed window: the strip shows
+  // [turtles, turtlecharts] adjacent (other boot apps add their own tab pairs).
   const tabs = walk(root, (n) => String(n.attrs?.class ?? "").includes("pl-tab") && n.attrs["data-tab"]).map((n) => n.attrs["data-tab"]);
-  assert.deepEqual(tabs, ["turtles", "turtlecharts"], "one tabbed window: [turtles | turtlecharts]");
+  const ti = tabs.indexOf("turtles");
+  assert.ok(ti >= 0 && tabs[ti + 1] === "turtlecharts", `[turtles | turtlecharts] is one tabbed window (tabs: ${tabs.join(",")})`);
   // turtlecharts has NO standalone top-level window of its own
   const topWins = walk(root, (n) => String(n.attrs?.class ?? "").includes("pl-window") && n.attrs["data-win"] && !n.attrs["data-win"].includes(".state")).map((n) => n.attrs["data-win"]);
   assert.ok(!topWins.includes("turtlecharts"), "turtlecharts does not get its own window (it's a tab)");

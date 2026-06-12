@@ -29,7 +29,7 @@ interface Ctx2D {
   fillText(t: string, x: number, y: number): void;
   beginPath(): void; moveTo(x: number, y: number): void; lineTo(x: number, y: number): void;
   arc(x: number, y: number, r: number, a0: number, a1: number): void; stroke(): void; fill(): void;
-  save(): void; restore(): void; setLineDash(d: number[]): void;
+  closePath(): void; save(): void; restore(): void; setLineDash(d: number[]): void;
 }
 
 const n = (v: unknown, d = 0): number => { const x = Number(v); return Number.isFinite(x) ? x : d; };
@@ -122,6 +122,17 @@ const replay = (ctx: Ctx2D, ops: Op[], w: number, h: number, t = 0): void => {
         if (o.fill) { ctx.fillStyle = String(o.fill); ctx.fill(); }
         if (o.stroke) { ctx.strokeStyle = String(o.stroke); ctx.lineWidth = n(o.lineWidth, 1); ctx.stroke(); }
         break;
+      case "wedge": {
+        // a pie slice: center → arc a0..a1 → back to center
+        const cx = n(o.cx), cy = n(o.cy);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, n(o.r), n(o.a0), n(o.a1));
+        ctx.closePath();
+        if (o.fill) { ctx.fillStyle = String(o.fill); ctx.fill(); }
+        if (o.stroke) { ctx.strokeStyle = String(o.stroke); ctx.lineWidth = n(o.lineWidth, 1); ctx.stroke(); }
+        break;
+      }
       case "frames": {
         // play a precomputed trajectory (a def-driven sim) — a circle at the
         // frame the time `t` lands on. The physics that made the frames lives

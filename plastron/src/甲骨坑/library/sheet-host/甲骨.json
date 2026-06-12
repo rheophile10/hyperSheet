@@ -180,6 +180,30 @@
         "description": "tear a tab out of its host into a standalone window"
       },
       "locked": true
+    },
+    {
+      "key": "winsheet.newtab",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.newtab",
+        "segment": "sheet-host",
+        "name": "winsheet.newtab",
+        "kind": "native",
+        "description": "(state, host) - the '+' on a worksheet window's tab strip: genesis-create a BLANK 10x10 sheet, mint it as its own private closure, tab it into the clicked window (win.geom[new].host=host), and bundle the host clique so the new tab shares memory with its host."
+      },
+      "locked": true
+    },
+    {
+      "key": "winsheet.syncBundles",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.syncBundles",
+        "segment": "sheet-host",
+        "name": "winsheet.syncBundles",
+        "kind": "native",
+        "description": "(state) - make SEEDED tab relationships grant shared memory like a runtime drop does: scan win.geom and bundleSegments each {host, tabs...} clique, so a sheet minted private-get (a closure) can read its host's cels when win.geom seeds seg.host (e.g. turtlecharts tabbed into turtles reads turtles!). Idempotent; the host calls it after the desktop genesis materializes."
+      },
+      "locked": true
     }
   ]
 }

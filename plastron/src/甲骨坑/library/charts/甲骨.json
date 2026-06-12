@@ -1,0 +1,32 @@
+{
+  "name": "charts",
+  "cels": [
+    {
+      "key": "barchart",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "barchart", "segment": "charts", "name": "barchart", "kind": "native",
+        "description": "(labels, values [, x] [, y] [, w] [, h]) - bar-chart ops for canvas(): one bar per row, value above, label below. labels/values are column ranges: =canvas(420, 260, barchart(turtles!A2:A8, turtles!B2:B8)). Default box 0,0,420,260; pass x/y/w/h to place several charts on one canvas. Edits to the range re-render the chart."
+      }
+    },
+    {
+      "key": "linechart",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "linechart", "segment": "charts", "name": "linechart", "kind": "native",
+        "description": "(labels, values [, x] [, y] [, w] [, h]) - line-chart ops for canvas(): one series as a polyline with point dots, gridlines with value ticks, labels along the x axis. =canvas(420, 260, linechart(turtles!A2:A8, turtles!C2:C8))."
+      }
+    },
+    {
+      "key": "piechart",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "piechart", "segment": "charts", "name": "piechart", "kind": "native",
+        "description": "(labels, values [, x] [, y] [, w] [, h]) - pie-chart ops for canvas(): wedges from 12 o'clock + a legend with each row's value and share. Non-positive values drop out. =canvas(420, 260, piechart(turtles!A2:A8, turtles!D2:D8))."
+      }
+    }
+  ]
+}

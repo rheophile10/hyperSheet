@@ -38,6 +38,15 @@
       }
     },
     {
+      "key": "wedge",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wedge", "segment": "plastron-canvas", "name": "wedge", "kind": "native",
+        "description": "(cx, cy, r, a0, a1 [, fill] [, stroke] [, lineWidth]) - a canvas pie-slice op from angle a0 to a1 (radians, clockwise from 3 o'clock). The piechart fn stacks these."
+      }
+    },
+    {
       "key": "orbit",
       "celType": "LockedLambdaCel",
       "locked": true,
@@ -52,7 +61,7 @@
       "locked": true,
       "metadata": {
         "key": "canvas", "segment": "plastron-canvas", "name": "canvas", "kind": "native",
-        "description": "(width, height, ...ops) - a <canvas> drawn from rect/text/line/circle ops; the painter replays them onto the 2d context. use as a cell value or inside mount/dom."
+        "description": "(width, height, ...ops) - a <canvas> drawn from rect/text/line/circle/wedge ops; the painter replays them onto the 2d context. use as a cell value or inside mount/dom. op LISTS flatten in, so chart fns compose: =canvas(420, 260, barchart(t!A2:A8, t!B2:B8))."
       }
     }
   ]
