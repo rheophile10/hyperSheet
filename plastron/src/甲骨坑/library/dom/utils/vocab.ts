@@ -69,6 +69,21 @@ export const attr: Fn = (...pairs: unknown[]): { __attr: Record<string, unknown>
  *  as a child of dom(): (dom "button" (on "click" "wallet.lock") "lock"). The
  *  handler runs (state, payload, event). This is what makes interactive UI —
  *  buttons, inputs — authorable as a formula. */
+/** img(src… [, style()/attr()/on() children]) — an image element. String
+ *  args form a src FALLBACK CHAIN (first non-empty wins). A "/path" src is
+ *  an OPFS REFERENCE: the painter hydrates it to an objectURL via
+ *  file-store after each paint (the canvas data-ops replay pattern), so a
+ *  formula can point at any file in the page's filesystem —
+ *  (img desktop.A2 windows.wallpaper …). data:/http(s)/blob srcs pass
+ *  straight through. */
+export const img: Fn = (...args: unknown[]): V => {
+  const srcs = args.filter((a): a is string => typeof a === "string");
+  const rest = args.filter((a) => typeof a !== "string");
+  const src = srcs.find((x) => x.trim() !== "") ?? "";
+  const pair = src.startsWith("/") ? attr("data-opfs-src", src) : attr("src", src);
+  return dom("img", pair, ...rest) as V;
+};
+
 export const on: Fn = (event: unknown, handler: unknown, payload?: unknown): { __on: { event: string; binding: EventBinding } } => {
   const binding = (payload === undefined
     ? { dispatch: String(handler ?? "") }

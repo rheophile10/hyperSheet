@@ -1,7 +1,6 @@
 import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
 import { bindNativeFns, resolveFn, withAccessor, bundleSegments } from "../../../kernel/index.js";
 import { el as makeEl, text as T } from "../dom/index.js";
-import { BG } from "./bg.js";
 import { README_INNER } from "./readme-content.js";
 import seed from "./甲骨.json" with { type: "json" };
 
@@ -436,12 +435,14 @@ const chatappFn: Fn = ((channel: unknown, title: unknown, linked?: unknown): unk
   } };
 }) as Fn;
 
-// desktop() — GENESIS: create a desktop.bg cel that mounts a fixed full-screen
-// wallpaper behind the windows. Genesis (not a bare placement) so it composes in
-// the boot doc(). The image ships inline (bg.ts). desktopbg() is the vnode.
-const desktopbgFn: Fn = ((): V => el("div", { class: "desktop-bg", style: `position:fixed;inset:0;z-index:-1;background:#0a1216 url("${BG}") center/cover no-repeat` }, [])) as Fn;
+// desktop() — GENESIS: a wallpaper layer with NO bespoke render fn. desktop.bg
+// is a plain mount formula over the dom `img` verb; desktop.wallpaper is an
+// EDITABLE cel holding an OPFS path ("" → fall through to windows.wallpaper,
+// the locked shipped default). Re-skinning the desktop = uploading an image
+// and writing its path into a cel — no code, the north-star way.
 const desktopFn: Fn = ((): unknown => ({ genesis: true, layer: "desktop", cels: {
-  "desktop.bg": { celType: "FormulaCel", f: `(mount ".origin" (desktopbg))`, metadata: { name: "bg", parser: "f" } },
+  "desktop.wallpaper": { celType: "ValueCel", v: "", metadata: { name: "wallpaper" } },
+  "desktop.bg": { celType: "FormulaCel", f: `(mount ".origin" (img desktop.wallpaper windows.wallpaper (attr "class" "desktop-bg") (style "position" "fixed" "inset" "0" "width" "100vw" "height" "100vh" "object-fit" "cover" "z-index" "-1")))`, metadata: { name: "bg", parser: "f" } },
 } })) as Fn;
 
 // readme() — the plastron readme as a vnode, for a readme WINDOW.
@@ -471,7 +472,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["winmake", makeFn],
   ["winapp", appFn],
   ["readme", readmeFn], ["readmewin", readmewinFn],
-  ["desktop", desktopFn], ["desktopbg", desktopbgFn],
+  ["desktop", desktopFn],
   ["chatui", chatFn], ["chat.send", chatSend], ["chat.key", chatKey], ["chat.run", runCommands], ["chatapp", chatappFn],
   ["winframe", frameFn],
   ["winx.grab", xGrab], ["winx.move", xMove], ["winx.grabResize", xGrabResize], ["winx.resizeMove", xResizeMove], ["winx.drop", xDrop],

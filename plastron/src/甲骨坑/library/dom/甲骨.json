@@ -118,6 +118,18 @@
         "kind": "native",
         "description": "(event handlerKey [payload]) - bind a dom event to a handler cel; pass as a child of dom(). =dom(\"button\", on(\"click\", \"wallet.lock\"), \"lock\"). The handler runs (state, payload, event)."
       }
+    },
+    {
+      "key": "img",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "img",
+        "segment": "dom",
+        "name": "img",
+        "kind": "native",
+        "description": "(src... , style()/attr() children) - an image element. String args form a src fallback chain (first non-empty wins). A \"/path\" src references a file in OPFS: the painter hydrates it to an objectURL via file-store after paint, so formulas reference images by filesystem path - (img desktop.A2 windows.wallpaper (style ...)). data:/http(s)/blob srcs pass straight through."
+      }
     }
   ]
 }
