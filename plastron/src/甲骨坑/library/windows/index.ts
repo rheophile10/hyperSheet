@@ -467,6 +467,25 @@ const desktopFn: Fn = ((): unknown => ({ genesis: true, layer: "desktop", cels: 
   "desktop.bg": { celType: "FormulaCel", f: `(mount ".origin" (img desktop.wallpaper windows.wallpaper (attr "class" "desktop-bg") (style "position" "fixed" "inset" "0" "width" "100vw" "height" "100vh" "object-fit" "cover" "z-index" "-1")))`, metadata: { name: "bg", parser: "f" } },
 } })) as Fn;
 
+// explorerwin() — GENESIS: a standalone OPFS file-explorer WINDOW. Seeds the
+// navigation cels (explorer.cwd = "/", explorer.preview = "") and a content
+// formula (explorer explorer.cwd explorer.preview) that REFERENCES them, so
+// clicking a folder (→ origin.explorerNav writes explorer.cwd) or a file (→
+// origin.explorerOpen writes explorer.preview) re-fires the listing. The
+// explorer verb itself lives in origin (where the OPFS vocabulary lives); this
+// only wires it into a draggable window with its reactive state.
+const explorerwinFn: Fn = ((): unknown => {
+  const lay = "win.explorer", sref = `${lay}.state`;
+  return { genesis: true, layer: lay, cels: {
+    "explorer.cwd": { celType: "ValueCel", v: "/", metadata: { name: "cwd", segment: lay } },
+    "explorer.preview": { celType: "ValueCel", v: "", metadata: { name: "preview", segment: lay } },
+    "explorer.listing": { celType: "ValueCel", v: { entries: [], previewText: "" }, metadata: { name: "listing", segment: lay } },
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: 90, y: 70, w: 460, h: 340, z: 1, min: 0, max: 0, closed: 0, title: "Files" }, metadata: { name: "state" } },
+    [`${lay}.content`]: { celType: "FormulaCel", f: "(explorer explorer.cwd explorer.preview explorer.listing)", metadata: { name: "content", parser: "f" } },
+    [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${lay}.content))`, metadata: { name: "frame", parser: "f" } },
+  } };
+}) as Fn;
+
 // readme() — the plastron readme as a vnode, for a readme WINDOW.
 const readmeFn: Fn = ((): V => el("div", { class: "readme", style: "font:13px/1.6 ui-monospace,monospace;padding:.2rem .35rem" }, [
   el("h2", { style: "margin:.15rem 0;font-size:1.1rem" }, [T("元 · plastron")]),
@@ -494,6 +513,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["winmake", makeFn],
   ["winapp", appFn],
   ["readme", readmeFn], ["readmewin", readmewinFn],
+  ["explorerwin", explorerwinFn],
   ["desktop", desktopFn],
   ["chatui", chatFn], ["chat.send", chatSend], ["chat.key", chatKey], ["chat.run", runCommands], ["chatapp", chatappFn],
   ["winframe", frameFn],

@@ -470,6 +470,19 @@
       "locked": true
     },
     {
+      "key": "explorerwin",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "explorerwin",
+        "segment": "windows",
+        "name": "explorerwin",
+        "kind": "native",
+        "genesis": true,
+        "description": "genesis: a standalone OPFS file-explorer WINDOW. Seeds explorer.cwd / explorer.preview and a (explorer explorer.cwd explorer.preview) content formula that references them, so click-to-descend / click-to-preview re-fire reactively. =explorerwin()"
+      },
+      "locked": true
+    },
+    {
       "key": "winx.show",
       "celType": "LockedLambdaCel",
       "metadata": {

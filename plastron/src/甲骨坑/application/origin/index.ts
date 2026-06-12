@@ -574,6 +574,54 @@ const autoload: Fn = async (state: State): Promise<State> => {
   return state;
 };
 
+// decode a data:<mime>;base64,<payload> URI into [bytes, extension].
+const dataUriToBytes = (uri: string): { bytes: Uint8Array; ext: string } | null => {
+  const m = /^data:([^;,]*)(;base64)?,(.*)$/s.exec(uri);
+  if (!m) return null;
+  const mime = m[1] ?? "", isB64 = !!m[2], payload = m[3] ?? "";
+  const ext = mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : mime === "image/svg+xml" ? "svg" : (mime.split("/")[1] || "bin");
+  let bytes: Uint8Array;
+  if (isB64) {
+    const bin = (globalThis as { atob?: (s: string) => string }).atob?.(payload) ?? Buffer.from(payload, "base64").toString("binary");
+    bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  } else {
+    bytes = new TextEncoder().encode(decodeURIComponent(payload));
+  }
+  return { bytes, ext };
+};
+
+/** origin.seedWallpaper — write the shipped wallpaper (windows.wallpaper, a
+ *  data-URI) into an OPFS FILE and point desktop.A2 (the wallpaper-path cell)
+ *  at it, so the desktop background now LOADS FROM A FILE in OPFS instead of a
+ *  hard-coded constant. Idempotent: writes only if the file is missing, and
+ *  only re-points A2 when it still holds the empty default (a user's own
+ *  uploaded path is preserved). Host-called once after boot. */
+const seedWallpaper: Fn = async (state: State): Promise<State> => {
+  const backend = state.cels.get("file-store.backend")?.v;
+  if (backend === "none" || backend === undefined) return state;       // no fs here — keep the constant fallback
+  const uri = String(state.cels.get("windows.wallpaper")?.v ?? "");
+  if (!uri.startsWith("data:")) return state;
+  const decoded = dataUriToBytes(uri);
+  if (!decoded) return state;
+  const path = `/desktop/wallpaper.${decoded.ext}`;
+  await ensureSegments(state, ["file-store"]);
+  const exists = (await ((resolveFn(state, "fs.exists") as Fn)(path) as Promise<boolean>).catch(() => false)) as boolean;
+  if (!exists) {
+    await (resolveFn(state, "fs.mkdir") as Fn)("/desktop");
+    await (resolveFn(state, "fs.write") as Fn)(path, decoded.bytes);
+  }
+  // point the desktop's wallpaper-path cell at the OPFS file (only if it still
+  // holds the empty default — don't clobber a user-set path).
+  const a2 = state.cels.get("desktop.A2");
+  if (a2 && (a2.v === "" || a2.v == null)) {
+    await (resolveFn(state, "setValue") as Fn)(state, "desktop.A2", path);
+    await (resolveFn(state, "runCycle") as Fn)(state);
+    await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  }
+  return state;
+};
+
 // ── inspect rendering — a tiny YAML-ish doc, easiest for a human to read ─────
 
 // `label: value` per field; multi-line strings become a `|` literal block
@@ -658,6 +706,77 @@ const fsWriteFn: Fn = (path: unknown, text?: unknown) => ({ originFs: "write", p
 const touchFn:   Fn = (path: unknown)  => ({ originFs: "touch", path: String(path ?? "") });
 const statFn:    Fn = (path: unknown)  => ({ originFs: "stat",  path: String(path ?? "") });
 
+// --- explorer(cwd, preview, listing) — a PURE OPFS file-browser render. It
+//     takes the navigation state (cwd / preview path) plus a `listing`
+//     ({ entries: {name,isDir}[], previewText }) and builds the folders-then-
+//     files vnode. The async OPFS reads live in the nav/open handlers (which
+//     write explorer.listing); this fn is pure so the WINDOW's content formula
+//     `(explorer explorer.cwd explorer.preview explorer.listing)` re-fires
+//     reactively when any of those cels change (inputMap doctrine). ---
+const parentPath = (p: string): string => {
+  const norm = "/" + p.split("/").filter(Boolean).join("/");
+  if (norm === "/") return "/";
+  const i = norm.lastIndexOf("/");
+  return i <= 0 ? "/" : norm.slice(0, i);
+};
+const joinPath = (dir: string, name: string): string =>
+  (dir === "/" ? "" : dir.replace(/\/+$/, "")) + "/" + name;
+const renderExplorer = (cwd: string, entries: { name: string; isDir: boolean }[], preview: string, previewText: string): V => {
+  const rowStyle = "display:flex;align-items:center;gap:.4rem;padding:.25rem .4rem;border-radius:.3rem;cursor:pointer;font:.82rem ui-monospace,monospace";
+  const rows: V[] = [];
+  if (cwd !== "/") {
+    rows.push(el("div", { class: "fe-row fe-up", style: rowStyle + ";opacity:.8" },
+      [T("📁 ..")], { click: { dispatch: "origin.explorerNav", payload: parentPath(cwd) } }));
+  }
+  for (const e of entries) {
+    const full = joinPath(cwd, e.name);
+    rows.push(e.isDir
+      ? el("div", { class: "fe-row fe-dir", style: rowStyle },
+          [T(`📁 ${e.name}/`)], { click: { dispatch: "origin.explorerNav", payload: full } })
+      : el("div", { class: "fe-row fe-file" + (full === preview ? " fe-sel" : ""), style: rowStyle + (full === preview ? ";background:#4a90d955" : "") },
+          [T(`📄 ${e.name}`)], { click: { dispatch: "origin.explorerOpen", payload: full } }));
+  }
+  if (!entries.length) rows.push(el("div", { style: "opacity:.6;padding:.3rem;font:.8rem ui-monospace,monospace" }, [T("(empty)")]));
+  const left: V[] = [
+    el("div", { class: "fe-bar", style: "display:flex;align-items:center;gap:.4rem;padding:.25rem .4rem;border-bottom:1px solid #8884;font:600 .8rem ui-monospace,monospace" },
+      [T(`📂 ${cwd}`)]),
+    el("div", { class: "fe-list", style: "flex:1 1 auto;overflow:auto;padding:.2rem" }, rows),
+    el("div", { class: "fe-upload", style: "padding:.3rem .4rem;border-top:1px solid #8884;font:.75rem system-ui" },
+      [T("upload here: "), el("input", { class: "opfs-upload", type: "file", title: `upload into ${cwd}` }, [], { change: { dispatch: "origin.upload", payload: cwd } })]),
+  ];
+  const right: V[] = preview
+    ? [el("div", { class: "fe-preview", style: "flex:1 1 50%;min-width:0;border-left:1px solid #8884;display:flex;flex-direction:column" },
+        [el("div", { style: "padding:.25rem .4rem;border-bottom:1px solid #8884;font:600 .78rem ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(preview.split("/").pop() || preview)]),
+         el("pre", { style: "flex:1 1 auto;overflow:auto;margin:0;padding:.4rem;font:.78rem ui-monospace,monospace;white-space:pre-wrap;word-break:break-word" }, [T(previewText)])])]
+    : [];
+  return el("div", { class: "file-explorer", style: "display:flex;height:100%;min-height:0" },
+    [el("div", { class: "fe-pane", style: "flex:1 1 50%;min-width:0;display:flex;flex-direction:column" }, left), ...right]);
+};
+const explorerFn: Fn = (cwd?: unknown, preview?: unknown, listing?: unknown): V => {
+  const c = cwd == null || cwd === "" ? "/" : String(cwd);
+  const pv = preview == null ? "" : String(preview);
+  const lst = (listing && typeof listing === "object") ? listing as { entries?: { name: string; isDir: boolean }[]; previewText?: string } : {};
+  return renderExplorer(c, Array.isArray(lst.entries) ? lst.entries : [], pv, String(lst.previewText ?? ""));
+};
+
+// explorerListing — the async OPFS read the nav/open handlers share: list the
+// cwd (fs.list + fs.stat), sort folders-first, and cat the preview file. Lands
+// as explorer.listing, which the content formula references → reactive repaint.
+const explorerListing = async (state: State, cwd: string, preview: string): Promise<{ entries: { name: string; isDir: boolean }[]; previewText: string }> => {
+  await ensureSegments(state, ["file-store"]);
+  const list = resolveFn(state, "fs.list") as Fn, fstat = resolveFn(state, "fs.stat") as Fn;
+  const names = ((await (list(cwd) as Promise<string[]>).catch(() => [])) as string[]).slice();
+  const entries: { name: string; isDir: boolean }[] = [];
+  for (const n of names) {
+    const st = (await (fstat(joinPath(cwd, n)) as Promise<{ isDir?: boolean }>).catch(() => null)) as { isDir?: boolean } | null;
+    entries.push({ name: n, isDir: !!st?.isDir });
+  }
+  entries.sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1));
+  let previewText = "";
+  if (preview) previewText = String(await ((resolveFn(state, "fs.readText") as Fn)(preview) as Promise<string>).catch(() => "(cannot preview — binary or missing)"));
+  return { entries, previewText };
+};
+
 // --- segment/sheet manager — persist the WHOLE sheet (the collectArchive
 //     form save()/open() use) to OPFS files under /plastron/sheets, so work
 //     survives across machines as real files (vs save()'s localStorage). ---
@@ -711,7 +830,59 @@ const uploadHandler: Fn = async (stateArg: unknown, dir: unknown, event: unknown
   const d = String(dir ?? "/");
   const dest = (d === "/" ? "" : d.replace(/\/+$/, "")) + "/" + file.name;
   await (resolveFn(state, "fs.write") as Fn)(dest, bytes);
+  // refresh the explorer (if open) so the freshly-uploaded file shows up.
+  if (state.cels.get("explorer.cwd")) await refreshExplorer(state);
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+};
+
+// setOrCreate — write a value cel (used by the explorer nav state cels). Creates
+// it under the explorer's window segment if the explorer window isn't seeded.
+const setOrCreate = async (state: State, key: string, v: unknown): Promise<void> => {
+  if (state.cels.get(key)) await (resolveFn(state, "setValue") as Fn)(state, key, v);
+  else await (resolveFn(state, "setCel") as Fn)(state, key, { celType: "ValueCel", v, metadata: { key, segment: "win.explorer" } });
+};
+
+// refreshExplorer — recompute explorer.listing from the current cwd/preview and
+// write it back. The content formula `(explorer explorer.cwd explorer.preview
+// explorer.listing)` references explorer.listing, so this write re-fires the
+// render through the graph (no hand-rolled repaint of the formula itself).
+const refreshExplorer = async (state: State): Promise<void> => {
+  const cwd = String(state.cels.get("explorer.cwd")?.v ?? "/") || "/";
+  const preview = String(state.cels.get("explorer.preview")?.v ?? "");
+  const listing = await explorerListing(state, cwd, preview);
+  await setOrCreate(state, "explorer.listing", listing);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+};
+
+// explorerNav — descend into a folder (or climb via a "/parent" payload). Sets
+// explorer.cwd, clears the preview, recomputes the listing. The explorer window
+// content formula references explorer.cwd/listing, so it re-fires reactively.
+const explorerNav: Fn = async (stateArg: unknown, path: unknown) => {
+  const state = stateArg as State;
+  const p = String(path ?? "/") || "/";
+  await setOrCreate(state, "explorer.cwd", p);
+  await setOrCreate(state, "explorer.preview", "");
+  await refreshExplorer(state);
+  return state;
+};
+
+// explorerOpen — preview a file: set explorer.preview and recompute the listing
+// (which cats the file into previewText). Reactive via explorer.listing.
+const explorerOpen: Fn = async (stateArg: unknown, path: unknown) => {
+  const state = stateArg as State;
+  await setOrCreate(state, "explorer.preview", String(path ?? ""));
+  await refreshExplorer(state);
+  return state;
+};
+
+// origin.explorerRefresh — populate explorer.listing for the current cwd. The
+// host calls it once at boot so the explorer window shows its initial listing
+// (the nav/open handlers refresh it thereafter).
+const explorerRefresh: Fn = async (stateArg: unknown) => {
+  const state = stateArg as State;
+  if (state.cels.get("explorer.cwd")) await refreshExplorer(state);
   return state;
 };
 
@@ -1042,6 +1213,10 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["write",          fsWriteFn],
   ["touch",          touchFn],
   ["stat",           statFn],
+  ["explorer",       explorerFn],
+  ["origin.explorerNav",  explorerNav],
+  ["origin.explorerOpen", explorerOpen],
+  ["origin.explorerRefresh", explorerRefresh],
   ["segs",           segsFn],
   ["saveSeg",        saveSegFn],
   ["openSeg",        openSegFn],
@@ -1060,4 +1235,5 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["save",           saveFn],
   ["open",           openFn],
   ["origin.autoload", autoload],
+  ["origin.seedWallpaper", seedWallpaper],
 ]));

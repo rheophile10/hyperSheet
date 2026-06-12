@@ -23,6 +23,17 @@ await (resolve(state, "runCycle"))(state);
 await (resolve(state, "origin.commit"))(state, "元");
 await (resolve(state, "drain"))(state, "dom.paint");
 
+// load the desktop wallpaper FROM an OPFS file: seed /desktop/wallpaper.<ext>
+// from the shipped data-URI and point desktop.A2 at it, so the background now
+// comes from a file in the page's filesystem (the img verb hydrates it).
+await (resolve(state, "origin.seedWallpaper"))(state);
+await (resolve(state, "drain"))(state, "dom.paint");
+
+// populate the file-explorer window's initial OPFS listing (the nav/open
+// handlers refresh it on every click thereafter).
+await (resolve(state, "origin.explorerRefresh"))(state);
+await (resolve(state, "drain"))(state, "dom.paint");
+
 // restore a previously =save()d sheet (localStorage default slot), then repaint
 await (resolve(state, "origin.autoload"))(state);
 await (resolve(state, "drain"))(state, "dom.paint");
