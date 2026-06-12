@@ -31,12 +31,12 @@ const readReply = async (res: Response, label: string): Promise<string> => {
     let body = "";
     try { body = (await res.text()).trim(); } catch { /* body unreadable */ }
     const html = /^<|<!doctype/i.test(body);
-    if (html || !looksJson) return `(${label} unreachable — browser CORS blocks ${label} direct calls, or no api key)`;
-    return `(${label} ${res.status}: ${body.slice(0, 200)})`;
+    if (html) return `(${label}: the URL returned an HTML page (HTTP ${res.status}), not JSON — wrong endpoint or an auth/error page, NOT a CORS block)`;
+    return `(${label} HTTP ${res.status}: ${body.slice(0, 200) || "empty body"})`;
   }
   let j: { choices?: { message?: { content?: string } }[] } | undefined;
   try { j = await res.json() as { choices?: { message?: { content?: string } }[] }; }
-  catch { return `(${label} unreachable — browser CORS blocks ${label} direct calls, or no api key)`; }
+  catch { return `(${label}: HTTP ${res.status} but the body was not valid JSON)`; }
   return j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
 };
 
@@ -64,7 +64,7 @@ const claudeFn: Fn = async (prompt: unknown, key: unknown, model: unknown): Prom
         messages: [{ role: "user", content: p }],
       }),
     });
-  } catch { return "(claude unreachable — browser CORS blocks claude direct calls, or no api key)"; }
+  } catch { return "(claude unreachable — the fetch was blocked: a network error or a genuine CORS rejection; check the Network tab for the real status)"; }
   return readReply(res, "claude");
 };
 
@@ -72,7 +72,7 @@ const claudeFn: Fn = async (prompt: unknown, key: unknown, model: unknown): Prom
 // reply text). The host's chat()/grok() verbs emit a descriptor whose drain
 // delegates here. Stateless (just fetch, over the net gate).
 const chatFn: Fn = (async (prompt: unknown, key: unknown, model: unknown, url: unknown): Promise<string> => {
-  const u = String(url ?? "https://api.x.ai/v1/chat/completions");
+  const u = String(url || "https://api.x.ai/v1/chat/completions");
   const m = String(model ?? "grok-3-mini");
   const k = String(key ?? "");
   if (!k) return `(no api key — pass one: =claude("hi", "sk-ant-…") / =grok("hi", "xai-…") or a cel holding it)`;
@@ -85,7 +85,7 @@ const chatFn: Fn = (async (prompt: unknown, key: unknown, model: unknown, url: u
       method: "POST", headers,
       body: JSON.stringify({ model: m, messages: [{ role: "user", content: String(prompt ?? "") }] }),
     });
-  } catch { return `(${label} unreachable — browser CORS blocks ${label} direct calls, or no api key)`; }
+  } catch { return `(${label} unreachable — the fetch was blocked: a network error or a genuine CORS rejection; check the Network tab for the real status)`; }
   return readReply(res, label);
 }) as Fn;
 

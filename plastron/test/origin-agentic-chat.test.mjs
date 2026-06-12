@@ -87,7 +87,7 @@ test("chat.cellsend: a set-line aimed at a foreign sealed segment is refused", a
 });
 
 // 6. grok non-JSON / CORS → a friendly message, NOT a JSON.parse throw
-test("grok: an HTML error page yields a friendly CORS message, not a parse throw", async () => {
+test("grok: an HTML page yields an honest diagnostic (not a parse throw, not a bogus CORS claim)", async () => {
   const state = await seedChat();
   const realFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response("<!doctype html><html><body>error</body></html>", {
@@ -96,7 +96,19 @@ test("grok: an HTML error page yields a friendly CORS message, not a parse throw
   try {
     const r = String(await resolveFn(state, "llm.chat")("hi", "xai-KEY", "grok-3-mini", "https://api.x.ai/v1/chat/completions"));
     assert.ok(!/Unexpected token|is not valid JSON/.test(r), `must not leak the parse error (got ${r})`);
-    assert.match(r, /grok unreachable.*CORS|no api key/i, "friendly grok-unreachable message");
+    assert.match(r, /HTML page|not JSON|wrong endpoint/i, "honest HTML-page diagnostic");
+    assert.ok(!/CORS blocks/i.test(r), "does NOT falsely blame CORS for an HTML response");
+  } finally { globalThis.fetch = realFetch; }
+});
+
+test("grok: an empty url goes to api.x.ai, not the local page (the || fix)", async () => {
+  const state = await seedChat();
+  const realFetch = globalThis.fetch;
+  let seenUrl = null;
+  globalThis.fetch = async (u) => { seenUrl = String(u); return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }] }), { status: 200, headers: { "content-type": "application/json" } }); };
+  try {
+    await resolveFn(state, "llm.chat")("hi", "xai-KEY", "grok-3-mini", ""); // client.send passes "" for grok
+    assert.ok(seenUrl && seenUrl.includes("api.x.ai"), `empty url must default to x.ai, not "" (got ${seenUrl})`);
   } finally { globalThis.fetch = realFetch; }
 });
 
