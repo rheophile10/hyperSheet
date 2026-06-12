@@ -187,8 +187,56 @@ const appendMsg = async (state: State, seg: string, m: Msg): Promise<void> => {
   await Promise.resolve((resolveFn(state, "drain") as Fn)(state, "dom.paint"));
 };
 
-const AGENT_PROMPT =
-  "You are in a plastron spreadsheet chat. You MAY edit THIS chat's worksheet cels (and ONLY this chat's — writes elsewhere are refused). To change a cell, put a line `set <RANGE> = <value-or-formula>` (RANGE is A1 or A1:B2; a body starting with ( or = is an s-expression formula, e.g. set E1 = (* 6 7)). Or end with a fenced ```plastron block holding a JSON array of {\"op\":\"cel\",\"addr\":\"E1\",\"formula\":\"(+ 1 2)\"} / {\"op\":\"cel\",\"addr\":\"E1\",\"value\":42} / {\"op\":\"msg\",\"text\":\"…\"}. Use a command ONLY when you actually want to change something; otherwise just reply in prose.\n\n";
+const AGENT_PREAMBLE =
+  "You are in a plastron spreadsheet chat. You MAY edit THIS chat's worksheet cels (and ONLY this chat's — writes elsewhere are refused). To change a cell, put a line `set <RANGE> = <value-or-formula>` (RANGE is A1 or A1:B2; a body starting with ( or = is an s-expression formula, e.g. set E1 = (* 6 7)). Or end with a fenced ```plastron block holding a JSON array of {\"op\":\"cel\",\"addr\":\"E1\",\"formula\":\"(+ 1 2)\"} / {\"op\":\"cel\",\"addr\":\"E1\",\"value\":42} / {\"op\":\"msg\",\"text\":\"…\"}. Use a command ONLY when you actually want to change something; otherwise just reply in prose. A cell holding a dom(…)/canvas(…) formula renders as live UI in place.";
+
+// CATALOG_VERBS — the curated set of editing verbs surfaced to the bot. Each
+// entry is a cel key; the prose is the cel's metadata.description, read from the
+// live registry (state.cels) so the catalog stays in sync with the seeds and
+// only lists verbs the host actually mounted. Grouped: dom builders, the canvas
+// drawing ops, and the cel-creating verbs + the json reader.
+const CATALOG_VERBS = [
+  "dom", "style", "on", "attr", "img",
+  "canvas", "rect", "text", "line", "circle", "wedge", "orbit",
+  "cels", "cel", "def", "json",
+] as const;
+
+// buildCatalog — assemble the "functions you can use" section from the registry.
+// Skips any verb the host didn't load (description undefined). The description
+// prose is emitted VERBATIM so the bot reads the same usage notes the grid shows.
+const buildCatalog = (state: State): string => {
+  const lines: string[] = [];
+  for (const key of CATALOG_VERBS) {
+    const d = state.cels.get(key)?.metadata?.description;
+    if (typeof d === "string" && d.trim()) lines.push(`${key}: ${d.trim()}`);
+  }
+  return lines.length ? "Functions you can use (call them in formulas):\n" + lines.join("\n") : "";
+};
+
+// buildCelState — a compact listing of the chat's OWN sheet, scoped strictly to
+// the `seg.` prefix so sealed secrets.* and other windows' cels never leak. Each
+// cel shows its source: a FormulaCel by its f (=<formula>), a ValueCel by its v.
+const buildCelState = (state: State, seg: string): string => {
+  const prefix = seg + ".";
+  const lines: string[] = [];
+  for (const [key, cel] of state.cels) {
+    if (!key.startsWith(prefix)) continue;
+    const c = cel as { f?: unknown; v?: unknown };
+    const src = c.f != null ? "=" + String(c.f)
+      : c.v === undefined || c.v === "" ? "(empty)"
+      : typeof c.v === "object" ? JSON.stringify(c.v)
+      : String(c.v);
+    lines.push(`${key} = ${src}`);
+  }
+  lines.sort();
+  return lines.length ? "Current cells (this is the sheet you can modify):\n" + lines.join("\n") : "";
+};
+
+// buildAgentPrompt — the per-turn system prompt: the preamble (rules + command
+// syntax), the verb CATALOG (from the registry's descriptions), and the chat's
+// live cel STATE. Built fresh each send so the bot sees the sheet as it stands.
+const buildAgentPrompt = (state: State, seg: string): string =>
+  [AGENT_PREAMBLE, buildCatalog(state), buildCelState(state, seg)].filter(Boolean).join("\n\n") + "\n\n";
 
 // expand an A1 RANGE to the sheet's dot-keyed cel keys (clients.E1, …) — the
 // boot grid keys cells <seg>.<A1>, not comma-coords, so this mirrors that
@@ -301,7 +349,8 @@ const chatCellSend: Fn = (async (state: State): Promise<void> => {
   const client = firstClient(state);
   if (!client) { await appendMsg(state, SHEET, { from: "system", text: "(no armed client — set an api key in secrets)" }); return; }
   let reply: string;
-  try { reply = String(await (resolveFn(state, "client.send") as Fn)(client, AGENT_PROMPT + (userProse || text))); }
+  const prompt = buildAgentPrompt(state, SHEET) + (userProse || text);
+  try { reply = String(await (resolveFn(state, "client.send") as Fn)(client, prompt)); }
   catch (e) { reply = "⚠ " + String((e as { message?: unknown })?.message ?? e); }
   const { commands: botCmds, prose: botProse } = parseChatCommands(reply);
   await appendMsg(state, SHEET, { from: client.provider, text: botProse || reply });
