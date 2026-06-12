@@ -14,8 +14,9 @@ import seed from "./甲骨.json" with { type: "json" };
 //             pin?: key, onNode?: { dispatch } }
 //   fg.set (dispatch)   — (state, { id, spec }): create the instance's layer
 //                         cels (fg.<id>.spec/pos/zoom), run the layout to
-//                         OVERLAP-FREE, then freeze. There is no ticker: the
-//                         sim runs at set time and during interactions only.
+//                         OVERLAP-FREE, separate label boxes so labels don't
+//                         collide, then freeze. There is no ticker: the sim
+//                         runs at set time and during interactions only.
 //   fgview(id, spec, pos, zoom) — pure render verb. Reference it in a
 //                         FORMULA and the graph re-renders reactively when a
 //                         drag writes fg.<id>.pos — positions are cels, so
@@ -73,6 +74,70 @@ const anyOverlap = (spec: FgSpec, pos: Pos): boolean => {
     if (dx * dx + dy * dy < min * min) return true;
   }
   return false;
+};
+
+const LABEL_H = 18;
+const LABEL_PAD = 8;
+// The render stretches the 1000×460 logical canvas to fill its container
+// (~540px wide × 340px tall in the wiki window), so a fixed-px label pill is
+// COMPRESSED into more logical units than its px size. Separation runs in
+// logical space, so inflate px → logical by the representative stretch ratios
+// (x: 1000/540 ≈ 1.85, y: 460/340 ≈ 1.35) plus a safety margin.
+const LBL_KX = 1.95, LBL_KY = 1.45;
+const shortLabel = (n: FgNode): string => { const l = String(n.label ?? n.key); return l.length > 18 ? l.slice(0, 17) + "…" : l; };
+/** The label's logical-space half-extent (a text pill back-projected through
+ *  the container stretch): width ∝ char count at the node's size scale, a
+ *  fixed line height. Tuned to the rendered .66rem mono pill (~6.4px/char +
+ *  chrome). Returns [halfW, halfH] in 1000×460 logical units. */
+const labelHalf = (n: FgNode): [number, number] => {
+  const scale = Math.min(2, Math.max(0.6, num(n.size, 1)));
+  const wpx = (shortLabel(n).length * 6.4 + 16) * scale + LABEL_PAD;
+  const hpx = LABEL_H * scale + LABEL_PAD;
+  return [(wpx * LBL_KX) / 2, (hpx * LBL_KY) / 2];
+};
+/** Two label boxes overlap when they intersect on BOTH axes. */
+const labelsCollide = (a: FgNode, pa: [number, number], b: FgNode, pb: [number, number]): boolean => {
+  const [aw, ah] = labelHalf(a), [bw, bh] = labelHalf(b);
+  return Math.abs(pa[0] - pb[0]) < aw + bw && Math.abs(pa[1] - pb[1]) < ah + bh;
+};
+export const labelsOverlap = (spec: FgSpec, pos: Pos): boolean => {
+  const ns = spec.nodes;
+  for (let i = 0; i < ns.length; i++) for (let j = i + 1; j < ns.length; j++) {
+    const a = pos[ns[i]!.key], b = pos[ns[j]!.key];
+    if (a && b && labelsCollide(ns[i]!, a, ns[j]!, b)) return true;
+  }
+  return false;
+};
+/** Label anti-collision: an iterative pass that pushes overlapping label
+ *  BOXES apart along the minimum-overlap axis each tick until none collide
+ *  (or iters run out). Boxes are wider than tall, so node-circle separation
+ *  alone leaves text colliding; this separates the rendered pills. `pins`
+ *  hold still. Mutates pos in place; returns true when overlap-free. */
+export const separateLabels = (spec: FgSpec, pos: Pos, pins: Set<string>, iters: number): boolean => {
+  const ns = spec.nodes;
+  for (let it = 0; it < iters; it++) {
+    let any = false;
+    for (let i = 0; i < ns.length; i++) for (let j = i + 1; j < ns.length; j++) {
+      const ka = ns[i]!.key, kb = ns[j]!.key;
+      const a = pos[ka], b = pos[kb];
+      if (!a || !b) continue;
+      const [aw, ah] = labelHalf(ns[i]!), [bw, bh] = labelHalf(ns[j]!);
+      const ox = aw + bw - Math.abs(a[0] - b[0]);
+      const oy = ah + bh - Math.abs(a[1] - b[1]);
+      if (ox <= 0 || oy <= 0) continue; // separated on some axis
+      any = true;
+      // push apart along the axis of LEAST overlap — the cheaper escape
+      let pushX = 0, pushY = 0;
+      if (ox < oy) { const s = (a[0] <= b[0] ? -1 : 1) * (ox / 2 + 0.5); pushX = s; }
+      else { const s = (a[1] <= b[1] ? -1 : 1) * (oy / 2 + 0.5); pushY = s; }
+      const aPin = pins.has(ka), bPin = pins.has(kb);
+      const wa = aPin ? 0 : bPin ? 1 : 0.5, wb = bPin ? 0 : aPin ? 1 : 0.5;
+      if (!aPin) { a[0] = Math.max(16, Math.min(FG_W - 16, a[0] + pushX * wa)); a[1] = Math.max(14, Math.min(FG_H - 14, a[1] + pushY * wa)); }
+      if (!bPin) { b[0] = Math.max(16, Math.min(FG_W - 16, b[0] - pushX * wb)); b[1] = Math.max(14, Math.min(FG_H - 14, b[1] - pushY * wb)); }
+    }
+    if (!any) return true;
+  }
+  return !labelsOverlap(spec, pos);
 };
 
 /** Deterministic index-based seeding on rings around the center. */
@@ -144,6 +209,7 @@ export const layout = (spec: FgSpec): Pos => {
   const pos = seedPositions(spec);
   const pins = new Set<string>(spec.pin ? [spec.pin] : []);
   relax(spec, pos, pins, 220);
+  separateLabels(spec, pos, pins, 120);
   return pos;
 };
 
@@ -173,7 +239,9 @@ const fgSet: Fn = (async (state: State, payload?: unknown): Promise<void> => {
   const prev = (state.cels.get(posKey(gid))?.v ?? {}) as Pos;
   const pos = layout(spec);
   for (const n of spec.nodes) if (prev[n.key] && n.key !== spec.pin) pos[n.key] = prev[n.key]!;
-  relax(spec, pos, new Set(spec.pin ? [spec.pin] : []), 80);
+  const setPins = new Set(spec.pin ? [spec.pin] : []);
+  relax(spec, pos, setPins, 80);
+  separateLabels(spec, pos, setPins, 120);
   await setValue(state, specKey(gid), spec);
   await setValue(state, posKey(gid), pos);
   await setValue(state, zoomKey(gid), Number(state.cels.get(zoomKey(gid))?.v) || 1);
@@ -308,8 +376,11 @@ const fgDrop: Fn = (async (state: State): Promise<void> => {
   if (!d) return;
   const spec = specOf(state.cels.get(specKey(d.id))?.v);
   const pos = { ...((state.cels.get(posKey(d.id))?.v ?? {}) as Pos) };
-  // settle: hold the dropped node, relax the rest until no overlaps → freeze
-  relax(spec, pos, new Set([d.key]), 120);
+  // settle: hold the dropped node, relax the rest until no overlaps → freeze,
+  // then spread labels so the rendered pills don't sit on top of each other
+  const dropPins = new Set([d.key]);
+  relax(spec, pos, dropPins, 120);
+  separateLabels(spec, pos, dropPins, 120);
   await ((resolveFn(state, "setValue") as Fn)(state, "fg.drag", null));
   await ((resolveFn(state, "setValue") as Fn)(state, "fg.lastMoved", d.moved));
   await setV(state, posKey(d.id), pos);

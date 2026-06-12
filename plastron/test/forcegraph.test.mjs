@@ -1,7 +1,7 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, resolveFn } from "../dist/index.js";
-import { layout, relax, FG_W, FG_H } from "../dist/甲骨坑/library/forcegraph/index.js";
+import { layout, relax, separateLabels, labelsOverlap, FG_W, FG_H } from "../dist/甲骨坑/library/forcegraph/index.js";
 
 // forcegraph — force-directed simulations as a reusable segment. Tests pin:
 // the layout reaches overlap-free and FREEZES (relax reports settled),
@@ -50,6 +50,38 @@ test("layout: overlap-free, pinned center, frozen (relax reports settled)", () =
   for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
     assert.ok(dist(pos[keys[i]], pos[keys[j]]) > 20, `${keys[i]}↔${keys[j]} separated`);
   }
+});
+
+test("label anti-collision: a pass separates two colliding labels until their boxes no longer overlap", () => {
+  // two long-labelled nodes dropped on top of each other — their label PILLS
+  // collide even though they share a point. separateLabels must spread them.
+  const spec = {
+    nodes: [
+      { key: "wikipedia-the-free-encyclopedia", label: "Wikipedia, the free encyclopedia", size: 1 },
+      { key: "encyclopaedia-britannica", label: "Encyclopaedia Britannica", size: 1 },
+    ],
+    edges: [],
+  };
+  const pos = { [spec.nodes[0].key]: [500, 230], [spec.nodes[1].key]: [504, 232] };
+  assert.equal(labelsOverlap(spec, pos), true, "the two labels start overlapping");
+  const ok = separateLabels(spec, pos, new Set(), 200);
+  assert.equal(ok, true, "separateLabels reports overlap-free");
+  assert.equal(labelsOverlap(spec, pos), false, "the labels no longer overlap after the pass");
+  for (const n of spec.nodes) {
+    const [x, y] = pos[n.key];
+    assert.ok(x >= 16 && x <= FG_W - 16 && y >= 14 && y <= FG_H - 14, `${n.key} stayed in bounds`);
+  }
+});
+
+test("layout: the full pipeline leaves labels non-overlapping", () => {
+  // crowd many long labels; layout() runs relax + the label-separation pass.
+  const spec = {
+    nodes: Array.from({ length: 8 }, (_, i) => ({ key: `node-${i}`, label: `A long label number ${i}`, size: 1 })),
+    edges: Array.from({ length: 7 }, (_, i) => [`node-${i}`, `node-${i + 1}`]),
+    pin: "node-0",
+  };
+  const pos = layout(spec);
+  assert.equal(labelsOverlap(spec, pos), false, "no two label boxes overlap after layout");
 });
 
 test("fg.set creates the instance cels and writes a frozen layout", async () => {

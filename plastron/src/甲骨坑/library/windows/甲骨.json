@@ -213,7 +213,7 @@
         "segment": "windows",
         "name": "winframe",
         "kind": "native",
-        "description": "(state, content) - render a window frame DOWNSTREAM of a state cel; its buttons write the state cel by ref"
+        "description": "(state, active, content) - render the STANDARD window frame DOWNSTREAM of a state cel; its titlebar buttons (W wiki · – minimize · ⛶/◱ maximize · ✕ close) write the state cel by ref. Every window uses this same frame; the wiki window (segment win.wiki) is the lone exception that omits the W button (it IS the wiki - a W there would just re-open the wiki on itself)."
       },
       "locked": true
     },

@@ -22,7 +22,7 @@
         "segment": "forcegraph",
         "name": "fg.set",
         "kind": "native",
-        "description": "dispatch (state, {id, spec}) - create the fg.<id> layer cels (spec/pos/zoom) if missing, run the layout to OVERLAP-FREE (springs + repulsion + collision separation; spec.pin held at center), then freeze. Re-set keeps surviving node positions as warm seeds. There is no ticker - the sim runs at set time and during drags only."
+        "description": "dispatch (state, {id, spec}) - create the fg.<id> layer cels (spec/pos/zoom) if missing, run the layout to OVERLAP-FREE (springs + repulsion + node-circle collision separation; spec.pin held at center), then a LABEL anti-collision pass that pushes overlapping label boxes apart along their least-overlap axis so the rendered text pills don't sit on top of each other, then freeze. Re-set keeps surviving node positions as warm seeds. There is no ticker - the sim runs at set time and during drags only."
       }
     },
     {
@@ -58,7 +58,7 @@
         "segment": "forcegraph",
         "name": "fg.drop",
         "kind": "native",
-        "description": "dispatch (state) - end the drag: hold the dropped node, relax the rest until no two nodes overlap, then FREEZE."
+        "description": "dispatch (state) - end the drag: hold the dropped node, relax the rest until no two nodes overlap, then a label anti-collision pass to spread overlapping label pills apart, then FREEZE."
       }
     },
     {

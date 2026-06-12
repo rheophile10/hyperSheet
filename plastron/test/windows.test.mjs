@@ -88,6 +88,25 @@ test("min: winframe returns the hidden stub when state.min (not just state.close
   assert.equal(open.attrs.class.includes("pl-window-min"), false, "an un-minimized window renders its frame");
 });
 
+test("the wiki window uses the SAME standard frame but omits the redundant W button", () => {
+  const frame = resolveFn(createInitialState(), "winframe");
+  const findBtns = (n, cls, out = []) => { if (n && typeof n === "object") { if (n.attrs?.class === cls) out.push(n); for (const c of n.children ?? []) findBtns(c, cls, out); } return out; };
+  // a normal window: standard pl-window frame WITH a W (wiki) button.
+  const normal = frame({ ref: "win.notepad.state", title: "Notepad" }, "win.notepad.state", "body");
+  assert.equal(normal.attrs.class.includes("pl-window"), true, "normal window is a standard pl-window frame");
+  const normalW = findBtns(normal, "pl-wiki-btn");
+  assert.equal(normalW.length, 1, "a normal window carries the W wiki button");
+  assert.equal(normalW[0].events.click.dispatch, "wiki.open", "the W opens the wiki on that window");
+  // the wiki window (segment win.wiki): SAME standard frame, NO W button.
+  const wiki = frame({ ref: "win.wiki.state", title: "📖 wiki" }, "win.wiki.state", "body");
+  assert.equal(wiki.attrs.class.includes("pl-window"), true, "the wiki window uses the same standard pl-window frame");
+  assert.ok(wiki.children.find((c) => c.attrs?.class === "pl-titlebar"), "…with the standard titlebar");
+  assert.equal(findBtns(wiki, "pl-wiki-btn").length, 0, "the wiki window carries NO redundant W button");
+  // it still has the standard window controls (minimize / maximize / close).
+  assert.equal(findBtns(wiki, "pl-close-btn").length, 1, "the wiki window keeps the standard close button");
+  assert.equal(findBtns(wiki, "pl-win-btn").length, 2, "…and the standard minimize + maximize buttons");
+});
+
 import { snapRegion } from "../dist/甲骨坑/library/windows/index.js";
 test("snapRegion: edge tiling geometry (half / maximize / quarter / none)", () => {
   assert.deepEqual(snapRegion(5, 300, 1000, 600), { x: 0, y: 0, w: 500, h: 600 }, "left half");

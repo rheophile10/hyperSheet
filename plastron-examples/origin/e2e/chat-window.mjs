@@ -31,7 +31,7 @@ try {
     return {
       claude: g("clients.A1"), grok: g("clients.A2"),
       b1tag: g("clients.B1")?.tag, b2tag: g("clients.B2")?.tag,
-      c1isArr: Array.isArray(g("clients.C1")), hasD1: !!s.cels.get("clients.D1"),
+      c1IsFormula: typeof s.cels.get("clients.C1")?.f === "string", hasD1: !!s.cels.get("clients.D1"),
       chatTag: g("chat.A1")?.tag,
       host: s.cels.get("win.geom")?.v?.chat?.host,
     };
@@ -39,7 +39,7 @@ try {
   ok(clients.grok?.status === "error" && clients.grok?.error === "✗ no key", "grok shows ✗ no key (no xai key)");
   ok(clients.claude?.provider === "claude", "claude client handle present");
   ok(clients.b1tag === "span" && clients.b2tag === "span", "clientlight cells render spans (B1/B2)");
-  ok(clients.c1isArr, "messages cell (C1) is a list");
+  ok(!clients.c1IsFormula, "messages cell (C1) is a plain VALUE cell, not a FormulaCel");
   ok(clients.hasD1, "entry buffer cell (D1) exists");
   ok(clients.chatTag === "div", "chat.A1 is the chatpanel div");
   ok(clients.host === "clients", "chat tabbed into clients (one window: [clients | chat])");
@@ -60,6 +60,33 @@ try {
   // a clientlight glyph rendered (🔴 since no key)
   const light = await page.evaluate(() => document.querySelector(".client-light")?.textContent ?? "");
   ok(light === "🔴" || light === "🟢", `a clientlight glyph rendered (${light})`);
+
+  // THREE sends in a row — the D1 entry cell must survive each one (the bug:
+  // setMsgs used to setCel C1 into a value, churning the clients genesis and
+  // sweeping clients.D1 → "setValue: unknown cel clients.D1" on the 2nd send).
+  const multi = await page.evaluate(async () => {
+    const { state, resolveFn } = globalThis.plastron;
+    const errs = [];
+    const orig = console.error; console.error = (...a) => errs.push(a.map(String).join(" "));
+    try {
+      for (const msg of ["first message", "second message", "third message"]) {
+        await resolveFn(state, "setValue")(state, "clients.D1", msg);
+        await resolveFn(state, "chat.cellsend")(state);
+      }
+    } finally { console.error = orig; }
+    const c1 = state.cels.get("clients.C1")?.v;
+    return {
+      d1Survived: !!state.cels.get("clients.D1"),
+      c1Len: Array.isArray(c1) ? c1.length : -1,
+      firstUser: Array.isArray(c1) ? c1[0]?.text : null,
+      unknownCelErr: errs.some((e) => /unknown cel|takes a formula source/.test(e)),
+      errs,
+    };
+  });
+  ok(multi.d1Survived, "clients.D1 survived three sends (no genesis re-materialize / sweep)");
+  ok(multi.c1Len === 6, `three sends appended 2 rows each → C1 has 6 messages (got ${multi.c1Len})`);
+  ok(multi.firstUser === "first message", "the first user message is at the head of the list");
+  ok(!multi.unknownCelErr, `no "unknown cel clients.D1" / FormulaCel error across sends${multi.errs.length ? ` (${multi.errs.slice(0, 2).join(" | ")})` : ""}`);
 
   // arm claude with a key → its status flips to ready (status in the value, key not)
   const armed = await page.evaluate(async () => {

@@ -69,7 +69,7 @@
         "segment": "llm",
         "name": "messages",
         "kind": "native",
-        "description": "(from1, text1, …) — build a message LIST [{from, text}, …] (renders as JSON in the grid). Seeds the chat conversation cell; chat.cellsend appends to it. =messages(\"system\", \"ask the bots anything\")"
+        "description": "(from1, text1, …) — build a message LIST [{from, text}, …] (renders as JSON in the grid). A convenience constructor; the chat conversation cell (clients.C1) now seeds as a plain empty value, and chat.cellsend appends to it via setValue. =messages(\"system\", \"ask the bots anything\")"
       },
       "locked": true
     },
@@ -81,7 +81,7 @@
         "segment": "llm",
         "name": "chathistory",
         "kind": "native",
-        "description": "(messages) — a scrollable dom rendering of a [{from, text}, …] message list; one bubble per message, the sender labeled. =chathistory(clients.C1)"
+        "description": "(messages) — a scrollable dom rendering of a [{from, text}, …] message list; one bubble per message, the sender labeled. Renders a centered starter line ('ask the bots anything…') when the list is empty or not an array. =chathistory(clients.C1)"
       },
       "locked": true
     },
@@ -105,7 +105,7 @@
         "segment": "llm",
         "name": "chat.cellsend",
         "kind": "native",
-        "description": "(state) — chat send handler: append the clients.D1 text to the messages cell (clients.C1) as {from:'me'}, ask the first armed client, and append its reply. The message list + entry are CELS the graph owns. clients.C1 seeds as a FormulaCel `(messages …)`; the first append converts it to a ValueCel holding the appended array (setCel, seeded from the formula's current value), so later appends are plain setValue writes — no \"FormulaCel takes a string source\" error."
+        "description": "(state) — chat send handler: append the clients.D1 text to the messages cell (clients.C1) as {from:'me'}, ask the first armed client, and append its reply. The message list + entry are CELS the graph owns. clients.C1 seeds as a plain VALUE cell (empty string in the boot formula), so every append is a plain setValue write of the grown array — never setCel/structure churn. That structure churn previously re-materialized the clients genesis and swept the clients.D1 entry cel, throwing 'setValue: unknown cel clients.D1' on the second send; with a value-seeded C1 the entry cel survives across sends."
       },
       "locked": true
     },

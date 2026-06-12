@@ -206,6 +206,8 @@ const frameFn: Fn = ((st: unknown, active: unknown, content: unknown): V => {
   // toggled state.min and the window stayed visible.
   if (s.min) return el("div", { class: "pl-window-min", "data-win": ref, style: "display:none" }, []);
   const isActive = ref === active;
+  // the wiki window IS the wiki — a W on it would re-open the wiki on itself.
+  const isWiki = segOf(ref) === "win.wiki";
   const gg = globalThis as { innerWidth?: number; innerHeight?: number };
   const x = s.max ? 0 : num(s.x, 80), y = s.max ? 0 : num(s.y, 80), w = s.max ? num(gg.innerWidth, 1200) : num(s.w, 380), h = s.max ? num(gg.innerHeight, 800) - 46 : num(s.h, 260), z = num(s.z, 1);
   const body = isVnode(content) ? content : T(content == null ? "" : String(content));
@@ -217,8 +219,9 @@ const frameFn: Fn = ((st: unknown, active: unknown, content: unknown): V => {
       el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(String((s.linked?.length ? "🔗 " : "") + (s.title ?? ref)))]),
       el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
         // W — open this window's wiki article (docgraph's wiki.open). A host
-        // without docgraph logs "not registered" on click; nothing breaks.
-        el("button", { class: "pl-wiki-btn", title: "wiki — what is this window?", style: XBTN + ";font-family:Georgia,serif" }, [T("W")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "wiki.open", payload: ref } }),
+        // without docgraph logs "not registered" on click; nothing breaks. The
+        // wiki window omits it (it IS the wiki — a W there is redundant).
+        ...(isWiki ? [] : [el("button", { class: "pl-wiki-btn", title: "wiki — what is this window?", style: XBTN + ";font-family:Georgia,serif" }, [T("W")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "wiki.open", payload: ref } })]),
         el("button", { class: "pl-win-btn", title: "minimize", style: XBTN }, [T("–")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "winx.min", payload: ref } }),
         // ONE of ◱ (mid/restore, when maximized) and ⛶ (maximize, when not); winx.max toggles s.max.
         s.max

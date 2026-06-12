@@ -135,10 +135,14 @@ test("the chat window composes [clients | chat]: status cells + clientlights + a
   assert.equal(grok?.status, "error", "grok shows error (no xai key)");
   assert.equal(grok?.error, "✗ no key", "grok's non-secret error reads ✗ no key");
 
-  // B1/B2 are clientlights (dom spans); C1 is the messages list; D1 the entry buffer
+  // B1/B2 are clientlights (dom spans); C1 is the messages cell (a plain VALUE
+  // cell, empty at boot — no FormulaCel that structure-churns on first append);
+  // D1 the entry buffer
   assert.equal(state.cels.get("clients.B1")?.v?.tag, "span", "clients.B1 = a clientlight span for claude");
   assert.equal(state.cels.get("clients.B2")?.v?.tag, "span", "clients.B2 = a clientlight span for grok");
-  assert.ok(Array.isArray(state.cels.get("clients.C1")?.v), "clients.C1 is the messages list");
+  const c1 = state.cels.get("clients.C1");
+  assert.ok(c1, "clients.C1 is the messages cell");
+  assert.ok(typeof c1?.f !== "string", "clients.C1 is a VALUE cell, not a FormulaCel");
   assert.ok(state.cels.get("clients.D1"), "clients.D1 is the entry buffer cell");
 
   // CHAT sheet: A1 is the assembled panel — bots LEFT, body = history + entry + send
@@ -153,39 +157,41 @@ test("the chat window composes [clients | chat]: status cells + clientlights + a
   assert.equal(send.events?.click?.dispatch, "chat.cellsend", "send wired to chat.cellsend");
 });
 
-test("chat send: appends a user msg + a reply to the messages cell — clients.C1 becomes a VALUE cel (no FormulaCel error)", async () => {
+test("chat send: clients.C1 is a VALUE cell, every send is a plain setValue (no setCel/structure churn), and clients.D1 survives multiple sends", async () => {
   const { state, m } = await boot();
-  // clients.C1 seeds as the FORMULA `(messages …)` — appending an array to it via
-  // setValue used to throw "FormulaCel takes a formula source (a string); got object".
+  // clients.C1 seeds as a plain EMPTY value cell (not a FormulaCel) so every
+  // append is a setValue write of the grown array — no structure churn that
+  // would re-materialize the clients genesis and sweep the clients.D1 entry
+  // cel (the "setValue: unknown cel clients.D1" bug on the 2nd send).
   const before = state.cels.get("clients.C1");
-  assert.ok(typeof before?.f === "string", "clients.C1 starts as a FormulaCel (messages …)");
-  const seedLen = Array.isArray(before?.v) ? before.v.length : 0;
+  assert.ok(typeof before?.f !== "string", "clients.C1 starts as a VALUE cell, not a FormulaCel");
 
-  // capture any console.error so an in-handler throw surfaces
+  // capture any console.error so an in-handler throw (e.g. unknown cel) surfaces
   const errs = [];
   const origErr = console.error;
   console.error = (...a) => { errs.push(a.map(String).join(" ")); };
   try {
-    // type into the entry buffer, then send. No armed client at boot → the reply
-    // is the "(no armed client …)" system line, but it STILL appends with no error.
-    await resolveFn(state, "setValue")(state, "clients.D1", "hello bots"); m.run();
-    await resolveFn(state, "chat.cellsend")(state); m.run();
+    // three sends in a row. No armed client at boot → each reply is the
+    // "(no armed client …)" system line, but each STILL appends with no error,
+    // and clients.D1 must survive every send.
+    for (const msg of ["hello bots", "again", "and once more"]) {
+      assert.ok(state.cels.get("clients.D1"), `clients.D1 exists before sending "${msg}"`);
+      await resolveFn(state, "setValue")(state, "clients.D1", msg); m.run();
+      await resolveFn(state, "chat.cellsend")(state); m.run();
+    }
   } finally { console.error = origErr; }
 
-  assert.ok(!errs.some((e) => /takes a formula source|got object/.test(e)),
-    `no FormulaCel "takes a formula source" error (saw: ${errs.join(" | ")})`);
+  assert.ok(!errs.some((e) => /takes a formula source|got object|unknown cel/.test(e)),
+    `no FormulaCel / unknown-cel error across sends (saw: ${errs.join(" | ")})`);
   const after = state.cels.get("clients.C1");
-  assert.ok(Array.isArray(after?.v), "clients.C1 now holds the message ARRAY as a value");
-  assert.ok(typeof after?.f !== "string", "clients.C1 was converted from a FormulaCel to a ValueCel");
-  // the user message AND a reply landed (2 new rows on top of the seed)
-  assert.equal(after.v.length, seedLen + 2, "a user message + a reply were appended");
-  assert.equal(after.v[after.v.length - 2]?.from, "me", "the user message is second-last");
-  assert.equal(after.v[after.v.length - 2]?.text, "hello bots", "with the typed text");
-  assert.ok(after.v[after.v.length - 1]?.text, "a reply row followed it");
-  // a second send keeps appending (now a plain ValueCel setValue path) — still no error
-  await resolveFn(state, "setValue")(state, "clients.D1", "again"); m.run();
-  await resolveFn(state, "chat.cellsend")(state); m.run();
-  assert.equal(state.cels.get("clients.C1").v.length, seedLen + 4, "a second send appends two more rows");
+  assert.ok(Array.isArray(after?.v), "clients.C1 holds the message ARRAY as a value");
+  assert.ok(typeof after?.f !== "string", "clients.C1 stayed a ValueCel (never setCel'd into structure)");
+  // three sends → six rows (user line + reply each), and D1 survived to the end
+  assert.equal(after.v.length, 6, "three sends appended 2 rows each");
+  assert.ok(state.cels.get("clients.D1"), "clients.D1 survived all three sends");
+  assert.equal(after.v[0]?.from, "me", "first row is the user");
+  assert.equal(after.v[0]?.text, "hello bots", "with the first typed text");
+  assert.equal(after.v[4]?.text, "and once more", "the third user line landed");
 });
 
 test('the new tab SHARES memory with its host (bundled), but is a closure to others', async () => {
