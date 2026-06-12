@@ -54,6 +54,15 @@
         "description": "Enumerate a Range (struct or notation string) into row-major member cel keys — the Key[] shape inputMap accepts."
       },
       "locked": true
+    },
+    {
+      "key": "json",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "json", "segment": "builtins", "name": "json", "kind": "native",
+        "description": "(value) — turn any value into a pretty-printed JSON string (JSON.stringify(value, null, 2)). Use it to read an object/array cel as text instead of \"[object Object]\": =json(clients.C1) renders the chat message list as readable JSON."
+      },
+      "locked": true
     }
   ]
 }

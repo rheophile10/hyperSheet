@@ -185,6 +185,26 @@ test("fire: origin.fire re-evaluates a formula cell", async () => {
   assert.ok((state.cels.get("turtles.B4")).f, "the cell stays a FormulaCel after firing");
 });
 
+// ── 3b) object / array cell values render as pretty JSON (not "[object Object]") ─
+
+test("object/array value: renders as pretty-printed JSON in a <pre class=cell-pre>, NOT \"[object Object]\"", async () => {
+  const { state, root, m } = await boot();
+  // a chat-messages-style array of objects (the clients.C1 shape)
+  const msgs = [{ from: "me", text: "hi" }, { from: "claude", text: "hello" }];
+  await resolveFn(state, "setValue")(state, "turtles.B4", msgs);
+  await resolveFn(state, "runCycle")(state);
+  await resolveFn(state, "drain")(state, "dom.paint"); m.run();
+  const td = cellByKey(root, "turtles.B4");
+  const pre = walk(td, (n) => n.tag === "pre" && hasClass(n, "cell-pre"))[0];
+  assert.ok(pre, "an object/array value renders inside a <pre class=cell-pre>");
+  const shown = txt(pre);
+  assert.ok(!/\[object Object\]/.test(shown), "NOT String()'d to [object Object]");
+  assert.equal(shown, JSON.stringify(msgs, null, 2), "pretty-printed JSON, full text reachable");
+  assert.match(shown, /\n {2}/, "two-space indented (pretty)");
+  // the <pre> wraps so long content is reachable on expand
+  assert.match(String(pre.attrs?.style ?? ""), /white-space:pre-wrap/, "the pre wraps");
+});
+
 // ── 4) no per-cell glyphs ─────────────────────────────────────────────────────
 
 test("glyphs: cells render clean — NO per-cell ✎/✓/? glyphs", async () => {

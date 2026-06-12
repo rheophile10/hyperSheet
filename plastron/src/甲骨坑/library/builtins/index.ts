@@ -38,6 +38,8 @@ const parseRangeFn: Fn = (s: unknown) =>
   typeof s === "string" ? (parseRange(s) ?? null) : (s ?? null);
 const rangeToKeysFn: Fn = (r: unknown) => rangeToKeys(r as Range | string);
 
+const jsonFn: Fn = (v: unknown) => JSON.stringify(v, null, 2);
+
 export const name = "builtins" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
@@ -47,4 +49,5 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["/", divide],
   ["parseRange",  parseRangeFn],
   ["rangeToKeys", rangeToKeysFn],
+  ["json", jsonFn],
 ]));

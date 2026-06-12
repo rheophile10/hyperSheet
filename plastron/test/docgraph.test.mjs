@@ -255,6 +255,45 @@ test("source window: live source + github link in a lazy window", async () => {
   assert.match(textOf(v), /wikidoc/);
 });
 
+test("notes sit ADJACENT to the description (same block, directly under it — not banished to the end)", async () => {
+  const state = await boot();
+  await resolveFn(state, "wiki.open")(state, "x"); // creates the (unlocked) content cel
+  await resolveFn(state, "hydrate")(state, [], []);
+  await resolveFn(state, "wiki.open")(state, "win.wiki.content");
+  const article = state.cels.get("wiki.article")?.v;
+
+  // depth-first node order (the order they render). Find the description editor,
+  // the note editor, and the section headings.
+  const order = find(article, () => true);
+  const idxOf = (pred) => order.findIndex(pred);
+  const descIdx  = idxOf((n) => n.tag === "textarea" && /wk-desc/.test(String(n.attrs?.class ?? "")));
+  const noteIdx  = idxOf((n) => n.tag === "textarea" && /wk-note/.test(String(n.attrs?.class ?? "")));
+  const headIdx  = (label) => idxOf((n) => n.type === "text" && n.text === label);
+  const graphIdx = headIdx("graph");
+  const usedByIdx = order.findIndex((n) => n.type === "text" && /^used by/.test(String(n.text ?? "")));
+
+  assert.ok(descIdx >= 0, "the description editor renders");
+  assert.ok(noteIdx >= 0, "the note editor renders");
+  assert.ok(noteIdx > descIdx, "the note comes AFTER the description");
+  // adjacency: the note must precede the deps/backlinks/graph sections — it reads
+  // together with the description, not at the end of the article.
+  assert.ok(usedByIdx < 0 || noteIdx < usedByIdx, "note is before the 'used by' (backlinks) section");
+  assert.ok(graphIdx < 0 || noteIdx < graphIdx, "note is before the 'graph' section");
+});
+
+test("notes adjacency: a locked native still renders the note right under its (read-only) description", async () => {
+  const state = await boot();
+  await resolveFn(state, "wiki.open")(state, "wikidoc"); // a locked native
+  const article = state.cels.get("wiki.article")?.v;
+  const order = find(article, () => true);
+  const lockIdx = order.findIndex((n) => n.type === "text" && /locked — the description ships/i.test(String(n.text ?? "")));
+  const noteIdx = order.findIndex((n) => n.tag === "textarea" && /wk-note/.test(String(n.attrs?.class ?? "")));
+  const graphIdx = order.findIndex((n) => n.type === "text" && n.text === "graph");
+  assert.ok(lockIdx >= 0 && noteIdx >= 0, "locked notice + note editor both render");
+  assert.ok(noteIdx > lockIdx, "note follows the locked-description notice");
+  assert.ok(graphIdx < 0 || noteIdx < graphIdx, "note precedes the graph section (adjacent to description)");
+});
+
 test("unknown key → a red-link article, not a throw", async () => {
   const state = await boot();
   await resolveFn(state, "wiki.open")(state, "no.such.thing");

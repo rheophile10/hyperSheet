@@ -76,7 +76,11 @@ const displayCell = (v: unknown): V => {
     if (o.defn === true) return T(`ƒ ${String(o.name ?? "")}`);
     if (isSecretHandleRef(v)) return T(`🔑 ${(v as { name: string }).name}`); // wallet handle (or persisted ref) — never the secret
     if (typeof o.__mount === "string") return T(""); // content renders elsewhere (mounted) — the cell stays clean
-    try { return T(JSON.stringify(v).slice(0, 60)); } catch { return T("#ERR!"); }
+    // a plain object/array (a message list, a row set, …) renders as readable,
+    // pretty-printed JSON in a wrapping <pre> — NOT String()'d to "[object
+    // Object]" nor a 60-char one-liner. The full text is reachable: the cell
+    // resizes/expands and the <pre> wraps + scrolls.
+    try { return el("pre", { class: "cell-pre", style: SX.pre }, [T(JSON.stringify(v, null, 2))]); } catch { return T("#ERR!"); }
   }
   // a multi-line string (inspect output, a paragraph) keeps its shape in a
   // <pre>; inline it stays a one-line preview (.cell-value clips it), but

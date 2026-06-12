@@ -230,6 +230,10 @@ const articleVnode = (state: State, key: string): V => {
   const cel = celOf(state, key);
   const head: V[] = [];
   const body: V[] = [];
+  // the NOTES block — about this entry, read together WITH the description, so
+  // it lands directly under the summary/desc editor (not banished to the end).
+  const note = noteOf(state, key);
+  const noteSection = (): V[] => section("note", el("div", {}, [...(note ? [noteBody(note)] : []), noteEditor(note)]));
 
   if (!cel && !manifest && membersOf(state, key).length === 0) {
     return el("div", { class: "wk-article", style: "font:.9rem system-ui" }, [
@@ -248,6 +252,7 @@ const articleVnode = (state: State, key: string): V => {
       el("span", { style: CHIP }, [T(`${members.length} cels`)]),
     ]));
     if (manifest?.description) body.push(el("p", { style: "font:.88rem system-ui;margin:.5rem 0" }, [T(manifest.description)]));
+    if (!cel) body.push(...noteSection());   // notes adjacent to the segment/layer description
     if (manifest?.dependencies?.length) body.push(...section("depends on", linkRow(manifest.dependencies)));
     const fns = members.filter((k) => FN_TYPES.has(celOf(state, k)?.celType ?? ""));
     const data = members.filter((k) => !FN_TYPES.has(celOf(state, k)?.celType ?? ""));
@@ -269,6 +274,8 @@ const articleVnode = (state: State, key: string): V => {
     } else {
       body.push(descEditor(summary));
     }
+    // notes ride WITH the description: same block, directly under it.
+    body.push(...noteSection());
     if (typeof cel.f === "string" && cel.f) {
       body.push(...section("formula", el("pre", { style: "font:.8rem ui-monospace,monospace;background:#8881;border:1px solid #8883;border-radius:.4rem;padding:.4rem .5rem;white-space:pre-wrap;word-break:break-word;margin:0" }, [T(cel.f)])));
     } else if (FN_TYPES.has(cel.celType)) {
@@ -310,8 +317,6 @@ const articleVnode = (state: State, key: string): V => {
   body.push(...section(`used by (${back.length})`, linkRow(back.slice(0, 40))));
   body.push(...section("graph",
     el("div", { class: "wk-graph-slot" }, [T("(live graph)")])));
-  const note = noteOf(state, key);
-  body.push(...section("note", el("div", {}, [...(note ? [noteBody(note)] : []), noteEditor(note)])));
 
   return el("div", { class: "wk-article", style: "font:.9rem system-ui;padding:.15rem .3rem" }, [...head, ...body]);
 };

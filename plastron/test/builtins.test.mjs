@@ -36,6 +36,23 @@ test("builtin cels carry impls matching the old hardcoded BUILTINS table", () =>
   assert.equal(plus("1", "2"), 3); // Number() coercion preserved
 });
 
+test("json builtin: pretty-prints any value to a JSON string (JSON.stringify(v, null, 2))", () => {
+  const state = createInitialState();
+  const cel = state.cels.get("json");
+  assert.ok(cel, "cel \"json\" missing");
+  assert.equal(cel.celType, "LockedLambdaCel", "json is a LockedLambdaCel");
+  assert.equal(cel.metadata.segment, "builtins", "json is in the builtins segment");
+  const json = cel._fn;
+  // an array of message objects → pretty JSON, NOT "[object Object]"
+  assert.equal(json([{ a: 1 }]), JSON.stringify([{ a: 1 }], null, 2));
+  assert.match(json([{ a: 1 }]), /\n {2}/, "two-space indented (pretty)");
+  assert.equal(json([{ from: "me", text: "hi" }]),
+    '[\n  {\n    "from": "me",\n    "text": "hi"\n  }\n]');
+  assert.equal(json({ x: 1 }), '{\n  "x": 1\n}');
+  assert.equal(json("hi"), '"hi"');
+  assert.equal(json(42), "42");
+});
+
 test("builtins is flushable (honest kernel closure, roadmap 02)", async () => {
   // History: pre-chunk-A flushing builtins removed its cels; chunk-A
   // (segment-classification) put builtins in the kernel closure via the
