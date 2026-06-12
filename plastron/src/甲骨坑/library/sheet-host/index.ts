@@ -57,6 +57,11 @@ const SX = {
   editing: "display:flex;flex-direction:column;gap:.2rem;min-width:18rem",
   error: "color:#d4453e;background:#d4453e1a;font-family:ui-monospace,monospace;font-size:.76rem;padding:.15rem .45rem;border-radius:.3rem",
   edit: "width:100%;box-sizing:border-box;max-width:100%;min-height:2.6rem;resize:vertical;font-family:ui-monospace,monospace;font-size:.85rem;padding:.15rem .4rem;border:0;background:#4a90d922;white-space:pre-wrap;line-height:1.4",
+  fxbar: "flex:0 0 auto;display:flex;align-items:stretch;gap:.3rem;padding:.2rem .4rem;background:#8881;border-bottom:1px solid #8883",
+  fxlabel: "flex:0 0 auto;align-self:center;color:#888;font:600 .76rem ui-monospace,monospace",
+  fxinput: "flex:1 1 auto;box-sizing:border-box;min-height:1.6rem;height:1.7rem;max-height:14rem;resize:vertical;overflow:auto;font-family:ui-monospace,monospace;font-size:.82rem;padding:.15rem .35rem;border:1px solid #8884;border-radius:.25rem;background:Canvas;color:CanvasText;white-space:pre",
+  cellGlyph: "position:absolute;top:.05rem;right:.1rem;display:flex;gap:.1rem;z-index:2",
+  glyphBtn: "border:0;background:#8882;border-radius:.2rem;cursor:pointer;font:600 .72rem ui-monospace,monospace;line-height:1;padding:.05rem .2rem;color:#888",
 } as const;
 
 const displayCell = (v: unknown): V => {
@@ -115,6 +120,7 @@ const sheetView: Fn = ((
 ) => {
   const c = (cfg ?? {}) as { base?: string; draftCel?: string; editHandler?: string; keyHandler?: string };
   const BASE = c.base ?? "元", DRAFT = c.draftCel ?? "元.draft", EDIT = c.editHandler ?? "origin.edit", KEYH = c.keyHandler ?? "origin.key";
+  const activeEditing = typeof editing === "string" ? editing : null;   // the currently-editing cell key (or none)
   const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string }> : {};
   // wrap a worksheet's table in a draggable window frame, positioned by win.geom
   // (default staggered by index). Drag/resize/raise/minimize dispatch to the
@@ -132,6 +138,31 @@ const sheetView: Fn = ((
   ], { pointerdown: { dispatch: "winsheet.grab", payload: host }, pointermove: { dispatch: "winsheet.move" }, pointerup: { dispatch: "winsheet.drop" } });
   // a window may HOST others as TABS (win.geom[seg].host === this). It renders a
   // tab strip + the active tab's table; the others' standalone windows are gone.
+  // does cell `key` belong to worksheet segment `seg`? (base 元 is its own
+  // segment; a grid cell is `<seg>.A1`.)
+  const keyInSeg = (key: string, seg: string): boolean => key === seg || key.startsWith(seg + ".");
+  // a source is a FORMULA when it starts with `=` or `(` (sniff's rule).
+  const isFormulaSrc = (src: string): boolean => { const t = src.trim(); return t.startsWith("=") || t.startsWith("("); };
+  // the resizable formula bar under a window's titlebar. Bound to the SAME draft
+  // the inline editor uses (元.draft) when this window holds the editing cell, so
+  // typing in the bar or the cell stays in sync; commits on Enter via origin.key.
+  // No cell editing in this window → an empty bar with a hint.
+  const formulaBar = (tabSegs: string[]): V => {
+    const editKey = activeEditing && tabSegs.some((s) => keyInSeg(activeEditing!, s)) ? activeEditing : null;
+    const shown = editKey ? String(draft ?? "") : "";
+    const input = editKey
+      ? el("textarea", { class: "pl-fxbar-input", style: SX.fxinput, rows: 1, value: shown, "data-key": editKey }, [], {
+          input: { set: DRAFT, extract: "value" },
+          keydown: { dispatch: KEYH, payload: editKey },   // origin.key commits on Enter
+        })
+      : el("textarea", { class: "pl-fxbar-input", style: SX.fxinput + ";color:#888;font-style:italic", rows: 1, readonly: "", placeholder: "click a cell to edit its formula here" }, []);
+    const wikiBtn = el("button", { class: "pl-fxbar-wiki", title: "wiki — what is this cell?", style: SX.glyphBtn + ";align-self:center;font-family:Georgia,serif;color:CanvasText" }, [T("?")], { click: { dispatch: "wiki.open", payload: editKey ?? tabSegs[0] ?? "元" } });
+    return el("div", { class: "pl-fxbar", style: SX.fxbar }, [
+      el("span", { class: "pl-fxbar-label", style: SX.fxlabel }, [T(editKey ?? "ƒx")]),
+      input,
+      wikiBtn,
+    ]);
+  };
   const windowed = (host: string, tabs: string[], activeTable: V, active: string, i: number): V => {
     const g = GM[host] ?? {};
     if (g.closed) return el("div", { class: "pl-window-closed", "data-win": host, style: "display:none" }, []);
@@ -148,6 +179,7 @@ const sheetView: Fn = ((
     return el("div", { class: "pl-window", "data-win": host, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas;box-shadow:0 4px 16px #0004;overflow:hidden` }, [
       titlebar(host),
       ...(tabStrip ? [tabStrip] : []),
+      formulaBar(tabs),
       el("div", { class: "pl-window-body", style: "flex:1 1 auto;overflow:auto;padding:.25rem;min-height:0" }, [activeTable]),
       el("div", { class: "pl-resize", style: "position:absolute;right:0;bottom:0;width:15px;height:15px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" }, [], { pointerdown: { dispatch: "winsheet.grabResize", payload: host }, pointermove: { dispatch: "winsheet.resizeMove" }, pointerup: { dispatch: "winsheet.drop" } }),
     ], { pointerdown: { dispatch: "winsheet.raise", payload: host } });
@@ -185,6 +217,33 @@ const sheetView: Fn = ((
 
   const isMountVal = (v: unknown): boolean => !!v && typeof v === "object" && typeof (v as { __mount?: unknown }).__mount === "string";
 
+  // wiki "?" glyph — opens the docgraph wiki for this cell's value (no-op if
+  // docgraph absent, mirroring the windows-frame "W" button). dispatched with
+  // the cell key so the wiki resolves the right article.
+  const wikiGlyph = (key: string): V =>
+    el("button", { class: "pl-cell-wiki", title: "wiki — what is this cell?", style: SX.glyphBtn + ";font-family:Georgia,serif" }, [T("?")],
+      { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "wiki.open", payload: key } });
+  // pencil ✎ on a FORMULA cell — starts editing (dispatch the edit handler), so a
+  // cell toggles its rendered VALUE for its formula-editing surface.
+  const pencilGlyph = (key: string): V =>
+    el("button", { class: "pl-cell-edit", title: "edit formula", style: SX.glyphBtn }, [T("✎")],
+      { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: EDIT, payload: { key, force: true } } });
+  // ✓ view — exits editing back to the value view by COMMITTING the draft (so the
+  // edit persists), the inverse of the pencil.
+  const viewGlyph = (key: string): V =>
+    el("button", { class: "pl-cell-view", title: "done — view value", style: SX.glyphBtn + ";color:#2a8a4a" }, [T("✓")],
+      { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "origin.commit", payload: key } });
+
+  // the upper-right glyph cluster overlaid on a cell (a sibling of the value, NOT
+  // inside .cell-value, so it never counts as the cell's value text). Editing → a
+  // ✓ done button (commit, back to value); viewing a FORMULA cell → a ✎ pencil
+  // (start editing). Both modes carry the ? wiki link.
+  const cellGlyphs = (key: string): V => {
+    const isFormula = isFormulaSrc(srcOf.get(key) ?? "");
+    const lead = active === key ? [viewGlyph(key)] : (isFormula ? [pencilGlyph(key)] : []);
+    return el("div", { class: "pl-cell-glyphs", style: SX.cellGlyph }, [...lead, wikiGlyph(key)]);
+  };
+
   // the inner of a cell: inline editor when active, else the value. A cell
   // whose value renders ELSEWHERE (a mount — e.g. the readme in 元) shows its
   // SOURCE here, so the formula is visible + editable. Click to edit.
@@ -215,12 +274,15 @@ const sheetView: Fn = ((
           const isActive = active === k;
           // mount cells (showing a long source) get a roomier min-width;
           // the active cell gets the editing outline — both inline.
-          const tdStyle = `${SX.td};min-width:${isMountVal(v) ? "26rem" : "4.5rem"}${isActive ? ";outline:2px solid #4a90d9;outline-offset:-2px" : ""}`;
-          const td = el("td", { class: isActive ? "cell editing" : "cell", "data-key": k, style: tdStyle }, [body(k, v)]);
+          const tdStyle = `${SX.td};position:relative;min-width:${isMountVal(v) ? "26rem" : "4.5rem"}${isActive ? ";outline:2px solid #4a90d9;outline-offset:-2px" : ""}`;
+          // the glyph cluster (✎/✓/?) overlays the cell as a td child, a SIBLING of
+          // the value — so it never reads as the cell's value text.
+          const td = el("td", { class: isActive ? "cell editing" : "cell", "data-key": k, style: tdStyle }, [body(k, v), cellGlyphs(k)]);
           // memo hint → dom's diff skips an unchanged cell's deep compare
           // (O(changed), library-level). The ACTIVE cell gets NO memo — its editor
-          // depends on draft/error — so it's always deep-diffed.
-          return isActive ? td : (memo(td as unknown as VElement, [v, isMountVal(v) ? srcOf.get(k) : undefined]) as unknown as V);
+          // depends on draft/error — so it's always deep-diffed. The src is in the
+          // key so the pencil appears/disappears when value↔formula changes.
+          return isActive ? td : (memo(td as unknown as VElement, [v, srcOf.get(k)]) as unknown as V);
         })]));
     // wrap in a horizontal scroller so a wide grid reaches column A
     // (a centered overflowing table clips its left edge unreachably).

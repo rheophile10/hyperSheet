@@ -197,7 +197,7 @@
         "segment": "origin",
         "name": "origin.edit",
         "kind": "native",
-        "description": "(state, cellKey) - start editing a cell (seed draft with its source); click the active cell's label again to close."
+        "description": "(state, cellKeyOrForceSpec) - start editing a cell (seed draft with its source); click the active cell's label again to close. Payload is the cell key, or { key, force: true } from the explicit pencil affordance to start editing past the form-control guard."
       }
     },
     {

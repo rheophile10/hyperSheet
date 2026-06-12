@@ -9,7 +9,7 @@
         "segment": "sheet-host",
         "name": "sheetView",
         "kind": "native",
-        "description": "(editing expanded draft mount keys vals) - spreadsheet RenderSpec producer: 元 button + grid() layers as Excel tables + expanded formula panel."
+        "description": "(cfg editing draft mount error keys vals srcs geom) - spreadsheet RenderSpec producer: each worksheet table wrapped in a draggable window frame. Each window carries a resizable (resize:vertical) formula bar under its titlebar, bound to 元.draft for the window's editing cell (commits on Enter via origin.key); each cell shows an upper-right ✎ pencil (edit a formula cell) when viewing and a ✓ done button (commit, back to value) when editing, plus a ? wiki glyph dispatching wiki.open with the cell key (no-op if docgraph absent)."
       },
       "locked": true
     },

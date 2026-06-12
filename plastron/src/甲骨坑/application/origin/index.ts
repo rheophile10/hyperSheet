@@ -303,10 +303,14 @@ const isFormControl = (event: unknown): boolean => {
 
 /** edit — start INLINE editing a cell (seed the draft with its source);
  *  clicking the active cell again closes it. A click on a form control the
- *  cell's formula rendered is left alone (so password/upload inputs work). */
+ *  cell's formula rendered is left alone (so password/upload inputs work) —
+ *  unless `force` is set ({ key, force: true }, dispatched by the explicit
+ *  pencil ✎ affordance, which IS a button but a deliberate edit gesture). */
 const edit: Fn = async (state: State, payload?: unknown, event?: unknown) => {
-  if (isFormControl(event)) return state;
-  const key = typeof payload === "string" ? payload : null;
+  const force = !!payload && typeof payload === "object" && (payload as { force?: unknown }).force === true;
+  if (!force && isFormControl(event)) return state;
+  const key = typeof payload === "string" ? payload
+    : (force ? String((payload as { key?: unknown }).key ?? "") || null : null);
   const cur = state.cels.get("元.editing")?.v;
   const next = cur === key ? null : key;
   await (resolveFn(state, "setValueBatch") as Fn)(state,
