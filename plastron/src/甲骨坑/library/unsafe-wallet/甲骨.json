@@ -70,6 +70,18 @@
       }
     },
     {
+      "key": "identity",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "identity",
+        "segment": "unsafe-wallet",
+        "name": "identity",
+        "kind": "native",
+        "description": "(trigger?) - YOUR identity's PUBLIC key as a shareable base64 string once unlocked, or '🔒 unlock to see your identity' when locked. On unlock the wallet mints (first time) or loads (subsequently, from the persistent keystore) ONE non-extractable Ed25519 identity keypair via crypto.identity; the PRIVATE key stays in the keystore and never becomes a cel value — only this public half surfaces. Pass the unlock trigger (=identity(secretsGen)) so it re-renders on unlock/lock through inputMap; share this string, your private key never leaves the keystore."
+      }
+    },
+    {
       "key": "editKey",
       "celType": "LockedLambdaCel",
       "locked": true,

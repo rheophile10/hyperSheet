@@ -62,6 +62,7 @@ let names: Set<string> | null = null;   // null = locked; else the stored key NA
 let ephemeral = false;                   // seal/storage unavailable → session-only note
 let stateRef: State | null = null;       // last state seen by a handler — apiKey reads secrets through it
 let gen = 0;                             // secretsGen version — bumped on every key-set change
+let identityPub: string | null = null;  // the unlocked identity's PUBLIC key (base64); null = locked / not yet minted. NEVER the private key.
 
 // Capture the live state from any handler so the native apiKey verb (which the
 // formula evaluator calls with ONLY its formula args — no state) can reach the
@@ -89,6 +90,24 @@ const sealClear = async (state: State): Promise<void> => {
     await ensureSegments(state, ["seal"]);
     await (resolveFn(state, "seal.lock") as Fn)(state); // no arg → clear hooks
   } catch { /* no seal here — nothing to clear */ }
+};
+
+// ── identity driver (the unlock mints/loads ONE identity keypair) ───────────
+// On unlock, ensure crypto is loaded and ask it for THE identity keypair:
+// crypto.identity mints a NON-EXTRACTABLE Ed25519 key the first time (empty
+// keystore) and loads the same one thereafter (IndexedDB persists across
+// reloads → a stable public key). We keep ONLY the public half in module scope
+// (identityPub); the private key stays in the keystore, never a cel value. The
+// identity() verb surfaces identityPub; locking clears it. Best-effort: a host
+// without WebCrypto leaves identityPub null (the verb shows its placeholder).
+const ensureIdentity = async (state: State): Promise<void> => {
+  try {
+    await ensureSegments(state, ["crypto"]);
+    const handle = await (resolveFn(state, "crypto.identity") as Fn)() as { publicKey?: unknown };
+    identityPub = typeof handle?.publicKey === "string" ? handle.publicKey : null;
+  } catch {
+    identityPub = null;
+  }
 };
 
 // ── secrets segment + cels ──────────────────────────────────────────────────
@@ -259,6 +278,15 @@ const walletKeysFn: Fn = (_trigger?: unknown): { genesis: true; layer: string; c
 // reactive cel (=locked(walletNote)) so it tracks lock/unlock.
 const lockedFn: Fn = (_trigger?: unknown): boolean => !names;
 
+// identity(trigger?) — the current identity's PUBLIC key as a shareable base64
+// string when unlocked, or a "🔒 unlock to see your identity" placeholder when
+// locked. The PRIVATE key never surfaces — identityPub holds only the public
+// half (minted/loaded by ensureIdentity on unlock; cleared on lock). Pass the
+// unlock trigger (=identity(secretsGen)) so it re-renders on unlock/lock through
+// inputMap — secretsGen is the dep, no hand-rolled repaint.
+const identityFn: Fn = (_trigger?: unknown): string =>
+  (!names || !identityPub) ? "🔒 unlock to see your identity" : identityPub;
+
 // editKey(lockCell, name) — per-key edit + delete in ONE cell. Pass the lock
 // cell (=wallet() or =locked(walletNote)) as the FIRST arg so this cell depends
 // on it and re-evaluates on lock/unlock. Locked → can't edit; unlocked → a
@@ -359,8 +387,15 @@ const unlockHandler: Fn = async (stateArg: unknown, _payload: unknown, event: un
   // Runtime-unlock: surface whatever secrets already exist (decrypted on
   // hydrate) plus any added this session.
   names = namesFromState(state);
+  // Mint (first time) or load (subsequently) THE identity keypair — the
+  // north-star's "enter a password, get a public + private key". The private
+  // key stays NON-EXTRACTABLE in the keystore; only the public half (identityPub)
+  // surfaces, via the identity() verb. Best-effort: a host without WebCrypto
+  // leaves identityPub null and identity() shows its placeholder.
+  await ensureIdentity(state);
   // re-arm any client cel that referenced secretsGen while the wallet was
-  // locked: unlocking surfaced the (decrypted) keys, so bump to re-fire them.
+  // locked: unlocking surfaced the (decrypted) keys + the identity, so bump to
+  // re-fire them (identity(secretsGen) repaints with the public key).
   await bumpGen(state);
   const n = names.size;
   await note(state, sealed
@@ -388,6 +423,7 @@ const setHandler: Fn = async (stateArg: unknown, payload: unknown, event: unknow
 const lockHandler: Fn = async (stateArg: unknown) => {
   const state = remember(stateArg as State);
   names = null;
+  identityPub = null;     // hide the public key while locked (the private key was never here; it stays in the keystore)
   await sealClear(state); // clear the seal hooks — secrets re-seal/stay sealed at rest
   await bumpGen(state);   // re-fire client cels → they flip back to error (no key)
   await note(state, "(wallet locked)");
@@ -479,6 +515,7 @@ export const name = "unsafe-wallet" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["wallet",        walletFn],
   ["locked",        lockedFn],
+  ["identity",      identityFn],
   ["editKey",       editKeyFn],
   ["walletKeys",    walletKeysFn],
   ["apiKey",        keyFn],

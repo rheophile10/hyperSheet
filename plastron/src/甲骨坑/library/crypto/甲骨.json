@@ -62,6 +62,12 @@
       "locked": true
     },
     {
+      "key": "crypto.identity",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "crypto.identity", "segment": "crypto", "name": "crypto.identity", "kind": "native", "description": "() - mint-or-load THE identity signing keypair (Ed25519) under a stable keystore id. First call (empty keystore) generates a NON-EXTRACTABLE private key; later calls load the same one (persisted in IndexedDB across reloads). Returns its CryptoKeyHandle (id + public key); the private key never becomes a cel value. This is the 'enter a password, get a public and private key' identity — the wallet's unlock path calls it." },
+      "locked": true
+    },
+    {
       "key": "crypto.forget",
       "celType": "LockedLambdaCel",
       "metadata": { "key": "crypto.forget", "segment": "crypto", "name": "crypto.forget", "kind": "native", "description": "(handle) - drop a key from the keystore (rotation / revoke); returns whether it existed." },
