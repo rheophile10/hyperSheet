@@ -115,7 +115,7 @@ const sheetView: Fn = ((
 ) => {
   const c = (cfg ?? {}) as { base?: string; draftCel?: string; editHandler?: string; keyHandler?: string };
   const BASE = c.base ?? "元", DRAFT = c.draftCel ?? "元.draft", EDIT = c.editHandler ?? "origin.edit", KEYH = c.keyHandler ?? "origin.key";
-  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; host?: string; tab?: string }> : {};
+  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string }> : {};
   // wrap a worksheet's table in a draggable window frame, positioned by win.geom
   // (default staggered by index). Drag/resize/raise/minimize dispatch to the
   // winsheet.* handlers; the table inside is unchanged, so cells stay editable.
@@ -127,12 +127,14 @@ const sheetView: Fn = ((
       el("button", { class: "pl-win-btn", title: "mid size", style: BTN }, [T("◱")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.mid", payload: host } }),
       el("button", { class: "pl-win-btn", title: "maximize", style: BTN }, [T("⛶")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.maximize", payload: host } }),
       el("button", { class: "pl-min-btn", title: "minimize", style: BTN }, [T("–")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.minimize", payload: host } }),
+      el("button", { class: "pl-close-btn", title: "close", style: BTN + ";color:#d4453e" }, [T("✕")], { pointerdown: { dispatch: "winsheet.stop" }, click: { dispatch: "winsheet.close", payload: host } }),
     ]),
   ], { pointerdown: { dispatch: "winsheet.grab", payload: host }, pointermove: { dispatch: "winsheet.move" }, pointerup: { dispatch: "winsheet.drop" } });
   // a window may HOST others as TABS (win.geom[seg].host === this). It renders a
   // tab strip + the active tab's table; the others' standalone windows are gone.
   const windowed = (host: string, tabs: string[], activeTable: V, active: string, i: number): V => {
     const g = GM[host] ?? {};
+    if (g.closed) return el("div", { class: "pl-window-closed", "data-win": host, style: "display:none" }, []);
     if (g.min) return el("div", { class: "pl-window-min", "data-win": host, style: "display:none" }, []);
     const x = gnum(g.x, 40 + i * 34), y = gnum(g.y, 40 + i * 34), w = gnum(g.w, 380), h = gnum(g.h, 260), z = gnum(g.z, 1);
     const tabStrip = tabs.length > 1 ? el("div", { class: "pl-tabs", style: "flex:0 0 auto;display:flex;gap:.15rem;padding:.25rem .3rem 0;background:#8881;overflow-x:auto" }, tabs.map((seg) =>
@@ -305,7 +307,7 @@ const sheetView: Fn = ((
   const taskItem = (label: string, ref: string, off: boolean, handler: string): V => el("button", { class: "pl-task" + (off ? " off" : ""), "data-win": ref, style: `flex:0 0 auto;padding:.2rem .6rem;border:1px solid #8884;border-radius:.3rem;background:${off ? "#8882" : "Canvas"};cursor:pointer;font:600 .76rem ui-monospace,monospace;opacity:${off ? ".55" : "1"};white-space:nowrap` }, [T(label)], { click: { dispatch: handler, payload: ref } });
   const taskbar = el("div", { class: "pl-taskbar", style: "position:fixed;left:0;right:0;bottom:0;display:flex;gap:.4rem;padding:.3rem .5rem;background:#8881;border-top:1px solid #8883;z-index:99999;overflow-x:auto;align-items:center" },
     [el("span", { style: "font:600 .72rem ui-monospace,monospace;color:#888;flex:0 0 auto;margin-right:.2rem" }, [T("windows:")]),
-     ...allWins.map((seg) => taskItem(seg, seg, !!GM[seg]?.min, "winsheet.restore")),
+     ...allWins.map((seg) => taskItem(seg, seg, !!(GM[seg]?.min || GM[seg]?.closed), "winsheet.restore")),
      ...stateEntries.map((w) => taskItem(w.title, w.ref, w.off, "winx.show"))]);
   // .origin is the positioned desktop the windows float on; the taskbar pins to the bottom.
   const originNode = el("div", { class: "origin", style: "position:relative;min-height:90vh;width:100%;padding-bottom:3rem" }, [...sections, taskbar]);
@@ -329,9 +331,17 @@ const sheetView: Fn = ((
 // {x,y,w,h,z,min} } — so the cell set isn't cluttered with per-axis cels and
 // sheetView gets it as one input. The handlers update that map; the cells inside
 // a window are unchanged, so editing/selection still work as before.
-interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; host?: string; tab?: string }
+interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string }
 interface WEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void }; stopPropagation?: () => void }
-const wrepaint = (state: State): Promise<unknown> => Promise.resolve((resolveFn(state, "drain") as Fn)(state, "dom.paint"));
+// win.geom is in 元.view's inputMap, so a geom change re-fires the view — but
+// that re-fire must propagate through the cycle BEFORE we paint, or the first
+// drain repaints the stale frame (a just-closed/minimized window not yet swapped
+// for its stub) and no second paint is scheduled. runCycle first so one gesture
+// lands. (drag fires repeatedly so it always caught up; close/min are one-shot.)
+const wrepaint = async (state: State): Promise<unknown> => {
+  await Promise.resolve((resolveFn(state, "runCycle") as Fn)(state));
+  return Promise.resolve((resolveFn(state, "drain") as Fn)(state, "dom.paint"));
+};
 const geomMap = (state: State): Record<string, WGeom> => { const v = state.cels.get("win.geom")?.v; return (v && typeof v === "object" && !Array.isArray(v)) ? { ...(v as Record<string, WGeom>) } : {}; };
 const setGeom = (state: State, m: Record<string, WGeom>): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.geom", m)).then(() => wrepaint(state));
 const wdrag = (state: State): { seg: string; ox: number; oy: number; resize?: boolean } | null | undefined => state.cels.get("winsheet.drag")?.v as { seg: string; ox: number; oy: number; resize?: boolean } | null | undefined;
@@ -379,7 +389,11 @@ const wsTab: Fn = (async (state: State, payload: unknown): Promise<void> => { co
 const wsTearoff: Fn = (async (state: State, seg: unknown): Promise<void> => { const k = String(seg); const m = geomMap(state); const g = m[k] ?? {}; m[k] = { ...g, host: undefined, x: wnum(g.x, 80) + 40, y: wnum(g.y, 80) + 40, z: await nextZ(state) }; await setGeom(state, m); }) as Fn;
 const wsRaise: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), z }; await setGeom(state, m); }) as Fn;
 const wsMin: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 1 }; await setGeom(state, m); }) as Fn;
-const wsRestore: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 0, z }; await setGeom(state, m); }) as Fn;
+// close hides the window (closed flag), like minimize but distinct — the taskbar
+// still lists it so winsheet.restore (clear closed + min) brings it back. A
+// worksheet window is NEVER destroyed (元 must stay restorable).
+const wsClose: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), closed: 1 }; await setGeom(state, m); }) as Fn;
+const wsRestore: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 0, closed: 0, z }; await setGeom(state, m); }) as Fn;
 const wsMax: Fn = (async (state: State, seg: unknown): Promise<void> => { const g = globalThis as { innerWidth?: number; innerHeight?: number }; const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { x: 0, y: 0, w: wnum(g.innerWidth, 1200), h: Math.max(160, wnum(g.innerHeight, 800) - 46), z, min: 0 }; await setGeom(state, m); }) as Fn;
 const wsMid: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { x: 90, y: 70, w: 540, h: 380, z, min: 0 }; await setGeom(state, m); }) as Fn;
 const wsStop: Fn = ((_state: State, _p: unknown, event?: WEvt): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
@@ -389,5 +403,5 @@ export const name = "sheet-host" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["sheetView", sheetView],
   ["winsheet.grab", wsGrab], ["winsheet.move", wsMove], ["winsheet.grabResize", wsGrabResize], ["winsheet.resizeMove", wsResizeMove],
-  ["winsheet.drop", wsDrop], ["winsheet.tab", wsTab], ["winsheet.tearoff", wsTearoff], ["winsheet.raise", wsRaise], ["winsheet.minimize", wsMin], ["winsheet.restore", wsRestore], ["winsheet.maximize", wsMax], ["winsheet.mid", wsMid], ["winsheet.stop", wsStop],
+  ["winsheet.drop", wsDrop], ["winsheet.tab", wsTab], ["winsheet.tearoff", wsTearoff], ["winsheet.raise", wsRaise], ["winsheet.minimize", wsMin], ["winsheet.close", wsClose], ["winsheet.restore", wsRestore], ["winsheet.maximize", wsMax], ["winsheet.mid", wsMid], ["winsheet.stop", wsStop],
 ]));

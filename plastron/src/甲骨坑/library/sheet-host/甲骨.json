@@ -98,6 +98,18 @@
       "locked": true
     },
     {
+      "key": "winsheet.close",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "winsheet.close",
+        "segment": "sheet-host",
+        "name": "winsheet.close",
+        "kind": "native",
+        "description": "close (hide; restorable from the taskbar — never destroyed)"
+      },
+      "locked": true
+    },
+    {
       "key": "winsheet.restore",
       "celType": "LockedLambdaCel",
       "metadata": {

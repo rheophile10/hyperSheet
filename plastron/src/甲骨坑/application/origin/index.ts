@@ -299,6 +299,12 @@ const edit: Fn = async (state: State, payload?: unknown, event?: unknown) => {
   const next = cur === key ? null : key;
   await (resolveFn(state, "setValueBatch") as Fn)(state,
     [["元.editing", next], ["元.draft", next ? cellSource(state, next) : ""], ["元.error", null]]);
+  // 元.editing is in 元.view's inputMap, so changing it re-fires the view — but
+  // that re-fire must propagate through the cycle BEFORE we paint, or the first
+  // drain repaints the stale vnode (editor not yet swapped in) and no second
+  // paint is scheduled. runCycle first so the editor (or its dismissal) lands in
+  // one gesture. Without this, clicking a windowed worksheet cell looked inert.
+  await (resolveFn(state, "runCycle") as Fn)(state);
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
   return state;
 };
