@@ -354,8 +354,24 @@ const fire: Fn = async (state: State, payload?: unknown) => {
   const setValue = resolveFn(state, "setValue") as Fn;
   const f = (c as { f?: string }).f;
   await setValue(state, key, f !== undefined ? f : c.v);
+  // drain whatever it produces: a GENESIS (e.g. 元) re-materializes its windows +
+  // cels, so firing 元 rebuilds the desktop (recovery). Mirrors commit's loop.
+  const drain = resolveFn(state, "drain") as Fn;
+  const gd = resolveFn(state, "genesis.drain") as Fn | undefined;
+  const dd = resolveFn(state, "defn.drain") as Fn | undefined;
+  for (let pass = 0; pass < 8; pass++) {
+    const before = state.cels.size;
+    await (resolveFn(state, "runCycle") as Fn)(state);
+    for (const ch of ["genesis.commit", "defn.commit", "checkpoint.commit", "origin.effects"]) {
+      if (state.cels.get(ch)) await drain(state, ch);
+    }
+    if (gd) await gd([], state);
+    if (dd) await dd([], state);
+    if (state.cels.size === before) break;
+  }
+  await rewireView(state, cellKeys(state));
   await (resolveFn(state, "runCycle") as Fn)(state);
-  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  await drain(state, "dom.paint");
   return state;
 };
 
