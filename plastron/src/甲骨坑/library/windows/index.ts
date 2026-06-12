@@ -119,13 +119,21 @@ const dropFn: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<v
   if (rect) await setBatch(state, [[`${d.key}.x`, rect.x], [`${d.key}.y`, rect.y], [`${d.key}.w`, rect.w], [`${d.key}.h`, rect.h]]);
 }) as Fn;
 
-// z-order: any pointerdown in a window raises it. A module-scope counter assigns
-// the next-highest z; the window's z-index reads the reactive `${key}.z` cel.
-let topZ = 10;
+// z-order: any pointerdown in a window raises it. A SHARED `win.topz` ValueCel
+// (default 100) is the single z fountain for BOTH window kinds — worksheet
+// windows (winsheet.*) and state-cel windows (winx.*) read the same counter, so
+// clicking ANY window raises it above ALL others. Each raise bumps win.topz and
+// uses the new value (the window's z-index reads its `${key}.z` cel / state.z).
+const nextZ = async (state: State): Promise<number> => {
+  const z = (Number(state.cels.get("win.topz")?.v) || 100) + 1;
+  await putV(state, "win.topz", z);
+  return z;
+};
 const raiseFn: Fn = (async (state: State, key: unknown): Promise<void> => {
   const zk = `${String(key)}.z`;
-  if (state.cels.get(zk)) await setV(state, zk, ++topZ);
-  else await Promise.resolve((resolveFn(state, "setCel") as Fn)(state, zk, { celType: "ValueCel", v: ++topZ, metadata: { key: zk, segment: "win" } }));
+  const z = await nextZ(state);
+  if (state.cels.get(zk)) await setV(state, zk, z);
+  else await Promise.resolve((resolveFn(state, "setCel") as Fn)(state, zk, { celType: "ValueCel", v: z, metadata: { key: zk, segment: "win" } }));
 }) as Fn;
 
 // ── window registry + toolbar (minimize/restore) ────────────────────────────
@@ -184,7 +192,6 @@ const segOf = (ref: string): string => ref.replace(/\.state$/, "");
 const stateOf = (state: State, ref: string): WinState => { const v = state.cels.get(ref)?.v; return (v && typeof v === "object" && !Array.isArray(v)) ? { ...(v as WinState) } : {}; };
 const setState = (state: State, ref: string, patch: WinState): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, ref, { ...stateOf(state, ref), ...patch })).then(() => repaint(state));
 const xdrag = (state: State): { ref: string; ox: number; oy: number; resize?: boolean } | null | undefined => state.cels.get("winx.drag")?.v as { ref: string; ox: number; oy: number; resize?: boolean } | null | undefined;
-let xTopZ = 100;
 
 const XBTN = "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .3rem;line-height:1";
 // winframe(state, active, content) — `active` is the FOCUS POINTER's value (the
@@ -195,6 +202,10 @@ const frameFn: Fn = ((st: unknown, active: unknown, content: unknown): V => {
   const s = (st && typeof st === "object" && !Array.isArray(st)) ? st as WinState : {};
   const ref = s.ref ?? "win";
   if (s.closed) return el("div", { class: "pl-win-closed", "data-win": ref, style: "display:none" }, []);
+  // minimized → the taskbar lists it (winx.show restores). The frame hides,
+  // mirroring the worksheet frame's `g.min` stub — without this, winx.min only
+  // toggled state.min and the window stayed visible.
+  if (s.min) return el("div", { class: "pl-window-min", "data-win": ref, style: "display:none" }, []);
   const isActive = ref === active;
   const gg = globalThis as { innerWidth?: number; innerHeight?: number };
   const x = s.max ? 0 : num(s.x, 80), y = s.max ? 0 : num(s.y, 80), w = s.max ? num(gg.innerWidth, 1200) : num(s.w, 380), h = s.max ? num(gg.innerHeight, 800) - 46 : num(s.h, 260), z = num(s.z, 1);
@@ -246,11 +257,11 @@ const xDrop: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<vo
   await setState(state, d.ref, { linked: merge(stateOf(state, d.ref)) });
   await setState(state, target, { linked: merge(stateOf(state, target)) });
 }) as Fn;
-const xRaise: Fn = (async (state: State, ref: unknown): Promise<void> => { const r = String(ref); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.active", r)); if (state.cels.get("keys.active")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "keys.active", r)); await setState(state, r, { z: ++xTopZ }); }) as Fn;
+const xRaise: Fn = (async (state: State, ref: unknown): Promise<void> => { const r = String(ref); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.active", r)); if (state.cels.get("keys.active")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "keys.active", r)); await setState(state, r, { z: await nextZ(state) }); }) as Fn;
 const xMin: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { min: s.min ? 0 : 1 }); }) as Fn;
-const xMax: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { max: s.max ? 0 : 1, z: ++xTopZ }); }) as Fn;
+const xMax: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { max: s.max ? 0 : 1, z: await nextZ(state) }); }) as Fn;
 const xClose: Fn = (async (state: State, ref: unknown): Promise<void> => { await setState(state, String(ref), { closed: 1 }); }) as Fn;
-const xShow: Fn = (async (state: State, ref: unknown): Promise<void> => { const r = String(ref); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.active", r)); if (state.cels.get("keys.active")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "keys.active", r)); await setState(state, r, { closed: 0, min: 0, z: ++xTopZ }); }) as Fn;
+const xShow: Fn = (async (state: State, ref: unknown): Promise<void> => { const r = String(ref); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.active", r)); if (state.cels.get("keys.active")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "keys.active", r)); await setState(state, r, { closed: 0, min: 0, z: await nextZ(state) }); }) as Fn;
 const xStop: Fn = ((_state: State, _p: unknown, event?: { stopPropagation?: () => void }): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
 
 // winmake(id, title, content) — the formula: genesis a window-STATE cel + its

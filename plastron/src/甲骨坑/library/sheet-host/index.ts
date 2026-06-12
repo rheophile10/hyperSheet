@@ -266,14 +266,47 @@ const sheetView: Fn = ((
   // taskbar — worksheet windows (winsheet.restore) AND state-cel windows
   // (winapp/chatapp/winframe → winx.show). (A lineage TREE replaces this flat
   // strip — see window-lineage-launcher.md.)
-  const allWins = [...(base.length ? [BASE] : []), ...[...layers.keys()].filter((seg) => layers.get(seg)!.some((k) => addrOf(k)))];
-  const stateWins: { ref: string; title: string; off: boolean }[] = [];
-  for (const k of ks) { if (!k.endsWith(".state")) continue; const v = valOf.get(k) as { ref?: string; title?: string; closed?: number; min?: number } | undefined; if (v && typeof v === "object" && typeof v.ref === "string") stateWins.push({ ref: v.ref, title: String(v.title ?? k), off: !!(v.closed || v.min) }); }
+  // Worksheet windows: TABBED ones (win.geom[seg].host pointing at another
+  // window) ride INSIDE their host's tab strip — they must NOT get their own
+  // taskbar entry. Only top-level (un-hosted) worksheet windows show.
+  const allWins = [...(base.length ? [BASE] : []), ...[...layers.keys()].filter((seg) => layers.get(seg)!.some((k) => addrOf(k)))]
+    .filter((seg) => { const h = GM[seg]?.host; return !(typeof h === "string" && h !== seg); });
+  // State-cel windows: collected with their `linked` membership so a LINKED
+  // group collapses to one entry. `linked` holds SEGMENT names (segOf(ref));
+  // a window's own segment is `ref` minus ".state".
+  interface SW { ref: string; seg: string; title: string; off: boolean; linked: string[] }
+  const stateWins: SW[] = [];
+  for (const k of ks) {
+    if (!k.endsWith(".state")) continue;
+    const v = valOf.get(k) as { ref?: string; title?: string; closed?: number; min?: number; linked?: string[] } | undefined;
+    if (v && typeof v === "object" && typeof v.ref === "string") {
+      const seg = v.ref.replace(/\.state$/, "");
+      stateWins.push({ ref: v.ref, seg, title: String(v.title ?? k), off: !!(v.closed || v.min), linked: Array.isArray(v.linked) ? v.linked.map(String) : [] });
+    }
+  }
+  // Union-find over windows whose `linked` sets intersect (connected components).
+  // Each window unions its own segment with every segment it links to; windows
+  // sharing any linked member land in one group. Robust to chains (a↔b, b↔c).
+  const parent = new Map<string, string>();
+  const find = (x: string): string => { let r = x; while (parent.get(r) !== undefined && parent.get(r) !== r) r = parent.get(r)!; parent.set(x, r); return r; };
+  const union = (a: string, b: string): void => { parent.set(find(a), find(b)); };
+  for (const w of stateWins) { if (parent.get(w.seg) === undefined) parent.set(w.seg, w.seg); for (const l of w.linked) { if (parent.get(l) === undefined) parent.set(l, l); union(w.seg, l); } }
+  // collapse to one entry per component (only present windows; a `linked` name
+  // with no live window just merges the components it bridges). First member in
+  // ks order is the representative the entry shows + acts on.
+  const groups = new Map<string, SW[]>();
+  for (const w of stateWins) { const root = find(w.seg); (groups.get(root) ?? groups.set(root, []).get(root)!).push(w); }
+  const stateEntries = [...groups.values()].map((members) => {
+    const rep = members[0]!;
+    const off = members.every((m) => m.off);                 // grey only if EVERY member is hidden
+    const label = members.length > 1 ? `🔗 ${rep.title}` : rep.title;
+    return { ref: rep.ref, title: label, off };
+  });
   const taskItem = (label: string, ref: string, off: boolean, handler: string): V => el("button", { class: "pl-task" + (off ? " off" : ""), "data-win": ref, style: `flex:0 0 auto;padding:.2rem .6rem;border:1px solid #8884;border-radius:.3rem;background:${off ? "#8882" : "Canvas"};cursor:pointer;font:600 .76rem ui-monospace,monospace;opacity:${off ? ".55" : "1"};white-space:nowrap` }, [T(label)], { click: { dispatch: handler, payload: ref } });
   const taskbar = el("div", { class: "pl-taskbar", style: "position:fixed;left:0;right:0;bottom:0;display:flex;gap:.4rem;padding:.3rem .5rem;background:#8881;border-top:1px solid #8883;z-index:99999;overflow-x:auto;align-items:center" },
     [el("span", { style: "font:600 .72rem ui-monospace,monospace;color:#888;flex:0 0 auto;margin-right:.2rem" }, [T("windows:")]),
      ...allWins.map((seg) => taskItem(seg, seg, !!GM[seg]?.min, "winsheet.restore")),
-     ...stateWins.map((w) => taskItem(w.title, w.ref, w.off, "winx.show"))]);
+     ...stateEntries.map((w) => taskItem(w.title, w.ref, w.off, "winx.show"))]);
   // .origin is the positioned desktop the windows float on; the taskbar pins to the bottom.
   const originNode = el("div", { class: "origin", style: "position:relative;min-height:90vh;width:100%;padding-bottom:3rem" }, [...sections, taskbar]);
 
@@ -305,7 +338,16 @@ const wdrag = (state: State): { seg: string; ox: number; oy: number; resize?: bo
 const setWdrag = (state: State, v: unknown): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winsheet.drag", v));
 const wnum = (v: unknown, d = 0): number => { const n = Number(v); return Number.isFinite(n) ? n : d; };
 const wcap = (e?: WEvt): void => { try { e?.currentTarget?.setPointerCapture?.(wnum(e?.pointerId)); } catch { /* off-DOM */ } };
-let wTopZ = 10;
+// SHARED z fountain: the same `win.topz` cel the windows segment's winx.*
+// handlers bump, so a worksheet window raised here can rise above state-cel
+// windows (and vice-versa). Default 100. (No private counter — both kinds read
+// the one cel; segments can't import, but they CAN share a cel.)
+const nextZ = async (state: State): Promise<number> => {
+  const z = (Number(state.cels.get("win.topz")?.v) || 100) + 1;
+  if (state.cels.get("win.topz")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.topz", z));
+  else await Promise.resolve((resolveFn(state, "setCel") as Fn)(state, "win.topz", { celType: "ValueCel", v: z, metadata: { key: "win.topz", segment: "win" } }));
+  return z;
+};
 
 const wsGrab: Fn = (async (state: State, seg: unknown, event?: WEvt): Promise<void> => { wcap(event); const g = geomMap(state)[String(seg)] ?? {}; await setWdrag(state, { seg: String(seg), ox: wnum(event?.clientX) - wnum(g.x, 60), oy: wnum(event?.clientY) - wnum(g.y, 60) }); }) as Fn;
 const wsMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d || d.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), x: wnum(event?.clientX) - d.ox, y: wnum(event?.clientY) - d.oy }; await setGeom(state, m); }) as Fn;
@@ -334,12 +376,12 @@ const wsDrop: Fn = (async (state: State, _p: unknown, event?: WEvt & { clientX?:
   bundleSegments(state, members);
 }) as Fn;
 const wsTab: Fn = (async (state: State, payload: unknown): Promise<void> => { const p = payload as { host?: string; tab?: string }; if (!p?.host || !p?.tab) return; const m = geomMap(state); m[p.host] = { ...(m[p.host] ?? {}), tab: p.tab }; await setGeom(state, m); }) as Fn;
-const wsTearoff: Fn = (async (state: State, seg: unknown): Promise<void> => { const k = String(seg); const m = geomMap(state); const g = m[k] ?? {}; m[k] = { ...g, host: undefined, x: wnum(g.x, 80) + 40, y: wnum(g.y, 80) + 40, z: ++wTopZ }; await setGeom(state, m); }) as Fn;
-const wsRaise: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), z: ++wTopZ }; await setGeom(state, m); }) as Fn;
+const wsTearoff: Fn = (async (state: State, seg: unknown): Promise<void> => { const k = String(seg); const m = geomMap(state); const g = m[k] ?? {}; m[k] = { ...g, host: undefined, x: wnum(g.x, 80) + 40, y: wnum(g.y, 80) + 40, z: await nextZ(state) }; await setGeom(state, m); }) as Fn;
+const wsRaise: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), z }; await setGeom(state, m); }) as Fn;
 const wsMin: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 1 }; await setGeom(state, m); }) as Fn;
-const wsRestore: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 0, z: ++wTopZ }; await setGeom(state, m); }) as Fn;
-const wsMax: Fn = (async (state: State, seg: unknown): Promise<void> => { const g = globalThis as { innerWidth?: number; innerHeight?: number }; const m = geomMap(state); m[String(seg)] = { x: 0, y: 0, w: wnum(g.innerWidth, 1200), h: Math.max(160, wnum(g.innerHeight, 800) - 46), z: ++wTopZ, min: 0 }; await setGeom(state, m); }) as Fn;
-const wsMid: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { x: 90, y: 70, w: 540, h: 380, z: ++wTopZ, min: 0 }; await setGeom(state, m); }) as Fn;
+const wsRestore: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 0, z }; await setGeom(state, m); }) as Fn;
+const wsMax: Fn = (async (state: State, seg: unknown): Promise<void> => { const g = globalThis as { innerWidth?: number; innerHeight?: number }; const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { x: 0, y: 0, w: wnum(g.innerWidth, 1200), h: Math.max(160, wnum(g.innerHeight, 800) - 46), z, min: 0 }; await setGeom(state, m); }) as Fn;
+const wsMid: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { x: 90, y: 70, w: 540, h: 380, z, min: 0 }; await setGeom(state, m); }) as Fn;
 const wsStop: Fn = ((_state: State, _p: unknown, event?: WEvt): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
 
 export const name = "sheet-host" as const;

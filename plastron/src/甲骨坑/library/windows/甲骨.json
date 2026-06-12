@@ -360,6 +360,17 @@
       }
     },
     {
+      "key": "win.topz",
+      "celType": "ValueCel",
+      "v": 100,
+      "metadata": {
+        "key": "win.topz",
+        "segment": "windows",
+        "name": "win.topz",
+        "description": "shared z-order fountain for BOTH window kinds — worksheet (winsheet.*) and state-cel (winx.*) raise/max/restore handlers bump this and use the new value, so clicking ANY window raises it above ALL others."
+      }
+    },
+    {
       "key": "winapp",
       "celType": "LockedLambdaCel",
       "metadata": {
