@@ -4,6 +4,7 @@ import type {
 } from "../../types/index.js";
 import { resolveFn } from "../resolve-fn.js";
 import { appendError, makeCelError } from "../cel-error.js";
+import { canUse } from "../segments/trust.js";
 /** Reserved cel key: locked ValueCel whose v is the compile cache —
  *  Map<`${kindKey}:${source}${ctx}`, Promise<CompiledLambda>>. */
 export const COMPILE_CACHE_KEY = "compile.cache" as const;
@@ -49,6 +50,18 @@ export const compileCelBody = async (
   cel: FireableCel, state: State, opts?: CompileCelBodyOpts,
 ): Promise<void> => {
   if (cel.f === undefined) return;
+
+  // Capability gate (quarantine, Layer-B): compiling a USER lambda
+  // (EditableLambdaCel — js/wat/py source) IS the `code` capability. A
+  // quarantined segment/kernel may not; refuse as a value, don't abort
+  // hydrate. FormulaCels (the declarative language) are always allowed.
+  if (cel.celType === "EditableLambdaCel" && !canUse(state, cel.metadata.segment, "code")) {
+    const ce = makeCelError([cel.metadata.key], "CapabilityDeniedError",
+      new Error(`Cel "${cel.metadata.key}" needs the 'code' capability — its segment "${cel.metadata.segment}" is quarantined`));
+    appendError(state, ce);
+    cel.v = ce;
+    return;
+  }
 
   // EditableLambdaCel._compiler is a bound Recompile fn — an editor
   // surface installs it to skip the cel-registry lookup on source

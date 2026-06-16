@@ -94,11 +94,15 @@ export {
   accessPolicyOf, setAccessPolicy, accessPolicyKeyOf, hasDeclaredPolicy,
   canGet, canSet, bundleSegments, ACCESS_BUNDLES_KEY,
   currentAccessor, withAccessor,
+  resolveTrust, kernelTrust, canUse, trustAllowsReach, setTrust,
+  extractNeeds, grantDelta, CAPABILITIES, FULL_TRUST, LOCKED_TRUST,
+  TRUST_KERNEL_KEY, trustKeyOf,
   resolveInputCel, deniedCel, isDenied, DENIED, DEFAULT_POLICY,
   installDormant, dormantSegmentOf, dormantView, assertNotDormant,
   flush, wake, sleep, forget,
 } from "./segments/index.js";
 export type { AccessPolicy, AccessList } from "./segments/index.js";
+export type { Trust, Capability } from "./segments/index.js";
 export type { SegmentSink, SleepOptions, ForgetOptions } from "./segments/index.js";
 
 // ── reserved cel keys + range notation ── kernel-owned constants,

@@ -22,6 +22,12 @@ export {
 } from "./access.js";
 export type { AccessPolicy, AccessList } from "./access.js";
 export {
+  resolveTrust, kernelTrust, canUse, trustAllowsReach, setTrust,
+  extractNeeds, grantDelta, CAPABILITIES, FULL_TRUST, LOCKED_TRUST,
+  TRUST_KERNEL_KEY, trustKeyOf,
+} from "./trust.js";
+export type { Trust, Capability } from "./trust.js";
+export {
   installDormant, dormantSegmentOf, dormantView, assertNotDormant,
 } from "./dormant.js";
 export { flush } from "./flush.js";

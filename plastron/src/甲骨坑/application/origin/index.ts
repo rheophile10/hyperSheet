@@ -2,7 +2,7 @@ import type {
   甲骨, Cel, ChannelEnqueue, Fn, Key, State, VNode, AttrValue, EventBinding,
 } from "../../../types/index.js";
 import {
-  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError,
+  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, canUse,
 } from "../../../kernel/index.js";
 // Core rendering comes from the dom LIBRARY — the app doesn't re-roll
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
@@ -1094,7 +1094,16 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
     // the next runCycle can't re-evaluate the formula over the result.
     let result: unknown;
     try {
-      if (req.originLoad && req.name) {
+      // Capability gate (quarantine, Layer-B): an effect that reaches the
+      // network or persistent storage needs the requesting segment to hold
+      // `net` / `storage`. A quarantined segment/kernel gets #DENIED — the
+      // formula already ran, only the EFFECT is refused.
+      const capNeeded = req.originChat ? "net" as const
+        : (req.originSave || req.originOpen || req.originFs || req.originSeg || req.originDb) ? "storage" as const
+        : null;
+      if (capNeeded && !canUse(state, cel.metadata.segment, capNeeded)) {
+        result = `#DENIED(${capNeeded}: segment "${cel.metadata.segment}" is quarantined — grant ${capNeeded} in trust settings)`;
+      } else if (req.originLoad && req.name) {
         await ensureSegments(state, [String(req.name)]);
         result = `loaded "${req.name}" - its vocabulary is callable now`;
       } else if (req.originCels && req.segment) {
