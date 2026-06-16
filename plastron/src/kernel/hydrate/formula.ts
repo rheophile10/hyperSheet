@@ -91,6 +91,14 @@ export const compileCelBody = async (
   if (outputSchema)            context.outputSchema = outputSchema;
   if (md.wasmExport !== undefined) context.wasmExport = md.wasmExport;
   if (md.imports !== undefined)    context.imports    = md.imports;
+  // The compiling cel's own key, so a FORMULA parser can resolve location-
+  // relative references (infix: bare A1 → <self-segment>.A1). Only FormulaCels
+  // address siblings relatively; lambda kinds (wat/js/py) don't, so they must
+  // NOT fold a per-cel key into ctxKey or identical-source cels stop sharing a
+  // compiled envelope. For formulas the key IS folded in, so cels in different
+  // segments never share an envelope that baked in the wrong segment —
+  // correctness over dedupe for these tiny formula compiles.
+  if (cel.celType === "FormulaCel" && cel.metadata.key) context.selfKey = cel.metadata.key;
   const ctxKey = Object.keys(context).length ? `|${JSON.stringify(context)}` : "";
 
   // Compile cache lookup. Same (kind, source, context) triple → same
@@ -186,8 +194,9 @@ export const compileCelBody = async (
   if (compiler.extractDeps) {
     if (!cel.metadata.inputMap) cel.metadata.inputMap = {};
     // State is passed so range-aware parsers can resolve named ranges
-    // (RangeCels) into their member keys at wire time.
-    const fresh = compiler.extractDeps(cel.f, state);
+    // (RangeCels) into their member keys at wire time; context carries the
+    // cel's own key so relative refs wire to the right segment's siblings.
+    const fresh = compiler.extractDeps(cel.f, state, context);
     if (opts?.pruneAutoWired) {
       const keep = new Set(fresh);
       for (const name of Object.keys(cel.metadata.inputMap)) {

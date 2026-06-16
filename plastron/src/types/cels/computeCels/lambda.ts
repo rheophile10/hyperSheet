@@ -40,6 +40,11 @@ export interface CompileContext {
   wasmExport?: string;
   /** kind:"wasm" — cel key of an imports-provider fn. */
   imports?: Key;
+  /** The key of the cel being compiled. Lets a parser resolve references
+   *  RELATIVE TO THE CEL'S OWN LOCATION — e.g. the infix parser resolves a
+   *  bare A1 to `<self-segment>.A1` instead of a hardcoded prefix, so a sheet
+   *  opened into a fresh segment re-evaluates its relative formulas. */
+  selfKey?: Key;
 }
 
 export interface Compiler extends Fn {
@@ -48,7 +53,11 @@ export interface Compiler extends Fn {
     state?: import("../../state.js").State,
     context?: CompileContext,
   ): CompiledLambda | Promise<CompiledLambda>;
-  extractDeps?: (source: string, state?: import("../../state.js").State) => Key[];
+  extractDeps?: (
+    source: string,
+    state?: import("../../state.js").State,
+    context?: CompileContext,
+  ) => Key[];
 }
 
 export type Recompile = (source: string) => Fn;

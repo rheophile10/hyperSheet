@@ -1,4 +1,4 @@
-import type { CompiledEnvelope, CompiledLambda, Fn, Key, ResolvedInputs, State } from "../../../../types/index.js";
+import type { CompileContext, CompiledEnvelope, CompiledLambda, Fn, Key, ResolvedInputs, State } from "../../../../types/index.js";
 import type { CelError } from "../../../../kernel/index.js";
 import { isCelError } from "../../../../kernel/index.js";
 import { cellKey, expandRange, indexToCol, parseRef } from "./address.js";
@@ -711,7 +711,7 @@ const binderShape = (ast: Node, state?: State): InfixBinder | undefined => {
   return {
     kind, srcNode, name: nameArg.v,
     overwrite: flag?.t === "bool" ? flag.v : false,
-    origin: srcNode.t === "ref" ? cellKey(srcNode.ref) : undefined,
+    origin: srcNode.t === "ref" ? (srcNode.key ?? cellKey(srcNode.ref)) : undefined,
   };
 };
 
@@ -780,10 +780,38 @@ const emitsTo = (ast: Node, state?: State): Key | undefined => {
   return md.genesis === true ? "genesis.commit" : undefined;
 };
 
+// The consuming cel's SEGMENT, derived from its own key: a sheet cel is
+// `<seg>.<ADDR>`, so strip the trailing A1 address. Returns undefined for a
+// keyless or non-addressed cel (the base 元), which keeps the legacy
+// cellKey() prefix — no regression for cels that have no addressed siblings.
+const selfSegmentOf = (selfKey?: Key): string | undefined => {
+  const m = selfKey?.match(/^(.+)\.[A-Za-z]+[0-9]+$/);
+  return m ? m[1] : undefined;
+};
+
+// Qualify every BARE A1 ref/range against `seg` (the consuming cel's own
+// segment) by stamping node.key / node.keys — exactly the slots evalNode and
+// collectDeps already prefer over cellKey(). Cross-sheet `Seg!A1` and named
+// ranges already carry an explicit key/keys and are left untouched.
+const qualifyRefs = (node: Node, seg: string): Node => {
+  switch (node.t) {
+    case "ref":
+      return node.key ? node : { ...node, key: `${seg}.${node.ref}` };
+    case "range":
+      return node.keys ? node : { ...node, keys: expandRange(node.range).map((a) => `${seg}.${a}`) };
+    case "un": return { ...node, e: qualifyRefs(node.e, seg) };
+    case "bin": return { ...node, l: qualifyRefs(node.l, seg), r: qualifyRefs(node.r, seg) };
+    case "call": return { ...node, args: node.args.map((a) => qualifyRefs(a, seg)) };
+    default: return node;
+  }
+};
+
 /** The infix compiler — a FormulaCel parser. */
-export const compileInfix = (source: string, state?: State): CompiledLambda => {
+export const compileInfix = (source: string, state?: State, context?: CompileContext): CompiledLambda => {
   let ast = isFormula(source) ? parseSource(source) : literalNode(source);
   if (state) ast = resolveSymbols(ast, state, new Set());
+  const seg = selfSegmentOf(context?.selfKey);
+  if (seg) ast = qualifyRefs(ast, seg);
   const binder = binderShape(ast, state);
   if (binder) return binderEnvelope(binder);
   const emitChannel = emitsTo(ast, state);
@@ -798,11 +826,13 @@ export const compileInfix = (source: string, state?: State): CompiledLambda => {
   return envelope;
 };
 
-compileInfix.extractDeps = (source: string, state?: State): Key[] => {
+compileInfix.extractDeps = (source: string, state?: State, context?: CompileContext): Key[] => {
   if (!isFormula(source)) return [];
   let ast = parseSource(source);
   const acc = new Set<Key>();
   if (state) ast = resolveSymbols(ast, state, acc); // named-range DEFINITION edges land in acc
+  const seg = selfSegmentOf(context?.selfKey);
+  if (seg) ast = qualifyRefs(ast, seg); // wire relative deps to THIS segment's siblings
   const binder = binderShape(ast, state);
   if (binder) {
     // The binder depends on its SOURCE (and the compiler cel); the NAME
