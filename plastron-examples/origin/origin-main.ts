@@ -8,6 +8,7 @@
 import {
   createInitialState, resolveFn, precomputeOptional, createPainter, setPainter,
 } from "../../plastron/dist/index.js";
+import { bootFromHash } from "../../plastron/dist/甲骨坑/application/origin/index.js";
 
 const resolve = resolveFn as (s: unknown, k: string) => (...a: unknown[]) => Promise<unknown> | unknown;
 
@@ -42,6 +43,11 @@ await (resolve(state, "drain"))(state, "dom.paint");
 // restore a previously =save()d sheet (localStorage default slot), then repaint
 await (resolve(state, "origin.autoload"))(state);
 await (resolve(state, "drain"))(state, "dom.paint");
+
+// if the URL carries a shared formula (#f= / #raw=), open it as a QUARANTINED
+// app: provenance is untrusted, so it boots LOCKED (no net/storage/code until
+// the user grants per-capability). The visible window is phase 4 (iframe).
+if (location.hash) { await bootFromHash(state, location.hash); await (resolve(state, "drain"))(state, "dom.paint"); }
 
 // expose for console tinkering + the Playwright suite (createPainter/setPainter
 // let harnesses swap in a synchronous painter for measurement)
