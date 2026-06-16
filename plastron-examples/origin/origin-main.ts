@@ -18,36 +18,33 @@ await (resolve(state, "ensureSegments"))(state, ["origin"]);
 await (resolve(state, "hydrate"))(state, [], []);
 await (resolveFn(state, "precomputeOptional") ?? precomputeOptional)(state);
 await (resolve(state, "runCycle"))(state);
-// boot the desktop: 元's value is a genesis (doc(desktop)…); commit drains it so
-// the wallpaper + app windows materialize (hydrate/runCycle alone don't drain
-// genesis). With an empty draft, commit re-applies the README = the desktop seed.
-await (resolve(state, "origin.commit"))(state, "元");
-await (resolve(state, "drain"))(state, "dom.paint");
 
-// load the desktop wallpaper FROM an OPFS file: seed /desktop/wallpaper.<ext>
-// from the shipped data-URI and point desktop.A2 at it, so the background now
-// comes from a file in the page's filesystem (the img verb hydrates it).
-await (resolve(state, "origin.seedWallpaper"))(state);
-await (resolve(state, "drain"))(state, "dom.paint");
-
-// seed the page's own served HTML into OPFS at /plastron/index.html so the file
-// explorer isn't empty — it shows "the index.html that plastron makes". Only
-// OPFS is reachable from the browser sandbox (not the repo tree).
-await (resolve(state, "origin.seedIndexHtml"))(state);
-
-// populate the file-explorer window's initial OPFS listing (the nav/open
-// handlers refresh it on every click thereafter).
-await (resolve(state, "origin.explorerRefresh"))(state);
-await (resolve(state, "drain"))(state, "dom.paint");
-
-// restore a previously =save()d sheet (localStorage default slot), then repaint
-await (resolve(state, "origin.autoload"))(state);
-await (resolve(state, "drain"))(state, "dom.paint");
-
-// if the URL carries a shared formula (#f= / #raw=), open it as a QUARANTINED
-// app: provenance is untrusted, so it boots LOCKED (no net/storage/code until
-// the user grants per-capability). The visible window is phase 4 (iframe).
-if (location.hash) { await bootFromHash(state, location.hash); await (resolve(state, "drain"))(state, "dom.paint"); }
+// URL boot? A #f= / #raw= shared formula is UNTRUSTED: bootFromHash LOCKS the
+// kernel and makes that formula BE 元, so a stranger's plastron renders jailed
+// (no net/storage/code/secrets until the user grants via the 🛡 badge). When it
+// fires we SKIP the desktop boot entirely — the page is the shared plastron.
+const shared = location.hash ? await bootFromHash(state, location.hash) : null;
+if (shared) {
+  await (resolve(state, "drain"))(state, "dom.paint");
+} else {
+  // normal desktop boot: 元's value is a genesis (doc(desktop)…); commit drains
+  // it so the wallpaper + app windows materialize (hydrate/runCycle alone don't
+  // drain genesis). With an empty draft, commit re-applies the README seed.
+  await (resolve(state, "origin.commit"))(state, "元");
+  await (resolve(state, "drain"))(state, "dom.paint");
+  // wallpaper FROM an OPFS file (shipped data-URI → desktop.A2 → the img verb).
+  await (resolve(state, "origin.seedWallpaper"))(state);
+  await (resolve(state, "drain"))(state, "dom.paint");
+  // seed the page's own served HTML into OPFS so the file explorer shows "the
+  // index.html that plastron makes" (only OPFS is reachable from the sandbox).
+  await (resolve(state, "origin.seedIndexHtml"))(state);
+  // initial file-explorer listing (nav/open handlers refresh it thereafter).
+  await (resolve(state, "origin.explorerRefresh"))(state);
+  await (resolve(state, "drain"))(state, "dom.paint");
+  // restore a previously =save()d sheet (localStorage default slot), repaint.
+  await (resolve(state, "origin.autoload"))(state);
+  await (resolve(state, "drain"))(state, "dom.paint");
+}
 
 // expose for console tinkering + the Playwright suite (createPainter/setPainter
 // let harnesses swap in a synchronous painter for measurement)

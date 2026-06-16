@@ -2,7 +2,7 @@ import type {
   甲骨, Cel, ChannelEnqueue, Fn, Key, State, VNode, AttrValue, EventBinding,
 } from "../../../types/index.js";
 import {
-  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, canUse, setTrust, resolveTrust,
+  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, canUse, setTrust, resolveTrust, LOCKED_TRUST,
 } from "../../../kernel/index.js";
 // Core rendering comes from the dom LIBRARY — the app doesn't re-roll
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
@@ -590,17 +590,21 @@ const spawnQuarantined = async (state: State, seed: string, preset: string): Pro
     { celType: "FormulaCel", f: seed, metadata: { key: `${seg}.元`, segment: seg, parser: "infix" } });
   return seg;
 };
-// origin.bootFromHash — read a #f= / #raw= URL fragment and, if present, spawn
-// the shared formula as a LOCKED quarantine (provenance = url → no capabilities
-// until the user grants them). Pure decode; the formula runs jailed, never with
-// the page's trust. Returns the spawned segment, or null when the hash is empty.
+// origin.bootFromHash — read a #f= / #raw= URL fragment. When present, the
+// WHOLE instance is untrusted: LOCK THE KERNEL TIER and make the shared formula
+// BE 元 (the main view), so a stranger's plastron renders jailed — no net /
+// storage / code / secrets until the user grants them via the 🛡 badge. Returns
+// the shared formula (truthy → the host skips the normal desktop boot), or null.
 export const bootFromHash = async (state: State, hash: string): Promise<string | null> => {
   const h = String(hash || "");
   let formula: string | null = null;
   if (/[#?&]f=/.test(h)) formula = await decodeLink(h);
   else { const m = /[#?&]raw=([^#?&]+)/.exec(h); if (m) formula = decodeURIComponent(m[1]!); }
   if (!formula) return null;
-  return spawnQuarantined(state, formula, "locked");
+  setTrust(state, "kernel", LOCKED_TRUST);                              // provenance = url → lock everything
+  await (resolveFn(state, "setValue") as Fn)(state, "元.draft", formula);
+  await (resolveFn(state, "origin.commit") as Fn)(state, "元");         // the shared formula IS the view, jailed
+  return formula;
 };
 // trust(seg, cap, on) — grant/revoke ONE capability (code/net/storage/secrets)
 // for a segment; reactive (the 信.<seg> cel changes). trustOf(seg) reads the
@@ -623,6 +627,21 @@ const trustCycle: Fn = async (state: State, payload?: unknown): Promise<State> =
     setTrust(state, seg, TRUST_PRESETS[next]!);
     await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 ${seg}: ${next}`]]);
   }
+  return state;
+};
+// origin.download — drop the running plastron out as a single self-contained
+// 龜甲.html (the pristine served bundle; falls back to the live DOM). Wired to
+// the ⬇ 龜甲 button in the desktop's upper-right.
+const download: Fn = async (state: State): Promise<State> => {
+  const g = globalThis as { document?: { createElement?: (t: string) => { href: string; download: string; click: () => void }; documentElement?: { outerHTML?: string } }; fetch?: (u: string) => Promise<{ text: () => Promise<string> }>; location?: { href?: string }; URL?: { createObjectURL: (b: unknown) => string; revokeObjectURL: (u: string) => void }; Blob?: new (p: unknown[], o: unknown) => unknown };
+  const doc = g.document;
+  if (!doc?.createElement || !g.Blob || !g.URL) return state;
+  let html = "";
+  try { html = await (await g.fetch!(g.location?.href ?? "")).text(); }
+  catch { html = "<!doctype html>" + (doc.documentElement?.outerHTML ?? ""); }
+  const url = g.URL.createObjectURL(new g.Blob([html], { type: "text/html" }));
+  const a = doc.createElement("a"); a.href = url; a.download = "龜甲.html"; a.click();
+  g.URL.revokeObjectURL(url);
   return state;
 };
 /** origin.autoload — restore the default slot on boot (the host calls this). */
@@ -1424,6 +1443,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["trustOf",        trustOfFn],
   ["jail",           jailFn],
   ["origin.trust",   trustCycle],
+  ["origin.download", download],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],
