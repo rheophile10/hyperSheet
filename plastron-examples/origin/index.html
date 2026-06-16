@@ -23,6 +23,38 @@
     <meta name="twitter:title" content="🐢 plastron 元" />
     <meta name="twitter:description" content="a spreadsheet that is its own app — made of cels" />
     <meta name="twitter:image" content="https://plastron.ca/card.png" />
+    <!-- ═══════════════════════════════════════════════════════════════════════
+      llms.txt — for LLMs / agents reading this page (it is its OWN skill file;
+      everything ships in this one index.html, no separate file is served).
+
+      plastron is a spreadsheet that is its own app. A FORMULA IS THE WHOLE APP,
+      and a formula fits in this URL — so a whole plastron is shareable as a link.
+
+      DISCOVER EVERYTHING WITH FORMULAS. Every verb documents itself in its cel's
+      `metadata.description`. To read it, put a URL-encoded formula in the hash and
+      open the page — it runs the formula and shows the result as PLAIN TEXT:
+
+          <this-site>/#raw=<url-encoded-formula>
+
+      Start here (open these):
+          /#raw=%3Dvocab()                → the FULL verb catalog, plain text
+                                            (this IS the metadata, as one page)
+          /#raw=%3Dinspect(%22link%22)    → one verb's signature + about + source
+                                            (=inspect is the "wiki" content)
+          /#raw=%3Dmembers(%22origin%22)  → list the cels in a segment
+
+      In-app formulas:
+          =vocab()            every verb + its description (plain-text metadata)
+          =inspect("name")    one verb's full doc (the wiki page for it)
+          =members("seg")     a segment's cels
+          =link()             encode THIS whole sheet into a shareable #f= URL
+          =cels(r,c,"name")   a worksheet;  =win(k,"t","body")  a window
+          =dom("div", ...)    a view;  =jail(seed)  a sandboxed sub-plastron
+
+      SECURITY: a #f= / #raw= URL boots a LOCKED kernel (sandboxed) — no network,
+      storage, code, or secrets until a human grants them (the 🛡 trust toggles).
+      That is why opening the catalog URLs above is always safe.
+    ═══════════════════════════════════════════════════════════════════════════ -->
     <style>
       :root { color-scheme: light dark; }
       * { box-sizing: border-box; }
