@@ -185,7 +185,13 @@ const createNode = (v: VNode, reg: ListenerRegistry, state: State, doc: DocLike,
 const writeAttr = (el: ElementLike, name: string, value: AttrValue): void => {
   if (name === "value" && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) {
     const next = value === null || value === undefined || value === false ? "" : String(value);
-    if (el.value !== next) el.value = next;
+    // The value is a PROPERTY for form controls. Never fight a FOCUSED control:
+    // a re-render fired mid-edit (e.g. clearing the formula bar) must not
+    // reassert a stale source over what the user just typed/deleted — that made
+    // a cleared cell un-clearable. (The attribute below still mirrors it for SSR.)
+    const doc = (el as { ownerDocument?: { activeElement?: unknown } }).ownerDocument;
+    const focused = !!doc && doc.activeElement === el;
+    if (!focused && el.value !== next) el.value = next;
   }
   if (value === null || value === undefined || value === false) el.removeAttribute(name);
   else if (value === true) el.setAttribute(name, "");
