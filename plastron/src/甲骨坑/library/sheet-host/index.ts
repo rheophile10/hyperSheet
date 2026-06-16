@@ -196,7 +196,12 @@ const sheetView: Fn = ((
     ]);
     const fireBtn = el("button", { class: "pl-fxbar-fire", title: "fire — re-evaluate this cell", style: SX.glyphBtn + ";align-self:center;display:flex;align-items:center" }, [boltIcon], { click: { dispatch: FIREH, payload: barKey ?? "" } });
     const wikiBtn = el("button", { class: "pl-fxbar-wiki", title: "wiki — what is this cell?", style: SX.glyphBtn + ";align-self:center;font-family:Georgia,serif;color:CanvasText" }, [T("W")], { click: { dispatch: "wiki.open", payload: barKey ?? tabSegs[0] ?? "元" } });
+    // 🛡 trust badge — cycle THIS sheet's segment through locked→compute→net→
+    // trusted; the new level surfaces in the status line (origin.trust handler).
+    const barSeg = barKey ? barKey.split(".")[0]! : (tabSegs[0] ?? "元");
+    const trustBtn = el("button", { class: "pl-fxbar-trust", title: "trust — cycle this sheet's capabilities (locked → compute → net → trusted)", style: SX.glyphBtn + ";align-self:center" }, [T("🛡")], { click: { dispatch: "origin.trust", payload: barSeg } });
     return el("div", { class: "pl-fxbar", style: SX.fxbar }, [
+      trustBtn,
       wikiBtn,
       fireBtn,
       input,

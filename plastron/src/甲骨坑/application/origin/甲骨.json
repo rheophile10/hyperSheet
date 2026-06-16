@@ -872,6 +872,57 @@
       }
     },
     {
+      "key": "trust",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "trust",
+        "segment": "origin",
+        "name": "trust",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(seg, cap, on?) - grant/revoke ONE capability for a segment. cap = code | net | storage | secrets; on defaults true. =trust(\"app1\",\"net\",true) lets app1 reach the network. Reactive — anything that depends on app1's trust re-fires. The grant is still capped by the kernel tier."
+      }
+    },
+    {
+      "key": "trustOf",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "trustOf",
+        "segment": "origin",
+        "name": "trustOf",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(seg) - show a segment's RESOLVED trust (kernel ∧ segment) as a list of granted capabilities, or 'locked' if none."
+      }
+    },
+    {
+      "key": "jail",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "jail",
+        "segment": "origin",
+        "name": "jail",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(seed) - render a SANDBOXED iframe running the seed formula as its OWN kernel. allow-scripts but no allow-same-origin → opaque origin: it cannot touch localStorage, the parent page, or other tabs. The browser's real Layer-A jail for untrusted plastrons."
+      }
+    },
+    {
+      "key": "origin.trust",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.trust",
+        "segment": "origin",
+        "name": "origin.trust",
+        "kind": "native",
+        "description": "(state, segment) - cycle a segment's trust preset locked → compute → net → trusted → locked. Wired to the 🛡 badge on the formula bar; the new level shows in the status line."
+      }
+    },
+    {
       "key": "origin.autoload",
       "celType": "LockedLambdaCel",
       "locked": true,

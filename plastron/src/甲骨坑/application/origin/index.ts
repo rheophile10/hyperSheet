@@ -2,7 +2,7 @@ import type {
   甲骨, Cel, ChannelEnqueue, Fn, Key, State, VNode, AttrValue, EventBinding,
 } from "../../../types/index.js";
 import {
-  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, canUse, setTrust,
+  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, canUse, setTrust, resolveTrust,
 } from "../../../kernel/index.js";
 // Core rendering comes from the dom LIBRARY — the app doesn't re-roll
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
@@ -601,6 +601,29 @@ export const bootFromHash = async (state: State, hash: string): Promise<string |
   else { const m = /[#?&]raw=([^#?&]+)/.exec(h); if (m) formula = decodeURIComponent(m[1]!); }
   if (!formula) return null;
   return spawnQuarantined(state, formula, "locked");
+};
+// trust(seg, cap, on) — grant/revoke ONE capability (code/net/storage/secrets)
+// for a segment; reactive (the 信.<seg> cel changes). trustOf(seg) reads the
+// resolved grant. jail(seed) renders a SANDBOXED iframe running seed as its own
+// kernel (the browser's real Layer-A jail).
+const CAPS = ["code", "net", "storage", "secrets"] as const;
+const trustFn: Fn = (seg?: unknown, cap?: unknown, on?: unknown) =>
+  ({ originTrust: true, seg: String(seg ?? ""), cap: String(cap ?? ""), on: on === undefined ? true : !!on });
+const trustOfFn: Fn = (seg?: unknown) => ({ originTrustOf: true, seg: String(seg ?? "") });
+const jailFn: Fn = (seed?: unknown) => ({ originJail: true, seed: String(seed ?? "") });
+// origin.trust — the formula-bar 🛡 badge: cycle a segment's preset
+// locked → compute → net → trusted → locked.
+const TRUST_CYCLE = ["locked", "compute", "net", "trusted"] as const;
+const trustCycle: Fn = async (state: State, payload?: unknown): Promise<State> => {
+  const seg = String(payload ?? "");
+  if (seg) {
+    const cur = resolveTrust(state, seg) as Record<string, unknown>;
+    const idx = TRUST_CYCLE.findIndex((p) => CAPS.every((c) => !!(TRUST_PRESETS[p] as Record<string, unknown>)[c] === !!cur[c]));
+    const next = TRUST_CYCLE[(idx + 1) % TRUST_CYCLE.length]!;
+    setTrust(state, seg, TRUST_PRESETS[next]!);
+    await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 ${seg}: ${next}`]]);
+  }
+  return state;
 };
 /** origin.autoload — restore the default slot on boot (the host calls this). */
 const autoload: Fn = async (state: State): Promise<State> => {
@@ -1251,6 +1274,23 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const preset = String(req.preset ?? "locked");
         const seg = await spawnQuarantined(state, String(req.seed ?? ""), preset);
         result = `spawned "${seg}" (${preset}) — a quarantined plastron; its cells live under ${seg}.*`;
+      } else if (req.originTrust) {
+        const cap = String(req.cap);
+        if ((CAPS as readonly string[]).includes(cap)) {
+          setTrust(state, String(req.seg), { [cap]: !!req.on });
+          result = `${req.seg}: ${cap} ${req.on ? "granted" : "revoked"}`;
+        } else result = `#DENIED(trust: unknown capability "${cap}" — use code/net/storage/secrets)`;
+      } else if (req.originTrustOf) {
+        const t = resolveTrust(state, String(req.seg)) as Record<string, unknown>;
+        result = `${req.seg}: ${CAPS.filter((c) => t[c]).join(", ") || "locked"}`;
+      } else if (req.originJail) {
+        // a sandboxed iframe running the seed as its own kernel. allow-scripts
+        // WITHOUT allow-same-origin → opaque origin: storage throws, no parent
+        // reach, no XSS against plastron.ca. It boots this page with #raw=<seed>.
+        const loc = (globalThis as { location?: { href?: string } }).location;
+        const base = loc?.href ? String(loc.href).split("#")[0] : "./";
+        const src = `${base}#raw=${encodeURIComponent(String(req.seed ?? ""))}`;
+        result = { type: "el", tag: "iframe", attrs: { sandbox: "allow-scripts", src, class: "pl-jail", style: "width:100%;height:100%;min-height:240px;border:0;border-radius:.4rem;background:Canvas" }, children: [] };
       } else if (req.originChat) {
         result = String(await (resolveFn(state, "llm.chat") as Fn)(req.prompt, req.key, req.model, req.url));
       } else if (req.originFs) {
@@ -1380,6 +1420,10 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["link",           linkFn],
   ["unlink",         unlinkFn],
   ["kernel",         kernelFn],
+  ["trust",          trustFn],
+  ["trustOf",        trustOfFn],
+  ["jail",           jailFn],
+  ["origin.trust",   trustCycle],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],
