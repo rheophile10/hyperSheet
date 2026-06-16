@@ -833,6 +833,32 @@
       }
     },
     {
+      "key": "link",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "link",
+        "segment": "origin",
+        "name": "link",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(target?, base?) - a shareable URL that rebuilds a plastron from the page address (#f= hash, deflate+base64url). =link() encodes the WHOLE sheet; =link(\"元\") encodes one cell's source; =link(\"\", \"\") makes a relative #f= that works from a file. Paste the URL anywhere — it survives a tweet (t.co shortens it)."
+      }
+    },
+    {
+      "key": "unlink",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "unlink",
+        "segment": "origin",
+        "name": "unlink",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(url) - decode a =link() URL (or bare #f= payload) back to its formula source, as text. The inverse of link. Does NOT run it — paste the source into a cell yourself."
+      }
+    },
+    {
       "key": "origin.autoload",
       "celType": "LockedLambdaCel",
       "locked": true,

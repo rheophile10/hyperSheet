@@ -9,6 +9,7 @@ import {
 // `memo` attaches the diff's O(changed) short-circuit hint (see dom).
 import { el as makeEl, text as T } from "../../library/dom/index.js";
 import { openAsSheet } from "../../library/sheet-host/index.js";
+import { encodeLink, decodeLink, type LinkCodec } from "./share-link.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -560,6 +561,13 @@ const restoreArchive = async (state: State, arch: { cells?: [string, string][]; 
 
 const saveFn: Fn = (name?: unknown) => ({ originSave: true, name: name == null ? "" : String(name) });
 const openFn: Fn = (name?: unknown) => ({ originOpen: true, name: name == null ? "" : String(name) });
+// link(target?, base?, codec?) — a shareable URL that rebuilds a plastron from the
+// page address. target "" → the whole sheet (buildSeed); a cell key → its source.
+const linkFn: Fn = (target?: unknown, base?: unknown, codec?: unknown) =>
+  ({ originLink: true, target: target == null ? "" : String(target),
+     base: base == null ? "https://plastron.ca/" : String(base),
+     codec: codec == null ? "auto" : String(codec) });
+const unlinkFn: Fn = (url?: unknown) => ({ originUnlink: true, url: String(url ?? "") });
 /** origin.autoload — restore the default slot on boot (the host calls this). */
 const autoload: Fn = async (state: State): Promise<State> => {
   const raw = LS()?.getItem(slot());
@@ -1187,6 +1195,13 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const raw = LS()?.getItem(slot(req.name));
         if (!raw) result = `(nothing saved as "${String(req.name || "default")}")`;
         else { await restoreArchive(state, JSON.parse(raw)); result = `opened "${String(req.name || "default")}"`; }
+      } else if (req.originLink) {
+        const t = String(req.target ?? "");
+        const src = t ? cellSource(state, t) : buildSeed(state);
+        result = await encodeLink(src, { base: String(req.base ?? "https://plastron.ca/"), codec: String(req.codec ?? "auto") as LinkCodec });
+      } else if (req.originUnlink) {
+        // decode ONLY — returns the formula source as text; does NOT execute it.
+        result = await decodeLink(String(req.url ?? ""));
       } else if (req.originChat) {
         result = String(await (resolveFn(state, "llm.chat") as Fn)(req.prompt, req.key, req.model, req.url));
       } else if (req.originFs) {
@@ -1313,6 +1328,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["def",            defFn],
   ["chat",           chatFn],
   ["grok",           grokFn],
+  ["link",           linkFn],
+  ["unlink",         unlinkFn],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],

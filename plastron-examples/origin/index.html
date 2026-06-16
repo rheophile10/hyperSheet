@@ -11,6 +11,18 @@
          compilers (js/quickjs/py) working; CDNs pinned for Pyodide/confetti. -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' blob: data: https://api.anthropic.com https://api.x.ai https://api.open-meteo.com https://geocoding-api.open-meteo.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com ws://localhost:* wss://localhost:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; worker-src 'self' blob:;" />
     <title>元 — plastron origin</title>
+    <!-- Open Graph / Twitter card (static; crawlers don't run JS or see the #f= hash,
+         so every shared link previews with this one 🐢 card — card.png is rendered
+         from card.html and copied to the site root by the Pages workflow). -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="🐢 plastron 元 — a spreadsheet that is its own app" />
+    <meta property="og:description" content="open a reactive plastron made entirely of cels" />
+    <meta property="og:url" content="https://plastron.ca/" />
+    <meta property="og:image" content="https://plastron.ca/card.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="🐢 plastron 元" />
+    <meta name="twitter:description" content="a spreadsheet that is its own app — made of cels" />
+    <meta name="twitter:image" content="https://plastron.ca/card.png" />
     <style>
       :root { color-scheme: light dark; }
       * { box-sizing: border-box; }

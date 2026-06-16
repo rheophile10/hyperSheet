@@ -56,6 +56,8 @@ jobs:
           mkdir -p deploy/os
           cp plastron-examples/origin/dist/index.html deploy/index.html
           cp plastron-examples/plastron-os/dist/index.html deploy/os/index.html
+          # static OG/Twitter preview card referenced by index.html's meta tags
+          cp plastron-examples/origin/card.png deploy/card.png
           # custom domain — tells GitHub Pages to serve + provision a cert for plastron.ca
           echo 'plastron.ca' > deploy/CNAME
 
