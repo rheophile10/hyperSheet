@@ -345,11 +345,11 @@ const fire: Fn = async (state: State, payload?: unknown) => {
   const key = typeof payload === "string" && payload ? payload
     : String(state.cels.get("元.selected")?.v ?? "");
   if (!key) return state;
-  const c = state.cels.get(key);
-  if (!c) return state;
-  const setValue = resolveFn(state, "setValue") as Fn;
-  const f = (c as { f?: string }).f;
-  await setValue(state, key, f !== undefined ? f : c.v);
+  // ⚡ runs what's in the formula bar: commit the draft to this cell (sniffs the
+  // type/parser, recompiles, re-cascades) — so editing the bar then hitting ⚡
+  // runs the NEW formula, not the saved source. With nothing edited the draft is
+  // the cell's own source (seeded on select), so ⚡ just re-evaluates it.
+  await commit(state, key);
   // drain whatever it produces: a GENESIS (e.g. 元) re-materializes its windows +
   // cels, so firing 元 rebuilds the desktop (recovery). Mirrors commit's loop.
   const drain = resolveFn(state, "drain") as Fn;
@@ -633,14 +633,20 @@ const trustCycle: Fn = async (state: State, payload?: unknown): Promise<State> =
 // 龜甲.html (the pristine served bundle; falls back to the live DOM). Wired to
 // the ⬇ 龜甲 button in the desktop's upper-right.
 const download: Fn = async (state: State): Promise<State> => {
-  const g = globalThis as { document?: { createElement?: (t: string) => { href: string; download: string; click: () => void }; documentElement?: { outerHTML?: string } }; fetch?: (u: string) => Promise<{ text: () => Promise<string> }>; location?: { href?: string }; URL?: { createObjectURL: (b: unknown) => string; revokeObjectURL: (u: string) => void }; Blob?: new (p: unknown[], o: unknown) => unknown };
+  type A = { href: string; download: string; click: () => void; remove: () => void };
+  const g = globalThis as { document?: { createElement?: (t: string) => A; body?: { appendChild: (n: A) => void }; documentElement?: { outerHTML?: string; appendChild?: (n: A) => void } }; fetch?: (u: string) => Promise<{ text: () => Promise<string> }>; location?: { href?: string }; URL?: { createObjectURL: (b: unknown) => string; revokeObjectURL: (u: string) => void }; Blob?: new (p: unknown[], o: unknown) => unknown };
   const doc = g.document;
   if (!doc?.createElement || !g.Blob || !g.URL) return state;
   let html = "";
-  try { html = await (await g.fetch!(g.location?.href ?? "")).text(); }
+  try { html = await (await g.fetch!((g.location?.href ?? "").split("#")[0]!)).text(); }
   catch { html = "<!doctype html>" + (doc.documentElement?.outerHTML ?? ""); }
   const url = g.URL.createObjectURL(new g.Blob([html], { type: "text/html" }));
-  const a = doc.createElement("a"); a.href = url; a.download = "龜甲.html"; a.click();
+  const a = doc.createElement("a"); a.href = url; a.download = "龜甲.html";
+  // the anchor must be IN the document for the click to start a download in
+  // some browsers — append, click, remove.
+  (doc.body ?? doc.documentElement)?.appendChild?.(a);
+  a.click();
+  a.remove();
   g.URL.revokeObjectURL(url);
   return state;
 };
@@ -1458,7 +1464,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["jail",           jailFn],
   ["origin.trust",   trustCycle],
   ["origin.captoggle", captoggle],
-  ["origin.download", download],
+  ["origin.savepage", download],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],

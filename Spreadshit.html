@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"><meta charset="utf-8" />
+    <title>Spreadshit</title>
+    <script>//<![CDATA[
+      /*            Spreadshit
+
+      This Javascript code is (c) 2020 by the author Fabian M. Suchanek (https://suchanek.name).
+      The code is licensed under a Creative Commons Attribution Non-Commercial license
+      (http://creativecommons.org/licenses/by-nc/3.0/). You can use, extend, and share this
+      code as long as (1) you credit the original author and (2) you do not do so for
+      commercial purposes. The author provides the code “as is”. Under no circumstances
+      shall the author be liable for damages resulting from this code.
+     
+      The author is unrelated to the *content* of this spreadsheet.
+      */
+
+      /********** Saving ************************/
+
+      /** Saves a text in a file with a given name*/
+      function download(filename, text) {
+        var pom = document.createElement('a');
+        pom.setAttribute('href',
+          'data:text/html;charset=utf-8,' +
+          encodeURIComponent(text));
+        pom.setAttribute('download', filename);
+
+        if(document.createEvent) {
+          var event = document.createEvent('MouseEvents');
+          event.initEvent('click', true, true);
+          pom.dispatchEvent(event);
+        } else {
+          pom.click();
+        }
+      }
+
+      /** TRUE if the user saved*/
+      var saved=true;
+
+      /** Color names*/
+      var colors=["aliceblue","antiquewhite","aqua","aquamarine","azure","beige","bisque","black","blanchedalmond","blue","blueviolet","brown","burlywood","cadetblue","chartreuse","chocolate","coral","cornflowerblue","cornsilk","crimson","cyan","darkblue","darkcyan","darkgoldenrod","darkgray","darkgrey","darkgreen","darkkhaki","darkmagenta","darkolivegreen","darkorange","darkorchid","darkred","darksalmon","darkseagreen","darkslateblue","darkslategray","darkslategrey","darkturquoise","darkviolet","deeppink","deepskyblue","dimgray","dimgrey","dodgerblue","firebrick","floralwhite","forestgreen","fuchsia","gainsboro","ghostwhite","gold","goldenrod","gray","grey","green","greenyellow","honeydew","hotpink","indianred","indigo","ivory","khaki","lavender","lavenderblush","lawngreen","lemonchiffon","lightblue","lightcoral","lightcyan","lightgoldenrodyellow","lightgray","lightgrey","lightgreen","lightpink","lightsalmon","lightseagreen","lightskyblue","lightslategray","lightslategrey","lightsteelblue","lightyellow","lime","limegreen","linen","magenta","maroon","mediumaquamarine","mediumblue","mediumorchid","mediumpurple","mediumseagreen","mediumslateblue","mediumspringgreen","mediumturquoise","mediumvioletred","midnightblue","mintcream","mistyrose","moccasin","navajowhite","navy","oldlace","olive","olivedrab","orange","orangered","orchid","palegoldenrod","palegreen","paleturquoise","palevioletred","papayawhip","peachpuff","peru","pink","plum","powderblue","purple","red","rosybrown","royalblue","saddlebrown","salmon","sandybrown","seagreen","seashell","sienna","silver","skyblue","slateblue","slategray","slategrey","snow","springgreen","steelblue","tan","teal","thistle","tomato","turquoise","violet","wheat","white","whitesmoke","yellow","yellowgreen"];
+     
+      /** Lists all attributes that we will consider */
+      var attributes = new Set(["id", "href", "rows", "cols", "data-formula", "type", "onclick", "title", "charset", "target"]);
+      
+      /** Adds the node to the array*/
+      function appendNode(node, array) {
+        if(node.nodeType==3) {
+          var val=node.nodeValue.trim();
+          array.push(val);
+          return;
+        }
+        array.push("<");
+        array.push(node.nodeName.toLowerCase());
+        var cls=node.className;
+        if(cls!=null && cls!="") {
+          array.push(" class=\"");
+          array.push(cls);
+          array.push("\"");
+        }
+        if(node.style.width!=null && node.style.width!="") {
+          array.push(" style=\"width: ");
+          array.push(node.style.width);
+          array.push("\"");
+        }
+        for(var i=0;i<node.attributes.length;i++) {
+          if(attributes.has(node.attributes[i].name)) {
+            array.push(" ");
+            if(node.attributes[i].name=="title" && node.nodeName=="INPUT") array.push("value");
+            else array.push(node.attributes[i].name);
+            array.push("=\"");
+            array.push(encode(node.attributes[i].value));
+            array.push("\"");
+          }
+        }
+        if(node.childNodes==null || node.childNodes.length==0) {
+          array.push(" />");
+        } else {
+          array.push(">");
+          for(var i=0;i<node.childNodes.length;i++) {
+            appendNode(node.childNodes[i],array);
+          }
+          array.push("</");          
+          array.push(node.nodeName.toLowerCase());
+          array.push(">");
+        }
+      }
+      
+      /** Saves the current spreadshit*/
+      function saveAs() {
+        // Store the label content to the title attribute
+        for(var i=0;true;i++) {
+          var lab=tableLabel(i);
+          if(lab==null) break;
+          lab.setAttribute("title",lab.value);
+        }
+        toptext.innerHTML=toptext.value;
+        savebutton.style.backgroundColor="white";
+        var array=new Array();
+        array.push("<!DOCTYPE html>");
+        appendNode(document.documentElement, array);        
+        download(location.pathname.split("/").slice(-1),array.join(""));
+        saved=true;  
+      }
+
+      /** Saves the current spreadshit as TSV*/
+      function tsv() {
+        var result="";
+        for(var i=0;true;i++) {
+          var table=tableLabel(i);
+          if(table==null) break;
+          for(var j=0;true;j++) {
+            var row=rowElement(i,j);
+            if(row==null) break;
+            if(result.length>0) result+="\n";
+            result+=table.value;
+            for(var k=0;true;k++) {
+              var val=cellValue(i,j,k);
+              if(val==null) break;
+              result+="\t"+val;
+            }
+          }
+        }        
+        var name=location.pathname.split("/").slice(-1)[0];
+        var p=name.lastIndexOf('.');
+        if(p!=-1) name=name.slice(0,p);
+        name+=".tsv";
+        download(name, result);
+      }
+
+      /** Saves the current spreadshit as latex*/
+      function latex() {
+        var result=`
+%\\documentclass{article}
+%\\title{${clean(toptext.value)}}
+%\\usepackage{booktabs}
+%\\begin{document}
+%\\maketitle`
+        for(var i=0;true;i++) {
+          var table=tableLabel(i);
+          if(table==null) break;
+          result+="\n\\begin{table}\n";
+          result+="\\caption{"+table.value+"}\n";
+          result+="\\begin{tabular}{";
+          var row=rowElement(i,0);
+          for(var j=0;j<row.children.length-1;j++) {
+            result+="l";
+          }
+          result+="}\n\\toprule\n";
+          for(var j=0;true;j++) {
+            var row=rowElement(i,j);
+            if(row==null) break;
+            for(var k=0;true;k++) {
+              var val=cellValue(i,j,k);
+              if(val==null) break;
+              result+=clean(val)+" & ";
+            }
+            result=result.slice(0,result.length-3);
+            result+="\\\\\n";
+            if(j==0) result+="\\midrule\n"
+          }
+          result+="\\bottomrule\n\\end{tabular}\n\\end{table}\n";
+        }        
+		result+="%\\end{document}"
+        var name=location.pathname.split("/").slice(-1)[0];
+        var p=name.lastIndexOf('.');
+        if(p!=-1) name=name.slice(0,p);
+        name+=".tex";
+        download(name, result);
+      }
+
+      /********** Access ************************/
+      
+      /** Retrieves the table index of a given cell*/
+      function tableOfCell(cell) {
+        var child=cell.parentNode.parentNode.parentNode.parentNode.parentNode;        
+        return(Array.prototype.indexOf.call(child.parentNode.children, child));       
+      }
+
+      /** Retrieves the number of rows of a given table index*/
+      function numRows(tableIndex) {
+         var table=tableElement(tableIndex);
+         var body=table.children[1];
+         return(body.children.length);
+      }
+
+      /** Retrieves the number of columns of a given table index*/
+      function numColumns(tableIndex) {
+         var table=tableElement(tableIndex);
+         var head=table.children[0];         
+         var headrow=head.children[0];
+         return(headrow.children.length);
+      }
+         
+      /** Retrieves the column index of a given cell*/
+      function columnOfCell(cell) {
+        var child=cell.parentNode;
+        return(Array.prototype.indexOf.call(child.parentNode.children,child));       
+      }
+
+      /** Retrieves the row index of a given cell*/
+      function rowOfCell(cell) {
+        var child=cell.parentNode.parentNode;
+        return(Array.prototype.indexOf.call(child.parentNode.children,child));       
+      }
+
+      /** Returns the button row at this index or null*/
+      function buttonRow(tableIndex) {
+        var table=tableElement(tableIndex);        
+        if(table==null) return(null);
+        return(table.children[0].children[0]);
+      }
+      
+      /** Returns the table at this index or null*/
+      function tableElement(tableIndex) {
+        var div=tables.children[tableIndex];        
+        if(div==null) return(null);
+        return(div.children[3]==null?div.children[2]:div.children[3]);
+      }
+
+      /** Returns the table label element at this index or null*/
+      function tableLabel(tableIndex) {
+        var div=tables.children[tableIndex];        
+        if(div==null) return(null);
+        return(div.children[0]);
+      }
+
+      /** Returns the table row at this index or null*/
+      function rowElement(tableIndex, rowIndex) {
+        var table=tableElement(tableIndex);
+        if(table==null) return(null);
+        return(table.children[1].children[rowIndex]);
+      }
+      
+      /** Returns the input element at this position or null*/
+      function cellElement(tableIndex, rowIndex, columnIndex) {
+        var row=rowElement(tableIndex, rowIndex);
+        if(row==null) return(null);                
+        var col=row.children[columnIndex];
+        if(col==null || col.children==null 
+           || col.children.length==0 
+           || col.children[0].nodeName!="INPUT") return(null);
+        return(col.children[0]);        
+      }
+
+      /** Returns the cell value at this position or null*/
+      function cellValue(tableIndex, rowIndex, columnIndex) {
+        var cell=cellElement(tableIndex, rowIndex, columnIndex);
+        if(cell==null) return(null);
+        return(cell.value);
+      }
+      
+      /** Constructs a vertical array of one column with start and end position*/
+      function columnVector(tableIndex, columnIndex, rowStart, rowEnd) {
+        var result = [];
+        for(var i = 0; rowEnd==-1 || (i <= rowEnd - rowStart); i++) {
+          var val=cellValue(tableIndex, rowStart + i, columnIndex);
+          if(val==null) break;
+          result.push(val);
+        }
+        return(result);
+      }
+
+      /** Constructs a horizontal array of one row with start and end position*/
+      function rowVector(tableIndex, rowIndex, columnStart, columnEnd) {
+        var result = [];
+        for(var i = 0; columnStart==-1 || (i <= columnEnd - columnStart); i++) {
+          var val=cellValue(tableIndex, rowIndex, columnStart + i);
+          if(val==null) break;
+          result.push(val);
+        }
+        return(result);
+      }
+
+      /** Returns the index of the table given by the identifier (or -1)*/
+      function tableIndex(identifier) {
+        if(identifier == null) return(-1);
+        for(var i=0;true;i++) {
+          var lab=tableLabel(i);
+          if(lab==null) break;
+          if(lab.value==identifier) return(i);
+        }
+        return(-1);
+      }
+
+      /** Returns the index of the row given by the identifier (or -1)*/
+      function rowIndex(tableIndex, identifier) {
+        if(identifier == null) return(-1);
+        for(var i=1;true;i++) {
+          var rowLabel=cellValue(tableIndex, i, 0);
+          if(rowLabel==null) break;
+          if(rowLabel==identifier) return(i);
+        }
+        return(-1);
+      }
+
+      /** Returns the index of the column  given by the identifier (or -1)*/
+      function columnIndex(tableIndex, identifier) {
+        if(identifier == null) return(-1);
+        for(var i=0;true;i++) {
+          var columnLabel=cellValue(tableIndex, 0, i);
+          if(columnLabel==null) break;
+          if(columnLabel==identifier) return(i);
+        }
+        return(-1);
+      }
+
+      /****************** Parsing ********************/
+
+      /** Characters that may not appear in an identifier*/
+      var illegalChars = "\n,()*+/-><=!";
+
+      /** Priority of operators (used mainly to warn if operators of different priority are mixed)*/
+      var priority = {
+        "+": 1,
+        "-": 1,
+        "*": 2,
+        "/": 2,
+        ">": 0,
+        "=": 0,
+        "!=": 0,
+        "<": 0,
+        "<=": 0,
+        ">=": 0
+      };
+
+      /** Returns an error parse result*/
+      function error(value, source, pos=0) {
+        return({
+          value: value + source,
+          type: "error",
+          position: pos
+        });
+      }
+
+      /** Parses a function of the form identifier=SUM,
+          expression=(arg1,arg2,...), row=1, column=1, lambda=42.
+          Returns a parse result*/
+      function parseFunction(identifier, expression, table, row, column, lambda) {
+        identifier=identifier.toUpperCase();
+        // Parse the arguments
+        var end = 1; // Start after the '('
+        var args = [];
+        var count = 0;
+        while(true) {
+          // If we're in the second argument of a MAP, make lambda=0
+          if(identifier == "MAP" && count == 1) {
+            args.push(evaluate(expression.slice(end), table, row, column, 0));
+          } else {
+            args.push(evaluate(expression.slice(end), table, row, column, lambda));
+          }
+          if(args[count].type == "error" && (count==0 || identifier != "IF")) return(args[count]);
+          end += args[count].position;
+          count++;
+          if(end >= expression.length) {
+            return(error("Closing bracket expected: ", expression));
+          }
+          if(expression.charAt(end) == ')') break;
+          if(expression.charAt(end) != ',') {
+            return(error("Comma expected, not ", expression.charAt(end)));
+          }
+          end++;
+        }
+        end++; // eat final ')'
+        var result = 0;
+        switch(identifier) {
+          case "MAP":
+            if(args.length != 2) {
+              return(error("MAP requires two arguments, not ", args.length));
+            }  
+            if(args[0].type != "vector" || args[1].type != "value") {
+              return(error("MAP requires a vector and a value, not a ",
+              args[0].type + " and a " + args[1].type,end));
+            }  
+            result = [];
+            for(var i = 0; i < args[0].value.length; i++) {
+              var val=evaluate(expression.slice(args[0].position + 2,
+                      args[0].position + args[1].position + 2), table, row, column, args[0].value[i]);
+              if(val.type=="error") return(val);
+              result.push(val.value);
+            }
+            return {
+              value: result,
+              type: "vector",
+              position: end
+            }
+          case "IF":
+            if(args.length != 3) return(error("IF requires two arguments, not ", args.length));
+            if(args[0].type=="error" || args[0].value.length==0 || args[0].value == 0) return {
+              value: args[2].value,
+              type: args[2].type,
+              position: end
+            };
+            return {
+              value: args[1].value,
+              type: args[1].type,
+              position: end
+            };
+          case "VLOOKUP":
+          case "HLOOKUP":
+          case "LOOKUP":
+            if(args.length != 3) {
+               return(error("LOOKUP requires three arguments, not ", args.length));		  
+            }
+            if(args[0].type!="value" || args[1].type!="vector" || args[2].type!="vector") {
+               return(error("LOOKUP requires a value and two vectors, not a ", 
+                      args[0].type+", a "+args[1].type+", and a "+args[2].type,end));
+            }  
+            if(args[1].value.length != args[2].value.length) {
+              return(error("LOOKUP arguments must be of same length, not ", 
+                     args[0].value.length+" and "+args[1].value.length,end));
+            }  
+            result=null;
+            for(var i=0;i<args[1].value.length;i++) {
+              if(args[1].value[i]==args[0].value) {
+                result=args[2].value[i];
+                break;
+              }
+            }
+            if(result==null) return(error("LOOKUP did not find value ",args[0].value,end));
+            break;
+          case "SUMPRODUCT":
+            if(args.length != 2) return(error("SUMPROD requires two arguments, not ", args.length));
+            if(args[0].value.length != args[1].value.length) {
+              return(error("SUMPRODUCT arguments must be of same length, not ", 
+                     args[0].value.length+" and "+args[1].value.length,end));
+            }  
+            for(var i = 0; i < args[0].value.length; i++) {
+              if(args[0].value[i]=="" || args[1].value[i]=="") continue;
+              var val = parseFloat(args[0].value[i]);
+              if(isNaN(val)) {
+                //return error("SUMPROD argument contains non-number: ", args[0].value[i]);
+                continue;
+              }
+              var mult = parseFloat(args[1].value[i]);
+              if(isNaN(mult)) {
+                //return error("SUMPROD argument contains non-number: ", args[1].value[i]);
+                continue;
+              }
+              result += val * mult;
+            }
+            break;
+          case "COLOR":
+            if(args.length!=2 || args[0].type!='value' || args[1].type!='value') {
+              return(error("COLOR requires two values, not ",expression));
+            }
+            if(colors.indexOf(args[0].value.toLowerCase())==-1) {
+              return(error("COLOR requires a named color, not ", args[0].value,end));
+            }
+            return {
+              value: args[1].value,
+              type: "value",
+              position: end,
+              color: args[0].value
+            }
+          case "ROUND":
+            if(args.length<1 || args.length>2 || args[0].type!='value' 
+               || (args.length==2 && args[1].type!='value')) {
+              return(error("ROUND requires two values, not ",expression,end));
+            }
+            var val=parseFloat(args[0].value);
+            if(isNaN(val)) return(error("ROUND requires a number, not ",args[0].value,end));
+            var n=args.length==1?0:parseFloat(args[1].value);
+            if(isNaN(n) || n<0) return(error("ROUND requires a positive number, not ",args[1].value,end));
+            result=val.toFixed(n);
+            break;
+          case "AND": // fall through
+          case "PRODUCT":
+            result = 1; // fall through
+          case "OR":
+          case "SUM":
+          case "AVERAGE":
+            if(args.length==1 && args[0].type=="value") {
+              return(error(identifier+" requires a vector, not ",args[0].value,end));
+            }
+            var count = 0;
+            // Loop through all arguments
+            for(var j = 0; j < args.length; j++) {
+              // Each can be a vector or a value
+              if(args[j].type == "vector") {
+                for(var i = 0; i < args[j].value.length; i++) {
+                  if(args[j].value[i]=="") continue;
+                  var val = parseFloat(args[j].value[i]);
+                  if(isNaN(val)) {
+                    //return error(identifier+" argument contains non-number: ", args[j].value[i]);
+                    continue;
+                  }
+                  count++;
+                  if(identifier == "PROD") result *= val;
+                  else if(identifier=="OR") result=(result!=0 || val!=0)?1:0;
+                  else if(identifier=="AND") result=(result!=0 && val!=0)?1:0;                  
+                  else result += val;
+                }
+              } else {
+                var val = parseFloat(args[j].value);
+                if(isNaN(val)) {
+                  //return error(identifier+" argument contains non-number: ", args[j].value);
+                  continue;
+                }
+                count++;
+                if(identifier == "PROD") result *= val;
+                else if(identifier=="OR") result=(result!=0 || val!=0)?1:0;
+                else if(identifier=="AND") result=(result!=0 && val!=0)?1:0;                  
+                else result += val;
+              }
+            }
+            if(identifier == "AVERAGE") result /= count;
+            break;
+          case "MAX":            
+          case "MIN":
+            if(args.length==1 && args[0].type=="value") {
+              return(error(identifier+" requires a vector, not ",args[0].value));
+            }          
+            result=null;
+            // Loop through all arguments
+            for(var j = 0; j < args.length; j++) {
+              // Each can be a vector or a value
+              if(args[j].type == "vector") {
+                for(var i = 0; i < args[j].value.length; i++) {
+                  var val = parseFloat(args[j].value[i]);
+                  if(isNaN(val)) {
+                    //return error(identifier+" argument contains non-number: ", args[j].value[i]);
+                    continue;
+                  }
+                  if(result==null) result=val;
+                  else if(identifier == "MAX" && val>result) result = val;
+                  else if(identifier == "MIN" && val<result) result = val;                  
+                }
+              } else {
+                var val = parseFloat(args[j].value);
+                if(isNaN(val)) {
+                  //return error(identifier+" argument contains non-number: ", args[j].value);
+                  continue;
+                }
+                if(result==null) result=val;
+                else if(identifier == "MAX" && val>result) result = val;
+                else if(identifier == "MIN" && val<result) result = val;                  
+              }
+            }
+            break;
+            
+          case "NOT":
+            if(args.length!=1) return(error("NOT requires a single argument, not ",args.length));
+            if(args[0].type!="value") return(error("NOT requires a value, not a ",args[0].type,end));
+            var val = parseFloat(args[0].value);
+            if(isNaN(val)) {
+             return error("NOT requires a number, not ", args[0].value,end);
+            }
+            result=val==0?1:0;
+            break;
+          case "COUNT":
+            for(var j = 0; j < args.length; j++) {
+              for(var i = 0; i < args[j].value.length; i++) {
+                if(args[j].value[i] != null && args[j].value[i].length > 0) result++;
+              }
+            }
+            break;
+          default:
+            return error("Unsupported function: ", identifier);
+        }
+        return {
+          value: result,
+          type: "value",
+          position: end
+        }
+      }
+
+      /** Skips spaces. Returns new position*/
+      function skipSpaces(expression, pos) {
+        while(pos < expression.length && expression.charAt(pos)==' ') pos++;
+        return(pos);
+      }
+      
+      /** Parses a number, function, string, or cell identifier.
+          Eats spaces before and after. Returns a parse result.*/
+      function parseValue(expression, table, row, column, lambda) {
+        // Skip spaces
+        var end = skipSpaces(expression, 0);
+        if(end>=expression.length) {
+          return(error("Expression ends unexpectedly",""));
+        }        
+        
+        // Strings
+        if(expression.charAt(end)=='"') {
+          end++;
+          var start=end;
+          while(end < expression.length && expression.charAt(end)!='"') end++;
+          if(end>=expression.length) {
+            return(error("String has to be terminated by \": ", expression.slice(start-1)));
+          }
+          var result=expression.slice(start,end);
+          end++; // Eat final "
+          end=skipSpaces(expression, end);
+          return {
+            value: result,
+            position: end,
+            type: "value"
+          }  
+        }
+        
+        // Brackets
+        if(expression.charAt(end)=='(') {
+            end++;
+            var item = evaluate(expression.slice(end), table, row, column, lambda);
+            if(item.type=="error") return(item);
+            end += item.position;
+            if(end >= expression.length || expression.charAt(end) != ')') {
+              return(error("Closing bracket expected at ", expression.slice(end-1)));
+            }
+            end++;        
+            return {
+              value: item.value,
+              type: item.type,
+              position: end,
+              color: item.color
+            }
+        }
+        
+        // Find identifier
+        while(end < expression.length &&
+          (end==0 && expression.charAt(end) == '-' 
+          || end==0 && expression.charAt(end) == '+' 
+          || !illegalChars.includes(expression.charAt(end))))
+          end++;
+        var identifier = expression.slice(0, end).trim();
+
+        // Lambda
+        if(identifier == "#") {
+          if(lambda == null) return(error("Variable outside function: ", identifier));
+          return {
+            value: lambda,
+            type: "value",
+            position: end
+          }
+        }
+        
+        // Numbers
+        var number = parseFloat(identifier);
+        if(!isNaN(number)) {
+          return {
+            value: identifier,
+            position: end,
+            type: "value"
+          }
+        }
+
+        // Functions
+        if(end < expression.length && expression.charAt(end) == '(') {
+          var result = parseFunction(identifier, expression.slice(end), table, row, column, lambda);
+          result.position += end;
+          return(result);
+        }
+
+        // Row references
+        var match = identifier.match(/(([^\#]+)\#)?([^\.]+)\.\#/);
+        if(match!=null) {
+          var myTableIndex=match[2]==null?table:tableIndex(match[2]);
+          if(myTableIndex==-1) return(error("Invalid table name: ",match[2]));
+          var myColumnIndex = columnIndex(myTableIndex, match[3]);
+          if(myColumnIndex!=-1) {
+            var range=-1;
+            if(myColumnIndex==column && myTableIndex==table) range=row-1;
+            return {
+              value: columnVector(myTableIndex, myColumnIndex, 1, range),
+              type: "vector",
+              position: end
+            }            
+          }
+          var myRowIndex=rowIndex(myTableIndex,match[3]);
+          if(myRowIndex!=-1) {
+            var range=-1;
+            if(myRowIndex==row && myTableIndex==table) range=column-1;
+            return {
+              value: rowVector(myTableIndex, myRowIndex, 1, range),
+              type: "vector",
+              position: end
+            }            
+          }
+          // Otherwise produce the error further down
+        }
+        
+        // Cell references
+        var match = identifier.match(/(([^\#]+)\#)?(([^\.]+)\.)?([^:]+)(:(.*))?/);
+        if(match == null) {
+          return {
+            value: "Bad cell reference: " + identifier,
+            position: end,
+            type: "error"
+          }
+        }
+        var myTableIndex = match[2]==null?table:tableIndex(match[2]);
+        if(myTableIndex==null) return(error("Bad table reference: ", match[2]));
+        var firstId = match[4];
+        var secondId = match[5];
+        var thirdId = match[7];
+        var myColumnIndex = columnIndex(myTableIndex, secondId);
+        if(myColumnIndex == -1) {
+          // Column.Row:Row
+          var myRowIndex = rowIndex(myTableIndex, secondId);
+          if(myRowIndex == -1) return error("Bad row reference: ", secondId)
+          myColumnIndex = column;
+          if(firstId != null) {
+            myColumnIndex = columnIndex(myTableIndex, firstId);
+            if(myColumnIndex == -1) return error("Bad column reference: ", firstId);
+          }
+          if(thirdId == null) {
+            if(myRowIndex==row && myColumnIndex==column && myTableIndex==table) {
+              return {
+                value: rowVector(myTableIndex, myRowIndex, 1, column-1),
+                type: "vector",
+                position: end
+              }            
+            }  
+            return {
+              value: cellValue(myTableIndex, myRowIndex, myColumnIndex),
+              type: "value",
+              position: end
+            }
+          }
+          var myRowIndex2 = rowIndex(myTableIndex, thirdId);
+          if(myRowIndex2 == -1) return(error("Bad row reference: ", thirdId));
+          if(myColumnIndex==column && myTableIndex==table && myRowIndex<=row && myRowIndex2>=row) {
+              return(error("Cell refers to itself",""));
+          }  
+          return {
+            value: columnVector(myTableIndex, myColumnIndex, myRowIndex, myRowIndex2),
+            type: "vector",
+            position: end
+          }
+        } else {
+          // Row.Column:Column
+          var myRowIndex = row;
+          if(firstId != null) {
+            myRowIndex = rowIndex(myTableIndex, firstId);
+            if(myRowIndex == -1) return(error("Bad row reference: ", firstId));
+          }
+          if(thirdId == null) {
+            if(myRowIndex==row && myColumnIndex==column && myTableIndex==table) {
+              return {
+                value: columnVector(myTableIndex, myColumnIndex, 1, row-1),
+                type: "vector",
+                position: end
+              }            
+            }            
+            return {
+              value: cellValue(myTableIndex, myRowIndex, myColumnIndex),
+              type: "value",
+              position: end
+            }
+          }
+          var myColumnIndex2 = columnIndex(myTableIndex, thirdId);
+          if(myColumnIndex2 == -1) return(error("Bad column reference: " , thirdId))
+          if(myRowIndex==row && myTableIndex==table && myColumnIndex<=column && myColumnIndex2>=column) {
+              return(error("Cell refers to itself."," Use Row.FromColumn:ToColumn."));
+          }            
+          return {
+            value: rowVector(myTableIndex, myRowIndex, myColumnIndex, myColumnIndex2),
+            type: "vector",
+            position: end
+          }
+        }
+      }
+
+      /** Evaluates an expression. Returns a parse result*/
+      function evaluate(expression, table, row, column, lambda) {
+        var result=parseValue(expression, table, row, column, lambda);
+        if(result.type=="error") return(result);
+        var previousOperator="*";
+        while(result.position < expression.length) {                  
+          var operator=expression.charAt(result.position);
+          if(operator == ')' ||  operator == ',') break;
+          result.position++;
+          // Treat >=, !=, and <=
+          if(result.position < expression.length && expression.charAt(result.position)=="=") {
+            operator+=expression.charAt(result.position);
+            result.position++;            
+          }
+          if(priority[operator]==null) return(error("Bad operator: ",operator));
+          if(priority[previousOperator] < priority[operator]) {
+              return(error("Put brackets: ", expression.slice(result.position-1)));
+          }
+          previousOperator=operator;
+          var item=parseValue(expression.slice(result.position), table, row, column, lambda);
+          if(item.type=="error") return(item);
+          result.position+=item.position;
+          if(operator=='=') {
+            if(result.type != "value" || item.type != "value") {
+                return(error("= requires two values, not a ", result.type + " and a " + item.type));
+            }  
+            if(result.value == item.value) result.value = 1;
+            else result.value = 0;
+          } else if(operator=='!=') {
+            if(result.type != "value" || item.type != "value") {
+                return(error("!= requires two values, not a ", result.type + " and a " + item.type));
+            }  
+            if(result.value != item.value) result.value = 1;
+            else result.value = 0;
+          } else {          
+            var secondValue = parseFloat(item.value);
+            if(isNaN(secondValue)) {
+              return(error("Second argument of "+operator+" is not a value: ",
+                      item.value, result.position));
+            }
+            var firstValue = parseFloat(result.value);
+            if(isNaN(firstValue)) {
+              return(error("First argument of "+operator+" is not a value: ",
+                     result.value, result.position));
+            }
+            switch(operator) {
+                case '+':
+                  result.value = firstValue + secondValue;
+                  break;
+                case '-':
+                  result.value = firstValue - secondValue;
+                  break;
+                case '*':
+                  result.value = firstValue * secondValue;
+                  break;
+                case '/':
+                  result.value = firstValue / secondValue;
+                  break;
+                case '>':
+                  if(firstValue > secondValue) result.value = 1;
+                  else result.value = 0;
+                  break;
+                case '<':
+                  if(result.value < secondValue) result.value = 1;
+                  else result.value = 0;
+                  break;
+                case '>=':
+                  if(firstValue >= secondValue) result.value = 1;
+                  else result.value = 0;
+                  break;
+                case '<=':
+                  if(result.value <= secondValue) result.value = 1;
+                  else result.value = 0;
+                  break;                  
+            }
+          }
+        }  
+        return(result);
+      }
+
+      /** Attached listeners to a cell*/
+      function addListeners(cell) {
+          addEvent(cell,"blur",loseFocus);
+          addEvent(cell,"paste",paste);          
+          addEvent(cell,"copy",copy);                    
+          addEvent(cell,"keydown",key);
+          addEvent(cell,"focus",gainFocus);          
+          addEvent(cell,"drop",drop);
+          addEvent(cell,"dragover",dragOver);
+      }
+      
+      /** Adds all listeners*/
+      function addAllListeners() {
+        for(var tableIndex=0; true; tableIndex++) {
+          var table=tableElement(tableIndex);
+          if(table==null) break;
+          for(var rowIndex=0; true; rowIndex++) {
+            var row=rowElement(tableIndex, rowIndex);
+            if(row==null) break;
+            for(var columnIndex=0;true; columnIndex++) {
+              var cell=cellElement(tableIndex, rowIndex, columnIndex);
+              if(cell==null) break;
+              addListeners(cell);
+            }
+          }  
+        }  
+      }
+            
+      /** Dispatches a recomputation of all cells. Sets the value for all cells
+      except in the excluded cell*/
+      function recomputeAllExcept(xCell) {
+        for(var tableIndex=0; true; tableIndex++) {
+          var table=tableElement(tableIndex);
+          if(table==null) break;
+          for(var rowIndex=0; true; rowIndex++) {
+            var row=rowElement(tableIndex, rowIndex);
+            if(row==null) break;
+            for(var columnIndex=0;true; columnIndex++) {
+              var cell=cellElement(tableIndex, rowIndex, columnIndex);
+              if(cell==null) break;
+              var formula=cell.getAttribute("data-formula");
+              if(formula==null) continue;
+              if(formula.startsWith("=")) {
+                var result = evaluate(formula.slice(1), tableIndex, rowIndex, columnIndex, null);
+                if(result.type == "vector") result.value="Expression must be a value, not a vector";                
+                cell.title=result.value;
+                cell.style.backgroundColor=(typeof(result.color)== "undefined" || result.color==null)?"":result.color.toLowerCase();
+              } else {
+                cell.title=cell.getAttribute("data-formula");
+                cell.style.backgroundColor="";
+              }
+              if(cell!=xCell) {
+                cell.value=cell.title;
+                cell.selectionStart=cell.selectionEnd=0;                
+              }
+            }
+          }
+        }
+      }  
+
+      /***************** Cursor handling *****************/
+      
+	  /** TRUE for modifiable spreadsheets*/
+	  var modifiable=true;
+	  
+      /** Update all formulas*/
+      function loseFocus(event) {
+        if(modifiable && event.target.getAttribute("data-formula")!=event.target.value) {
+          saved=false;  
+          savebutton.style.backgroundColor="pink";
+          event.target.setAttribute("data-formula", event.target.value);
+        }
+        event.target.selectionStart=event.target.selectionEnd=0;
+        recomputeAllExcept(null);
+      }
+
+      /** Memorizes the cell where the copying starts*/
+      var copyStart=null;
+      
+      /** Expand all values to the formulas*/
+      function gainFocus(event) {
+        event.target.style.backgroundColor="lightgray";
+        event.target.value = event.target.getAttribute("data-formula");
+        event.target.selectionStart=event.target.selectionEnd=0;        
+      }
+
+      /** Handle ENTER, DOWN, UP*/
+      function key(event) {
+        switch(event.keyCode) {
+          // Up
+          case 38:
+            var td=event.target.parentNode;
+            var tr=td.parentNode;
+            if(tr.previousElementSibling==null || tr.previousElementSibling.children==null) break;
+            var columnIndex=columnOfCell(event.target);
+            var prev=tr.previousElementSibling.children[columnIndex];
+            if(prev.children!=null && prev.children[0]!=null) prev.children[0].focus();
+            break;
+          // Right
+          case 39:
+            if(event.shiftKey && event.target.selectionEnd==event.target.value.length) {
+              if(copyStart==null) {
+                copyStart=event.target;            
+                copyStart.style.border="lightblue solid 1px";            
+              }  
+              var td=event.target.parentNode;
+              if(td.nextElementSibling!=null && td.nextElementSibling.children!=null 
+                 && td.nextElementSibling.children[0].nodeName=='INPUT') {
+                td.nextElementSibling.children[0].focus();
+              }
+            }
+            break;
+          // ESC
+          case 27:
+            if(copyStart!=null) {
+              copyStart.style.border="none";
+              copyStart=null;
+            }  
+            break;
+          // Down  
+          case 40:        
+          case 13:
+            if(copyStart==null && event.shiftKey) {
+              copyStart=event.target;            
+              copyStart.style.border="lightblue solid 1px";            
+            }  		  
+            var td=event.target.parentNode;
+            var tr=td.parentNode;
+            if(tr.nextElementSibling==null) break;
+            var columnIndex=columnOfCell(event.target);
+            if(event.ctrlKey || event.altKey) {            
+             tr.nextElementSibling.children[columnIndex].children[0]
+                .setAttribute("data-formula",td.children[0].getAttribute("data-formula"));
+            }    
+            if(event.shiftKey && copyStart==null) {
+                copyStart=event.target;            
+                copyStart.style.border="lightblue solid 1px";            
+            }
+            tr.nextElementSibling.children[columnIndex].children[0].focus();
+            break;
+          default: 
+        }
+      }
+      
+      /***************** Buttons *****************/
+      
+      /** Adds an event listener as an attribute to make sure that the
+          event listener is written down when we click "save"*/
+      function addEvent(button, eventName, fun){
+        button.setAttribute("on"+eventName, fun.name+"(event)");  
+      }
+        
+      /** Sort a column*/
+      function sort(event) {
+        var tableIndex=tableOfCell(event.target.parentNode);
+        var columnIndex=columnOfCell(event.target.parentNode);
+        var toSort=[];
+        for(var i=1;true;i++) {
+          var val=cellValue(tableIndex, i, columnIndex);
+          if(val==null) break;
+          var number=Number(val);
+          if(isNaN(number)) toSort.push([val,i]);
+          else toSort.push([number,i]);
+        }
+        toSort.sort(function(a,b) {
+          if(a[0]>b[0]) return(1);
+          if(a[0]<b[0]) return(-1);
+          if(a[1]>b[1]) return(1);
+          if(a[1]<b[1]) return(-1);
+          return(0);
+        });
+        for(var i=0;true;i++) {
+          if(cellElement(tableIndex, 1, i)==null) break;
+          var sorted=[];
+          for(var j=0;j<toSort.length;j++) {
+            sorted.push(cellElement(tableIndex, toSort[j][1], i).getAttribute("data-formula"));
+          }
+          for(var j=0;j<sorted.length;j++) {
+            cellElement(tableIndex, j+1, i).setAttribute("data-formula",sorted[j]);
+          }
+        }
+        recomputeAllExcept(null);
+        saved=false;  
+      }
+
+      /** Remove a column*/
+      function remove(event) {
+        if(!confirm("Do you want to remove this column?")) return;
+        var columnIndex=columnOfCell(event.target.parentNode);
+        var tableIndex=tableOfCell(event.target.parentNode);
+        for(var i=0;true;i++) {
+          var row=rowElement(tableIndex,i);
+          if(row==null) break;
+          row.removeChild(row.children[columnIndex]);
+        }
+        var buttons=buttonRow(tableIndex);
+        buttons.removeChild(buttons.children[1]);
+        recomputeAllExcept(null);
+        saved=false;  
+      }
+
+      /** Add a column*/
+      function add(event) {
+        var columnIndex=columnOfCell(event.target.parentNode);
+        var tableIndex=tableOfCell(event.target.parentNode);
+        addColumn(tableIndex, columnIndex);
+        recomputeAllExcept(null);
+        saved=false;  
+      }
+
+      /** Add a column*/
+      function addColumn(tableIndex, columnIndex) {        
+        for(var i=0;true;i++) {
+          var row=rowElement(tableIndex,i);
+          if(row==null) break;
+          var newCell=document.createElement("td");
+          newCell.appendChild(document.createElement("input"));
+          newCell.children[0].type="text";   
+          addListeners(newCell.children[0]);       
+          row.insertBefore(newCell,row.children[columnIndex+1]);
+        }
+        var head=document.createElement("td");
+        var span=document.createElement("span");
+        head.appendChild(span);
+        span.appendChild(document.createElement("a"));
+        addEvent(span.children[0],"click", add);  
+        span.children[0].className="plus";
+        span.children[0].title="Add column";        
+        span.children[0].appendChild(document.createTextNode("\u2295"));
+        if(columnIndex==-1) {
+          span.appendChild(document.createElement("span"));
+        } else {
+          span.appendChild(document.createElement("a"));
+          addEvent(span.children[1],"click", remove);
+          span.children[1].className="minus";
+          span.children[1].title="Remove column";                
+          span.children[1].appendChild(document.createTextNode("\u2296"));
+        }
+        span.appendChild(document.createElement("a"));
+        addEvent(span.children[2],"click", sort);
+        span.children[2].className="sort";
+        span.children[2].title="Sort column";                
+        span.children[2].appendChild(document.createTextNode("\u25BC"));
+        var buttons=buttonRow(tableIndex);
+        buttons.appendChild(head);        
+      }
+
+      /** Remove a row*/
+      function removeRow(event) {
+        if(!confirm("Do you want to remove this row?")) return;
+        var row=event.target.parentNode.parentNode;
+        row.parentNode.removeChild(row);
+        recomputeAllExcept(null);
+        saved=false;  
+      }
+      
+      /** Add a row*/
+      function addRow(event) {
+        var row=event.target.parentNode.parentNode;
+        addRowBehind(row);
+        recomputeAllExcept(null);        
+        saved=false;  
+      }
+
+      /** Add a row*/
+      function addRowBehind(row) {        
+        var newRow=document.createElement("tr");
+        for(var i=0;i<row.children.length-1;i++) {
+          var newCell=document.createElement("td");
+          newCell.appendChild(document.createElement("input"));
+          newCell.children[0].type='text';  
+          newCell.children[0].value="";
+          newCell.children[0].setAttribute("data-formula",newCell.children[0].value);
+          newCell.children[0].title=newCell.children[0].value;          
+          addListeners(newCell.children[0]);
+          newRow.appendChild(newCell);
+        }
+        var buttons=document.createElement("td");
+        buttons.appendChild(document.createElement("a"));
+        addEvent(buttons.children[0],"click", addRow);  
+        buttons.children[0].className="plus";
+        buttons.children[0].title="Add row";        
+        buttons.children[0].appendChild(document.createTextNode("\u2295"));
+        buttons.appendChild(document.createElement("a"));
+        addEvent(buttons.children[1],"click", removeRow);
+        buttons.children[1].className="minus";
+        buttons.children[1].title="Remove row";                
+        buttons.children[1].appendChild(document.createTextNode("\u2296"));
+        newRow.appendChild(buttons);
+        if(row.nextElementSibling==null) row.parentNode.appendChild(newRow);
+        else row.parentNode.insertBefore(newRow,row.nextElementSibling);
+      }
+
+      /** Remove a table*/
+      function removeTable(event) {
+        if(!confirm("Do you want to remove this table?")) return;
+        var table=event.target.parentNode;
+        table.parentNode.removeChild(table);
+        recomputeAllExcept(null);
+        saved=false;  
+      }
+      
+      /** Add a row*/
+      function addTable(event) {
+        var div=document.createElement("div");
+        div.appendChild(document.createElement("input"));
+        div.children[0].type="text";
+        div.children[0].className="tableLabel";
+        div.children[0].value="New Table";
+        div.appendChild(document.createElement("a"));
+        addEvent(div.children[1],"click", addTable);  
+        div.children[1].className="plus";
+        div.children[1].title="Add table";        
+        div.children[1].appendChild(document.createTextNode("\u2295"));
+        div.appendChild(document.createElement("a"));
+        addEvent(div.children[2],"click", removeTable);
+        div.children[2].className="minus";
+        div.children[2].title="Remove table";                
+        div.children[2].appendChild(document.createTextNode("\u2296"));
+        var table=document.createElement("table");
+        table.appendChild(document.createElement("thead"));
+        table.children[0].appendChild(document.createElement("tr"));
+        table.appendChild(document.createElement("tbody"));
+        table.children[1].appendChild(document.createElement("tr"));
+        table.children[1].children[0].appendChild(document.createElement("td"));        
+        div.appendChild(table);
+        var currentDiv=event.target.parentNode;
+        if(currentDiv.nextElementSibling==null) currentDiv.parentNode.appendChild(div);
+        else currentDiv.parentNode.insertBefore(div, currentDiv.nextElementSibling);
+        var tableIndex=Array.prototype.indexOf.call(currentDiv.parentNode.children, div);
+        addColumn(tableIndex,-1);       
+        addColumn(tableIndex,0);               
+        addRowBehind(table.children[1].children[0]);
+        addRowBehind(table.children[1].children[0]);
+        // Remove the dummy line
+        //table.children[1].removeChild(table.children[1].children[0]);
+        cellElement(tableIndex, 0, 1).setAttribute("data-formula", 
+                    cellElement(tableIndex, 0, 1).value="Column 1");
+        cellElement(tableIndex, 1, 0).setAttribute("data-formula", 
+                    cellElement(tableIndex, 1, 0).value="Row 1");      
+        saved=false;  
+      }  
+
+      /** Paste stuff*/
+      function paste(event) {
+        var text=event.clipboardData;
+        if(text==null) return;
+        text=text.getData("Text");
+        if(text==null) return;
+        if(text.endsWith("\n")) text.length--;
+        if(!text.includes("\n") && !text.includes('\t')) return;
+        event.stopPropagation();
+        event.preventDefault();
+        if(!confirm("Do you want to paste the clipboard and overwrite neighboring cells?")) return;
+        var tableIndex=tableOfCell(event.target);
+        var columnIndex=columnOfCell(event.target);        
+        var rowIndex=rowOfCell(event.target);        
+        var rows=text.split("\n");
+        for(var i=0;i<rows.length;i++) {
+          var row=rowElement(tableIndex, rowIndex+i);
+          if(row==null) {
+            addRowBehind(rowElement(tableIndex, rowIndex+i-1));
+            row=rowElement(tableIndex, rowIndex+i);
+          }
+          var columns=rows[i].split("\t");
+          for(var j=0;j<columns.length;j++) {
+            columns[j]=columns[j].trim();
+            var cell=cellElement(tableIndex, rowIndex+i, columnIndex+j);
+            if(cell==null) {
+              addColumn(tableIndex, columnIndex+j-1);
+              cell=cellElement(tableIndex, rowIndex+i, columnIndex+j);
+            }
+            cell.setAttribute("data-formula",columns[j]);
+            if(i==0 && j==0) cell.value=columns[j];
+          }
+        }
+        recomputeAllExcept(event.target);
+        saved=false;  
+      }
+
+      /** Copy end */      
+      function copy(event) {
+        var copyEnd=event.target;
+        if(copyStart==copyEnd) return;
+        var startTable=tableOfCell(copyStart);
+        var startRow=rowOfCell(copyStart);
+        var startColumn=columnOfCell(copyStart);
+        var endTable=tableOfCell(copyEnd);
+        var endRow=rowOfCell(copyEnd);
+        var endColumn=columnOfCell(copyEnd);
+        if(startTable!=endTable || startRow>endRow || startColumn>endColumn) return;
+        copyStart.style.border="none";            
+        var copyDisplay=copyEnd.selectionEnd==0;
+        event.preventDefault();
+        var result="";
+        for(var row=startRow;row<=endRow;row++) {
+          for(var column=startColumn;column<=endColumn;column++) {
+            var cell=cellElement(startTable, row, column);
+            if(copyDisplay) result+=cell.title;
+            else result+=cellElement(startTable, row, column).getAttribute("data-formula");
+            if(column<endColumn) result+="\t";
+          }                
+          if(row<endRow) result+="\n";
+        }        
+        copyArea.value=result;
+        copyArea.select();
+        document.execCommand('copy');
+        copyArea.value="";
+        copyStart=null;
+        copyEnd.focus();
+      }
+      
+      /** Drop files*/ 
+      function drop(event) {
+        event.stopPropagation();
+        event.preventDefault();
+        var tableIndex=tableOfCell(event.target);
+        var files = event.dataTransfer.files;
+        if(files==null || files.length==0) return;
+        for(var i=0;i<files.length;i++) {
+          var file=files[i];
+          if(file.type!="text/html") continue;
+          var reader = new FileReader();
+          reader.onload= (function(theFile) {return function(e) {
+            var doc = new DOMParser().parseFromString(e.target.result,"text/xml");
+            if(doc.documentElement.nodeName == "parsererror") return;
+            var items=doc.getElementById("items");
+            if(items==null) return;
+            var row=rowElement(tableIndex, numRows(tableIndex)-1);
+            addRowBehind(row);
+            var rowIndex=numRows(tableIndex)-1;
+            var cell=cellElement(tableIndex,rowIndex,0);            
+            cell.setAttribute("data-formula",theFile.name);
+            for(var j=0;j<items.children.length;j++) {
+              if(numColumns(tableIndex)<=j+1) {
+                addColumn(tableIndex,numColumns(tableIndex)-1);
+              }
+              cell=cellElement(tableIndex,rowIndex,j+1);
+              var val=items.children[j].children[1];
+              if(val.nodeName.toUpperCase()=="IMG") {
+                cell.setAttribute("data-formula", "(signed)");
+              } else {
+                cell.setAttribute("data-formula", clean(val.innerHTML));
+              }
+            }
+            recomputeAllExcept(null);                    
+          };
+          })(file);  
+          reader.readAsText(file,"UTF-8");          
+          saved=false;
+        }
+      }
+         
+      /** Drag over. We need this so that drop() works*/
+      function dragOver(evt) {
+        evt.stopPropagation();
+        evt.preventDefault();
+        evt.dataTransfer.dropEffect = 'copy'; 
+      }         
+      
+      /** Clean a string*/
+      function clean(s) {
+        s=s.trim();
+        s=s.replace("\n","; ");
+        s=s.replace(/[\x00-\x1f"'<>]/g,"_");
+        if(s.length>200) s=s.substring(0,200);
+        return(s);
+      }
+         
+      /** Cleans a string for HTML*/
+      function encode(s) {
+        return s.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');      
+      }
+         
+      /** Check if the user saved*/
+      function close(event) {
+        if(saved) return(null);
+        return(event.returnValue="Do you want to abandon unsaved changes?");
+      }
+    //]]>  
+    </script>
+    <style>
+      body {
+        font-size: 1.5rem;
+      }
+      table {
+        border-collapse: collapse;
+      }  
+      td {
+        vertical-align: top;
+        margin:0;
+        padding: 0em;
+        padding-left: 1em;
+        border: none;	
+        position: relative;
+        width: 4em;
+      }      
+      thead tr td span {
+        display: block;
+        resize: horizontal;
+        overflow: auto;
+		border: 1px white solid; /* for Chrome to show the resize handle*/
+        margin: 0em;
+        padding: 0em;
+        font-size: 1rem;
+      }
+      tbody tr:nth-child(1) td {
+        border-bottom: 1px solid gray;
+        padding-top: 5px;        
+      }      
+      tbody tr:nth-child(1) td:last-child {
+        border-bottom: none;
+      }      
+      .plus {
+        color: green;
+        text-decoration: none;
+        margin-bottom: 10px;
+        font-size: 1rem;
+      }
+      .minus {
+        color: red;
+        text-decoration: none;        
+        font-size: 1rem;        
+      }
+      .minus:last-child {
+        margin-right:30em;
+      }      
+      .sort {
+        color: blue;
+        text-decoration: none;        
+        font-size: 1rem;        
+      }
+      .tableLabel {
+        margin-top: 5em;
+        margin-bottom: 10px;        
+        width: 20em;
+      }
+      #toptext {
+        font-family: monospace;
+        width: 40em;
+        border: none;
+        height: 3em;
+        font-size: 1.5rem;
+        float: left;
+      }
+      #top, #buttons {
+        float: left;
+        margin-top: 1em;
+      }
+      #buttons {
+        display: none;
+      }     
+      #tables {
+        clear: both;
+      }
+      #firefox {
+        font-size: 1rem;
+        font-style:italic;
+        color: darkgray;
+      }
+      input {
+        font-family: monospace;
+        width: 100%;
+        border: none;
+        font-size: 1.5rem;
+        text-overflow: hidden;
+        text-align: left;
+      }
+      input:focus {
+        background-color: lightgray;
+      }
+      input[data-formula^='=']:focus {
+        top: 0px;
+        left: 1.5rem;        
+        width: 20em;
+        z-index: 10;        
+        position: absolute;      
+      }
+      a {
+        cursor: pointer;        
+      }
+      #copyArea {
+        width: 1px;
+        height: 1px;
+        resize: none;
+        margin-top: 2em;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="top">
+      <textarea id="toptext" rows="3" cols="60">
+This is an example spreadsheet.
+You can adjust the table to your needs, and then save the result
+with the SAVE button on the right.
+      </textarea>
+    <p id="firefox">Open this file in Firefox or Chrome<noscript>, and enable Javascript</noscript>!
+    Click <a href="https://suchanek.name/programs/spreadshit/#help" target="_blank">_here_</a> for help.</p>
+    </div>
+    <div id="buttons">
+      <button onclick="saveAs()" id="savebutton">Save as</button><br />
+      <button onclick="tsv()">Export TSV</button><br />
+      <button onclick="latex()">Export TEX</button><br />
+    </div>
+    <div id="tables">
+    
+    <div>
+      <input type="text" class="tableLabel" value="Table 1" /><a onclick="addTable(event)" class="plus" title="Add table">&oplus;</a>
+      <table>
+       <thead> 
+        <tr>
+          <td><span><a onclick="add(event)" class="plus" title="Add column">&oplus;</a><a onclick="sort(event)" class="sort" title="Sort column">&#x25BC;</a></span></td>
+          <td><span><a onclick="add(event)" class="plus" title="Add column">&oplus;</a><a onclick="remove(event)" class="minus" title="Remove column">&#x02296;</a><a onclick="sort(event)" class="sort" title="Sort column">&#x25BC;</a></span></td>
+          <td><span><a onclick="add(event)" class="plus" title="Add column">&oplus;</a><a onclick="remove(event)" class="minus" title="Remove column">&#x02296;</a><a onclick="sort(event)" class="sort" title="Sort column">&#x25BC;</a></span></td>
+          <td><span><a onclick="add(event)" class="plus" title="Add column">&oplus;</a><a onclick="remove(event)" class="minus" title="Remove column">&#x02296;</a><a onclick="sort(event)" class="sort" title="Sort column">&#x25BC;</a></span></td>
+          <td><span><a onclick="add(event)" class="plus" title="Add column">&oplus;</a><a onclick="remove(event)" class="minus" title="Remove column">&#x02296;</a><a onclick="sort(event)" class="sort" title="Sort column">&#x25BC;</a></span></td>
+          <td><span><a onclick="add(event)" class="plus" title="Add column">&oplus;</a><a onclick="remove(event)" class="minus" title="Remove column">&#x02296;</a><a onclick="sort(event)" class="sort" title="Sort column">&#x25BC;</a></span></td>
+          <td><span><a onclick="add(event)" class="plus" title="Add column">&oplus;</a><a onclick="remove(event)" class="minus" title="Remove column">&#x02296;</a><a onclick="sort(event)" class="sort" title="Sort column">&#x25BC;</a></span></td>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>  
+          <td><input type='text' data-formula='' /></td>
+          <td><input type='text' data-formula='Q1' /></td>
+          <td><input type='text' data-formula='Q2' /></td>
+          <td><input type='text' data-formula='Q3' /></td>
+          <td><input type='text' data-formula='Q4' /></td>
+          <td><input type='text' data-formula='Total' /></td>
+          <td><input type='text' data-formula='Losses' /></td>
+          <td><a onclick="addRow(event)" class="plus" title="Add row">&oplus;</a></td>
+        </tr>  
+        <tr>
+          <td><input type="text" data-formula="Lisa" /></td>
+          <td><input type="text" data-formula="100" /></td>
+          <td><input type="text" data-formula="-20" /></td>
+          <td><input type="text" data-formula="20" /></td>
+          <td><input type="text"  data-formula="90" /></td>
+          <td><input type="text" data-formula="=SUM(Q1:Q4)" /></td>
+          <td><input type="text"    data-formula="=SUM(MAP(Q1:Q4,IF(#&lt;0,1,0)))" /></td>
+          <td><a onclick="addRow(event)" class="plus" title="Add row">&oplus;</a><a onclick="removeRow(event)" class="minus" title="Remove row">&#x02296;</a></td>
+        </tr>          
+        <tr>
+          <td><input type="text" data-formula="Mary" /></td>
+          <td><input type="text" data-formula="70" /></td>
+          <td><input type="text" data-formula="90" /></td>
+          <td><input type="text" data-formula="-10" /></td>
+          <td><input type="text" data-formula="90" /></td>
+          <td><input type="text" data-formula="=SUM(Q1:Q4)" /></td>
+          <td><input type="text" data-formula="=SUM(MAP(Q1:Q4,IF(#&lt;0,1,0)))" /></td>
+          <td><a onclick="addRow(event)" class="plus" title="Add row">&oplus;</a><a onclick="removeRow(event)" class="minus" title="Remove row">&#x02296;</a></td>
+        </tr>          
+        <tr>
+          <td><input type="text" data-formula="Joanna" /></td>
+          <td><input type="text" data-formula="-10" /></td>
+          <td><input type="text" data-formula="-50" /></td>
+          <td><input type="text" data-formula="-20" /></td>
+          <td><input type="text" data-formula="400" /></td>
+          <td><input type="text" data-formula="=SUM(Q1:Q4)" /></td>
+          <td><input type="text" data-formula="=SUM(MAP(Q1:Q4,IF(#&lt;0,1,0)))" /></td>
+          <td><a onclick="addRow(event)" class="plus" title="Add row">&oplus;</a><a  onclick="removeRow(event)" class="minus" title="Remove row">&#x02296;</a></td>
+        </tr>          
+        </tbody>  
+      </table>
+    </div>
+    </div>
+    <textarea id="copyArea" rows="1" cols="1">_</textarea>    
+    <script>
+      // Recompute everything on loading the document
+      recomputeAllExcept(null);
+      recomputeAllExcept(null);
+      window.onbeforeunload=close;
+      addAllListeners();
+      buttons.style.display="block";
+    </script>
+  </body>
+</html>
