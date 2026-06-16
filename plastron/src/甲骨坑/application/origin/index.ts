@@ -644,6 +644,20 @@ const download: Fn = async (state: State): Promise<State> => {
   g.URL.revokeObjectURL(url);
   return state;
 };
+// origin.captoggle — the per-capability trust submenu: flip ONE capability for
+// the SELECTED sheet's segment; the resulting grant shows in the status line.
+const captoggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
+  const c = String(cap ?? "");
+  if ((CAPS as readonly string[]).includes(c)) {
+    const sel = String(state.cels.get("元.selected")?.v ?? "元");
+    const seg = sel.split(".")[0] || "元";
+    const cur = resolveTrust(state, seg) as Record<string, unknown>;
+    setTrust(state, seg, { [c]: !cur[c] });
+    const t = resolveTrust(state, seg) as Record<string, unknown>;
+    await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 ${seg}: ${CAPS.filter((x) => t[x]).join(", ") || "locked"}`]]);
+  }
+  return state;
+};
 /** origin.autoload — restore the default slot on boot (the host calls this). */
 const autoload: Fn = async (state: State): Promise<State> => {
   const raw = LS()?.getItem(slot());
@@ -1443,6 +1457,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["trustOf",        trustOfFn],
   ["jail",           jailFn],
   ["origin.trust",   trustCycle],
+  ["origin.captoggle", captoggle],
   ["origin.download", download],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
