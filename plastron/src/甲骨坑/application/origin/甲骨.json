@@ -859,6 +859,19 @@
       }
     },
     {
+      "key": "kernel",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "kernel",
+        "segment": "origin",
+        "name": "kernel",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(seed, preset?) - spawn a QUARANTINED child plastron from a seed formula in a fresh segment (app1, app2, …). preset = locked (default) | compute | net | trusted, capped by THIS kernel's trust. The child's cells live under <seg>.*; gated capabilities (code/net/storage) come back #DENIED unless the preset grants them. A #f= share URL is just a locked seed."
+      }
+    },
+    {
       "key": "origin.autoload",
       "celType": "LockedLambdaCel",
       "locked": true,

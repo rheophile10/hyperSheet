@@ -2,7 +2,7 @@ import type {
   甲骨, Cel, ChannelEnqueue, Fn, Key, State, VNode, AttrValue, EventBinding,
 } from "../../../types/index.js";
 import {
-  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, canUse,
+  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, canUse, setTrust,
 } from "../../../kernel/index.js";
 // Core rendering comes from the dom LIBRARY — the app doesn't re-roll
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
@@ -568,6 +568,17 @@ const linkFn: Fn = (target?: unknown, base?: unknown, codec?: unknown) =>
      base: base == null ? "https://plastron.ca/" : String(base),
      codec: codec == null ? "auto" : String(codec) });
 const unlinkFn: Fn = (url?: unknown) => ({ originUnlink: true, url: String(url ?? "") });
+// kernel(seed, preset?) — spawn a QUARANTINED child plastron from a seed formula
+// in a fresh segment. The preset is the child's grant, capped by THIS kernel's
+// trust at resolve time (kernel ∧ segment). A #f= URL is a "locked" seed.
+const TRUST_PRESETS: Record<string, Record<string, unknown>> = {
+  locked:  { code: false, net: false, storage: false, secrets: false, segments: [] },
+  compute: { code: true,  net: false, storage: false, secrets: false, segments: [] },
+  net:     { code: true,  net: true,  storage: false, secrets: false, segments: [] },
+  trusted: { code: true,  net: true,  storage: true,  secrets: true },
+};
+const kernelFn: Fn = (seed?: unknown, preset?: unknown) =>
+  ({ originKernel: true, seed: String(seed ?? ""), preset: preset == null ? "locked" : String(preset) });
 /** origin.autoload — restore the default slot on boot (the host calls this). */
 const autoload: Fn = async (state: State): Promise<State> => {
   const raw = LS()?.getItem(slot());
@@ -1211,6 +1222,17 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
       } else if (req.originUnlink) {
         // decode ONLY — returns the formula source as text; does NOT execute it.
         result = await decodeLink(String(req.url ?? ""));
+      } else if (req.originKernel) {
+        // spawn a quarantined child: fresh segment, trust = preset (capped by
+        // this kernel at resolve time), seed formula in <seg>.元. Its cells live
+        // under <seg>.*; gated capabilities are #DENIED unless the preset grants.
+        const preset = String(req.preset ?? "locked");
+        const trust = TRUST_PRESETS[preset] ?? TRUST_PRESETS.locked;
+        let n = 1; while (state.cels.has(`app${n}.元`)) n++;
+        const seg = `app${n}`;
+        setTrust(state, seg, trust);
+        await setCel(state, `${seg}.元`, { celType: "FormulaCel", f: String(req.seed ?? ""), metadata: { key: `${seg}.元`, segment: seg, parser: "infix" } });
+        result = `spawned "${seg}" (${preset}) — a quarantined plastron; its cells live under ${seg}.*`;
       } else if (req.originChat) {
         result = String(await (resolveFn(state, "llm.chat") as Fn)(req.prompt, req.key, req.model, req.url));
       } else if (req.originFs) {
@@ -1339,6 +1361,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["grok",           grokFn],
   ["link",           linkFn],
   ["unlink",         unlinkFn],
+  ["kernel",         kernelFn],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],
