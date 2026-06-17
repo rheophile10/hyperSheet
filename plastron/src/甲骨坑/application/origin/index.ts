@@ -836,7 +836,11 @@ const trustOfFn: Fn = (seg?: unknown) => ({ originTrustOf: true, seg: String(seg
 const jailFn: Fn = (seed?: unknown) => ({ originJail: true, seed: String(seed ?? "") });
 // winsize(seg, w, h) — set a worksheet window's size (so a sheet can lay itself out).
 const winsizeFn: Fn = (seg?: unknown, w?: unknown, h?: unknown) =>
-  ({ originWinsize: true, seg: String(seg ?? ""), w: Number(w) || 0, h: Number(h) || 0 });
+  // winsize(seg, "max"|"full"|"fullscreen") maximizes the window to the viewport;
+  // winsize(seg, w, h) sets explicit pixels.
+  (typeof w === "string" && /^(max|full|fullscreen)$/i.test(w.trim())
+    ? ({ originWinsize: true, seg: String(seg ?? ""), max: true })
+    : ({ originWinsize: true, seg: String(seg ?? ""), w: Number(w) || 0, h: Number(h) || 0 }));
 // origin.trust — the formula-bar 🛡 badge: cycle a segment's preset
 // locked → compute → net → trusted → locked.
 const TRUST_CYCLE = ["locked", "compute", "net", "trusted"] as const;
@@ -1856,9 +1860,18 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
       } else if (req.originWinsize) {
         const gm = { ...((state.cels.get("win.geom")?.v as Record<string, Record<string, unknown>>) ?? {}) };
         const seg = String(req.seg);
-        gm[seg] = { ...(gm[seg] ?? {}), ...(Number(req.w) ? { w: Number(req.w) } : {}), ...(Number(req.h) ? { h: Number(req.h) } : {}) };
+        if (req.max) {
+          // maximize to the live viewport (same as the ⛶ button's wsMax): store
+          // explicit viewport w/h + max:1, pinned top-left. globalThis.innerWidth
+          // is available — the effects drain runs in the browser.
+          const g = globalThis as { innerWidth?: number; innerHeight?: number };
+          gm[seg] = { ...(gm[seg] ?? {}), x: 0, y: 0, w: Number(g.innerWidth) || 1200, h: Math.max(160, (Number(g.innerHeight) || 800) - 46), min: 0, max: 1 };
+          result = `maximized "${seg}"`;
+        } else {
+          gm[seg] = { ...(gm[seg] ?? {}), ...(Number(req.w) ? { w: Number(req.w) } : {}), ...(Number(req.h) ? { h: Number(req.h) } : {}) };
+          result = `sized "${seg}" → ${req.w}×${req.h}`;
+        }
         await setCel(state, "win.geom", { celType: "ValueCel", v: gm, metadata: { key: "win.geom", segment: "win" } });
-        result = `sized "${seg}" → ${req.w}×${req.h}`;
       } else if (req.originJail) {
         // a sandboxed iframe running the seed as its own kernel. allow-scripts
         // WITHOUT allow-same-origin → opaque origin: storage throws, no parent

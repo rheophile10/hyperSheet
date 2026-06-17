@@ -1078,7 +1078,7 @@
     "name": "winsize",
     "kind": "native",
     "emitsTo": "origin.effects",
-    "description": "(seg, w, h) - set a worksheet window's size in px, so a sheet can lay itself out (e.g. a wide score). Writes win.geom[seg]."
+    "description": "(seg, w, h) - set a worksheet window's size in px, so a sheet can lay itself out (e.g. a wide score). winsize(seg, \"max\") (or \"full\"/\"fullscreen\") MAXIMIZES the window to the viewport. Writes win.geom[seg]."
    }
   },
   {
