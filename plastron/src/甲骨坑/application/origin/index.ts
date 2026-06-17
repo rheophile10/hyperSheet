@@ -199,7 +199,12 @@ const doc: Fn = (...parts: unknown[]): unknown => {
     }
     mints[layer] = (access && typeof access === "object") ? access : {};
   };
+  let layoutMode: string | undefined;
   for (const p of parts) {
+    // a bare string is the DESKTOP LAYOUT ARGUMENT — segment("masonry", …) /
+    // segment("free", …). Visible in the formula; it sets win.layout so the
+    // desktop arranges (or doesn't) accordingly.
+    if (typeof p === "string") { if (p === "masonry" || p === "rowflow" || p === "free") layoutMode = p; continue; }
     if (!p || typeof p !== "object") continue;
     const o = p as Record<string, unknown>;
     if (o.genesis === true && o.cels) {                                                  // cels(…)/winapp(…)/chatapp(…)
@@ -210,7 +215,9 @@ const doc: Fn = (...parts: unknown[]): unknown => {
       Object.assign(cels, o.cels as Record<string, unknown>);
     } else if (o.originDef === true) cels[String(o.name)] = { celType: "EditableLambdaCel", f: String(o.source ?? ""), metadata: { kind: String(o.kind ?? "js"), name: String(o.name) } };
   }
-  return { genesis: true, cels, mints };
+  // carry the desktop layout mode on the genesis RESULT (not as a cel — a stray
+  // cel breaks the genesis drain); commit reads it off the value and sets win.layout.
+  return layoutMode ? { genesis: true, cels, mints, layout: layoutMode } : { genesis: true, cels, mints };
 };
 
 // seed() — ask the drain (which has state) to serialize the whole document to a
@@ -251,6 +258,19 @@ const cellKeys = (state: State): string[] => {
   return [out[0]!, ...out.slice(1).sort()];
 };
 
+// The set of top-level worksheet SEGMENTS currently on the desktop (a genesis
+// grid lives at seg.A1, seg.B2, …). win.* layer cels are desktop furniture, not
+// worksheets. Used to detect windows freshly spawned by a formula-load so they
+// can auto-tile instead of stacking.
+const worksheetSegs = (state: State): Set<string> => {
+  const segs = new Set<string>();
+  for (const k of cellKeys(state)) {
+    const d = k.indexOf(".");
+    if (d > 0) { const seg = k.slice(0, d); if (seg !== "win") segs.add(seg); }
+  }
+  return segs;
+};
+
 // 元.view's `vals` is an ARRAY inputMap of the cell keys (→ array of
 // values); `keys` is the same list as a value cel. Rewire both so the
 // view re-fires against the live cell set.
@@ -282,6 +302,53 @@ const cellSource = (state: State, key: string): string => {
   return f ?? (c?.v === undefined || c?.v === null ? "" : String(c.v));
 };
 
+// formatFormula — pretty-print a formula for the bar: a newline + tab for every
+// nested closure, the way you'd format JavaScript. Pure whitespace (the parsers
+// ignore it), string-aware (never touches inside "…" / \" escapes), and a no-op
+// for short or already-multi-line sources. Infix (=f(a, b, …)) breaks on commas;
+// S-expression ((f a b …)) breaks on the spaces between args.
+const matchParen = (s: string, open: number): number => {
+  let d = 0;
+  for (let j = open; j < s.length; j++) {
+    const ch = s[j];
+    if (ch === '"') { j++; while (j < s.length && s[j] !== '"') { if (s[j] === "\\") j++; j++; } continue; }
+    if (ch === "(") d++; else if (ch === ")" && --d === 0) return j;
+  }
+  return s.length;
+};
+const formatFormula = (src: string): string => {
+  const s = String(src ?? "");
+  if (s.includes("\n") || !s.includes("(") || s.length < 40) return src; // already laid out / nothing to do
+  const sexpr = s.trimStart().startsWith("(");
+  const stack: boolean[] = []; // was each open group broken onto its own lines?
+  const ind = (): string => "\t".repeat(stack.filter(Boolean).length);
+  let out = "", i = 0;
+  while (i < s.length) {
+    const c = s[i]!;
+    if (c === '"') { // copy a string literal verbatim (with \" escapes)
+      out += c; i++;
+      while (i < s.length) { if (s[i] === "\\") { out += s[i]! + (s[i + 1] ?? ""); i += 2; continue; } out += s[i]; if (s[i] === '"') { i++; break; } i++; }
+      continue;
+    }
+    if (c === "(") {
+      const inner = s.slice(i + 1, matchParen(s, i));
+      const brk = inner.includes("(") || inner.length > 48; // break groups that nest or run long
+      out += "("; stack.push(brk);
+      if (brk && !sexpr) out += "\n" + ind();               // infix: args each on their own line
+      i++; continue;
+    }
+    if (c === ")") { if (stack.pop()) out += "\n" + ind(); out += ")"; i++; continue; }
+    if (!sexpr && c === "," && stack[stack.length - 1]) { out += ",\n" + ind(); i++; while (s[i] === " ") i++; continue; }
+    if (sexpr && c === " " && stack[stack.length - 1]) {     // s-expr: break only BEFORE a nested closure
+      let j = i; while (s[j] === " ") j++;
+      if (s[j] === "(") { out += "\n" + ind(); i = j; continue; }
+      out += " "; i++; continue;
+    }
+    out += c; i++;
+  }
+  return out;
+};
+
 // A click that lands on a form control a formula rendered INSIDE a cell (a
 // password box from =unlockWallet(), a file picker from =upload(), a button)
 // must reach the control — not hijack into editing the cell's formula. The
@@ -310,7 +377,7 @@ const edit: Fn = async (state: State, payload?: unknown, event?: unknown) => {
   const cur = state.cels.get("元.editing")?.v;
   const next = cur === key ? null : key;
   await (resolveFn(state, "setValueBatch") as Fn)(state,
-    [["元.editing", next], ["元.draft", next ? cellSource(state, next) : ""], ["元.error", null]]);
+    [["元.editing", next], ["元.draft", next ? formatFormula(cellSource(state, next)) : ""], ["元.error", null]]);
   // 元.editing is in 元.view's inputMap, so changing it re-fires the view — but
   // that re-fire must propagate through the cycle BEFORE we paint, or the first
   // drain repaints the stale vnode (editor not yet swapped in) and no second
@@ -331,7 +398,7 @@ const select: Fn = async (state: State, payload?: unknown, event?: unknown) => {
   const key = typeof payload === "string" ? payload : null;
   if (!key) return state;
   await (resolveFn(state, "setValueBatch") as Fn)(state,
-    [["元.selected", key], ["元.draft", cellSource(state, key)], ["元.error", null]]);
+    [["元.selected", key], ["元.draft", formatFormula(cellSource(state, key))], ["元.error", null]]);
   await (resolveFn(state, "runCycle") as Fn)(state);
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
   return state;
@@ -440,6 +507,7 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   const drain = resolveFn(state, "drain") as Fn;
   const gd = resolveFn(state, "genesis.drain") as Fn | undefined;
   const dd = resolveFn(state, "defn.drain") as Fn | undefined;
+  const wsBefore = worksheetSegs(state); // to detect windows this commit spawns
   for (let pass = 0; pass < 8; pass++) {
     const before = state.cels.size;
     await (resolveFn(state, "runCycle") as Fn)(state);
@@ -459,6 +527,18 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   if (sync) await sync(state);
   await (resolveFn(state, "runCycle") as Fn)(state);
   await drain(state, "dom.paint");
+  // a segment("masonry"|"free", …) formula carries the desktop layout argument
+  // on its genesis VALUE — apply it to win.layout (the formula is the source of
+  // truth, visibly, so the bar shows the mode).
+  const gv = state.cels.get(key)?.v as { layout?: unknown } | undefined;
+  if (gv && typeof gv === "object" && (gv.layout === "masonry" || gv.layout === "rowflow" || gv.layout === "free")) {
+    await (resolveFn(state, "setValue") as Fn)(state, "win.layout", gv.layout);
+  }
+  // ≥2 new windows → reflow the WHOLE desktop as masonry (every open window, so
+  // nothing is left floating to overlap), 元 pinned top-left. Honors win.layout.
+  const gmNow = (state.cels.get("win.geom")?.v as Record<string, Record<string, unknown>>) ?? {};
+  const fresh = [...worksheetSegs(state)].filter((s) => !wsBefore.has(s) && gmNow[s]?.x === undefined);
+  if (fresh.length >= 2) await tile(state);
   return state;
 };
 
@@ -747,6 +827,91 @@ const captoggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
 // origin.demoMusic — open the Symphony-of-Cels example (score + keyboard +
 // melody worksheets) from the stored 音.demo formula, so it loads with one
 // click instead of a fragile copy-pasted URL.
+// a worksheet's row / column extent (from its A1-style cells) — the size the
+// creation formula implied via cels(name, ROWS, COLS).
+const colNum = (letters: string): number => { let n = 0; for (const c of letters) n = n * 26 + (c.charCodeAt(0) - 64); return n; };
+const sheetExtent = (state: State, seg: string): { rows: number; cols: number } => {
+  let rows = 1, cols = 1;
+  const re = new RegExp(`^${seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.([A-Z]+)(\\d+)$`);
+  for (const k of state.cels.keys()) { const m = re.exec(k); if (m) { rows = Math.max(rows, Number(m[2])); cols = Math.max(cols, colNum(m[1]!)); } }
+  return { rows, cols };
+};
+// origin.tile — the desktop MASONRY layout. Honors the desktop layout argument
+// win.layout: when "masonry" it arranges the VISIBLE windows (not minimized, not
+// maximized, not closed) into a Pinterest pack whose column count comes from the
+// SCREEN WIDTH (1 on a phone, more on a wide desktop). Each window's size is read
+// from its OWN win.geom (w/h) — seeded at creation from the grid's rows×cols,
+// changed by a resize-drag — NOT by measuring the DOM, so the layout is a pure
+// function of state. 元 leads, landing top-left. One-shot, not reactive.
+// payload: a seg list / "a,b,c" string, or absent → all visible worksheet windows.
+const tile: Fn = async (state: State, payload?: unknown): Promise<State> => {
+  const mode = String(state.cels.get("win.layout")?.v ?? "rowflow");
+  if (mode === "free") return state;                       // leave every window where it is
+  const g = globalThis as { innerWidth?: number; innerHeight?: number };
+  const gm0 = (state.cels.get("win.geom")?.v as Record<string, Record<string, unknown>>) ?? {};
+  const visible = (s: string): boolean => !gm0[s]?.closed && !gm0[s]?.min && !gm0[s]?.max && !(typeof gm0[s]?.host === "string");
+  const WALLPAPER = new Set(["desktop"]); // the fixed-mount wallpaper/panel sheet — never a tile
+  // default set = EVERY open window (any sheet with an A1 cell), so the whole
+  // desktop packs and nothing is left floating to overlap the rest.
+  const allWins = (): string[] => {
+    const segs = new Set<string>();
+    for (const k of state.cels.keys()) if (k.endsWith(".A1")) { const s = k.slice(0, -3); if (s !== "win" && !WALLPAPER.has(s)) segs.add(s); }
+    return [...segs];
+  };
+  const raw = Array.isArray(payload) ? payload.map(String)
+    : (typeof payload === "string" && payload) ? payload.split(",").map((s) => s.trim())
+    : allWins();
+  // 元 leads (top-left); then the rest NEWEST-FIRST, so windows a formula just
+  // opened (the MIDI demo's sheets) land in the top rows, not buried at the end.
+  const rest = raw.filter((s) => s !== "元" && visible(s) && !WALLPAPER.has(s));
+  if (!Array.isArray(payload)) rest.reverse();
+  const segs = [...(state.cels.get("元") ? ["元"] : []), ...rest];
+  if (!segs.length) return state;
+  const VW = Number(g.innerWidth) || 1280, VH = (Number(g.innerHeight) || 800) - 50;
+  const PAD = 12, MAXH = VH - 2 * PAD;
+  // HEIGHT from win.geom, else derived from the grid's row count.
+  const heightOf = (seg: string): number => {
+    const gh = Number(gm0[seg]?.h);
+    if (Number.isFinite(gh) && gh > 0) return Math.min(MAXH, gh);
+    if (seg === "元") return Math.min(MAXH, 480);
+    return Math.max(150, Math.min(MAXH, sheetExtent(state, seg).rows * 26 + 120));
+  };
+  const sized = segs.map((seg) => ({ seg, h: heightOf(seg) }));
+  const gm = { ...gm0 };
+  let z = Number(state.cels.get("win.topz")?.v) || 100;
+  if (mode === "masonry") {
+    // MASONRY — narrow uniform columns from the screen width; each window drops
+    // into the currently-shortest column (Pinterest pack).
+    const COLMIN = 300;
+    const N = Math.max(1, Math.floor((VW - PAD) / (COLMIN + PAD)));
+    const colW = Math.floor((VW - PAD - N * PAD) / N);
+    const colY = new Array<number>(N).fill(PAD);
+    for (const { seg, h } of sized) {
+      let ci = 0; for (let i = 1; i < N; i++) if (colY[i]! < colY[ci]!) ci = i;
+      const x = PAD + ci * (colW + PAD), y = colY[ci]!;
+      z += 1; gm[seg] = { ...(gm[seg] ?? {}), x, y, w: colW, h, z, min: 0, closed: 0 };
+      colY[ci] = y + h + PAD;
+    }
+  } else {
+    // ROW-FLOW (default) — WIDE windows (min of ~IDEAL and the screen width) laid
+    // in rows that wrap and overflow DOWNWARD, never to the right.
+    const IDEAL = 600;
+    const N = Math.max(1, Math.floor((VW - PAD) / (IDEAL + PAD)));
+    const w = Math.min(VW - 2 * PAD, Math.floor((VW - PAD - N * PAD) / N));
+    let x = PAD, y = PAD, rowH = 0;
+    for (const { seg, h } of sized) {
+      if (x + w > VW - PAD && x > PAD) { x = PAD; y += rowH + PAD; rowH = 0; } // wrap to the next row
+      z += 1; gm[seg] = { ...(gm[seg] ?? {}), x, y, w, h, z, min: 0, closed: 0 };
+      x += w + PAD; rowH = Math.max(rowH, h);
+    }
+  }
+  const sc = resolveFn(state, "setCel") as Fn;
+  await sc(state, "win.topz", { celType: "ValueCel", v: z, metadata: { key: "win.topz", segment: "win" } });
+  await sc(state, "win.geom", { celType: "ValueCel", v: gm, metadata: { key: "win.geom", segment: "win" } });
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+};
 const demoMusic: Fn = async (state: State): Promise<State> => {
   const f = String(state.cels.get("音.demo")?.v ?? "");
   if (!f) return state;
@@ -754,17 +919,45 @@ const demoMusic: Fn = async (state: State): Promise<State> => {
   await setValue(state, "元.draft", f);
   await commit(state, "音.run"); // the segment(...) genesis spawns the worksheets
   for (let i = 0; i < 8; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
-  // lay the three windows out and raise them ABOVE everything (bump win.topz).
-  const sc = resolveFn(state, "setCel") as Fn;
-  const gm = { ...((state.cels.get("win.geom")?.v as Record<string, Record<string, unknown>>) ?? {}) };
-  let z = Number(state.cels.get("win.topz")?.v) || 100;
-  for (const [seg, x, y, w, h] of [["score", 50, 60, 720, 290], ["keyboard", 50, 380, 430, 180], ["melody", 800, 60, 300, 470]] as [string, number, number, number, number][]) {
-    z += 1; gm[seg] = { ...(gm[seg] ?? {}), x, y, w, h, z, min: 0, closed: 0 };
-  }
-  await sc(state, "win.topz", { celType: "ValueCel", v: z, metadata: { key: "win.topz", segment: "win" } });
-  await sc(state, "win.geom", { celType: "ValueCel", v: gm, metadata: { key: "win.geom", segment: "win" } });
-  await runCycle(state);
+  await drain(state, "dom.paint"); // render once so tile() can measure content
+  await (tile as Fn)(state); // full-desktop masonry, 元 top-left
+  return state;
+};
+// origin.demoMidi — a MIDI demo: a worksheet that IS a table of note cells
+// (track, channel, pitch, notename, start, dur, velocity) plus a `=miditrack(…)`
+// player cell that plays the range. The tune is Ode to Joy (Beethoven, 1824 —
+// public domain), so it ships as a sample track with nothing to paste.
+const demoMidi: Fn = async (state: State): Promise<State> => {
+  // [MIDI pitch, notename, start beat, duration beats] — first phrase, C major.
+  const notes: [number, string, number, number][] = [
+    [64, "E4", 0, 1], [64, "E4", 1, 1], [65, "F4", 2, 1], [67, "G4", 3, 1],
+    [67, "G4", 4, 1], [65, "F4", 5, 1], [64, "E4", 6, 1], [62, "D4", 7, 1],
+    [60, "C4", 8, 1], [60, "C4", 9, 1], [62, "D4", 10, 1], [64, "E4", 11, 1],
+    [64, "E4", 12, 1.5], [62, "D4", 13.5, 0.5], [62, "D4", 14, 2],
+  ];
+  const rows = notes.length + 1; // + the header row
+  // one readable line per row (the formula bar shows newlines + tabs fine).
+  const rowLines: string[] = [`at("a1","track"), at("b1","channel"), at("c1","pitch"), at("d1","note"), at("e1","start"), at("f1","dur"), at("g1","vel")`];
+  notes.forEach(([pitch, nm, start, dur], i) => {
+    const r = i + 2;
+    rowLines.push(`at("a${r}","1"), at("b${r}","0"), at("c${r}","${pitch}"), at("d${r}","${nm}"), at("e${r}","${start}"), at("f${r}","${dur}"), at("g${r}","90")`);
+  });
+  const f =
+`=segment("rowflow",
+	cels("midi", ${rows}, 7,
+		${rowLines.join(",\n\t\t")}
+	),
+	cels("play", 2, 1,
+		at("a1","♫ Ode to Joy — a track made of cells"),
+		at("a2","=miditrack(midi!A2:G${rows}, 100)")
+	)
+)`;
+  const setValue = resolveFn(state, "setValue") as Fn, commit = resolveFn(state, "origin.commit") as Fn, drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
+  await setValue(state, "元.draft", f);
+  await commit(state, "音乐.run");
+  for (let i = 0; i < 8; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
   await drain(state, "dom.paint");
+  await (tile as Fn)(state); // full-desktop masonry, 元 top-left
   return state;
 };
 /** origin.autoload — restore the default slot on boot (the host calls this). */
@@ -1581,6 +1774,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.composeStop", composeStop],
   ["origin.playmelody", playmelody],
   ["origin.demoMusic", demoMusic],
+  ["origin.demoMidi", demoMidi],
+  ["origin.tile",    tile],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],

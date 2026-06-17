@@ -143,10 +143,11 @@ test("README is a TALL sheet that flows down column A: row 1 is the header (inde
   assert.ok(bolt, "the try-it button uses the formula-bar lightning bolt SVG path");
   // no separate readmedata sheet
   assert.equal(state.cels.get("readmedata.A1"), undefined, "the readmedata sheet is gone (merged into readme)");
-  // the readme is its own standalone window, now seeded BIG + centered
+  // the readme is its own standalone window, packed by the desktop masonry
+  // layout (win.layout="masonry") into a column tile — positioned, not tabbed.
   const g = state.cels.get("win.geom")?.v?.readme;
   assert.ok(g && g.host === undefined, "readme is a standalone window (geom carries no host → not tabbed)");
-  assert.ok(g.w >= 800 && g.h >= 600, "readme window is seeded big (w≥800, h≥600)");
+  assert.ok(typeof g.x === "number" && typeof g.y === "number" && g.w > 0 && g.h > 0, "readme is laid out (x/y/w/h set by masonry)");
   assert.ok(walk(root, (n) => String(n.attrs?.class ?? "") === "readme")[0], "the readme rendered in its cells");
 });
 

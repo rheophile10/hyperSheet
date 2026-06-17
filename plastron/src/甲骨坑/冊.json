@@ -80,6 +80,12 @@
     ]
   },
   {
+    "name": "formula-compiler",
+    "version": "1.0.0",
+    "description": "kind \"formula\": defn bodies that are parameterized plastron formulas (not JS). (params) => body, compiled via compileFormula, called positionally. Lets layout/note/glue verbs be defined from the formula surface, editable + wiki-visible.",
+    "dependencies": []
+  },
+  {
     "name": "file-store",
     "version": "1.0.0",
     "description": "Phase A. Pathlib-shaped fs.* fns (read/write/list/stat/rename/mkdir/rmdir/delete/exists) over OPFS in browser and node:fs/promises in CLI. One backend chosen sync at module load; module-singleton dispatch (descriptor cels file-store.backend / .root are read-only in Phase A). Ships the file-binary SchemaCel with size / isChanged / mime protocols. No content addressing, no history, no schemas beyond file-binary yet — see plastron/docs/4-current/09-storage/01-file-store.md for the shipped surface, plastron/docs/1-design/3-accepted/09-storage/opfs-file-store.md for the accepted Phase A design, and plastron/docs/1-design/1-under-consideration/09-storage/xit-versioned-files.md for the phased xit vision.",
@@ -155,6 +161,12 @@
     "name": "sound",
     "version": "1.0.0",
     "description": "Web Audio capability segment. Cels sound.play-tone (oscillator), sound.play-pcm (Float32 samples), sound.stop-all, plus sound.master-gain and sound.context-state. Browser-only — off-browser every fn is a silent no-op so app code is portable. Lazy AudioContext creation on first play (browser autoplay policy). Module-scoped runtime state (the context + active source set) is shared across States — matches the host/file-store singleton pattern.",
+    "dependencies": []
+  },
+  {
+    "name": "music",
+    "version": "1.0.0",
+    "description": "MIDI-shaped vocabulary over the sound segment: notename->MIDI, note() specs, miditrack() player vnode, and the music.play effect handler that schedules notes on the Web Audio clock. (sound is soft-resolved at runtime, not a hard manifest dep, so a lazy sound stays forgettable.)",
     "dependencies": []
   },
   {
@@ -246,7 +258,9 @@
       "sqlite",
       "sheet-host",
       "docgraph",
-      "xlsx"
+      "xlsx",
+      "music",
+      "formula-compiler"
     ],
     "role": "application"
   },

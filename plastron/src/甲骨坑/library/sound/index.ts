@@ -103,14 +103,16 @@ const playTone: Fn = (state: State, args: unknown = {}) => {
   if (!ctx) { updateContextState(state); return; }
   const a = (args ?? {}) as {
     freq?: number; duration?: number;
-    type?: "sine" | "square" | "sawtooth" | "triangle"; gain?: number;
+    type?: "sine" | "square" | "sawtooth" | "triangle"; gain?: number; when?: number;
   };
   const freq     = a.freq     ?? 440;
   const duration = (a.duration ?? 200) / 1000;
   const type     = a.type     ?? "sine";
   const gain     = (a.gain    ?? 0.3) * readMaster(state);
 
-  const now = ctx.currentTime;
+  // `when` (seconds from now) schedules the note on the audio clock — what a
+  // track player needs for sample-accurate sequencing. Default 0 = play now.
+  const now = ctx.currentTime + Math.max(0, Number(a.when) || 0);
   const osc = ctx.createOscillator();
   osc.type = type;
   osc.frequency.value = freq;

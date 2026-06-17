@@ -1,0 +1,61 @@
+{
+  "name": "formula-compiler",
+  "cels": [
+    {
+      "key": "formula",
+      "celType": "CompilerCel",
+      "metadata": {
+        "key": "formula",
+        "segment": "formula-compiler",
+        "name": "formula",
+        "kind": "native",
+        "description": "kind \"formula\" — a defn whose body is a parameterized plastron formula, not JS. Header form (p1, p2, …) => body; the body is compiled via the kernel's compileFormula and called positionally with params bound to the call args, non-param symbols (verbs, cel refs) resolved from the registry live. Lets you define reusable verbs (layout, note, glue macros) from the formula surface; the definition lives on cel.f so it is editable and wiki-visible. A formula verb is a function of its parameters — body cel refs are read live but do NOT wire reactivity into callers (pass reactive data as a parameter). Interpreted per call: cheap for UI/glue, not for hot inner loops."
+      },
+      "locked": true
+    },
+    {
+      "key": "load-deps.formula",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "load-deps.formula",
+        "segment": "formula-compiler",
+        "schema": "boolean",
+        "description": "Bootstrap switch. Formula compilation is in-process and instant, so this is trivially true. Reserved for symmetry with worker-backed kinds."
+      },
+      "v": true
+    },
+    {
+      "key": "formula.ready",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "formula.ready",
+        "segment": "formula-compiler",
+        "schema": "boolean",
+        "description": "Runtime-ready sentinel. Always true for the in-process formula compiler."
+      },
+      "v": true
+    },
+    {
+      "key": "formula.alive",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "formula.alive",
+        "segment": "formula-compiler",
+        "schema": "boolean",
+        "description": "Catastrophic-death sentinel. Main-thread kinds never die."
+      },
+      "v": true
+    },
+    {
+      "key": "formula.errors",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "formula.errors",
+        "segment": "formula-compiler",
+        "schema": "array",
+        "description": "Append-only log of CelError values produced by formula lambdas. v1: empty array."
+      },
+      "v": []
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "name": "music",
+  "cels": [
+    {
+      "key": "notename",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "notename",
+        "segment": "music",
+        "name": "notename",
+        "kind": "native",
+        "description": "(name) - convert a notename to a MIDI number. \"C4\"=60, \"A4\"=69 (440Hz); sharps/flats like \"F#3\"/\"Gb3\" supported. A bare number passes through. MIDI = (octave+1)*12 + semitone."
+      }
+    },
+    {
+      "key": "note",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "note",
+        "segment": "music",
+        "name": "note",
+        "kind": "native",
+        "description": "(pitch, start, dur, velocity [, channel]) - a pure NOTE SPEC. pitch is a MIDI number or notename string; start/dur in BEATS; velocity 0-127; channel selects the waveform (sine/triangle/square/saw). Returns { note, pitch, start, dur, vel, chan } for miditrack to play - it does NOT make sound itself (effects live behind the player + music.play handler)."
+      }
+    },
+    {
+      "key": "miditrack",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "miditrack",
+        "segment": "music",
+        "name": "miditrack",
+        "kind": "native",
+        "description": "(range [, bpm]) - a play-button vnode for a MIDI note range. The range is rows of [track, channel, pitch, notename, start, dur, velocity] (pitch falls back to notename), or note() specs. Clicking dispatches music.play with the resolved notes; bpm defaults to 120. Pure - builds a vnode; the sound happens in the handler."
+      }
+    },
+    {
+      "key": "music.play",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "music.play",
+        "segment": "music",
+        "name": "music.play",
+        "kind": "native",
+        "description": "(state, {notes, bpm}) - the EFFECT handler. Schedules every note on the Web Audio clock at its start beat (sample-accurate via sound.play-tone's `when` offset). bpm -> seconds/beat; velocity -> gain; channel -> waveform. Dispatched by a miditrack play button."
+      }
+    }
+  ]
+}

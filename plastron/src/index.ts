@@ -23,6 +23,7 @@ import * as watCompiler     from "./甲骨坑/library/wat-compiler/index.js";
 import * as wasmBytes       from "./甲骨坑/library/wasm-bytes/index.js";
 import * as pyCompiler      from "./甲骨坑/library/py-compiler/index.js";
 import * as quickjsCompiler from "./甲骨坑/library/quickjs-compiler/index.js";
+import * as formulaCompiler from "./甲骨坑/library/formula-compiler/index.js";
 import * as fileStore       from "./甲骨坑/library/file-store/index.js";
 import * as htmlTemplate    from "./甲骨坑/library/html-template-parser/index.js";
 import * as plastronDom     from "./甲骨坑/library/dom/index.js";
@@ -55,6 +56,7 @@ import * as docgraph        from "./甲骨坑/library/docgraph/index.js";
 import * as forcegraph      from "./甲骨坑/library/forcegraph/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
 import * as sound           from "./甲骨坑/library/sound/index.js";
+import * as music           from "./甲骨坑/library/music/index.js";
 
 // ============================================================================
 // Boot dispatch — 冊.json drives which segments install. Each named
@@ -91,6 +93,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "wasm-bytes":       () => [...wasmBytes.cels],
   "py-compiler":      () => [...pyCompiler.cels],
   "quickjs-compiler": () => [...quickjsCompiler.cels],
+  "formula-compiler": () => [...formulaCompiler.cels],
   "file-store":       () => [...fileStore.cels],
   "html-template-parser": () => [...htmlTemplate.cels],
   "dom":     () => [...plastronDom.cels],
@@ -108,6 +111,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "segment-archive":  () => [...segmentArchive.cels],
   "app-host":         () => [...appHost.cels],
   "sound":            () => [...sound.cels],
+  "music":            () => [...music.cels],
   "defn":             () => [...defn.cels],
   "genesis":          () => [...genesis.cels],
   "checkpoint":       () => [...checkpoint.cels],

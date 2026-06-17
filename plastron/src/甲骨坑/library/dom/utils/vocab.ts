@@ -84,6 +84,65 @@ export const img: Fn = (...args: unknown[]): V => {
   return dom("img", pair, ...rest) as V;
 };
 
+// ── layout — arrange children into a responsive container ────────────────────
+// layout([mode|opts,] ...children) → a container vnode that flows its children
+// into a configuration. The default is MASONRY (Pinterest-style column packing).
+// Children may be vnodes (dom(…)/charts/img/nested layout(…)), ranges/arrays
+// (flattened), or scalars (boxed as text tiles). Each child is wrapped in a
+// .pl-layout-cell so column/grid packing has a stable break unit.
+//
+// Mobile-responsive with NO media queries: `columns: <min>px` and
+// `repeat(auto-fill, minmax(<min>px, 1fr))` are INTRINSICALLY fluid — "as many
+// columns as fit at ≥min px," so a phone collapses to one column and a wide
+// desktop fans out, all from the viewport width. Pure inline style, no sheet.
+type LayoutMode = "masonry" | "grid" | "rows" | "columns" | "stack";
+const LAYOUT_MODES = new Set<string>(["masonry", "grid", "rows", "columns", "stack"]);
+const styleOf = (o: Record<string, string>): { __style: Record<string, unknown> } => ({ __style: o });
+
+const containerStyle = (mode: LayoutMode, min: number, gap: number): Record<string, string> => {
+  switch (mode) {
+    case "grid":    return { display: "grid", "grid-template-columns": `repeat(auto-fill, minmax(${min}px, 1fr))`, gap: `${gap}px`, "align-items": "start" };
+    case "rows":    return { display: "flex", "flex-direction": "column", gap: `${gap}px` };
+    case "columns": return { display: "flex", "flex-direction": "row", "flex-wrap": "wrap", gap: `${gap}px`, "align-items": "flex-start" };
+    case "stack":   return { position: "relative", "min-height": "8rem" };
+    case "masonry":
+    default:        return { columns: `${min}px`, "column-gap": `${gap}px` };
+  }
+};
+const cellStyle = (mode: LayoutMode, min: number, gap: number): Record<string, string> => {
+  switch (mode) {
+    case "masonry": return { "break-inside": "avoid", "-webkit-column-break-inside": "avoid", "margin-bottom": `${gap}px`, display: "block" };
+    case "columns": return { flex: `1 1 ${min}px`, "min-width": `${min}px` };
+    case "stack":   return { position: "absolute", top: "0", left: "0" };
+    default:        return {}; // grid/rows: the item flows natively
+  }
+};
+
+export const layout: Fn = (...args: unknown[]): V => {
+  const rest = [...args];
+  let mode: LayoutMode = "masonry";
+  let min = 280, gap = 12;
+  // first arg may be a mode string, or an options map { mode, min, gap }
+  if (typeof rest[0] === "string" && LAYOUT_MODES.has(rest[0])) { mode = rest.shift() as LayoutMode; }
+  else if (rest[0] && typeof rest[0] === "object" && !isVnode(rest[0]) && !isStyle(rest[0]) && !isAttr(rest[0]) && !isOn(rest[0]) && !Array.isArray(rest[0])) {
+    const o = rest.shift() as { mode?: unknown; min?: unknown; gap?: unknown };
+    if (typeof o.mode === "string" && LAYOUT_MODES.has(o.mode)) mode = o.mode as LayoutMode;
+    if (Number.isFinite(Number(o.min))) min = Number(o.min);
+    if (Number.isFinite(Number(o.gap))) gap = Number(o.gap);
+  }
+  const cs = cellStyle(mode, min, gap);
+  const tiles: V[] = [];
+  for (const c of rest) {
+    if (isStyle(c) || isAttr(c) || isOn(c)) continue; // container styling/handlers stay on the container call site
+    for (const item of (Array.isArray(c) ? (c as unknown[]).flat(8) : [c])) {
+      if (item === null || item === undefined || item === "") continue;
+      const node = isVnode(item) ? item : (T(String(item)) as V);
+      tiles.push(dom("div.pl-layout-cell", styleOf(cs), node) as V);
+    }
+  }
+  return dom(`div.pl-layout.pl-layout-${mode}`, styleOf(containerStyle(mode, min, gap)), ...tiles) as V;
+};
+
 export const on: Fn = (event: unknown, handler: unknown, payload?: unknown): { __on: { event: string; binding: EventBinding } } => {
   const binding = (payload === undefined
     ? { dispatch: String(handler ?? "") }

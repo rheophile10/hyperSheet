@@ -44,6 +44,12 @@ if (shared) {
   // restore a previously =save()d sheet (localStorage default slot), repaint.
   await (resolve(state, "origin.autoload"))(state);
   await (resolve(state, "drain"))(state, "dom.paint");
+  // boot with the examples ALREADY OPEN: the Symphony of Cels (score + keyboard
+  // + melody) and the MIDI track (midi + ▶ play). MIDI runs LAST so it's newest →
+  // lands in the top rows (row-flow orders newest-first).
+  await (resolve(state, "origin.demoMusic"))(state);
+  await (resolve(state, "origin.demoMidi"))(state);
+  await (resolve(state, "drain"))(state, "dom.paint");
 }
 
 // expose for console tinkering + the Playwright suite (createPainter/setPainter
