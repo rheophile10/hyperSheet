@@ -8,6 +8,8 @@
 import { join } from "node:path";
 import { rm, readdir } from "node:fs/promises";
 import { inlineAssets } from "../plastron-os/inline-assets.js";
+import { createInitialState, resolveFn, precomputeOptional } from "../../plastron/dist/index.js";
+import { vocabText } from "../../plastron/dist/甲骨坑/application/origin/index.js";
 
 const OUT = join(import.meta.dir, "dist");
 const HTML = join(OUT, "index.html");
@@ -45,6 +47,32 @@ const sqlInline =
 {
   let html = await Bun.file(HTML).text();
   html = html.includes("</body>") ? html.replace("</body>", `${sqlInline}</body>`) : html + sqlInline;
+  await Bun.write(HTML, html);
+}
+
+// Bake the =vocab() catalog into the <noscript> guide (the [[VOCAB_CATALOG]]
+// sentinel in index.html). We boot the origin kernel HEADLESS (no painter —
+// vocabText only reads state.cels) and emit the same plain text the in-app
+// =vocab() produces, HTML-escaped. If anything fails, fall back to a pointer
+// to the live catalog rather than breaking the build.
+{
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  let catalog: string;
+  try {
+    const resolve = resolveFn as (s: unknown, k: string) => (...a: unknown[]) => Promise<unknown> | unknown;
+    const state = createInitialState();
+    await resolve(state, "ensureSegments")(state, ["origin"]);
+    await resolve(state, "hydrate")(state, [], []);
+    await (resolveFn(state, "precomputeOptional") ?? precomputeOptional)(state);
+    await resolve(state, "runCycle")(state);
+    catalog = esc(vocabText(state));
+  } catch (e) {
+    console.warn(`bundle: vocab bake failed (${e}); falling back to a live-catalog pointer`);
+    catalog = "(open https://plastron.ca/#raw=%3Dvocab() to read the live catalog)";
+  }
+  let html = await Bun.file(HTML).text();
+  if (!html.includes("[[VOCAB_CATALOG]]")) throw new Error("bundle: [[VOCAB_CATALOG]] sentinel missing from index.html");
+  html = html.replace("[[VOCAB_CATALOG]]", catalog);
   await Bun.write(HTML, html);
 }
 

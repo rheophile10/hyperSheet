@@ -1038,6 +1038,25 @@ const wrap = (s: string, w = 68): string =>
     return ls;
   }, []).join("\n");
 
+/** The =vocab() catalog as plain text: top-level callable cels + value cels,
+ *  each with its metadata.description. Pure (state in, text out) so the effects
+ *  drain AND the Pages build (bundle.ts → <noscript>) emit the SAME catalog. */
+export const vocabText = (state: State, segment = ""): string => {
+  const desc = (c: Cel): string => String((c.metadata as { description?: unknown }).description ?? "");
+  const fns: string[] = []; const vals: string[] = [];
+  for (const [k, c] of state.cels) {
+    if (segment && c.metadata.segment !== segment) continue;
+    if (k.includes(".")) continue; // skip namespaced internals (g.A1, foo.bar)
+    if (c.celType === "LockedLambdaCel" || c.celType === "EditableLambdaCel" || c.celType === "CompilerCel") {
+      fns.push(`  ${k}${desc(c) ? `  — ${desc(c)}` : ""}`);
+    } else if (c.celType === "ValueCel") {
+      vals.push(`  ${k} = ${JSON.stringify(c.v)?.slice(0, 40)}`);
+    }
+  }
+  return [`functions (call as (${"name"} …) or =name(…)):`, ...fns.sort(),
+    "", "values (reference by name):", ...vals.sort()].join("\n");
+};
+
 // ── origin.effects: load / cels requests (effects at drain) ─────────────────
 
 // Introspection vocabulary. Each returns a REQUEST; the effects drain
@@ -1477,7 +1496,6 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
   const state = (stateArg ?? items[0]?.state) as State | undefined;
   if (!state) return;
   const setCel = resolveFn(state, "setCel") as Fn;
-  const desc = (c: Cel): string => String((c.metadata as { description?: unknown }).description ?? "");
   for (const { cel } of items) {
     const req = cel.v as Record<string, unknown> | undefined;
     if (!req || typeof req !== "object") continue;
@@ -1558,19 +1576,7 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         }
         result = segs.sort().join("\n") || "(no segments)";
       } else if (req.originVocab) {
-        const seg = String(req.segment ?? "");
-        const fns: string[] = []; const vals: string[] = [];
-        for (const [k, c] of state.cels) {
-          if (seg && c.metadata.segment !== seg) continue;
-          if (k.includes(".")) continue; // skip namespaced internals (g.A1, foo.bar)
-          if (c.celType === "LockedLambdaCel" || c.celType === "EditableLambdaCel" || c.celType === "CompilerCel") {
-            fns.push(`  ${k}${desc(c) ? `  — ${desc(c)}` : ""}`);
-          } else if (c.celType === "ValueCel") {
-            vals.push(`  ${k} = ${JSON.stringify(c.v)?.slice(0, 40)}`);
-          }
-        }
-        result = [`functions (call as (${"name"} …) or =name(…)):`, ...fns.sort(),
-          "", "values (reference by name):", ...vals.sort()].join("\n");
+        result = vocabText(state, String(req.segment ?? ""));
       } else if (req.originDef && req.name) {
         // define a callable function from source in some compiler `kind`.
         // The new lambda lands at `name` (not a spreadsheet cell — it has no
