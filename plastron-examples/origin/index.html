@@ -124,19 +124,24 @@ secrecy). When the stack runs out, meet to exchange a fresh one. AES (#aes256gcm
 is easier and already quantum-safe; reach for OTP only when you want provable,
 assumption-free secrecy and will keep the pad stacks in sync.
 
-WORKED OTP DEMO (the pad below is PUBLIC, so this is NOT a secret message — it is
-here so an LLM can verify the codec end-to-end and learn the format). Decode:
-base64url-decode the payload → ct||tag (tag = last 16 bytes, L = ct length);
-plaintext[i] = ct[i] XOR pad[i]; authenticate with the one-time Carter–Wegman MAC
-over GF(2^127-1) using r=pad[L..L+16], s=pad[L+16..L+32] (15-byte big-endian
-blocks, a leading length coefficient): tag == (s + Σ ct_block_i · r^i) mod p.
-  formula  =dom("h2", "🔑 decrypted by a one-time pad")
-  pad      (base64url, 86 bytes) =
-           8e3enGYTQD3z3yauNscLG5QoZEv2yFM43WQiLlMBlsbWX3g1xeG2-zVV-FTJNbsevg-_r2u92Jv5tgi_nGI32haMk_f9dshV4uDgMzyL3Re58B8ZrvI
-  link     https://plastron.ca/#otp=demo.zImx8U4xKA_R8waMxlifirRMASiEsSNMuAACTCoh9-a5MR0YsYjbnhUlmTDrHE0LdnT91YmJuaXL_TgbWvI
-XOR the first L bytes of the base64url-decoded payload against the base64url-
-decoded pad → the formula above. In the app, =otpEncrypt() / =otpDecrypt(url)
-do this with a file picker; opening the #otp= link renders a "load your pad" page.
+WORKED OTP DEMO — the pad is a PUBLIC file: the 🐢 turtle card this very site
+serves at https://plastron.ca/card.png. So this is a DEMONSTRATION of the codec,
+NOT a secret message — anyone who downloads the card can decrypt it. ANY file's
+raw bytes can serve as pad material (that's why the loader is a file picker), but
+a REAL one-time pad must be BOTH secret AND truly random — e.g.
+`head -c 200000 /dev/urandom > pad.bin` — NEVER a public, structured, or low-
+entropy file (an image header is predictable; pick high-entropy SECRET files).
+
+To decrypt the link below: download https://plastron.ca/card.png, base64url-decode
+the payload → ct||tag (tag = last 16 bytes, L = ct length); plaintext[i] =
+ct[i] XOR cardBytes[i]; authenticate with the one-time Carter–Wegman MAC over
+GF(2^127-1): r=cardBytes[L..L+16], s=cardBytes[L+16..L+32], 15-byte big-endian ct
+blocks + a leading length coefficient, tag == (s + Σ ct_block_i · r^i) mod p.
+
+[[OTP_DEMO]]
+
+In the app: =otpEncrypt() / =otpDecrypt(url) do this with a file picker; opening the
+#otp= link renders a "load your pad" page — select the card.png you downloaded.
 
 SECURITY: a #f= / #raw= / #aes256gcm= / #otp= URL boots a LOCKED kernel
 (sandboxed) — no network, storage, code, or secrets until a human grants them

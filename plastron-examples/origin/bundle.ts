@@ -10,6 +10,7 @@ import { rm, readdir } from "node:fs/promises";
 import { inlineAssets } from "../plastron-os/inline-assets.js";
 import { createInitialState, resolveFn, precomputeOptional } from "../../plastron/dist/index.js";
 import { vocabText } from "../../plastron/dist/甲骨坑/application/origin/index.js";
+import { encodeOtpLink, otpDecryptPayload, parseOtpUrl } from "../../plastron/dist/甲骨坑/application/origin/share-link.js";
 
 const OUT = join(import.meta.dir, "dist");
 const HTML = join(OUT, "index.html");
@@ -73,6 +74,31 @@ const sqlInline =
   let html = await Bun.file(HTML).text();
   if (!html.includes("[[VOCAB_CATALOG]]")) throw new Error("bundle: [[VOCAB_CATALOG]] sentinel missing from index.html");
   html = html.replace("[[VOCAB_CATALOG]]", catalog);
+  await Bun.write(HTML, html);
+}
+
+// Bake the WORKED OTP DEMO ([[OTP_DEMO]] sentinel) using the SHIPPED card.png as
+// the pad — the deploy serves the identical card at /card.png, so the URL is
+// always byte-consistent with what visitors download. The pad is PUBLIC, so this
+// is a codec demo, not a secret message (the surrounding prose says so). A
+// build-time round-trip guard catches any drift. Falls back to a pointer.
+{
+  const DEMO_FORMULA = `=dom("h2", "🔑 decrypted with the 🐢 card as a one-time pad")`;
+  let block: string;
+  try {
+    const card = await Bun.file(join(import.meta.dir, "card.png")).bytes();
+    const { url } = await encodeOtpLink(DEMO_FORMULA, card, "card-png", "https://plastron.ca/");
+    // round-trip guard: the baked URL MUST decrypt back with the same card bytes.
+    const back = await otpDecryptPayload(parseOtpUrl(url).payload, card);
+    if (back !== DEMO_FORMULA) throw new Error("otp demo round-trip mismatch");
+    block = `  formula  ${DEMO_FORMULA}\n  pad      https://plastron.ca/card.png  (${card.length} bytes — download it, load it in the picker)\n  link     ${url}`;
+  } catch (e) {
+    console.warn(`bundle: otp demo bake failed (${e}); falling back to a pointer`);
+    block = `  (open https://plastron.ca/ and run =otpEncrypt() with a pad file to make your own #otp= link)`;
+  }
+  let html = await Bun.file(HTML).text();
+  if (!html.includes("[[OTP_DEMO]]")) throw new Error("bundle: [[OTP_DEMO]] sentinel missing from index.html");
+  html = html.replace("[[OTP_DEMO]]", block);
   await Bun.write(HTML, html);
 }
 
