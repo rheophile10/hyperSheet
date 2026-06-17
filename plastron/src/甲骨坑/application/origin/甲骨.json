@@ -971,6 +971,30 @@
       }
     },
     {
+      "key": "origin.compose",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.compose",
+        "segment": "origin",
+        "name": "origin.compose",
+        "kind": "native",
+        "description": "(state) - start 'Music for ∞ Oscillators', an ORIGINAL generative phase piece (pentatonic voices at incommensurate periods, evolving harmony). Web Audio autoplay-gated → start from a click. origin.composeStop ends it."
+      }
+    },
+    {
+      "key": "origin.composeStop",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.composeStop",
+        "segment": "origin",
+        "name": "origin.composeStop",
+        "kind": "native",
+        "description": "(state) - stop the generative piece started by origin.compose."
+      }
+    },
+    {
       "key": "origin.autoload",
       "celType": "LockedLambdaCel",
       "locked": true,

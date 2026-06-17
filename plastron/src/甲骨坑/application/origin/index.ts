@@ -666,6 +666,35 @@ const music: Fn = async (state: State): Promise<State> => {
   for (const [freq, at] of NOTES) g.setTimeout?.(() => play(state, { freq, duration: 280, type: "triangle", gain: 0.35 }), at);
   return state;
 };
+// origin.compose / origin.composeStop — "Music for ∞ Oscillators": an ORIGINAL
+// generative minimalist piece. A steady pulse + pentatonic voices firing at
+// INCOMMENSURATE periods (3/4/5/7 steps) so they phase against each other (LCM
+// 420 steps ≈ a minute before they realign); the scale degree drifts every 32
+// steps so the harmony evolves. Browser-audio is autoplay-gated → start on click.
+let _composing = false;
+const compose: Fn = async (state: State): Promise<State> => {
+  await ensureSegments(state, ["sound"]);
+  if (_composing) return state;
+  _composing = true;
+  const play = resolveFn(state, "sound.play-tone") as Fn;
+  const g = globalThis as { setTimeout?: (f: () => void, ms: number) => void };
+  const SCALE = [196, 220, 262, 294, 330, 392, 440, 523, 587, 659]; // G pentatonic, 2 octaves
+  const VOICES: [number, number, number][] = [[3, 2, 0.30], [4, 4, 0.26], [5, 6, 0.24], [7, 8, 0.20]]; // [period, degree, gain]
+  let beat = 0;
+  const tick = (): void => {
+    if (!_composing) return;
+    const shift = Math.floor(beat / 32) % 5;
+    if (beat % 8 === 0) play(state, { freq: 98, duration: 460, type: "sine", gain: 0.22 }); // bass pulse
+    for (const [period, deg, gain] of VOICES) {
+      if (beat % period === 0) play(state, { freq: SCALE[(deg + shift) % SCALE.length], duration: 300, type: "triangle", gain });
+    }
+    beat++;
+    g.setTimeout?.(tick, 165);
+  };
+  tick();
+  return state;
+};
+const composeStop: Fn = async (state: State): Promise<State> => { _composing = false; return state; };
 // origin.captoggle — the per-capability trust submenu: flip ONE capability for
 // the SELECTED sheet's segment; the resulting grant shows in the status line.
 const captoggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
@@ -1483,6 +1512,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.savepage", download],
   ["origin.tone",    tone],
   ["origin.music",   music],
+  ["origin.compose", compose],
+  ["origin.composeStop", composeStop],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],
