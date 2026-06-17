@@ -9,7 +9,8 @@ import {
 // `memo` attaches the diff's O(changed) short-circuit hint (see dom).
 import { el as makeEl, text as T } from "../../library/dom/index.js";
 import { openAsSheet } from "../../library/sheet-host/index.js";
-import { encodeLink, decodeLink, type LinkCodec } from "./share-link.js";
+import { encodeLink, decodeLink, encodeEncLink, decodeEncLink, ENC_METHOD,
+  encodeOtpLink, otpDecryptPayload, parseOtpUrl, OTP_METHOD, type LinkCodec } from "./share-link.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -648,6 +649,116 @@ const linkFn: Fn = (target?: unknown, base?: unknown, codec?: unknown) =>
      base: base == null ? "https://plastron.ca/" : String(base),
      codec: codec == null ? "auto" : String(codec) });
 const unlinkFn: Fn = (url?: unknown) => ({ originUnlink: true, url: String(url ?? "") });
+// encrypt(passphrase?, target?, base?) — like link, but AES-256-GCM the source
+// behind a passphrase (the URL parameter names the method: #aes256gcm=). Omit the
+// passphrase to be PROMPTED at drain time, so it never lives in the sheet/seed.
+// decrypt(url, passphrase?) — the inverse: returns the formula source as text
+// (does NOT run it). A wrong passphrase yields an error string.
+const encryptFn: Fn = (passphrase?: unknown, target?: unknown, base?: unknown) =>
+  ({ originEncrypt: true,
+     passphrase: passphrase == null ? "" : String(passphrase),
+     target: target == null ? "" : String(target),
+     base: base == null ? "https://plastron.ca/" : String(base) });
+const decryptFn: Fn = (url?: unknown, passphrase?: unknown) =>
+  ({ originDecrypt: true, url: String(url ?? ""), passphrase: passphrase == null ? "" : String(passphrase) });
+// A passphrase from the formula arg, else PROMPTED (browser/Bun) so secrets stay
+// out of the saved sheet. Empty (cancel / headless) → "" → handler refuses.
+const passOf = (given: unknown, why = "passphrase"): string => {
+  const g = String(given ?? "");
+  if (g) return g;
+  const p = (globalThis as { prompt?: (m: string) => string | null }).prompt;
+  return p ? String(p(why) ?? "") : "";
+};
+
+// ── one-time pad verbs (UNCONDITIONAL secrecy) ──────────────────────────────
+// The OTP "key" is a PAD FILE of random bytes — too big to type — so these verbs
+// render a FILE PICKER (gesture-correct, like =upload) rather than a passphrase
+// prompt. The chosen pad is XOR'd with the formula; the URL carries only the
+// ciphertext + the pad's NAME (padId), so the peer knows which pad file to load.
+// One pad file = one message; delete it from BOTH stacks after use.
+
+// read the picked file's bytes off a change event (browser only).
+const fileBytes = async (event: unknown): Promise<{ name: string; bytes: Uint8Array } | null> => {
+  const f = (event as { target?: { files?: ArrayLike<{ name: string; arrayBuffer(): Promise<ArrayBuffer> }> } })?.target?.files?.[0];
+  return f ? { name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) } : null;
+};
+
+// =otpEncrypt(target?) — pick a pad file → an #otp= URL (unconditionally secret).
+const otpEncryptFn: Fn = (target?: unknown): V =>
+  el("div", { class: "otp-tool" }, [
+    T("🔐 one-time-pad encrypt — choose a pad file: ") as V,
+    el("input", { class: "otp-pad", type: "file", title: "your next unused pad file" },
+      [], { change: { dispatch: "origin.otpEncrypt", payload: String(target ?? "") } }),
+  ]);
+// =otpDecrypt(url) — pick the matching pad file → the formula source (does not run it).
+const otpDecryptFn: Fn = (url?: unknown): V => {
+  const { padId } = parseOtpUrl(String(url ?? ""));
+  return el("div", { class: "otp-tool" }, [
+    T(`🔓 one-time-pad decrypt — choose pad ${padId || "file"}: `) as V,
+    el("input", { class: "otp-pad", type: "file", title: `the pad named "${padId}"` },
+      [], { change: { dispatch: "origin.otpDecrypt", payload: String(url ?? "") } }),
+  ]);
+};
+// otpLoader(padId, payload) — the BOOT view a #otp= URL renders as 元: load the
+// named pad to decrypt the shared plastron (kernel already LOCKED).
+const otpLoaderFn: Fn = (padId?: unknown, payload?: unknown): V =>
+  el("div", { class: "otp-loader" }, [
+    el("h2", {}, [T("🔑 one-time-pad encrypted plastron") as V]),
+    el("p", {}, [T(`Load pad “${String(padId ?? "")}” from your vault to decrypt:`) as V]),
+    el("input", { class: "otp-pad", type: "file", title: "select your matching pad file" },
+      [], { change: { dispatch: "origin.otpUnlock", payload: String(payload ?? "") } }),
+  ]);
+
+// handlers (state, payload, event) — read the pad off the file event, do the
+// info-theoretic crypto, surface the result. The pad bytes never leave the page.
+const otpEncryptHandler: Fn = async (state: State, target: unknown, event: unknown) => {
+  const picked = await fileBytes(event);
+  if (!picked) return state;
+  try {
+    const t = String(target ?? "");
+    const src = t ? cellSource(state, t) : buildSeed(state);
+    const { url } = await encodeOtpLink(src, picked.bytes, picked.name);
+    await (resolveFn(state, "setValueBatch") as Fn)(state, [
+      ["元.draft", url],
+      ["元.error", `🔐 OTP link is in the formula bar. Pad "${picked.name}" is now spent — DELETE it from BOTH stacks (one pad, one message).`],
+    ]);
+  } catch (e) {
+    await (resolveFn(state, "setValue") as Fn)(state, "元.error", `#${String((e as { message?: unknown })?.message ?? e)}`);
+  }
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+};
+const otpDecryptHandler: Fn = async (state: State, url: unknown, event: unknown) => {
+  const picked = await fileBytes(event);
+  if (!picked) return state;
+  const { payload } = parseOtpUrl(String(url ?? ""));
+  try {
+    const formula = await otpDecryptPayload(payload, picked.bytes);
+    await (resolveFn(state, "setValueBatch") as Fn)(state, [
+      ["元.draft", formula],
+      ["元.error", "🔓 Decrypted — the source is in the formula bar. Paste it into a cell to run it."],
+    ]);
+  } catch (e) {
+    await (resolveFn(state, "setValue") as Fn)(state, "元.error", `#${String((e as { message?: unknown })?.message ?? e)}`);
+  }
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+};
+// boot unlock: load the pad → decrypt → the shared formula BECOMES 元 (still
+// jailed — bootFromHash locked the kernel before rendering this loader).
+const otpUnlockHandler: Fn = async (state: State, payload: unknown, event: unknown) => {
+  const picked = await fileBytes(event);
+  if (!picked) return state;
+  try {
+    const formula = await otpDecryptPayload(String(payload ?? ""), picked.bytes);
+    await (resolveFn(state, "setValue") as Fn)(state, "元.draft", formula);
+    await commit(state, "元");
+  } catch (e) {
+    await (resolveFn(state, "setValue") as Fn)(state, "元.error", `🔒 ${String((e as { message?: unknown })?.message ?? e)}`);
+    await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  }
+  return state;
+};
 // kernel(seed, preset?) — spawn a QUARANTINED child plastron from a seed formula
 // in a fresh segment. The preset is the child's grant, capped by THIS kernel's
 // trust at resolve time (kernel ∧ segment). A #f= URL is a "locked" seed.
@@ -678,10 +789,23 @@ const spawnQuarantined = async (state: State, seed: string, preset: string): Pro
 export const bootFromHash = async (state: State, hash: string): Promise<string | null> => {
   const h = String(hash || "");
   let formula: string | null = null;
-  if (/[#?&]f=/.test(h)) formula = await decodeLink(h);
+  if (new RegExp(`[#?&]${ENC_METHOD}=`).test(h)) {
+    // encrypted link: prompt for the passphrase, decrypt, then boot it LOCKED
+    // like any shared formula. A wrong passphrase still boots (jailed) with a
+    // legible error rather than a blank page.
+    const pass = passOf("", `This plastron is encrypted (AES-256-GCM). Passphrase:`);
+    try { formula = await decodeEncLink(h, pass); }
+    catch (e) { formula = `=dom("pre", ${JSON.stringify("🔒 " + String((e as { message?: unknown })?.message ?? e))})`; }
+  } else if (new RegExp(`[#?&]${OTP_METHOD}=`).test(h)) {
+    // one-time-pad link: the key is a pad FILE (can't be prompted as text), so
+    // render a loader that file-picks the pad and decrypts on a click gesture.
+    const { padId, payload } = parseOtpUrl(h);
+    formula = `=otpLoader(${JSON.stringify(padId)}, ${JSON.stringify(payload)})`;
+  } else if (/[#?&]f=/.test(h)) formula = await decodeLink(h);
   else { const m = /[#?&]raw=([^#?&]+)/.exec(h); if (m) formula = decodeURIComponent(m[1]!); }
   if (!formula) return null;
   setTrust(state, "kernel", LOCKED_TRUST);                              // provenance = url → lock everything
+  await trustSync(state);                                               // seed trust.kernel so =trustpanel() shows the locked truth
   await (resolveFn(state, "setValue") as Fn)(state, "元.draft", formula);
   await (resolveFn(state, "origin.commit") as Fn)(state, "元");         // the shared formula IS the view, jailed
   return formula;
@@ -821,6 +945,80 @@ const captoggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
     setTrust(state, seg, { [c]: !cur[c] });
     const t = resolveTrust(state, seg) as Record<string, unknown>;
     await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 ${seg}: ${CAPS.filter((x) => t[x]).join(", ") || "locked"}`]]);
+  }
+  return state;
+};
+
+// ── trust panel: a window to view + grant the kernel's capabilities ─────────
+// The KERNEL tier is the master gate (a #f= / #raw= shared link boots it LOCKED).
+// The panel reads `trust.kernel` — a ValueCel the handlers below keep in step
+// with the live kernel grant — so `(trustdom trust.kernel)` re-renders the moment
+// a capability flips. Graph reactivity, no manual repaint: the toggle writes
+// trust.kernel, the content formula depends on it, runCycle does the rest.
+const CAP_DOC: Record<string, { icon: string; title: string; about: string }> = {
+  code:    { icon: "⚙",  title: "Code",    about: "Compile + run code (JS / Python / WASM). Off: only built-in verbs evaluate — no new lambdas run." },
+  net:     { icon: "🌐", title: "Network", about: "Outbound requests — =chat / =grok (only to CSP-allowed hosts). Off: those calls are blocked." },
+  storage: { icon: "💾", title: "Storage", about: "Read + write local data — OPFS files, =save / =open. Off: nothing persists to or loads from disk." },
+  secrets: { icon: "🔑", title: "Secrets", about: "Use stored API keys via =apiKey. Off: secret values stay sealed and unreadable." },
+};
+
+// trustdom(view) — render the panel from a {code,net,storage,secrets} value.
+// Pure (gets the value, not state); the Grant/Revoke buttons dispatch
+// origin.trustToggle, which flips the kernel grant and re-syncs trust.kernel.
+const trustdomFn: Fn = ((view: unknown): V => {
+  const t = (view && typeof view === "object" ? view : {}) as Record<string, unknown>;
+  const row = (cap: string): V => {
+    const on = t[cap] === true;
+    const d = CAP_DOC[cap]!;
+    return el("div", { style: "display:flex;gap:.55rem;align-items:flex-start;padding:.5rem .35rem;border-bottom:1px solid #8882" }, [
+      el("div", { style: "font-size:1.15rem;flex:0 0 auto;width:1.5rem;text-align:center" }, [T(d.icon)]),
+      el("div", { style: "flex:1 1 auto;min-width:0" }, [
+        el("div", { style: "font:600 .85rem ui-monospace,monospace" }, [T(`${d.title}  `),
+          el("span", { style: `font-weight:600;color:${on ? "#1a9c4e" : "#b1442f"}` }, [T(on ? "GRANTED" : "blocked")])]),
+        el("div", { style: "font:12px/1.45 system-ui,sans-serif;opacity:.82;margin-top:.15rem" }, [T(d.about)]),
+      ]),
+      el("button", { class: "trust-toggle", "data-cap": cap, style: `flex:0 0 auto;align-self:center;padding:.3rem .65rem;border:1px solid ${on ? "#b1442f88" : "#1a9c4e88"};border-radius:.4rem;background:Canvas;color:CanvasText;cursor:pointer;font:600 .75rem ui-monospace,monospace` },
+        [T(on ? "Revoke" : "Grant")], { click: { dispatch: "origin.trustToggle", payload: cap } }),
+    ]);
+  };
+  return el("div", { class: "trust-panel", style: "font:13px/1.5 system-ui,sans-serif;padding:.1rem .25rem" }, [
+    el("p", { style: "margin:.2rem .2rem .5rem;opacity:.85" }, [T("KERNEL permissions — the master gate for everything on this page. A shared #f= / #raw= link opens with all four OFF; grant only what you trust this plastron to do.")]),
+    ...CAPS.map((c) => row(c)),
+    el("p", { style: "margin:.55rem .2rem;font:11px/1.4 ui-monospace,monospace;opacity:.6" }, [T("=trustpanel() reopens this · the 🛡 formula-bar badge cycles presets · a grant applies to formulas you (re)run next.")]),
+  ]);
+}) as Fn;
+
+// trustpanel() — open the panel as a draggable window (the winapp idiom: a state
+// cel + a content formula that REFERENCES trust.kernel + the winframe wrapper).
+const trustpanelFn: Fn = ((): unknown => {
+  const lay = "win.trust", sref = `${lay}.state`, cref = `${lay}.content`;
+  return { genesis: true, layer: lay, cels: {
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: 96, y: 84, w: 430, h: 380, z: 1, min: 0, max: 0, closed: 0, title: "🛡 Trust" }, metadata: { name: "state" } },
+    [cref]: { celType: "FormulaCel", f: "(trustdom trust.kernel)", metadata: { name: "content", parser: "f" } },
+    [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f" } },
+  } };
+}) as Fn;
+
+// origin.trustSync — mirror the live kernel grant into trust.kernel (the cel the
+// panel reads). Run at boot AND after every grant, so the panel shows the truth.
+const trustSync: Fn = async (state: State): Promise<State> => {
+  const k = resolveTrust(state, undefined) as Record<string, unknown>;
+  const v = { code: !!k.code, net: !!k.net, storage: !!k.storage, secrets: !!k.secrets };
+  if (state.cels.has("trust.kernel")) await (resolveFn(state, "setValue") as Fn)(state, "trust.kernel", v);
+  else await (resolveFn(state, "setCel") as Fn)(state, "trust.kernel", { celType: "ValueCel", v, metadata: { key: "trust.kernel", segment: "origin", name: "kernel" } });
+  return state;
+};
+
+// origin.trustToggle — flip ONE kernel capability (the Grant/Revoke buttons
+// dispatch here with the cap name), then re-sync so the panel re-renders.
+const trustToggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
+  const c = String(cap ?? "");
+  if ((CAPS as readonly string[]).includes(c)) {
+    const cur = resolveTrust(state, undefined) as Record<string, unknown>;
+    setTrust(state, "kernel", { [c]: !cur[c] });
+    await trustSync(state);
+    const t = resolveTrust(state, undefined) as Record<string, unknown>;
+    await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 kernel: ${CAPS.filter((x) => t[x]).join(", ") || "locked"}`]]);
   }
   return state;
 };
@@ -1609,6 +1807,22 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
       } else if (req.originUnlink) {
         // decode ONLY — returns the formula source as text; does NOT execute it.
         result = await decodeLink(String(req.url ?? ""));
+      } else if (req.originEncrypt) {
+        const pass = passOf(req.passphrase, "passphrase to encrypt with");
+        if (!pass) result = "#DENIED(encrypt: a passphrase is required)";
+        else {
+          const t = String(req.target ?? "");
+          const src = t ? cellSource(state, t) : buildSeed(state);
+          result = await encodeEncLink(src, pass, String(req.base ?? "https://plastron.ca/"));
+        }
+      } else if (req.originDecrypt) {
+        // decode ONLY — returns the formula source as text; does NOT execute it.
+        const pass = passOf(req.passphrase, "passphrase to decrypt with");
+        if (!pass) result = "#DENIED(decrypt: a passphrase is required)";
+        else {
+          try { result = await decodeEncLink(String(req.url ?? ""), pass); }
+          catch (e) { result = "#" + String((e as { message?: unknown })?.message ?? e); }
+        }
       } else if (req.originKernel) {
         // spawn a quarantined child; its cells live under <seg>.*, gated
         // capabilities #DENIED unless the preset granted them.
@@ -1766,6 +1980,14 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["grok",           grokFn],
   ["link",           linkFn],
   ["unlink",         unlinkFn],
+  ["encrypt",        encryptFn],
+  ["decrypt",        decryptFn],
+  ["otpEncrypt",     otpEncryptFn],
+  ["otpDecrypt",     otpDecryptFn],
+  ["otpLoader",      otpLoaderFn],
+  ["origin.otpEncrypt", otpEncryptHandler],
+  ["origin.otpDecrypt", otpDecryptHandler],
+  ["origin.otpUnlock",  otpUnlockHandler],
   ["kernel",         kernelFn],
   ["trust",          trustFn],
   ["trustOf",        trustOfFn],
@@ -1773,6 +1995,10 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["winsize",        winsizeFn],
   ["origin.trust",   trustCycle],
   ["origin.captoggle", captoggle],
+  ["trustdom", trustdomFn],
+  ["trustpanel", trustpanelFn],
+  ["origin.trustSync", trustSync],
+  ["origin.trustToggle", trustToggle],
   ["origin.savepage", download],
   ["origin.tone",    tone],
   ["origin.music",   music],

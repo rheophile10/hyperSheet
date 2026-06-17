@@ -807,6 +807,54 @@
    }
   },
   {
+   "key": "trustpanel",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "trustpanel",
+    "segment": "origin",
+    "name": "trustpanel",
+    "kind": "native",
+    "description": "() - open the Trust panel: a draggable window that shows the KERNEL's four capabilities (code/net/storage/secrets), explains each, and grants/revokes them with one click. The master gate — a #f= / #raw= shared link opens with all four OFF. =trustpanel()"
+   }
+  },
+  {
+   "key": "trustdom",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "trustdom",
+    "segment": "origin",
+    "name": "trustdom",
+    "kind": "native",
+    "description": "(view) - render the Trust panel body from a {code,net,storage,secrets} value (the trust.kernel cel). The Grant/Revoke buttons dispatch origin.trustToggle. Used by trustpanel()'s content formula; reference trust.kernel so it re-renders on any grant."
+   }
+  },
+  {
+   "key": "origin.trustSync",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.trustSync",
+    "segment": "origin",
+    "name": "origin.trustSync",
+    "kind": "native",
+    "description": "(state) - mirror the live kernel grant into the trust.kernel cel the panel reads. Run at boot and after every grant so the panel shows the truth."
+   }
+  },
+  {
+   "key": "origin.trustToggle",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.trustToggle",
+    "segment": "origin",
+    "name": "origin.trustToggle",
+    "kind": "native",
+    "description": "(state, cap) - flip ONE KERNEL capability (code/net/storage/secrets), then re-sync trust.kernel so the panel re-renders. Wired to the Grant/Revoke buttons in trustpanel()."
+   }
+  },
+  {
    "key": "origin.upload",
    "celType": "LockedLambdaCel",
    "locked": true,
@@ -868,6 +916,104 @@
     "kind": "native",
     "emitsTo": "origin.effects",
     "description": "(url) - decode a =link() URL (or bare #f= payload) back to its formula source, as text. The inverse of link. Does NOT run it — paste the source into a cell yourself."
+   }
+  },
+  {
+   "key": "encrypt",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "encrypt",
+    "segment": "origin",
+    "name": "encrypt",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(passphrase?, target?, base?) - like link, but AES-256-GCM the source behind a passphrase. The URL parameter names the method: https://plastron.ca/#aes256gcm=<ciphertext>. =encrypt() encrypts the WHOLE sheet; =encrypt(\"\", \"元\") one cell. Omit the passphrase to be PROMPTED (so it never lands in the sheet). Pipeline: deflate → AES-256-GCM (PBKDF2-SHA256, 600k) → base64url; AES-256 is quantum-resistant. The URL is opaque; share the passphrase out-of-band. Caveat: the decrypted formula lives in browser memory — run a local index.html offline for high stakes."
+   }
+  },
+  {
+   "key": "decrypt",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "decrypt",
+    "segment": "origin",
+    "name": "decrypt",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(url, passphrase?) - decode a =encrypt() URL (or bare #aes256gcm= payload) back to its formula source, as text. The inverse of encrypt. Omit the passphrase to be PROMPTED. Does NOT run it — paste the source into a cell yourself. A wrong passphrase or tampered link yields an error (GCM authenticates)."
+   }
+  },
+  {
+   "key": "otpEncrypt",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "otpEncrypt",
+    "segment": "origin",
+    "name": "otpEncrypt",
+    "kind": "native",
+    "description": "(target?) - ONE-TIME-PAD encrypt with UNCONDITIONAL secrecy (perfect, quantum-immune). Renders a file picker: choose a pad file of random bytes (≥ message length + 32) shared with your peer. Produces https://plastron.ca/#otp=<padName>.<ciphertext> — ciphertext = formula XOR pad, plus a one-time Carter-Wegman MAC for unconditional integrity. NO compression (would leak length info). One pad file = ONE message: DELETE it from both stacks after use; never reuse a pad. target \"\" = whole sheet; a cell key = its source."
+   }
+  },
+  {
+   "key": "otpDecrypt",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "otpDecrypt",
+    "segment": "origin",
+    "name": "otpDecrypt",
+    "kind": "native",
+    "description": "(url) - decode a =otpEncrypt() #otp= link. Renders a file picker for the matching pad (the URL names which pad). Returns the formula source as text in the formula bar; does NOT run it. A wrong pad or tampered message fails the MAC check. Delete the pad after use."
+   }
+  },
+  {
+   "key": "otpLoader",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "otpLoader",
+    "segment": "origin",
+    "name": "otpLoader",
+    "kind": "native",
+    "description": "(padId, payload) - the boot view a #otp= URL renders as 元: a file picker to load the named pad and decrypt the shared plastron (kernel stays LOCKED). Used by bootFromHash; not usually called by hand."
+   }
+  },
+  {
+   "key": "origin.otpEncrypt",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.otpEncrypt",
+    "segment": "origin",
+    "name": "origin.otpEncrypt",
+    "kind": "native",
+    "description": "(state, target, event) - dispatch target: XOR the source with the picked pad → an #otp= URL in the formula bar; warns to delete the spent pad."
+   }
+  },
+  {
+   "key": "origin.otpDecrypt",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.otpDecrypt",
+    "segment": "origin",
+    "name": "origin.otpDecrypt",
+    "kind": "native",
+    "description": "(state, url, event) - dispatch target: decrypt an #otp= payload with the picked pad → the formula source in the formula bar (does not run it)."
+   }
+  },
+  {
+   "key": "origin.otpUnlock",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.otpUnlock",
+    "segment": "origin",
+    "name": "origin.otpUnlock",
+    "kind": "native",
+    "description": "(state, payload, event) - boot dispatch target: load the pad → decrypt → the shared formula becomes 元 (still jailed/locked)."
    }
   },
   {

@@ -38,13 +38,14 @@
   </head>
   <body>
     <div id="app"></div>
-    <!-- llms.txt, in <noscript>: shown to crawlers / fetch-tools / no-JS readers
-         and survives markdown conversion, but hidden from real users running the
-         app. The verb catalog under "FULL VERB CATALOG" is the plain-text output
-         of =vocab(), baked in by the Pages build (bundle.ts) — so "discover with
-         formulas" degrades gracefully to "it's already here as text". -->
-    <noscript>
-      <pre id="llms-txt" style="white-space:pre-wrap;max-width:82ch;margin:2rem auto;padding:0 1rem;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace">
+    <!-- llms.txt, in a CSS-invisible <div id="llms">: ordinary DOM content (NOT a
+         <noscript> — some agents/extractors, e.g. Grok, drop noscript) so crawlers,
+         fetch-tools and LLMs read it, while the sr-only/clip style keeps it off-
+         screen for real users running the app. The verb catalog under "FULL VERB
+         CATALOG" is the plain-text output of =vocab(), baked in by the Pages build
+         (bundle.ts) — so "discover with formulas" is also "it's already here as text". -->
+    <div id="llms" aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);border:0">
+      <pre style="white-space:pre-wrap;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace">
 plastron — cels interlinked. THIS PAGE IS ITS OWN GUIDE: no separate llms.txt or
 README is served; everything ships in this one index.html. A FORMULA IS THE WHOLE
 APP, and a formula fits in a URL — so a whole plastron is shareable as one link.
@@ -67,6 +68,10 @@ In-app formulas:
   =inspect("name")   one verb's full doc (its "wiki" page)
   =members("seg")    a segment's cels
   =link()            encode THIS whole sheet into a shareable #f= URL
+  =encrypt(pass)     like link, but AES-256-GCM behind a passphrase (#aes256gcm=)
+  =decrypt(url,pass) decode an encrypted link back to its source (does not run it)
+  =otpEncrypt()      ONE-TIME-PAD encrypt (unconditional secrecy) — pick a pad file
+  =otpDecrypt(url)   decode an #otp= link — pick the matching pad file
   =cels(r,c,"name")  a worksheet;  =win(k,"t","body")  a window
   =dom("div", ...)   a view;  =jail(seed)  a sandboxed sub-plastron
 
@@ -92,16 +97,57 @@ Worked example — plain (tag 0) is hand-computable, no app needed:
   formula    =dom("h1", "hello from a cel")
   URL        https://plastron.ca/#f=0PWRvbSgiaDEiLCAiaGVsbG8gZnJvbSBhIGNlbCIp
 
-SECURITY: a #f= / #raw= URL boots a LOCKED kernel (sandboxed) — no network,
-storage, code, or secrets until a human grants them (the 🛡 trust toggles).
-Opening any catalog or share URL above is therefore always safe.
+ENCRYPTED links — the URL parameter NAMES the method, so the booter is self-
+describing (future methods get their own param; no tag-byte scheme):
+
+    https://plastron.ca/#aes256gcm={payload}
+    payload = base64url( salt[16] || iv[12] || AES-256-GCM(deflateRaw(formula)) )
+    key     = PBKDF2-HMAC-SHA256(passphrase, salt, 600k) → AES-256
+
+Compress-THEN-encrypt (ciphertext is incompressible). AES-256 is symmetric →
+quantum-resistant (Grover-only). The URL is opaque; share the passphrase out-of-
+band. Opening one PROMPTS for the passphrase, then boots LOCKED like any link. A
+wrong passphrase fails cleanly (GCM authenticates). Caveat: the decrypted formula
+lives in browser memory — for high stakes run a local index.html OFFLINE.
+
+ONE-TIME-PAD links — UNCONDITIONAL secrecy (perfect; quantum-immune). The key is
+a PAD FILE of random bytes, so the URL can't prompt for a passphrase — it shows a
+FILE PICKER to load your pad. You and your peer hold the SAME stack of pad files:
+
+    https://plastron.ca/#otp={padId}.{payload}
+    payload = base64url( (formula XOR pad) || oneTimeMAC[16] )
+
+ciphertext = formula XOR pad (NO compression — that would leak length info). A
+one-time Carter–Wegman MAC makes integrity unconditional too. ONE pad file = ONE
+message: delete it from BOTH stacks after use; NEVER reuse a pad (reuse breaks
+secrecy). When the stack runs out, meet to exchange a fresh one. AES (#aes256gcm=)
+is easier and already quantum-safe; reach for OTP only when you want provable,
+assumption-free secrecy and will keep the pad stacks in sync.
+
+WORKED OTP DEMO (the pad below is PUBLIC, so this is NOT a secret message — it is
+here so an LLM can verify the codec end-to-end and learn the format). Decode:
+base64url-decode the payload → ct||tag (tag = last 16 bytes, L = ct length);
+plaintext[i] = ct[i] XOR pad[i]; authenticate with the one-time Carter–Wegman MAC
+over GF(2^127-1) using r=pad[L..L+16], s=pad[L+16..L+32] (15-byte big-endian
+blocks, a leading length coefficient): tag == (s + Σ ct_block_i · r^i) mod p.
+  formula  =dom("h2", "🔑 decrypted by a one-time pad")
+  pad      (base64url, 86 bytes) =
+           8e3enGYTQD3z3yauNscLG5QoZEv2yFM43WQiLlMBlsbWX3g1xeG2-zVV-FTJNbsevg-_r2u92Jv5tgi_nGI32haMk_f9dshV4uDgMzyL3Re58B8ZrvI
+  link     https://plastron.ca/#otp=demo.zImx8U4xKA_R8waMxlifirRMASiEsSNMuAACTCoh9-a5MR0YsYjbnhUlmTDrHE0LdnT91YmJuaXL_TgbWvI
+XOR the first L bytes of the base64url-decoded payload against the base64url-
+decoded pad → the formula above. In the app, =otpEncrypt() / =otpDecrypt(url)
+do this with a file picker; opening the #otp= link renders a "load your pad" page.
+
+SECURITY: a #f= / #raw= / #aes256gcm= / #otp= URL boots a LOCKED kernel
+(sandboxed) — no network, storage, code, or secrets until a human grants them
+(the 🛡 trust toggles). Opening any catalog or share URL above is therefore safe.
 
 ────────────────────────────────────────────────────────────────────────────
 FULL VERB CATALOG — =vocab(), baked at build time (current as of this deploy)
 ────────────────────────────────────────────────────────────────────────────
 [[VOCAB_CATALOG]]
       </pre>
-    </noscript>
+    </div>
     <a href="./os/" style="position:fixed;bottom:.6rem;right:.8rem;font-size:.75rem;opacity:.5;color:inherit">plastron-os ↗</a>
     <!-- No external <script> tags: the py-compiler pulls Pyodide from a CDN
          itself (via the kernel loadScript primitive) on first py use. -->
