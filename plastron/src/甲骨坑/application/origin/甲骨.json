@@ -923,6 +923,19 @@
       }
     },
     {
+      "key": "winsize",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "winsize",
+        "segment": "origin",
+        "name": "winsize",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(seg, w, h) - set a worksheet window's size in px, so a sheet can lay itself out (e.g. a wide score). Writes win.geom[seg]."
+      }
+    },
+    {
       "key": "origin.trust",
       "celType": "LockedLambdaCel",
       "locked": true,
@@ -992,6 +1005,18 @@
         "name": "origin.composeStop",
         "kind": "native",
         "description": "(state) - stop the generative piece started by origin.compose."
+      }
+    },
+    {
+      "key": "origin.playmelody",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.playmelody",
+        "segment": "origin",
+        "name": "origin.playmelody",
+        "kind": "native",
+        "description": "(state, seg) - read column A of sheet seg as a RANGE of note frequencies (Hz) and play them in sequence. Type numbers down a column to write a tune; wire a button: on(\"click\",\"origin.playmelody\",\"melody\")."
       }
     },
     {

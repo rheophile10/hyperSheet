@@ -615,6 +615,9 @@ const trustFn: Fn = (seg?: unknown, cap?: unknown, on?: unknown) =>
   ({ originTrust: true, seg: String(seg ?? ""), cap: String(cap ?? ""), on: on === undefined ? true : !!on });
 const trustOfFn: Fn = (seg?: unknown) => ({ originTrustOf: true, seg: String(seg ?? "") });
 const jailFn: Fn = (seed?: unknown) => ({ originJail: true, seed: String(seed ?? "") });
+// winsize(seg, w, h) — set a worksheet window's size (so a sheet can lay itself out).
+const winsizeFn: Fn = (seg?: unknown, w?: unknown, h?: unknown) =>
+  ({ originWinsize: true, seg: String(seg ?? ""), w: Number(w) || 0, h: Number(h) || 0 });
 // origin.trust — the formula-bar 🛡 badge: cycle a segment's preset
 // locked → compute → net → trusted → locked.
 const TRUST_CYCLE = ["locked", "compute", "net", "trusted"] as const;
@@ -714,6 +717,19 @@ const compose: Fn = async (state: State): Promise<State> => {
   return state;
 };
 const composeStop: Fn = async (state: State): Promise<State> => { _composing = false; setViz(false); return state; };
+// origin.playmelody(seg) — read column A of a sheet as a RANGE of note
+// frequencies (Hz) and play them in sequence. Empty cells stop the line; you
+// write a tune by typing numbers down a column.
+const playmelody: Fn = async (state: State, payload?: unknown): Promise<State> => {
+  await ensureSegments(state, ["sound"]);
+  const seg = String(payload ?? "melody");
+  const play = resolveFn(state, "sound.play-tone") as Fn;
+  const g = globalThis as { setTimeout?: (f: () => void, ms: number) => void };
+  const notes: number[] = [];
+  for (let r = 1; r <= 64; r++) { const v = Number(state.cels.get(`${seg}.A${r}`)?.v); if (Number.isFinite(v) && v > 0) notes.push(v); }
+  notes.forEach((freq, i) => g.setTimeout?.(() => play(state, { freq, duration: 260, type: "triangle", gain: 0.32 }), i * 260));
+  return state;
+};
 // origin.captoggle — the per-capability trust submenu: flip ONE capability for
 // the SELECTED sheet's segment; the resulting grant shows in the status line.
 const captoggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
@@ -1386,6 +1402,12 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
       } else if (req.originTrustOf) {
         const t = resolveTrust(state, String(req.seg)) as Record<string, unknown>;
         result = `${req.seg}: ${CAPS.filter((c) => t[c]).join(", ") || "locked"}`;
+      } else if (req.originWinsize) {
+        const gm = { ...((state.cels.get("win.geom")?.v as Record<string, Record<string, unknown>>) ?? {}) };
+        const seg = String(req.seg);
+        gm[seg] = { ...(gm[seg] ?? {}), ...(Number(req.w) ? { w: Number(req.w) } : {}), ...(Number(req.h) ? { h: Number(req.h) } : {}) };
+        await setCel(state, "win.geom", { celType: "ValueCel", v: gm, metadata: { key: "win.geom", segment: "win" } });
+        result = `sized "${seg}" → ${req.w}×${req.h}`;
       } else if (req.originJail) {
         // a sandboxed iframe running the seed as its own kernel. allow-scripts
         // WITHOUT allow-same-origin → opaque origin: storage throws, no parent
@@ -1526,6 +1548,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["trust",          trustFn],
   ["trustOf",        trustOfFn],
   ["jail",           jailFn],
+  ["winsize",        winsizeFn],
   ["origin.trust",   trustCycle],
   ["origin.captoggle", captoggle],
   ["origin.savepage", download],
@@ -1533,6 +1556,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.music",   music],
   ["origin.compose", compose],
   ["origin.composeStop", composeStop],
+  ["origin.playmelody", playmelody],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],
