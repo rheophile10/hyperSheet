@@ -686,15 +686,26 @@ const compose: Fn = async (state: State): Promise<State> => {
   _composing = true;
   const play = resolveFn(state, "sound.play-tone") as Fn;
   const g = globalThis as { setTimeout?: (f: () => void, ms: number) => void };
-  const SCALE = [196, 220, 262, 294, 330, 392, 440, 523, 587, 659]; // G pentatonic, 2 octaves
-  const VOICES: [number, number, number][] = [[3, 2, 0.30], [4, 4, 0.26], [5, 6, 0.24], [7, 8, 0.20]]; // [period, degree, gain]
+  // The SCORE lives in a spreadsheet you can see + edit: a "score" grid where
+  // each row is a voice — B=period(beats), C=note(Hz), D=gain. Read LIVE each
+  // beat, so editing a cell changes the music. Falls back to a default phase
+  // pattern when there is no score sheet (e.g. the full-screen visualizer).
+  const DEFAULT: [number, number, number][] = [[8, 98, 0.22], [3, 196, 0.30], [4, 294, 0.26], [5, 392, 0.24], [7, 523, 0.20]];
+  const score = (): [number, number, number][] => {
+    const rows: [number, number, number][] = [];
+    for (let r = 2; r <= 9; r++) {
+      const p = Number(state.cels.get(`score.B${r}`)?.v);
+      const n = Number(state.cels.get(`score.C${r}`)?.v);
+      const gv = state.cels.get(`score.D${r}`)?.v;
+      if (Number.isFinite(p) && p > 0 && Number.isFinite(n) && n > 0) rows.push([p, n, Number.isFinite(Number(gv)) ? Number(gv) : 0.25]);
+    }
+    return rows.length ? rows : DEFAULT;
+  };
   let beat = 0;
   const tick = (): void => {
     if (!_composing) return;
-    const shift = Math.floor(beat / 32) % 5;
-    if (beat % 8 === 0) play(state, { freq: 98, duration: 460, type: "sine", gain: 0.22 }); // bass pulse
-    for (const [period, deg, gain] of VOICES) {
-      if (beat % period === 0) play(state, { freq: SCALE[(deg + shift) % SCALE.length], duration: 300, type: "triangle", gain });
+    for (const [period, freq, gain] of score()) {
+      if (beat % period === 0) play(state, { freq, duration: freq < 130 ? 460 : 300, type: freq < 130 ? "sine" : "triangle", gain });
     }
     beat++;
     g.setTimeout?.(tick, 165);
