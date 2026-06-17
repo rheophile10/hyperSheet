@@ -666,14 +666,22 @@ const music: Fn = async (state: State): Promise<State> => {
   for (const [freq, at] of NOTES) g.setTimeout?.(() => play(state, { freq, duration: 280, type: "triangle", gain: 0.35 }), at);
   return state;
 };
-// origin.compose / origin.composeStop — "Music for ∞ Oscillators": an ORIGINAL
+// origin.compose / origin.composeStop — "Symphony of Cels": an ORIGINAL
 // generative minimalist piece. A steady pulse + pentatonic voices firing at
 // INCOMMENSURATE periods (3/4/5/7 steps) so they phase against each other (LCM
 // 420 steps ≈ a minute before they realign); the scale degree drifts every 32
 // steps so the harmony evolves. Browser-audio is autoplay-gated → start on click.
 let _composing = false;
+// add/remove the `on` class on every .pl-viz so the visualizer dots only
+// animate WHILE the piece is playing (CSS keys the animation on .pl-viz.on).
+const setViz = (on: boolean): void => {
+  const d = (globalThis as { document?: { querySelectorAll?: (s: string) => ArrayLike<{ classList: { add: (c: string) => void; remove: (c: string) => void } }> } }).document;
+  const nodes = d?.querySelectorAll?.(".pl-viz");
+  if (nodes) for (let i = 0; i < nodes.length; i++) nodes[i]!.classList[on ? "add" : "remove"]("on");
+};
 const compose: Fn = async (state: State): Promise<State> => {
   await ensureSegments(state, ["sound"]);
+  setViz(true);
   if (_composing) return state;
   _composing = true;
   const play = resolveFn(state, "sound.play-tone") as Fn;
@@ -694,7 +702,7 @@ const compose: Fn = async (state: State): Promise<State> => {
   tick();
   return state;
 };
-const composeStop: Fn = async (state: State): Promise<State> => { _composing = false; return state; };
+const composeStop: Fn = async (state: State): Promise<State> => { _composing = false; setViz(false); return state; };
 // origin.captoggle — the per-capability trust submenu: flip ONE capability for
 // the SELECTED sheet's segment; the resulting grant shows in the status line.
 const captoggle: Fn = async (state: State, cap?: unknown): Promise<State> => {

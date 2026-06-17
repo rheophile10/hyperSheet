@@ -979,7 +979,7 @@
         "segment": "origin",
         "name": "origin.compose",
         "kind": "native",
-        "description": "(state) - start 'Music for ∞ Oscillators', an ORIGINAL generative phase piece (pentatonic voices at incommensurate periods, evolving harmony). Web Audio autoplay-gated → start from a click. origin.composeStop ends it."
+        "description": "(state) - start 'Symphony of Cels', an ORIGINAL generative phase piece (pentatonic voices at incommensurate periods, evolving harmony). Web Audio autoplay-gated → start from a click. origin.composeStop ends it."
       }
     },
     {
