@@ -744,6 +744,20 @@ const captoggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
   }
   return state;
 };
+// origin.demoMusic — open the Symphony-of-Cels example (score + keyboard +
+// melody worksheets) from the stored 音.demo formula, so it loads with one
+// click instead of a fragile copy-pasted URL.
+const demoMusic: Fn = async (state: State): Promise<State> => {
+  const f = String(state.cels.get("音.demo")?.v ?? "");
+  if (!f) return state;
+  const setValue = resolveFn(state, "setValue") as Fn, commit = resolveFn(state, "origin.commit") as Fn, drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
+  await setValue(state, "元.draft", f);
+  await commit(state, "音.run"); // the segment(...) genesis spawns the worksheets
+  for (let i = 0; i < 8; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
+  await runCycle(state);
+  await drain(state, "dom.paint");
+  return state;
+};
 /** origin.autoload — restore the default slot on boot (the host calls this). */
 const autoload: Fn = async (state: State): Promise<State> => {
   const raw = LS()?.getItem(slot());
@@ -1557,6 +1571,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.compose", compose],
   ["origin.composeStop", composeStop],
   ["origin.playmelody", playmelody],
+  ["origin.demoMusic", demoMusic],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],
