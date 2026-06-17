@@ -131,6 +131,24 @@ const sqlInline =
   await Bun.write(HTML, h2);
 }
 
+// Relocate Bun's ~1.9 MB inlined module bundle from <head> to the END of <body>,
+// so <head> stays tiny and the readable document (guide block + body) comes first
+// — a raw-HTML reader then gets everything before the megabytes. The bundle is
+// type="module" (deferred), so it still runs after parse, after the sql.js setup
+// scripts — execution order is unchanged. (Inline </script> is escaped by Bun, so
+// the first </script> after the open is the real close.)
+{
+  let h3 = await Bun.file(HTML).text();
+  const m = h3.match(/<script type="module"[^>]*>[\s\S]*?<\/script>/);
+  if (!m) throw new Error("bundle: inlined module <script> not found to relocate to <body>");
+  const moduleTag = m[0];
+  // Use FUNCTION replacements — a string replacement would interpret $ patterns,
+  // and the minified bundle is full of `$` (would corrupt/balloon the output).
+  h3 = h3.replace(moduleTag, () => "");                        // pull it out of <head>
+  h3 = h3.replace("</body>", () => `${moduleTag}\n</body>`);   // re-attach at end of <body>
+  await Bun.write(HTML, h3);
+}
+
 const bytes = (await Bun.file(HTML).bytes()).length;
 const leftovers = (await readdir(OUT)).filter((f) => f !== "index.html" && f !== "llms.txt");
 console.log(`✔ dist/index.html — ${(bytes / 1024).toFixed(1)} KB`);
