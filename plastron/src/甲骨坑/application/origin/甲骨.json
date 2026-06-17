@@ -947,6 +947,30 @@
       }
     },
     {
+      "key": "origin.tone",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.tone",
+        "segment": "origin",
+        "name": "origin.tone",
+        "kind": "native",
+        "description": "(state, freq) - play ONE Web Audio oscillator note at the given frequency (Hz). Loads the sound segment on first use. Wire it to a button: (on \"click\" \"origin.tone\" 440)."
+      }
+    },
+    {
+      "key": "origin.music",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.music",
+        "segment": "origin",
+        "name": "origin.music",
+        "kind": "native",
+        "description": "(state) - play a short melody (Ode to Joy) via the Web Audio sound segment. Browser audio is autoplay-gated, so trigger it from a click."
+      }
+    },
+    {
       "key": "origin.autoload",
       "celType": "LockedLambdaCel",
       "locked": true,

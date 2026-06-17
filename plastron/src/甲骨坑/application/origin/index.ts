@@ -650,6 +650,22 @@ const download: Fn = async (state: State): Promise<State> => {
   g.URL.revokeObjectURL(url);
   return state;
 };
+// origin.tone — play ONE oscillator note (payload = frequency in Hz); ensures
+// the Web Audio `sound` segment on first use. origin.music plays a short melody.
+const tone: Fn = async (state: State, payload?: unknown): Promise<State> => {
+  await ensureSegments(state, ["sound"]);
+  await (resolveFn(state, "sound.play-tone") as Fn)(state, { freq: Number(payload) || 440, duration: 320, type: "triangle" });
+  return state;
+};
+const music: Fn = async (state: State): Promise<State> => {
+  await ensureSegments(state, ["sound"]);
+  const play = resolveFn(state, "sound.play-tone") as Fn;
+  const g = globalThis as { setTimeout?: (f: () => void, ms: number) => void };
+  // "Ode to Joy" opening (freq, start-ms)
+  const NOTES: [number, number][] = [[330,0],[330,300],[349,600],[392,900],[392,1200],[349,1500],[330,1800],[294,2100],[262,2400],[262,2700],[294,3000],[330,3300],[330,3600],[294,3900],[294,4200]];
+  for (const [freq, at] of NOTES) g.setTimeout?.(() => play(state, { freq, duration: 280, type: "triangle", gain: 0.35 }), at);
+  return state;
+};
 // origin.captoggle — the per-capability trust submenu: flip ONE capability for
 // the SELECTED sheet's segment; the resulting grant shows in the status line.
 const captoggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
@@ -1465,6 +1481,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.trust",   trustCycle],
   ["origin.captoggle", captoggle],
   ["origin.savepage", download],
+  ["origin.tone",    tone],
+  ["origin.music",   music],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],
