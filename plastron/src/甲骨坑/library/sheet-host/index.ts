@@ -211,7 +211,14 @@ const sheetView: Fn = ((
     const g = GM[host] ?? {};
     if (g.closed) return el("div", { class: "pl-window-closed", "data-win": host, style: "display:none" }, []);
     if (g.min) return el("div", { class: "pl-window-min", "data-win": host, style: "display:none" }, []);
-    const x = gnum(g.x, 40 + i * 34), y = gnum(g.y, 40 + i * 34), w = gnum(g.w, 380), h = gnum(g.h, 260), z = gnum(g.z, 1);
+    // NEW windows (no saved geom) default to FULL SCREEN. Any explicit geom —
+    // drag/resize/tile()/winsize() — overrides. We deliberately leave `max` UNSET
+    // so tile() still flows these (tile() skips only truly-maximized windows), which
+    // keeps the boot demos (demoMusic/demoMidi tile themselves) laid out, not stacked.
+    void i; // staggered default retired in favor of full-screen
+    const G = globalThis as { innerWidth?: number; innerHeight?: number };
+    const dw = Number(G.innerWidth) || 1200, dh = Math.max(160, (Number(G.innerHeight) || 800) - 46);
+    const x = gnum(g.x, 0), y = gnum(g.y, 0), w = gnum(g.w, dw), h = gnum(g.h, dh), z = gnum(g.z, 1);
     // the tab strip — a "+" that genesis-creates a new blank sheet tabbed into
     // THIS window (winsheet.newtab), plus one chip per sheet WHEN tabbed (>1). A
     // single-sheet window shows just "+" (no self-chip), so the chips still read
