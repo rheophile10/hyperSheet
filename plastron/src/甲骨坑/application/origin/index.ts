@@ -754,6 +754,15 @@ const demoMusic: Fn = async (state: State): Promise<State> => {
   await setValue(state, "元.draft", f);
   await commit(state, "音.run"); // the segment(...) genesis spawns the worksheets
   for (let i = 0; i < 8; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
+  // lay the three windows out and raise them ABOVE everything (bump win.topz).
+  const sc = resolveFn(state, "setCel") as Fn;
+  const gm = { ...((state.cels.get("win.geom")?.v as Record<string, Record<string, unknown>>) ?? {}) };
+  let z = Number(state.cels.get("win.topz")?.v) || 100;
+  for (const [seg, x, y, w, h] of [["score", 50, 60, 720, 290], ["keyboard", 50, 380, 430, 180], ["melody", 800, 60, 300, 470]] as [string, number, number, number, number][]) {
+    z += 1; gm[seg] = { ...(gm[seg] ?? {}), x, y, w, h, z, min: 0, closed: 0 };
+  }
+  await sc(state, "win.topz", { celType: "ValueCel", v: z, metadata: { key: "win.topz", segment: "win" } });
+  await sc(state, "win.geom", { celType: "ValueCel", v: gm, metadata: { key: "win.geom", segment: "win" } });
   await runCycle(state);
   await drain(state, "dom.paint");
   return state;
