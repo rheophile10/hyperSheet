@@ -23,6 +23,10 @@
     <meta name="twitter:title" content="🐢 plastron 元" />
     <meta name="twitter:description" content="cels interlinked" />
     <meta name="twitter:image" content="https://plastron.ca/card.png" />
+    <!-- LLM/agent guide as plain text — the #llms div is buried ~2/3 through this
+         ~2.9 MB single-file bundle and is visually hidden, so fetch tools truncate
+         or strip it. /llms.txt is the reliable channel: small, text/plain. -->
+    <link rel="alternate" type="text/plain" title="plastron — LLM guide" href="/llms.txt" />
     <style>
       :root { color-scheme: light dark; }
       * { box-sizing: border-box; }
@@ -46,9 +50,10 @@
          (bundle.ts) — so "discover with formulas" is also "it's already here as text". -->
     <div id="llms" aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);border:0">
       <pre style="white-space:pre-wrap;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace">
-plastron — cels interlinked. THIS PAGE IS ITS OWN GUIDE: no separate llms.txt or
-README is served; everything ships in this one index.html. A FORMULA IS THE WHOLE
-APP, and a formula fits in a URL — so a whole plastron is shareable as one link.
+plastron — cels interlinked. THIS PAGE IS ITS OWN GUIDE, and this same text is
+served as plain text at https://plastron.ca/llms.txt (fetch that if you are an
+agent — it is not buried in the 2.9 MB bundle). A FORMULA IS THE WHOLE APP, and a
+formula fits in a URL — so a whole plastron is shareable as one link.
 
 ────────────────────────────────────────────────────────────────────────────
 DISCOVER EVERYTHING WITH FORMULAS

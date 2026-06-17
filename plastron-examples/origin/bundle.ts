@@ -102,7 +102,21 @@ const sqlInline =
   await Bun.write(HTML, html);
 }
 
+// Emit /llms.txt — the SAME guide as the #llms div, but as a small standalone
+// text/plain resource. The div lives ~2/3 through a ~2.9 MB single-file bundle and
+// is aria-hidden/sr-only, so fetch tools TRUNCATE past it or readability-style
+// extractors STRIP it (this is why Grok couldn't see it). A dedicated llms.txt is
+// the reliable channel: tiny, plain text, nothing to render or strip.
+{
+  const finalHtml = await Bun.file(HTML).text();
+  const m = finalHtml.match(/<div id="llms"[\s\S]*?<pre[^>]*>([\s\S]*?)<\/pre>/);
+  if (!m) throw new Error("bundle: #llms <pre> not found for llms.txt");
+  const txt = m[1]!.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").trim();
+  await Bun.write(join(OUT, "llms.txt"), txt + "\n");
+  console.log(`✔ dist/llms.txt — ${(txt.length / 1024).toFixed(1)} KB`);
+}
+
 const bytes = (await Bun.file(HTML).bytes()).length;
-const leftovers = (await readdir(OUT)).filter((f) => f !== "index.html");
+const leftovers = (await readdir(OUT)).filter((f) => f !== "index.html" && f !== "llms.txt");
 console.log(`✔ dist/index.html — ${(bytes / 1024).toFixed(1)} KB`);
-if (leftovers.length) throw new Error(`bundle: expected a single file, found extra: ${leftovers.join(", ")}`);
+if (leftovers.length) throw new Error(`bundle: expected index.html + llms.txt, found extra: ${leftovers.join(", ")}`);

@@ -58,6 +58,9 @@ jobs:
           cp plastron-examples/plastron-os/dist/index.html deploy/os/index.html
           # static OG/Twitter preview card referenced by index.html's meta tags
           cp plastron-examples/origin/card.png deploy/card.png
+          # llms.txt — the guide as plain text/plain (the #llms div is buried ~2/3
+          # through the 2.9 MB bundle + hidden, so fetch tools truncate/strip it)
+          cp plastron-examples/origin/dist/llms.txt deploy/llms.txt
           # custom domain — tells GitHub Pages to serve + provision a cert for plastron.ca
           echo 'plastron.ca' > deploy/CNAME
 
