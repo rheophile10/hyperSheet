@@ -114,6 +114,18 @@ const sqlInline =
   const txt = m[1]!.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").trim();
   await Bun.write(join(OUT, "llms.txt"), txt + "\n");
   console.log(`✔ dist/llms.txt — ${(txt.length / 1024).toFixed(1)} KB`);
+
+  // ALSO surface the guide at the very TOP of <head> — an inert text/plain block
+  // BEFORE Bun's ~2 MB inlined bundle — so a raw-HTML fetcher with a truncation
+  // cap hits it in the first ~50 KB rather than at byte ~1.96 M. Non-executing
+  // (wrong script type); re-escape any literal </script> so it can't close early.
+  const headBlock =
+    `<script type="text/plain" id="llms-guide" data-see="https://plastron.ca/llms.txt">\n`
+    + txt.replace(/<\/script>/gi, "<\\/script>") + `\n</script>`;
+  let h2 = await Bun.file(HTML).text();
+  if (!/<head[^>]*>/.test(h2)) throw new Error("bundle: <head> not found for the llms head-block");
+  h2 = h2.replace(/<head[^>]*>/, (open) => `${open}\n${headBlock}`);
+  await Bun.write(HTML, h2);
 }
 
 const bytes = (await Bun.file(HTML).bytes()).length;
