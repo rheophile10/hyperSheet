@@ -160,10 +160,10 @@ test("otp never wraps a short pad — it throws (a reused pad would break secrec
 
 test("encodeOtpLink names the method + pad id; parseOtpUrl splits them back", async () => {
   const f = "=99", pad = randomPadFor(f);
-  const { url } = await encodeOtpLink(f, pad, "000042.txt");
-  assert.match(url, new RegExp(`^https://plastron\\.ca/#${OTP_METHOD}=000042_txt\\.`), "method + sanitized padId (. → _)");
+  const { url } = await encodeOtpLink(f, pad, "card.png");
+  assert.match(url, new RegExp(`^https://plastron\\.ca/#${OTP_METHOD}=card\\.png\\.`), "method + padId with its real filename (dots kept)");
   const { padId, payload } = parseOtpUrl(url);
-  assert.equal(padId, "000042_txt", "padId parses out");
+  assert.equal(padId, "card.png", "padId (incl. dot) parses out via last-dot split");
   assert.equal(await otpDecryptPayload(payload, pad), f, "payload from the url decrypts");
   // base:'' → bare relative
   assert.match((await encodeOtpLink(f, pad, "p")).url, /^https/, "default base");

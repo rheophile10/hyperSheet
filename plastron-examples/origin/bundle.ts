@@ -83,11 +83,11 @@ const sqlInline =
 // is a codec demo, not a secret message (the surrounding prose says so). A
 // build-time round-trip guard catches any drift. Falls back to a pointer.
 {
-  const DEMO_FORMULA = `=dom("h2", "🔑 decrypted with the 🐢 card as a one-time pad")`;
+  const DEMO_FORMULA = `=dom("h1", "🐢 turtles all the way down")`;
   let block: string;
   try {
     const card = await Bun.file(join(import.meta.dir, "card.png")).bytes();
-    const { url } = await encodeOtpLink(DEMO_FORMULA, card, "card-png", "https://plastron.ca/");
+    const { url } = await encodeOtpLink(DEMO_FORMULA, card, "card.png", "https://plastron.ca/");
     // round-trip guard: the baked URL MUST decrypt back with the same card bytes.
     const back = await otpDecryptPayload(parseOtpUrl(url).payload, card);
     if (back !== DEMO_FORMULA) throw new Error("otp demo round-trip mismatch");

@@ -699,15 +699,22 @@ const otpDecryptFn: Fn = (url?: unknown): V => {
       [], { change: { dispatch: "origin.otpDecrypt", payload: String(url ?? "") } }),
   ]);
 };
-// otpLoader(padId, payload) — the BOOT view a #otp= URL renders as 元: load the
-// named pad to decrypt the shared plastron (kernel already LOCKED).
-const otpLoaderFn: Fn = (padId?: unknown, payload?: unknown): V =>
-  el("div", { class: "otp-loader" }, [
+// otpLoader(padId, payload, err?) — the BOOT view a #otp= URL renders as 元: load
+// the named pad to decrypt the shared plastron (kernel already LOCKED). On a wrong
+// pad the unlock handler re-renders this with `err` set, so failure is NEVER
+// silent. The dispatch carries padId|ciphertext so the handler can re-render the
+// loader (with the error) without losing what it needs to retry.
+const otpLoaderFn: Fn = (padId?: unknown, payload?: unknown, err?: unknown): V => {
+  const e = String(err ?? "");
+  const kids: V[] = [
     el("h2", {}, [T("🔑 one-time-pad encrypted plastron") as V]),
     el("p", {}, [T(`Load pad “${String(padId ?? "")}” from your vault to decrypt:`) as V]),
     el("input", { class: "otp-pad", type: "file", title: "select your matching pad file" },
-      [], { change: { dispatch: "origin.otpUnlock", payload: String(payload ?? "") } }),
-  ]);
+      [], { change: { dispatch: "origin.otpUnlock", payload: `${String(padId ?? "")}|${String(payload ?? "")}` } }),
+  ];
+  if (e) kids.push(el("p", { class: "otp-err", style: "color:#c0392b;margin-top:.5rem;font-weight:600" }, [T(e) as V]));
+  return el("div", { class: "otp-loader" }, kids);
+};
 
 // handlers (state, payload, event) — read the pad off the file event, do the
 // info-theoretic crypto, surface the result. The pad bytes never leave the page.
@@ -749,13 +756,21 @@ const otpDecryptHandler: Fn = async (state: State, url: unknown, event: unknown)
 const otpUnlockHandler: Fn = async (state: State, payload: unknown, event: unknown) => {
   const picked = await fileBytes(event);
   if (!picked) return state;
+  const s = String(payload ?? "");
+  const bar = s.indexOf("|");                          // padId|ciphertext
+  const padId = bar < 0 ? "" : s.slice(0, bar);
+  const ct = bar < 0 ? s : s.slice(bar + 1);
+  const setValue = resolveFn(state, "setValue") as Fn;
   try {
-    const formula = await otpDecryptPayload(String(payload ?? ""), picked.bytes);
-    await (resolveFn(state, "setValue") as Fn)(state, "元.draft", formula);
-    await commit(state, "元");
+    const formula = await otpDecryptPayload(ct, picked.bytes);
+    await setValue(state, "元.draft", formula);
+    await commit(state, "元");                          // the decrypted formula BECOMES (and runs as) 元
   } catch (e) {
-    await (resolveFn(state, "setValue") as Fn)(state, "元.error", `🔒 ${String((e as { message?: unknown })?.message ?? e)}`);
-    await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+    // NEVER fail silently: re-render the loader WITH the error (and which file
+    // was tried), so a wrong/old pad is obvious and the user can retry.
+    const msg = `🔒 ${String((e as { message?: unknown })?.message ?? e)} — you loaded "${picked.name}" (${picked.bytes.length} bytes)`;
+    await setValue(state, "元.draft", `=otpLoader(${JSON.stringify(padId)}, ${JSON.stringify(ct)}, ${JSON.stringify(msg)})`);
+    await commit(state, "元");
   }
   return state;
 };

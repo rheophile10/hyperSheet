@@ -284,13 +284,15 @@ const OTP_RE = new RegExp(`[#?&]${OTP_METHOD}=([^#?&]+)`);
 export const parseOtpUrl = (input: string): { padId: string; payload: string } => {
   const m = OTP_RE.exec(input);
   const raw = m ? decodeURIComponent(m[1]!) : input;
-  const dot = raw.indexOf(".");
+  // split on the LAST "." — the payload is base64url (never contains a dot), so
+  // this lets padId keep its real filename, e.g. "card.png".
+  const dot = raw.lastIndexOf(".");
   return dot < 0 ? { padId: "", payload: raw } : { padId: raw.slice(0, dot), payload: raw.slice(dot + 1) };
 };
-/** formula + pad + padId → { url, used }. base "" → bare relative #otp=…. padId
- *  must be a simple token (no ".") — it's the pad file's name. */
+/** formula + pad + padId → { url, used }. base "" → bare relative #otp=…. padId is
+ *  the pad FILE's name (dots fine; only fragment-breaking chars are sanitized). */
 export const encodeOtpLink = async (formula: string, pad: Uint8Array, padId: string, base = "https://plastron.ca/"): Promise<{ url: string; used: number }> => {
   const { payload, used } = await otpEncryptPayload(formula, pad);
-  const id = String(padId).replace(/\./g, "_");
+  const id = String(padId).replace(/[#?&\s]/g, "_");
   return { url: `${base}#${OTP_METHOD}=${id}.${payload}`, used };
 };
