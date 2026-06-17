@@ -123,8 +123,11 @@ const sqlInline =
     `<script type="text/plain" id="llms-guide" data-see="https://plastron.ca/llms.txt">\n`
     + txt.replace(/<\/script>/gi, "<\\/script>") + `\n</script>`;
   let h2 = await Bun.file(HTML).text();
-  if (!/<head[^>]*>/.test(h2)) throw new Error("bundle: <head> not found for the llms head-block");
-  h2 = h2.replace(/<head[^>]*>/, (open) => `${open}\n${headBlock}`);
+  // Inject at the sentinel — placed AFTER <meta charset> + the small meta tags so
+  // charset stays in the first 1024 bytes (encoding) and the metas stay early,
+  // but BEFORE Bun's ~2 MB inlined bundle so the guide lands in the first ~50 KB.
+  if (!h2.includes("<!--LLMS_HEAD-->")) throw new Error("bundle: <!--LLMS_HEAD--> sentinel missing from index.html <head>");
+  h2 = h2.replace("<!--LLMS_HEAD-->", headBlock);
   await Bun.write(HTML, h2);
 }
 

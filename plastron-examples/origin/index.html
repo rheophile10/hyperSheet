@@ -3,6 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Agent/LLM hints near the top of <head> — <meta> survives render-extraction
+         (a hidden <div> does not), and /llms.txt is the full plain-text guide. -->
+    <meta name="description" content="plastron — a reactive spreadsheet of cels in one index.html. Encrypted share-links: AES-256-GCM (#aes256gcm=) and unconditional one-time pad (#otp=). Full agent guide as plain text → https://plastron.ca/llms.txt" />
+    <meta name="plastron:guide" content="https://plastron.ca/llms.txt" />
+    <meta name="plastron:examples" content="otp, aes256gcm, cels, files, sql, secrets, charts" />
     <!-- Network-governance Layer 6: CSP is the HARD enforcement under the net
          gate. connect-src pins outbound destinations (a compromised CDN script
          can't fetch arbitrary hosts); script-src omits 'unsafe-eval' so formula
@@ -27,6 +32,7 @@
          ~2.9 MB single-file bundle and is visually hidden, so fetch tools truncate
          or strip it. /llms.txt is the reliable channel: small, text/plain. -->
     <link rel="alternate" type="text/plain" title="plastron — LLM guide" href="/llms.txt" />
+    <!--LLMS_HEAD-->
     <style>
       :root { color-scheme: light dark; }
       * { box-sizing: border-box; }
