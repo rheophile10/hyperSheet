@@ -1,7 +1,7 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, precomputeOptional, resolveFn, createPainter, setPainter } from "../dist/index.js";
-import { documentSegments, isSubstrateSegment } from "../dist/甲骨坑/library/segment-io/index.js";
+import { documentSegments, isSubstrateSegment, dumpArchive, loadArchive } from "../dist/甲骨坑/library/segment-io/index.js";
 
 // segment-io core — the document-segment discriminator (segment-kinds-and-io.md).
 // Export scope is boot-set membership: the bundled substrate (state.segments) is
@@ -52,4 +52,21 @@ test("documentSegments lists runtime-minted segments, never the substrate", asyn
   for (const sub of ["origin", "net", "dom", "windows", "win"]) {
     assert.ok(!docs.includes(sub), `${sub} must not appear in the export set`);
   }
+});
+
+test("dumpArchive → loadArchive round-trips a document segment into a fresh state", async () => {
+  const a = await boot();
+  await a.put('(cels 2 2 "books" (at "A1" "title") (at "B2" 7))', "books_gen");
+  assert.equal(a.state.cels.get("books.B2")?.v, 7, "minted in state A");
+  const archive = dumpArchive(a.state, "books");
+  assert.match(archive, /"books\.B2"/, "the archive carries the segment's cels");
+
+  // hydrate it into a SEPARATE, freshly-booted origin state
+  const b = await boot();
+  assert.equal(b.state.cels.get("books.B2"), undefined, "state B starts without books");
+  const added = await loadArchive(b.state, archive);
+  assert.ok(added.includes("books"), "load reports the segment it installed");
+  assert.equal(b.state.cels.get("books.B2")?.v, 7, "the cel value round-trips");
+  assert.equal(b.state.cels.get("books.A1")?.v, "title", "string cel round-trips");
+  assert.ok(documentSegments(b.state).includes("books"), "and it lands as a document segment");
 });
