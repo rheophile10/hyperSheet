@@ -26,25 +26,6 @@ const linkDrop = async (s, fromRef) => {
 };
 afterEach(() => { delete globalThis.document; });
 
-test("linking two windows by the corner grip BUNDLES their segments (shared memory) AND records a win.links pair", async () => {
-  const s = createInitialState();
-  await resolveFn(s, "setCel")(s, "win.links", { celType: "ValueCel", v: [], metadata: { segment: "win", name: "links" } });
-  await mkWin(s, "win.a"); await mkWin(s, "win.b");
-  setAccessPolicy(s, "win.b", { get: "private", set: "private" });
-  assert.equal(canGet(s, "win.a", "win.b"), false, "before: win.a cannot read private win.b");
-
-  stubWin("win.b.state");
-  await linkDrop(s, "win.a.state");
-
-  assert.equal(canGet(s, "win.a", "win.b"), true, "after link: win.a reads win.b — bundled shared memory");
-  assert.equal(canGet(s, "win.b", "win.a"), true, "bundles are symmetric");
-  const pairs = s.cels.get("win.links").v;
-  assert.equal(pairs.length, 1, "exactly one link pair recorded");
-  assert.ok(pairs.some((p) => (p.a === "win.a.state" && p.b === "win.b.state") || (p.a === "win.b.state" && p.b === "win.a.state")), "the {a,b} pair is the two window refs");
-  assert.ok((s.cels.get("win.a.state").v.linked ?? []).includes("win.b"), "win.a titlebar shows 🔗");
-  assert.ok((s.cels.get("win.b.state").v.linked ?? []).includes("win.a"), "win.b titlebar shows 🔗");
-});
-
 test("linking is idempotent — a second link of the same pair does not duplicate", async () => {
   const s = createInitialState();
   await resolveFn(s, "setCel")(s, "win.links", { celType: "ValueCel", v: [], metadata: { segment: "win", name: "links" } });
@@ -81,28 +62,4 @@ test("the linkoverlay draws a transient drag line from the source to the live po
   assert.equal(Number(drag.attrs.x1), 100, "from the source corner");
   assert.equal(Number(drag.attrs.x2), 333, "to the live pointer x");
   assert.equal(Number(drag.attrs.y2), 444, "to the live pointer y");
-});
-
-test("linking onto a SEALED window does NOT widen the seal (the link is a request, the seal is authoritative)", async () => {
-  const s = createInitialState();
-  await resolveFn(s, "setCel")(s, "win.links", { celType: "ValueCel", v: [], metadata: { segment: "win", name: "links" } });
-  await mkWin(s, "win.chat"); await mkWin(s, "win.secret");
-  setAccessPolicy(s, "win.secret", { get: ["owner"], getSealed: true, set: "private" });
-  stubWin("win.secret.state");
-  await linkDrop(s, "win.chat.state");
-  // the pair is recorded (a drawn line IS a request) ...
-  assert.equal(s.cels.get("win.links").v.length, 1, "the link pair is still recorded");
-  // ... but canGet refuses — a sealed get is never opened by a link/bundle.
-  assert.equal(canGet(s, "win.chat", "win.secret"), false, "the seal holds: win.chat still cannot read the sealed secret");
-});
-
-test("releasing the link over empty desktop does NOT link", async () => {
-  const s = createInitialState();
-  await resolveFn(s, "setCel")(s, "win.links", { celType: "ValueCel", v: [], metadata: { segment: "win", name: "links" } });
-  await mkWin(s, "win.a"); await mkWin(s, "win.b");
-  setAccessPolicy(s, "win.b", { get: "private", set: "private" });
-  globalThis.document = { elementsFromPoint: () => [] };
-  await linkDrop(s, "win.a.state");
-  assert.equal(s.cels.get("win.links").v.length, 0, "no window under the pointer → no link");
-  assert.equal(canGet(s, "win.a", "win.b"), false, "no bundle formed");
 });

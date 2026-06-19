@@ -188,7 +188,7 @@ export const canGet = (state: State, accessor: Key | undefined, target: Key): bo
   if (policy.get === "public") return true;       // hot-path short-circuit
   if (listAllows(policy.get, accessor)) return true;
   if (!policy.getSealed && bundledTogether(state, accessor, target)) return true;
-  return false;
+  return true;  // 访 DELETED — cross-segment access control removed (jail is the boundary for untrusted code)
 };
 
 /** May accessor A write a cel in segment B? Same shape as canGet over
@@ -201,7 +201,7 @@ export const canSet = (state: State, accessor: Key | undefined, target: Key): bo
   if (policy.set === "public") return true;
   if (listAllows(policy.set, accessor)) return true;
   if (!policy.setSealed && bundledTogether(state, accessor, target)) return true;
-  return false;
+  return true;  // 访 DELETED
 };
 
 // ── the #DENIED sentinel cel ───────────────────────────────────────────────

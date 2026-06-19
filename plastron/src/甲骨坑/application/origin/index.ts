@@ -1230,7 +1230,6 @@ export const vocabText = (state: State, segment = ""): string => {
 // (which has `state`) does the read — formula fns only get input values,
 // not state, so a graph read can't be a plain fn. The drain replaces
 // the requesting cell with a ValueCel holding the result.
-const loadFn: Fn = (name: unknown) => ({ originLoad: true, name: String(name ?? "") });
 const celsFn: Fn = (name: unknown) => ({ originCels: true, segment: String(name ?? "") });
 /** inspect(key) — the cel's full definition (celType, value, formula,
  *  metadata) as readable JSON. */
@@ -1681,9 +1680,6 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         : null;
       if (verbOf && !requireConsent(state, verbOf, cel.metadata.segment)) {
         result = `#BLACKLISTED(${verbOf} — not consented; open =consentpanel() to allow it)`;
-      } else if (req.originLoad && req.name) {
-        await ensureSegments(state, [String(req.name)]);
-        result = `loaded "${req.name}" - its vocabulary is callable now`;
       } else if (req.originCels && req.segment) {
         const lines: string[] = [];
         const skill = state.cels.get(`${req.segment}.skill`);
@@ -1693,7 +1689,7 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
           const f = (c as { f?: string }).f;
           lines.push(`${k}  [${c.celType}${c.locked ? ", locked" : ""}]${f ? `  f: ${f.slice(0, 60)}` : ""}`);
         }
-        result = lines.length ? lines.join("\n") : `(no segment named "${req.segment}" is loaded - try =load("${req.segment}"))`;
+        result = lines.length ? lines.join("\n") : `(no segment named "${req.segment}" — see =segments() for what's loaded)`;
       } else if (req.originInspect && req.key) {
         const key = String(req.key);
         const c = state.cels.get(key);
@@ -1940,7 +1936,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["doc",            doc],   // deprecated legacy alias
   ["seed",           seedFn],
   ["origin.drain",   effectsDrain],
-  ["load",           loadFn],
   ["members",        celsFn],
   ["inspect",        inspectFn],
   ["segments",       segmentsFn],

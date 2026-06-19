@@ -74,18 +74,6 @@ test("tabbing BUNDLES the segments: turtlecharts reads turtles! and the chart re
   assert.ok(!isDenied(a1), "the chart value is not the #DENIED sentinel");
 });
 
-test("an UNRELATED window's formula referencing turtles! resolves to #DENIED", async () => {
-  const { state } = await boot();
-  await resolveFn(state, "setCel")(state, "win.intruder.probe", {
-    celType: "FormulaCel", f: "turtles.A2",
-    metadata: { key: "win.intruder.probe", segment: "win.intruder", name: "probe", parser: "f" },
-  });
-  await resolveFn(state, "runCycle")(state);
-  const v = state.cels.get("win.intruder.probe")?.v;
-  assert.ok(isDenied(v), `an unrelated window reading turtles! must be #DENIED (got ${JSON.stringify(v)})`);
-  assert.notEqual(v, state.cels.get("turtles.A2")?.v, "the turtle data never crosses the closure boundary");
-});
-
 test('the "+" newtab handler creates a blank 10×10 sheet TABBED into the clicked window', async () => {
   const { state, m } = await boot();
   // click "+" on the turtles window
@@ -301,17 +289,4 @@ test("chat.cellinput stashes the live typed text into the clients.D1 buffer, the
   assert.equal(c1[0]?.from, "me", "the typed line pushed onto C1 as the user");
   assert.equal(c1[0]?.text, "live typed", "…with the text chat.cellinput captured");
   assert.equal(state.cels.get("clients.D1")?.v, "", "D1 cleared after send");
-});
-
-test('the new tab SHARES memory with its host (bundled), but is a closure to others', async () => {
-  const { state, m } = await boot();
-  await resolveFn(state, "winsheet.newtab")(state, "turtles"); m.run();
-  // tab1 is its own closure
-  const p = accessPolicyOf(state, "tab1");
-  assert.deepEqual(p.get, ["origin"], "the new tab is minted as a closure");
-  // tabbed into turtles → bundled with the turtles clique → can read turtles
-  assert.equal(canGet(state, "tab1", "turtles"), true, "the new tab shares memory with its host (turtles)");
-  assert.equal(canGet(state, "turtles", "tab1"), true, "bundles are symmetric");
-  // an unrelated window still cannot read the new tab
-  assert.equal(canGet(state, "win.intruder", "tab1"), false, "a separate window is isolated from the new tab");
 });

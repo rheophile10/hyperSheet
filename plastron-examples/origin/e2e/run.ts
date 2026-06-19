@@ -254,7 +254,7 @@ await withPage("=checkpoint(\"safe\") does not error", async (page) => {
   eq(await cel(page, "元.error"), null, "no error");
 });
 
-await withPage("=load(\"sheet\") loads a library", async (page) => ok(String(await put(page, '=load("sheet")')).includes("loaded"), "load confirms"));
+await withPage("=segments() lists loaded libraries", async (page) => ok(String(await put(page, "=segments()")).includes("origin"), "segments lists origin"));
 
 await withPage("=grok no-key path is friendly (no network)", async (page) => {
   const v = String(await put(page, '=grok("hi", "")'));

@@ -285,20 +285,7 @@
     "segment": "origin",
     "name": "origin.drain",
     "kind": "native",
-    "description": "(items) - execute load (ensureSegments) and cels (segment listing) requests; result text replaces the request as the cel's value."
-   }
-  },
-  {
-   "key": "load",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "load",
-    "segment": "origin",
-    "name": "load",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(name) - load a library segment (lazy loaders + store)."
+    "description": "(items) - execute cels (segment listing) requests; result text replaces the request as the cel's value."
    }
   },
   {

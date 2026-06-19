@@ -92,15 +92,3 @@ test("the appended state is SCOPED to the chat segment — sealed secrets.* / ot
   assert.ok(!prompt.includes("win.other"), "another window's key is not in the appended state");
   assert.ok(prompt.includes("clients.E1"), "the chat's OWN cells are still listed (scoping, not blanking)");
 });
-
-test("the confined command execution is UNCHANGED — a set-line still edits the scratch cel, a foreign addr still #DENIED", async () => {
-  const state = await armedChat();
-  // a sealed foreign segment the chat must not touch
-  await resolveFn(state, "setCel")(state, "vault.A1", { celType: "ValueCel", v: "KEEP", metadata: { key: "vault.A1", segment: "vault", name: "A1" } });
-  setAccessPolicy(state, "vault", { get: "private", set: "private", setSealed: true });
-  await sendAndCapture(state, "set G1 = banana\nset vault!A1 = pwned");
-  assert.equal(state.cels.get(`${SEG}.G1`)?.v, "banana", "the in-segment set-line still landed");
-  assert.equal(state.cels.get("vault.A1")?.v, "KEEP", "the foreign write was still refused (confinement intact)");
-  const log = state.cels.get(`${SEG}.C1`)?.v ?? [];
-  assert.ok(log.some((m) => /#DENIED/.test(String(m.text))), "a #DENIED note still surfaced");
-});

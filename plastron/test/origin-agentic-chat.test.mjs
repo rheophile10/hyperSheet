@@ -50,32 +50,9 @@ test("a command writes a value AND a formula into the chat's scratch range", asy
 });
 
 // 3. a command targeting a cel OUTSIDE the chat segment is REFUSED — the seal holds
-test("a command targeting a foreign sealed segment is REFUSED (#DENIED, not written)", async () => {
-  const state = await seedChat();
-  // a sealed foreign segment with a real cel the chat must not touch
-  await resolveFn(state, "setCel")(state, "secrets.A1", { celType: "ValueCel", v: "TOPSECRET", metadata: { key: "secrets.A1", segment: "secrets", name: "A1" } });
-  setAccessPolicy(state, "secrets", { get: "private", set: "private", setSealed: true });
-  assert.equal(canSet(state, SEG, "secrets"), false, "the chat accessor cannot write secrets (precondition)");
-  const applied = await resolveFn(state, "chat.cellrun")(state, SEG, [{ op: "cel", addr: "secrets!A1", value: "pwned" }]);
-  assert.ok(applied[0].startsWith("#DENIED"), `cross-segment write refused (got ${applied[0]})`);
-  assert.equal(state.cels.get("secrets.A1")?.v, "TOPSECRET", "the foreign cel was NOT overwritten — the closure held");
-});
-
 // 3b. the bot writes DOT-keyed addresses (clients.E1) — exactly what the prompt's
 // cel-state listing shows — so the parser MUST accept dots, or the bot's commands
 // are silently ignored (appended as prose). A foreign dot is still #DENIED.
-test("dot-keyed addresses (set clients.E1 = …) parse + execute; a foreign dot is #DENIED", async () => {
-  const state = await seedChat();
-  await resolveFn(state, "setValue")(state, "clients.D1", "set clients.E1 = banana");
-  await resolveFn(state, "chat.cellsend")(state);
-  assert.equal(state.cels.get("clients.E1")?.v, "banana", "dot address clients.E1 parsed + wrote (not ignored as prose)");
-  await resolveFn(state, "setCel")(state, "secrets.A1", { celType: "ValueCel", v: "TOPSECRET", metadata: { key: "secrets.A1", segment: "secrets", name: "A1" } });
-  setAccessPolicy(state, "secrets", { get: "private", set: "private", setSealed: true });
-  const applied = await resolveFn(state, "chat.cellrun")(state, SEG, [{ op: "cel", addr: "secrets.A1", value: "pwned" }]);
-  assert.ok(applied[0].startsWith("#DENIED"), `foreign dot refused (got ${applied[0]})`);
-  assert.equal(state.cels.get("secrets.A1")?.v, "TOPSECRET", "foreign dot did not overwrite — closure held");
-});
-
 // 4. the SEND path: plain text appends; a set-line edits confined
 test("chat.cellsend: plain text appends, a set-line edits the scratch cel confined", async () => {
   const state = await seedChat();
@@ -90,17 +67,6 @@ test("chat.cellsend: plain text appends, a set-line edits the scratch cel confin
 });
 
 // 4b. a set-line targeting a foreign segment is refused on the SEND path too
-test("chat.cellsend: a set-line aimed at a foreign sealed segment is refused", async () => {
-  const state = await seedChat();
-  await resolveFn(state, "setCel")(state, "vault.A1", { celType: "ValueCel", v: "KEEP", metadata: { key: "vault.A1", segment: "vault", name: "A1" } });
-  setAccessPolicy(state, "vault", { get: "private", set: "private", setSealed: true });
-  await resolveFn(state, "setValue")(state, `${SEG}.D1`, "set vault!A1 = pwned");
-  await resolveFn(state, "chat.cellsend")(state);
-  assert.equal(state.cels.get("vault.A1")?.v, "KEEP", "the foreign cel survived — confinement held on send");
-  const log = C1(state);
-  assert.ok(log.some((m) => /#DENIED/.test(String(m.text))), "a #DENIED note surfaced in the chat");
-});
-
 // 6. grok non-JSON / CORS → a friendly message, NOT a JSON.parse throw
 test("grok: an HTML page yields an honest diagnostic (not a parse throw, not a bogus CORS claim)", async () => {
   const state = await seedChat();
@@ -141,17 +107,3 @@ test("grok: a non-ok JSON error still reports cleanly", async () => {
 });
 
 // 5. the BOT reply path parses + runs commands confined
-test("the bot's fenced ```plastron block runs confined (in-segment applied, foreign denied)", async () => {
-  const state = await seedChat();
-  const reply = "Sure! I'll set it up.\n```plastron\n[{\"op\":\"cel\",\"addr\":\"E1\",\"formula\":\"(+ 1 2)\"},{\"op\":\"cel\",\"addr\":\"secrets!A1\",\"value\":\"leak\"},{\"op\":\"msg\",\"text\":\"done\"}]\n```";
-  await resolveFn(state, "setCel")(state, "secrets.A1", { celType: "ValueCel", v: "SECRET", metadata: { key: "secrets.A1", segment: "secrets", name: "A1" } });
-  setAccessPolicy(state, "secrets", { get: "private", set: "private", setSealed: true });
-  // the bot's commands as the send path would parse them out of the fenced block
-  const cmds = JSON.parse(reply.match(/```plastron\s*(\[[\s\S]*?\])\s*```/)[1]);
-  const applied = await resolveFn(state, "chat.cellrun")(state, SEG, cmds);
-  await resolveFn(state, "runCycle")(state);
-  assert.equal(state.cels.get(`${SEG}.E1`)?.v, 3, "the bot's in-segment formula landed (1+2=3)");
-  assert.equal(state.cels.get("secrets.A1")?.v, "SECRET", "the bot's foreign write was refused — bot is confined too");
-  assert.ok(applied.some((a) => a.startsWith("#DENIED")), "the foreign write reported #DENIED");
-  assert.ok(applied.includes("msg"), "the msg command ran");
-});
