@@ -52,6 +52,21 @@ test("=import(archive) adds the segment into a fresh sheet (round-trip)", async 
   assert.equal(dst.state.cels.get("books.A1")?.v, "title", "string cel round-trips");
 });
 
+test("=export(seg, 'formula') → the re-minting formula; replays into a fresh sheet", async () => {
+  const a = await boot();
+  await a.put('(cels 2 2 "books" (at "A1" "title") (at "B2" 7))', "books_gen");
+  await a.put('=export("books", "formula")');
+  const formula = a.val();
+  assert.match(formula, /^=cels\("books"/, "a =cels(...) minting formula, not an archive");
+  assert.match(formula, /title/, "carries the cell content");
+
+  // a formula IS the entry gesture — paste it into a cell to replay it
+  const b = await boot();
+  await b.put(formula, "replay");
+  assert.equal(b.state.cels.get("books.B2")?.v, 7, "formula round-trips B2");
+  assert.equal(b.state.cels.get("books.A1")?.v, "title", "and A1");
+});
+
 test("=import refuses a boot-set (substrate) name", async () => {
   const { put, val } = await boot();
   // a hand-built archive claiming the reserved name `net`

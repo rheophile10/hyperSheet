@@ -228,7 +228,7 @@ const seedFn: Fn = () => ({ originSeed: true });
 // export(seg?) — dump a document segment (or, with no arg, the WHOLE document
 // stack) to a lossless 甲骨 archive json STRING. The boot substrate is never
 // included. Paste the string into =import() elsewhere. Formula form = =seed()/=link().
-const exportFn: Fn = (seg?: unknown) => ({ originExport: true, seg: seg == null ? "" : String(seg) });
+const exportFn: Fn = (seg?: unknown, form?: unknown) => ({ originExport: true, seg: seg == null ? "" : String(seg), form: form == null ? "archive" : String(form) });
 // import(src) — load an archive json string (or a =formula) into the document
 // stack: ADD or wholesale-REPLACE same-named segments. Refuses a boot-set name.
 const importFn: Fn = (src?: unknown) => ({ originImport: true, src: String(src ?? "") });
@@ -620,6 +620,24 @@ const buildSeed = (state: State): string => {
   if (parts.length === 0) return "=cels(1, 1)";
   if (parts.length === 1 && parts[0]!.startsWith("cels(")) return "=" + parts[0];
   return "=segment(" + parts.join(", ") + ")";
+};
+
+// segmentFormula(seg) — the minting FORMULA for ONE segment (the per-segment twin
+// of buildSeed). A workbook → =cels(seg, r, c, at(…)); a def → =def(…). Returns ""
+// for a segment with no formula form (e.g. a winapp window — use its archive).
+const segmentFormula = (state: State, seg: string): string => {
+  const arch = collectArchive(state);
+  const cells = arch.cells
+    .filter(([k]) => k.startsWith(seg + ".") && !/^=?\s*seed\s*\(/.test(k))
+    .map(([k, s]) => [k.slice(seg.length + 1), s] as [string, string]);
+  if (cells.length) {
+    const { r, c } = gridDims(cells.map(([a]) => a));
+    const ats = cells.filter(([, s]) => s !== "").map(([a, s]) => `at(${qstr(a)}, ${qstr(s)})`);
+    return `=cels(${qstr(seg)}, ${r}, ${c}${ats.length ? ", " + ats.join(", ") : ""})`;
+  }
+  const def = arch.defs.find(([name]) => name === seg);
+  if (def) return `=def(${qstr(def[0])}, ${qstr(def[1])}, ${qstr(def[2])})`;
+  return "";
 };
 
 const restoreArchive = async (state: State, arch: { cells?: [string, string][]; defs?: [string, string, string][] }): Promise<void> => {
@@ -1775,11 +1793,16 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         result = buildSeed(state); // the whole document as one paste-able formula
 
       } else if (req.originExport) {
-        // archive json of one document segment, or (no arg) the whole document
-        // stack. The boot substrate is never serialised (documentSegments).
+        // archive json (default, lossless) or the re-minting FORMULA, for one
+        // document segment or (no arg) the whole document stack. The boot
+        // substrate is never serialised (documentSegments).
         const seg = String(req.seg ?? "");
+        const form = String(req.form ?? "archive");
         if (seg && isSubstrateSegment(state, seg)) result = `#REFUSED(export: "${seg}" is boot substrate — only document segments export)`;
-        else result = seg ? dumpArchive(state, seg) : dumpSegments(state, documentSegments(state));
+        else if (form === "formula") {
+          if (!seg) result = buildSeed(state); // whole-doc formula = =seed()
+          else { const f = segmentFormula(state, seg); result = f || `#NOFORM("${seg}" has no formula form (e.g. a window) — use =export("${seg}") for its archive)`; }
+        } else result = seg ? dumpArchive(state, seg) : dumpSegments(state, documentSegments(state));
       } else if (req.originImport) {
         const src = String(req.src ?? "").trim();
         if (!src) result = "(import: paste an archive json string, or a =formula)";
@@ -1801,10 +1824,9 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
             result = `imported ${added.join(", ")} (${added.length} segment${added.length > 1 ? "s" : ""})`;
           }
         } else if (src.startsWith("=") || src.startsWith("(")) {
-          // formula form — replay through the commit path; genesis re-mints.
-          await (resolveFn(state, "setValue") as Fn)(state, "元.draft", src);
-          await commit(state, "元");
-          result = "imported (formula replayed into 元)";
+          // a formula IS the entry gesture — paste it into a cell to run it.
+          // =import is for the archive (json) form, which isn't a runnable formula.
+          result = "(that's a formula — paste it into a cell to run it; =import is for archive json `{…}`)";
         } else result = "(import: not an archive json `{…}` or a =formula)";
       } else if (req.originSave) {
         const ls = LS();
