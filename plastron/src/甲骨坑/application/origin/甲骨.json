@@ -868,42 +868,6 @@
    }
   },
   {
-   "key": "origin.captoggle",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.captoggle",
-    "segment": "origin",
-    "name": "origin.captoggle",
-    "kind": "native",
-    "description": "(state, cap) - toggle ONE capability (code/net/storage/secrets) for the SELECTED sheet's segment; the resulting grant shows in the status line. Wired to the 🛡 trust submenu in the desktop's upper-right corner."
-   }
-  },
-  {
-   "key": "trustpanel",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "trustpanel",
-    "segment": "origin",
-    "name": "trustpanel",
-    "kind": "native",
-    "description": "() - open the Trust panel: a draggable window that shows the KERNEL's four capabilities (code/net/storage/secrets), explains each, and grants/revokes them with one click. The master gate — a #f= / #raw= shared link opens with all four OFF. =trustpanel()"
-   }
-  },
-  {
-   "key": "trustdom",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "trustdom",
-    "segment": "origin",
-    "name": "trustdom",
-    "kind": "native",
-    "description": "(view) - render the Trust panel body from a {code,net,storage,secrets} value (the trust.kernel cel). The Grant/Revoke buttons dispatch origin.trustToggle. Used by trustpanel()'s content formula; reference trust.kernel so it re-renders on any grant."
-   }
-  },
-  {
    "key": "consentpanel",
    "celType": "LockedLambdaCel",
    "locked": true,
@@ -950,30 +914,6 @@
     "name": "consentSync",
     "kind": "native",
     "description": "(host) recompute consent.usage = the dangerous functions the live graph references, so the Consent panel re-renders."
-   }
-  },
-  {
-   "key": "origin.trustSync",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.trustSync",
-    "segment": "origin",
-    "name": "origin.trustSync",
-    "kind": "native",
-    "description": "(state) - mirror the live kernel grant into the trust.kernel cel the panel reads. Run at boot and after every grant so the panel shows the truth."
-   }
-  },
-  {
-   "key": "origin.trustToggle",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.trustToggle",
-    "segment": "origin",
-    "name": "origin.trustToggle",
-    "kind": "native",
-    "description": "(state, cap) - flip ONE KERNEL capability (code/net/storage/secrets), then re-sync trust.kernel so the panel re-renders. Wired to the Grant/Revoke buttons in trustpanel()."
    }
   },
   {
@@ -1152,32 +1092,6 @@
    }
   },
   {
-   "key": "trust",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "trust",
-    "segment": "origin",
-    "name": "trust",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(seg, cap, on?) - grant/revoke ONE capability for a segment. cap = code | net | storage | secrets; on defaults true. =trust(\"app1\",\"net\",true) lets app1 reach the network. Reactive — anything that depends on app1's trust re-fires. The grant is still capped by the kernel tier."
-   }
-  },
-  {
-   "key": "trustOf",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "trustOf",
-    "segment": "origin",
-    "name": "trustOf",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(seg) - show a segment's RESOLVED trust (kernel ∧ segment) as a list of granted capabilities, or 'locked' if none."
-   }
-  },
-  {
    "key": "jail",
    "celType": "LockedLambdaCel",
    "locked": true,
@@ -1201,18 +1115,6 @@
     "kind": "native",
     "emitsTo": "origin.effects",
     "description": "(seg, w, h) - set a worksheet window's size in px, so a sheet can lay itself out (e.g. a wide score). winsize(seg, \"max\") (or \"full\"/\"fullscreen\") MAXIMIZES the window to the viewport. Writes win.geom[seg]."
-   }
-  },
-  {
-   "key": "origin.trust",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.trust",
-    "segment": "origin",
-    "name": "origin.trust",
-    "kind": "native",
-    "description": "(state, segment) - cycle a segment's trust preset locked → compute → net → trusted → locked. Wired to the 🛡 badge on the formula bar; the new level shows in the status line."
    }
   },
   {

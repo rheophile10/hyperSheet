@@ -2,7 +2,7 @@ import type {
   甲骨, Cel, ChannelEnqueue, Fn, Key, State, VNode, AttrValue, EventBinding,
 } from "../../../types/index.js";
 import {
-  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, setTrust, resolveTrust, LOCKED_TRUST,
+  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError,
   dangerousUsage, setConsent, DANGEROUS, requireConsent, lockConsent,
 } from "../../../kernel/index.js";
 // Core rendering comes from the dom LIBRARY — the app doesn't re-roll
@@ -755,24 +755,16 @@ const otpUnlockHandler: Fn = async (state: State, payload: unknown, event: unkno
   }
   return state;
 };
-// kernel(seed, preset?) — spawn a QUARANTINED child plastron from a seed formula
-// in a fresh segment. The preset is the child's grant, capped by THIS kernel's
-// trust at resolve time (kernel ∧ segment). A #f= URL is a "locked" seed.
-const TRUST_PRESETS: Record<string, Record<string, unknown>> = {
-  locked:  { code: false, net: false, storage: false, secrets: false, segments: [] },
-  compute: { code: true,  net: false, storage: false, secrets: false, segments: [] },
-  net:     { code: true,  net: true,  storage: false, secrets: false, segments: [] },
-  trusted: { code: true,  net: true,  storage: true,  secrets: true },
-};
+// kernel(seed, preset?) — spawn a child plastron from a seed formula in a fresh
+// segment. Under the consent model a spawned child runs under the SESSION's
+// consent (dangerous verbs gated when the session is locked); the preset arg is
+// kept for compatibility but no longer maps to a per-segment capability grant.
 const kernelFn: Fn = (seed?: unknown, preset?: unknown) =>
   ({ originKernel: true, seed: String(seed ?? ""), preset: preset == null ? "locked" : String(preset) });
-// Spawn a quarantined child: fresh `appN` segment, trust = preset (capped by
-// this kernel at resolve time), seed formula in <seg>.元. Returns the segment.
-const spawnQuarantined = async (state: State, seed: string, preset: string): Promise<string> => {
-  const trust = TRUST_PRESETS[preset] ?? TRUST_PRESETS.locked;
+// Spawn a child: fresh `appN` segment, seed formula in <seg>.元. Returns the segment.
+const spawnQuarantined = async (state: State, seed: string, _preset: string): Promise<string> => {
   let n = 1; while (state.cels.has(`app${n}.元`)) n++;
   const seg = `app${n}`;
-  setTrust(state, seg, trust);
   await (resolveFn(state, "setCel") as Fn)(state, `${seg}.元`,
     { celType: "FormulaCel", f: seed, metadata: { key: `${seg}.元`, segment: seg, parser: "infix" } });
   return seg;
@@ -825,20 +817,12 @@ export const bootFromHash = async (state: State, hash: string): Promise<string |
   else { const m = /[#?&]raw=([^#?&]+)/.exec(h); if (m) formula = decodeURIComponent(m[1]!); }
   if (!formula) return null;
   lockConsent(state);                                                   // provenance = url → CONSENT-lock (dangerous fns need Allow)
-  setTrust(state, "kernel", LOCKED_TRUST);                              // (legacy 信 lock — removed once consent fully replaces it)
-  await trustSync(state);                                               // seed trust.kernel so =trustpanel() shows the locked truth
   await (resolveFn(state, "setValue") as Fn)(state, "元.draft", formula);
   await (resolveFn(state, "origin.commit") as Fn)(state, "元");         // the shared formula IS the view, jailed
   return formula;
 };
-// trust(seg, cap, on) — grant/revoke ONE capability (code/net/storage/secrets)
-// for a segment; reactive (the 信.<seg> cel changes). trustOf(seg) reads the
-// resolved grant. jail(seed) renders a SANDBOXED iframe running seed as its own
-// kernel (the browser's real Layer-A jail).
-const CAPS = ["code", "net", "storage", "secrets"] as const;
-const trustFn: Fn = (seg?: unknown, cap?: unknown, on?: unknown) =>
-  ({ originTrust: true, seg: String(seg ?? ""), cap: String(cap ?? ""), on: on === undefined ? true : !!on });
-const trustOfFn: Fn = (seg?: unknown) => ({ originTrustOf: true, seg: String(seg ?? "") });
+// jail(seed) renders a SANDBOXED iframe running seed as its own kernel (the
+// browser's real Layer-A jail — the boundary for untrusted code).
 const jailFn: Fn = (seed?: unknown) => ({ originJail: true, seed: String(seed ?? "") });
 // winsize(seg, w, h) — set a worksheet window's size (so a sheet can lay itself out).
 const winsizeFn: Fn = (seg?: unknown, w?: unknown, h?: unknown) =>
@@ -847,20 +831,6 @@ const winsizeFn: Fn = (seg?: unknown, w?: unknown, h?: unknown) =>
   (typeof w === "string" && /^(max|full|fullscreen)$/i.test(w.trim())
     ? ({ originWinsize: true, seg: String(seg ?? ""), max: true })
     : ({ originWinsize: true, seg: String(seg ?? ""), w: Number(w) || 0, h: Number(h) || 0 }));
-// origin.trust — the formula-bar 🛡 badge: cycle a segment's preset
-// locked → compute → net → trusted → locked.
-const TRUST_CYCLE = ["locked", "compute", "net", "trusted"] as const;
-const trustCycle: Fn = async (state: State, payload?: unknown): Promise<State> => {
-  const seg = String(payload ?? "");
-  if (seg) {
-    const cur = resolveTrust(state, seg) as Record<string, unknown>;
-    const idx = TRUST_CYCLE.findIndex((p) => CAPS.every((c) => !!(TRUST_PRESETS[p] as Record<string, unknown>)[c] === !!cur[c]));
-    const next = TRUST_CYCLE[(idx + 1) % TRUST_CYCLE.length]!;
-    setTrust(state, seg, TRUST_PRESETS[next]!);
-    await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 ${seg}: ${next}`]]);
-  }
-  return state;
-};
 // origin.download — drop the running plastron out as a single self-contained
 // 龜甲.html (the pristine served bundle; falls back to the live DOM). Wired to
 // the ⬇ 龜甲 button in the desktop's upper-right.
@@ -959,60 +929,6 @@ const playmelody: Fn = async (state: State, payload?: unknown): Promise<State> =
   notes.forEach((freq, i) => g.setTimeout?.(() => play(state, { freq, duration: 260, type: "triangle", gain: 0.32 }), i * 260));
   return state;
 };
-// origin.captoggle — the per-capability trust submenu: flip ONE capability for
-// the SELECTED sheet's segment; the resulting grant shows in the status line.
-const captoggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
-  const c = String(cap ?? "");
-  if ((CAPS as readonly string[]).includes(c)) {
-    const sel = String(state.cels.get("元.selected")?.v ?? "元");
-    const seg = sel.split(".")[0] || "元";
-    const cur = resolveTrust(state, seg) as Record<string, unknown>;
-    setTrust(state, seg, { [c]: !cur[c] });
-    const t = resolveTrust(state, seg) as Record<string, unknown>;
-    await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 ${seg}: ${CAPS.filter((x) => t[x]).join(", ") || "locked"}`]]);
-  }
-  return state;
-};
-
-// ── trust panel: a window to view + grant the kernel's capabilities ─────────
-// The KERNEL tier is the master gate (a #f= / #raw= shared link boots it LOCKED).
-// The panel reads `trust.kernel` — a ValueCel the handlers below keep in step
-// with the live kernel grant — so `(trustdom trust.kernel)` re-renders the moment
-// a capability flips. Graph reactivity, no manual repaint: the toggle writes
-// trust.kernel, the content formula depends on it, runCycle does the rest.
-const CAP_DOC: Record<string, { icon: string; title: string; about: string }> = {
-  code:    { icon: "⚙",  title: "Code",    about: "Compile + run code (JS / Python / WASM). Off: only built-in verbs evaluate — no new lambdas run." },
-  net:     { icon: "🌐", title: "Network", about: "Outbound requests — =fetch / =chat / =claude / =grok (only to CSP-allowed hosts). Off: every network call is blocked at the gate." },
-  storage: { icon: "💾", title: "Storage", about: "Read + write local data — OPFS files, =save / =open. Off: nothing persists to or loads from disk." },
-  secrets: { icon: "🔑", title: "Secrets", about: "Use stored API keys via =apiKey. Off: secret values stay sealed and unreadable." },
-};
-
-// trustdom(view) — render the panel from a {code,net,storage,secrets} value.
-// Pure (gets the value, not state); the Grant/Revoke buttons dispatch
-// origin.trustToggle, which flips the kernel grant and re-syncs trust.kernel.
-const trustdomFn: Fn = ((view: unknown): V => {
-  const t = (view && typeof view === "object" ? view : {}) as Record<string, unknown>;
-  const row = (cap: string): V => {
-    const on = t[cap] === true;
-    const d = CAP_DOC[cap]!;
-    return el("div", { style: "display:flex;gap:.55rem;align-items:flex-start;padding:.5rem .35rem;border-bottom:1px solid #8882" }, [
-      el("div", { style: "font-size:1.15rem;flex:0 0 auto;width:1.5rem;text-align:center" }, [T(d.icon)]),
-      el("div", { style: "flex:1 1 auto;min-width:0" }, [
-        el("div", { style: "font:600 .85rem ui-monospace,monospace" }, [T(`${d.title}  `),
-          el("span", { style: `font-weight:600;color:${on ? "#1a9c4e" : "#b1442f"}` }, [T(on ? "GRANTED" : "blocked")])]),
-        el("div", { style: "font:12px/1.45 system-ui,sans-serif;opacity:.82;margin-top:.15rem" }, [T(d.about)]),
-      ]),
-      el("button", { class: "trust-toggle", "data-cap": cap, style: `flex:0 0 auto;align-self:center;padding:.3rem .65rem;border:1px solid ${on ? "#b1442f88" : "#1a9c4e88"};border-radius:.4rem;background:Canvas;color:CanvasText;cursor:pointer;font:600 .75rem ui-monospace,monospace` },
-        [T(on ? "Revoke" : "Grant")], { click: { dispatch: "origin.trustToggle", payload: cap } }),
-    ]);
-  };
-  return el("div", { class: "trust-panel", style: "font:13px/1.5 system-ui,sans-serif;padding:.1rem .25rem" }, [
-    el("p", { style: "margin:.2rem .2rem .5rem;opacity:.85" }, [T("KERNEL permissions — the master gate for everything on this page. A shared #f= / #raw= link opens with all four OFF; grant only what you trust this plastron to do.")]),
-    ...CAPS.map((c) => row(c)),
-    el("p", { style: "margin:.55rem .2rem;font:11px/1.4 ui-monospace,monospace;opacity:.6" }, [T("=trustpanel() reopens this · the 🛡 formula-bar badge cycles presets · a grant applies to formulas you (re)run next.")]),
-  ]);
-}) as Fn;
-
 // ── consent panel — the UI for the consent model (will replace the 🛡 trust
 // panel). Lists the dangerous fns the live graph references, each toggleable.
 // origin.consentSync recomputes the usage cel the panel renders from.
@@ -1059,27 +975,6 @@ const consentpanelFn: Fn = (((): unknown => {
     [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f" } },
   } };
 })) as Fn;
-
-// trustpanel() — open the panel as a draggable window (the winapp idiom: a state
-// cel + a content formula that REFERENCES trust.kernel + the winframe wrapper).
-const trustpanelFn: Fn = ((): unknown => {
-  const lay = "win.trust", sref = `${lay}.state`, cref = `${lay}.content`;
-  return { genesis: true, layer: lay, cels: {
-    [sref]: { celType: "ValueCel", v: { ref: sref, x: 96, y: 84, w: 430, h: 380, z: 1, min: 0, max: 0, closed: 0, title: "🛡 Trust" }, metadata: { name: "state" } },
-    [cref]: { celType: "FormulaCel", f: "(trustdom trust.kernel)", metadata: { name: "content", parser: "f" } },
-    [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f" } },
-  } };
-}) as Fn;
-
-// origin.trustSync — mirror the live kernel grant into trust.kernel (the cel the
-// panel reads). Run at boot AND after every grant, so the panel shows the truth.
-const trustSync: Fn = async (state: State): Promise<State> => {
-  const k = resolveTrust(state, undefined) as Record<string, unknown>;
-  const v = { code: !!k.code, net: !!k.net, storage: !!k.storage, secrets: !!k.secrets };
-  if (state.cels.has("trust.kernel")) await (resolveFn(state, "setValue") as Fn)(state, "trust.kernel", v);
-  else await (resolveFn(state, "setCel") as Fn)(state, "trust.kernel", { celType: "ValueCel", v, metadata: { key: "trust.kernel", segment: "origin", name: "kernel" } });
-  return state;
-};
 
 // ── viewport — reactive page metrics. Formulas reference the cels (viewport.w /
 // viewport.h / viewport.mobile / viewport.orient) and re-run on resize, so a
@@ -1168,19 +1063,6 @@ const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> =
   return state;
 }) as Fn;
 
-// origin.trustToggle — flip ONE kernel capability (the Grant/Revoke buttons
-// dispatch here with the cap name), then re-sync so the panel re-renders.
-const trustToggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
-  const c = String(cap ?? "");
-  if ((CAPS as readonly string[]).includes(c)) {
-    const cur = resolveTrust(state, undefined) as Record<string, unknown>;
-    setTrust(state, "kernel", { [c]: !cur[c] });
-    await trustSync(state);
-    const t = resolveTrust(state, undefined) as Record<string, unknown>;
-    await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 kernel: ${CAPS.filter((x) => t[x]).join(", ") || "locked"}`]]);
-  }
-  return state;
-};
 // origin.demoMusic — open the Symphony-of-Cels example (score + keyboard +
 // melody worksheets) from the stored 音.demo formula, so it loads with one
 // click instead of a fragile copy-pasted URL.
@@ -1917,15 +1799,6 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const preset = String(req.preset ?? "locked");
         const seg = await spawnQuarantined(state, String(req.seed ?? ""), preset);
         result = `spawned "${seg}" (${preset}) — a quarantined plastron; its cells live under ${seg}.*`;
-      } else if (req.originTrust) {
-        const cap = String(req.cap);
-        if ((CAPS as readonly string[]).includes(cap)) {
-          setTrust(state, String(req.seg), { [cap]: !!req.on });
-          result = `${req.seg}: ${cap} ${req.on ? "granted" : "revoked"}`;
-        } else result = `#DENIED(trust: unknown capability "${cap}" — use code/net/storage/secrets)`;
-      } else if (req.originTrustOf) {
-        const t = resolveTrust(state, String(req.seg)) as Record<string, unknown>;
-        result = `${req.seg}: ${CAPS.filter((c) => t[c]).join(", ") || "locked"}`;
       } else if (req.originWinsize) {
         const gm = { ...((state.cels.get("win.geom")?.v as Record<string, Record<string, unknown>>) ?? {}) };
         const seg = String(req.seg);
@@ -2092,20 +1965,12 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.otpDecrypt", otpDecryptHandler],
   ["origin.otpUnlock",  otpUnlockHandler],
   ["kernel",         kernelFn],
-  ["trust",          trustFn],
-  ["trustOf",        trustOfFn],
   ["jail",           jailFn],
   ["winsize",        winsizeFn],
-  ["origin.trust",   trustCycle],
-  ["origin.captoggle", captoggle],
-  ["trustdom", trustdomFn],
-  ["trustpanel", trustpanelFn],
   ["consentdom", consentdomFn],
   ["consentpanel", consentpanelFn],
   ["origin.consentToggle", consentToggle],
   ["origin.consentSync", consentSync],
-  ["origin.trustSync", trustSync],
-  ["origin.trustToggle", trustToggle],
   ["origin.savepage", download],
   ["origin.tone",    tone],
   ["origin.music",   music],

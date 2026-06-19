@@ -22,12 +22,6 @@ export {
 } from "./access.js";
 export type { AccessPolicy, AccessList } from "./access.js";
 export {
-  resolveTrust, kernelTrust, canUse, trustAllowsReach, setTrust,
-  extractNeeds, grantDelta, CAPABILITIES, FULL_TRUST, LOCKED_TRUST,
-  TRUST_KERNEL_KEY, trustKeyOf,
-} from "./trust.js";
-export type { Trust, Capability } from "./trust.js";
-export {
   DANGEROUS, isDangerous, isConsented, requireConsent, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
 } from "./consent.js";
 export type { DangerCategory, DangerSpec, ConsentGrant, DangerUse } from "./consent.js";

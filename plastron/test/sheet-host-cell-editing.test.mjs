@@ -141,7 +141,7 @@ test("double-click: opens the inline editor for the cell", async () => {
 
 // ── 3) the fire (gun) button ──────────────────────────────────────────────────
 
-test("fire: the bar's lightning-bolt (SVG) button dispatches origin.fire; bar order is [🛡 trust][W wiki][bolt][textarea]", async () => {
+test("fire: the bar's lightning-bolt (SVG) button dispatches origin.fire; bar order is [W wiki][bolt][textarea]", async () => {
   const { state, root, m } = await boot();
   await resolveFn(state, "origin.select")(state, "turtles.B4"); m.run();
   const bar = fxbarOf(root, "turtles");
@@ -152,13 +152,13 @@ test("fire: the bar's lightning-bolt (SVG) button dispatches origin.fire; bar or
   assert.ok(svg, "the fire button holds an inline <svg> bolt (not the emoji)");
   assert.ok(walk(svg, (n) => n.tag === "path" && !!n.attrs?.d)[0], "the svg has a <path> with a d");
   assert.ok(!/🔫/.test(txt(fire)), "no water-pistol emoji");
-  // left-to-right order in the bar: 🛡 trust, W wiki, fire, then the textarea
+  // left-to-right order in the bar: W wiki, fire, then the textarea (the 🛡 trust
+  // badge was removed with the 信 model — security is the session consent panel).
   const kids = bar.childNodes.filter((n) => n.nodeType === 1);
   const cls = (n) => String(n.attrs?.class ?? "");
-  assert.ok(cls(kids[0]).includes("pl-fxbar-trust"), "🛡 trust badge is leftmost");
-  assert.ok(cls(kids[1]).includes("pl-fxbar-wiki"), "W wiki is next");
-  assert.ok(cls(kids[2]).includes("pl-fxbar-fire"), "fire is next");
-  assert.ok(cls(kids[3]).includes("pl-fxbar-input"), "the formula textarea is last");
+  assert.ok(cls(kids[0]).includes("pl-fxbar-wiki"), "W wiki is leftmost");
+  assert.ok(cls(kids[1]).includes("pl-fxbar-fire"), "fire is next");
+  assert.ok(cls(kids[2]).includes("pl-fxbar-input"), "the formula textarea is last");
   // spy on origin.fire — clicking the button must dispatch it with the selected key
   const cel = state.cels.get("origin.fire");
   let fired = null;
