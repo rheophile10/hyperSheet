@@ -1,4 +1,4 @@
-import type { State, Key, Cel } from "../../../types/index.js";
+import type { State, Key } from "../../../types/index.js";
 import { resolveFn, dehydrate, getSegmentManifest, setSegmentManifest, segmentEntries } from "../../../kernel/index.js";
 
 // segment-io — consolidated serialize/transport for SEGMENTS (segment-kinds-and-io.md,
@@ -33,14 +33,11 @@ export const isSubstrateSegment = (state: State, name: Key): boolean => {
  *  this heuristic. */
 export const documentSegments = (state: State): Key[] => {
   const owned = new Set<Key>();
-  // imported segments carry a role:"user" manifest (loadArchive registers one)
+  // The uniform rule (segment-nav-and-memory.md keystone): a document segment is
+  // any registered segment with role "user" — minted (genesis registers a
+  // {kind, role:user} manifest) AND imported (loadArchive does too). No heuristic.
   for (const [name, m] of segmentEntries(state) as Iterable<[Key, { role?: string }]>) {
     if (m?.role === "user") owned.add(name);
-  }
-  // freshly-minted segments (genesis) carry generatedBy on their cels, no manifest
-  for (const [, c] of state.cels as Map<Key, Cel>) {
-    const md = c.metadata as { segment?: Key; generatedBy?: unknown } | undefined;
-    if (md?.segment && md?.generatedBy != null) owned.add(md.segment);
   }
   return [...owned].sort();
 };

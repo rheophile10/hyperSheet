@@ -66,13 +66,18 @@ export interface WasmWinOpts { x?: number; y?: number; w?: number; h?: number; j
  *  cel (in-process) the canvas binds to; `opts.jail` + `opts.seed` instead embeds
  *  a jail iframe running `seed` (isolated). Seeds the bridge cels (.in/.out/.active)
  *  the graph and key router use. */
-export const wasmwinGenesis = (id: string, title: string, engineCel: string, opts: WasmWinOpts = {}): { genesis: true; layer: Key; cels: Record<Key, CelSpec> } => {
+export const wasmwinGenesis = (id: string, title: string, engineCel: string, opts: WasmWinOpts = {}): { genesis: true; kind: string; layer: Key; cels: Record<Key, CelSpec> } => {
   const L = lay(id), sref = `${L}.state`, cref = `${L}.content`;
   const t = String(title ?? id).replace(/"/g, "'");
+  // the canvas is a STATIC dom element (the engine draws to its 2d context
+  // imperatively + grabs it by id) — so the content formula does NOT reference the
+  // (not-yet-existing) engine cel, which would error and render nothing. engineCel
+  // is kept in the signature for callers that want a reactive binding.
+  void engineCel;
   const body = opts.jail
     ? `(jail "${String(opts.seed ?? "").replace(/"/g, "'")}")`
-    : `(wasmcanvas "${id}" ${engineCel} ${L}.active)`;
-  return { genesis: true, layer: L, cels: {
+    : `(wasmcanvas "${id}")`;
+  return { genesis: true, kind: opts.jail ? "jail" : "wasm", layer: L, cels: {
     [sref]: { celType: "ValueCel", v: { ref: sref, x: opts.x ?? 90, y: opts.y ?? 70, w: opts.w ?? 640, h: opts.h ?? 420, z: 1, min: 0, max: 0, closed: 0, title: t }, metadata: { name: "state" } },
     [`${L}.in`]:     { celType: "ValueCel", v: null, metadata: { name: "in", segment: L } },   // graph → engine (+ keystrokes)
     [`${L}.out`]:    { celType: "ValueCel", v: null, metadata: { name: "out", segment: L } },  // engine → graph

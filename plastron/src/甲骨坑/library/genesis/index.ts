@@ -3,6 +3,7 @@ import type {
 } from "../../../types/index.js";
 import {
   bindNativeFns, resolveFn, retireCel, precompute, runCascade, affectedFor,
+  getSegmentManifest, setSegmentManifest,
   appendError, makeCelError, isCelError,
 } from "../../../kernel/index.js";
 type AccessPolicy = Record<string, unknown>;  // (vestigial: req.access/mints shape; no longer applied)
@@ -51,6 +52,7 @@ interface CelSpecish {
 interface GenesisRequest {
   genesis: true;
   layer?: string;
+  kind?: string;                           // the segment KIND a layered mint registers (workbook/winapp/wasm/jail/…)
   overwrite?: boolean;
   access?: Partial<AccessPolicy>;          // minting: the new segment's policy (default public-get/private-set)
   reassert?: boolean;                      // re-write the policy on every regen (default: write-once)
@@ -91,6 +93,19 @@ const drain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<v
 
     // (the 访 access-policy minting was removed — segments are no longer closures;
     // req.access / req.mints are accepted for compatibility but no longer applied.)
+
+    // REGISTER the minted segment (segment-nav-and-memory.md keystone): a layered
+    // genesis is a real document segment — give it a `冊` manifest {kind, role:user}
+    // so it's a `state.segments` member: segments() lists it, wake/sleep manage it,
+    // documentSegments/the boot-set guard use the registry not a heuristic. Idempotent
+    // (write-once; regeneration keeps the manifest). Composed parts (mints) each register.
+    const register = (name: Key, kind: string): void => {
+      if (!getSegmentManifest(state, name)) {
+        setSegmentManifest(state, { name, version: "0.0.0", description: `${kind} (minted)`, dependencies: [], role: "user", kind } as never);
+      }
+    };
+    if (req.layer) register(req.layer, String(req.kind ?? "document"));
+    if (req.mints) for (const part of Object.keys(req.mints)) register(part, "document");
 
     // current owned set
     const owned = new Map<Key, Cel>();

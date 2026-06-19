@@ -464,7 +464,7 @@ const appFn: Fn = ((id: unknown, title: unknown, contentSource: unknown, linked?
   // link, the seeded twin of winx.drop's runtime bundling. Pure cosmetic
   // indicator; no bundle is granted.
   const link = linkList(linked);
-  return { genesis: true, layer: lay, cels: {
+  return { genesis: true, kind: "winapp", layer: lay, cels: {
     [sref]: { celType: "ValueCel", v: { ref: sref, x: dx, y: dy, w: 440, h: 320, z: 1, min: 0, max: 0, closed: 0, title: t, ...(link && link.length ? { linked: link } : {}) }, metadata: { name: "state" } },
     [cref]: { celType: "FormulaCel", f: src, metadata: { name: "content", parser } },
     [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f" } },
