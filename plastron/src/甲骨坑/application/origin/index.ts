@@ -15,6 +15,7 @@ import { el as makeEl, text as T } from "../../library/dom/index.js";
 import { openAsSheet } from "../../library/sheet-host/index.js";
 import { BUILTIN_DOCS } from "../../library/sheet/utils/infix.js";
 import { encodeLink, decodeLink, encodeEncLink, decodeEncLink, ENC_METHOD,
+  encryptPayload, decryptPayload,
   encodeOtpLink, otpDecryptPayload, parseOtpUrl, OTP_METHOD, type LinkCodec } from "./share-link.js";
 import seed from "./甲骨.json" with { type: "json" };
 
@@ -228,10 +229,11 @@ const seedFn: Fn = () => ({ originSeed: true });
 // export(seg?) — dump a document segment (or, with no arg, the WHOLE document
 // stack) to a lossless 甲骨 archive json STRING. The boot substrate is never
 // included. Paste the string into =import() elsewhere. Formula form = =seed()/=link().
-const exportFn: Fn = (seg?: unknown, form?: unknown) => ({ originExport: true, seg: seg == null ? "" : String(seg), form: form == null ? "archive" : String(form) });
-// import(src) — load an archive json string (or a =formula) into the document
-// stack: ADD or wholesale-REPLACE same-named segments. Refuses a boot-set name.
-const importFn: Fn = (src?: unknown) => ({ originImport: true, src: String(src ?? "") });
+const exportFn: Fn = (seg?: unknown, form?: unknown, pass?: unknown) => ({ originExport: true, seg: seg == null ? "" : String(seg), form: form == null ? "archive" : String(form), pass: pass == null ? "" : String(pass) });
+// import(src, pass?) — load an archive json string (or an aes256gcm:… blob with
+// the passphrase) into the document stack: ADD or wholesale-REPLACE same-named
+// segments. Refuses a boot-set name. A =formula is the entry gesture (paste it).
+const importFn: Fn = (src?: unknown, pass?: unknown) => ({ originImport: true, src: String(src ?? ""), pass: pass == null ? "" : String(pass) });
 
 // ── the entry gesture ────────────────────────────────────────────────────────
 
@@ -1802,12 +1804,29 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         else if (form === "formula") {
           if (!seg) result = buildSeed(state); // whole-doc formula = =seed()
           else { const f = segmentFormula(state, seg); result = f || `#NOFORM("${seg}" has no formula form (e.g. a window) — use =export("${seg}") for its archive)`; }
-        } else result = seg ? dumpArchive(state, seg) : dumpSegments(state, documentSegments(state));
+        } else {
+          const archive = seg ? dumpArchive(state, seg) : dumpSegments(state, documentSegments(state));
+          if (form === "encrypt") {
+            const pass = passOf(req.pass, "passphrase to encrypt with");
+            result = pass ? `${ENC_METHOD}:${await encryptPayload(archive, pass)}` : "#DENIED(export: a passphrase is required — =export(seg, \"encrypt\", \"secret\"))";
+          } else result = archive;
+        }
       } else if (req.originImport) {
         const src = String(req.src ?? "").trim();
-        if (!src) result = "(import: paste an archive json string, or a =formula)";
-        else if (src.startsWith("{")) {
-          const names = archiveSegmentNames(src);
+        // resolve the archive json: plain `{…}`, or an aes256gcm:… blob (decrypt
+        // with the passphrase). A =formula is the entry gesture (paste it).
+        let json: string | null = null;
+        if (!src) result = "(import: paste an archive json `{…}`, an aes256gcm:… blob, or a =formula)";
+        else if (src.startsWith(`${ENC_METHOD}:`)) {
+          const pass = passOf(req.pass, "passphrase to decrypt the import");
+          if (!pass) result = "#DENIED(import: this is encrypted — pass the passphrase: =import(blob, \"secret\"))";
+          else { try { json = await decryptPayload(src.slice(ENC_METHOD.length + 1), pass); } catch { result = "#DENIED(import: wrong passphrase or corrupt blob)"; } }
+        } else if (src.startsWith("{")) json = src;
+        else if (src.startsWith("=") || src.startsWith("(")) result = "(that's a formula — paste it into a cell to run it; =import is for archive json / aes blobs)";
+        else result = "(import: not an archive json `{…}`, an aes256gcm:… blob, or a =formula)";
+
+        if (json !== null) {
+          const names = archiveSegmentNames(json);
           const blocked = names.filter((n) => isSubstrateSegment(state, n));
           if (!names.length) result = "(import: not a valid 甲骨 archive)";
           else if (blocked.length) result = `#REFUSED(import: ${blocked.join(", ")} ${blocked.length > 1 ? "are reserved boot-set names" : "is a reserved boot-set name"} — can't overwrite the substrate)`;
@@ -1819,15 +1838,11 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
             for (const k of [...state.cels.keys()]) {
               if (incoming.has(state.cels.get(k)?.metadata.segment as Key)) retireCel(state, k, stale);
             }
-            const added = await loadArchive(state, src);
+            const added = await loadArchive(state, json);
             await (resolveFn(state, "runCycle") as Fn)(state);
             result = `imported ${added.join(", ")} (${added.length} segment${added.length > 1 ? "s" : ""})`;
           }
-        } else if (src.startsWith("=") || src.startsWith("(")) {
-          // a formula IS the entry gesture — paste it into a cell to run it.
-          // =import is for the archive (json) form, which isn't a runnable formula.
-          result = "(that's a formula — paste it into a cell to run it; =import is for archive json `{…}`)";
-        } else result = "(import: not an archive json `{…}` or a =formula)";
+        }
       } else if (req.originSave) {
         const ls = LS();
         if (!ls) result = "(no localStorage here)";

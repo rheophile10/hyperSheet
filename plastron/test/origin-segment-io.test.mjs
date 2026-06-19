@@ -67,6 +67,24 @@ test("=export(seg, 'formula') → the re-minting formula; replays into a fresh s
   assert.equal(b.state.cels.get("books.A1")?.v, "title", "and A1");
 });
 
+test("=export(seg, 'encrypt', pass) → an aes blob; =import(blob, pass) round-trips; wrong pass fails", async () => {
+  const a = await boot();
+  await a.put('(cels 2 2 "books" (at "B2" 7))', "books_gen");
+  await a.put('=export("books", "encrypt", "hunter2")');
+  const blob = a.val();
+  assert.match(blob, /^aes256gcm:/, "an encrypted, self-describing blob");
+  assert.ok(!/"books\.B2"/.test(blob), "the archive is NOT in cleartext");
+
+  const b = await boot();
+  await b.put(`=import('${blob}', "wrongpass")`);
+  assert.match(b.val(), /#DENIED/, "wrong passphrase is rejected");
+  assert.equal(b.state.cels.get("books.B2"), undefined, "nothing imported on bad pass");
+
+  await b.put(`=import('${blob}', "hunter2")`);
+  assert.match(b.val(), /imported books/, "right passphrase imports");
+  assert.equal(b.state.cels.get("books.B2")?.v, 7, "decrypted archive round-trips");
+});
+
 test("=import refuses a boot-set (substrate) name", async () => {
   const { put, val } = await boot();
   // a hand-built archive claiming the reserved name `net`
