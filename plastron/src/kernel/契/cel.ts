@@ -14,7 +14,6 @@ import { flushChannels } from "./flush-channels.js";
 import { isCelError } from "../cel-error.js";
 import { assertOneDirection, specTouchesEdges } from "../segments/edge-rule.js";
 import { assertNotDormant } from "../segments/dormant.js";
-import { canSet, currentAccessor } from "../segments/access.js";
 
 // ============================================================================
 // Cel-plane writes — the recompile tier.
@@ -58,20 +57,7 @@ const applySpec = async (
   assertNotDormant(state, key, "setCel");
   const existing = state.cels.get(key);
   if (existing?.locked) throw new Error(`setCel: cel "${key}" is locked`);
-
-  // SET choke point — a structural write into segment B by accessor A is
-  // refused unless A ∈ B.set. The target segment is the existing cel's
-  // segment, or (for a create) the segment the spec names. Top-level/host
-  // (no accessor) is privileged.
-  const accessor = currentAccessor(state);
-  const targetSegment =
-    existing?.metadata.segment ?? (spec.metadata?.segment as Key | undefined) ?? "default";
-  if (!canSet(state, accessor, targetSegment)) {
-    throw new Error(
-      `setCel: segment "${accessor}" may not write cel "${key}" in ` +
-      `segment "${targetSegment}" (set policy refuses it)`,
-    );
-  }
+  // (the 访 SET choke point was removed — cross-segment structural writes are open.)
 
   // ── Metadata edit ──────────────────────────────────────────────────
   if (spec.celType === undefined) {

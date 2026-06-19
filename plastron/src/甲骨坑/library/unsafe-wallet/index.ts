@@ -1,7 +1,7 @@
 import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
 import {
   bindNativeFns, ensureSegments, resolveFn, secretHandle,
-  setAccessPolicy, hasDeclaredPolicy, currentAccessor, accessPolicyOf, requireConsent,
+  currentAccessor, requireConsent,
 } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
@@ -51,7 +51,6 @@ const GEN_KEY = "secretsGen" as const;
 // read a stored secret. `clients` (clientsheet's makeclient cels) is the seed
 // reader; getSealed makes the segment encrypt at rest; set: "private" keeps
 // the data-plane writes top-level/privileged only.
-const SECRETS_POLICY = { get: ["clients"], getSealed: true, set: "private" as const };
 const secretKey = (name: string): string => `${SECRETS_SEGMENT}.${name}`;
 
 // ── module-scope runtime state (host-held; never dehydrated; the seal lib
@@ -111,13 +110,9 @@ const ensureIdentity = async (state: State): Promise<void> => {
 };
 
 // ── secrets segment + cels ──────────────────────────────────────────────────
-// Mint the sealed `secrets` segment policy once (idempotent). Declaring the
-// policy is what makes Layer 1 gate reads and Layer 2 seal at rest.
-const ensureSecretsPolicy = (state: State): void => {
-  if (!hasDeclaredPolicy(state, SECRETS_SEGMENT)) {
-    setAccessPolicy(state, SECRETS_SEGMENT, SECRETS_POLICY);
-  }
-};
+// (the 访 sealed-policy was removed; secret cels now carry metadata.sealed so
+// Layer 2 seals them at rest, and apiKey gates reads via consent.)
+const ensureSecretsPolicy = (_state: State): void => {};
 
 // bumpGen — advance the secretsGen version cel. apiKey() reads secrets
 // INTERNALLY (a native verb, no formula-dep edge), so a key change wouldn't
@@ -142,7 +137,7 @@ const storeSecret = async (state: State, name: string, secret: string): Promise<
   } else {
     await (resolveFn(state, "setCel") as Fn)(state, key, {
       celType: "ValueCel", v: secret,
-      metadata: { key, segment: SECRETS_SEGMENT, name },
+      metadata: { key, segment: SECRETS_SEGMENT, name, sealed: true }, // sealed at rest (Layer 2)
     });
   }
   (names ??= new Set()).add(name);
@@ -540,4 +535,3 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
 
 // silence "declared but never read" for the accessor introspection import kept
 // for documentation/debug parity with the access module.
-void accessPolicyOf;

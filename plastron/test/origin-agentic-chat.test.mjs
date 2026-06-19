@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
-import { createInitialState, resolveFn, setAccessPolicy, canSet } from "../dist/index.js";
+import { createInitialState, resolveFn } from "../dist/index.js";
 
 // ============================================================================
 // origin-agentic-chat — the boot chat (the clients sheet: C1 history, D1 entry,
@@ -21,7 +21,6 @@ const seedChat = async () => {
     await setCel(state, `${SEG}.${addr}`, { celType: "ValueCel", v, metadata: { key: `${SEG}.${addr}`, segment: SEG, name: addr } });
   }
   // the chat is a sealed closure: only itself writes its cels.
-  setAccessPolicy(state, SEG, { get: ["origin"], set: "private" });
   return state;
 };
 const C1 = (state) => state.cels.get(`${SEG}.C1`)?.v ?? [];

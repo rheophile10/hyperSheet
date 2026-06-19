@@ -10,7 +10,7 @@ import { hasHooksOrCache as hooked, makeLambdaTrampoline } from "./hooks.js";
 import { resolveFn } from "../resolve-fn.js";
 import { appendError, makeCelError } from "../cel-error.js";
 import { deriveCacheKeysFromInputMap, hasHooksOrCache, runHookedExecution } from "./hooks.js";
-import { resolveInputCel, withAccessor } from "../segments/access.js";
+import { withAccessor } from "../segments/access.js";
 
 // Route a changed compute cel onto every channel handler. Fast path
 // reads cel._channelHandlers; fallback resolves channels via the
@@ -65,18 +65,16 @@ const resolveInputs = (cel: FireableCel, state: State): Record<string, unknown> 
     return inputs;
   }
   if (cel.metadata.inputMap) {
-    // GET choke point on the slow path (no _inputEntries built yet) —
-    // resolve through the access gate so a denied ref reads #DENIED.
-    const accessor = cel.metadata.segment;
+    // slow path (no _inputEntries built yet) — read inputs directly.
     for (const [name, refKey] of Object.entries(cel.metadata.inputMap)) {
       if (Array.isArray(refKey)) {
         const arr: unknown[] = new Array(refKey.length);
         for (let i = 0; i < refKey.length; i++) {
-          arr[i] = inputValue(resolveInputCel(state, accessor, refKey[i]!));
+          arr[i] = inputValue(state.cels.get(refKey[i]!));
         }
         inputs[name] = arr;
       } else {
-        inputs[name] = inputValue(resolveInputCel(state, accessor, refKey));
+        inputs[name] = inputValue(state.cels.get(refKey));
       }
     }
   }
@@ -112,13 +110,12 @@ const recompileStale = async (
   // to the `undefined` we assigned above, but compileCelBody repopulated it.
   const buildEv = (cel as ComputeCel)._buildEvaluate;
   if (buildEv && inputMap) {
-    const accessor = cel.metadata.segment;
     const resolved: ResolvedInputs = {};
     const entries: Array<[string, Cel | undefined | Array<Cel | undefined>]> = [];
     for (const [name, ref] of Object.entries(inputMap)) {
       const cs = Array.isArray(ref)
-        ? ref.map((k) => resolveInputCel(state, accessor, k))
-        : resolveInputCel(state, accessor, ref);
+        ? ref.map((k) => state.cels.get(k))
+        : state.cels.get(ref);
       resolved[name] = cs;
       entries.push([name, cs]);
     }

@@ -1,7 +1,6 @@
 import type { Cel, CelMetadata, DehydratedCel, State, ValueCel } from "../../types/index.js";
 import { isFireable } from "../cels.js";
 import { resolveFn } from "../resolve-fn.js";
-import { accessPolicyKeyOf, accessPolicyOf } from "../segments/access.js";
 import { dehydrateValue } from "./schema.js";
 
 // Run cel.schema?.protocols.sourceDehydrate on a fireable cel's `f`
@@ -34,10 +33,8 @@ export const deflateCel = (c: Cel, state: State): DehydratedCel => {
   // kernel stays zero-dep — it calls the hook, never a cipher. No hook (the
   // default), or a non-sealed segment, or no value → unchanged.
   const seg = c.metadata.segment;
-  // Never seal the segment's OWN access-policy cel (访.<seg>) — it must stay
-  // readable so hydrate (and any re-dehydrate) can tell the segment is sealed.
-  if (v !== undefined && state.sealCipher && seg && c.metadata.key !== accessPolicyKeyOf(seg)
-      && accessPolicyOf(state, seg).getSealed) {
+  // A cel marked metadata.sealed (e.g. the secrets wallet's keys) seals at rest.
+  if (v !== undefined && state.sealCipher && seg && (c.metadata as { sealed?: boolean }).sealed) {
     v = state.sealCipher(seg, v) as typeof v;
   }
   if (v !== undefined) metadata.v = v;

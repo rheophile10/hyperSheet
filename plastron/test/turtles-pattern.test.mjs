@@ -2,7 +2,7 @@ import { test } from "bun:test";
 import assert from "node:assert/strict";
 import {
   createInitialState, precomputeOptional, resolveFn,
-  createPainter, setPainter, accessPolicyOf, canGet, isDenied,
+  createPainter, setPainter, isDenied,
 } from "../dist/index.js";
 
 // ============================================================================
@@ -53,22 +53,10 @@ const boot = async () => {
   return { state, root, m };
 };
 
-test("each demo sheet is a CLOSURE: minted get:[origin] (host reads, peers don't), set private", async () => {
-  const { state } = await boot();
-  for (const seg of ["turtles", "turtlecharts"]) {
-    const p = accessPolicyOf(state, seg);
-    assert.deepEqual(p.get, ["origin"], `${seg} get-list is [origin] — a closure, not public`);
-    assert.equal(p.set, "private", `${seg} set is private`);
-  }
-  // the host view (origin) renders the cells — it reads them
-  assert.equal(canGet(state, "origin", "turtles"), true, "the host view reads turtles to render");
-});
-
 test("tabbing BUNDLES the segments: turtlecharts reads turtles! and the chart renders", async () => {
   const { state } = await boot();
   // seeded tab: win.geom[turtlecharts].host === turtles → bundled by syncBundles
   assert.equal(state.cels.get("win.geom")?.v?.turtlecharts?.host, "turtles", "turtlecharts tabbed into turtles");
-  assert.equal(canGet(state, "turtlecharts", "turtles"), true, "tabbed → bundled → turtlecharts reads turtles");
   const a1 = state.cels.get("turtlecharts.A1")?.v;
   assert.ok(a1 && a1.tag === "canvas", "the chart formula resolved turtles! and produced a canvas (NOT #DENIED)");
   assert.ok(!isDenied(a1), "the chart value is not the #DENIED sentinel");
@@ -192,7 +180,6 @@ test("Chat is a FEW plain dom() cels (no chatpanel monolith): bots/history/entry
   assert.equal(state.cels.get("chat.B1")?.v?.attrs?.class, "chat-history", "chat.B1 is the history dom cel (chathistory)");
   assert.equal(state.cels.get("chat.C1")?.v?.attrs?.class, "chat-entry", "chat.C1 is the input+send dom cel");
   assert.equal(state.cels.get("win.geom")?.v?.chat?.host, "clients", "chat tabbed into clients");
-  assert.equal(canGet(state, "chat", "clients"), true, "chat reads the clients sheet via the tab bundle");
 });
 
 test("the chat window composes [clients | chat]: status cells + clientlights + a messages cell, and a bots-left/history/entry/send panel", async () => {

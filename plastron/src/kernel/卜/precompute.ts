@@ -10,7 +10,6 @@ import { resolveSchemas } from "../hydrate/schema.js";
 import { resolveFn } from "../resolve-fn.js";
 import { topoLevels as topoLevelsGeneric } from "./topo.js";
 import { bfsDownstream, celDependencies } from "./graph.js";
-import { resolveInputCel } from "../segments/access.js";
 import { precomputeOptional } from "./precomputeOptional.js";
 import { appendError, makeCelError } from "../cel-error.js";
 
@@ -266,12 +265,12 @@ type InputEntries = Array<[string, Cel | undefined | Array<Cel | undefined>]>;
 const buildInputEntries = (
   inputMap: Record<string, Key | Key[]>,
   state: State,
-  accessorSegment: Key,
+  _accessorSegment: Key,
 ): InputEntries => {
   const entries: InputEntries = [];
   for (const [name, ref] of Object.entries(inputMap)) {
-    if (Array.isArray(ref)) entries.push([name, ref.map((k) => resolveInputCel(state, accessorSegment, k))]);
-    else entries.push([name, resolveInputCel(state, accessorSegment, ref)]);
+    if (Array.isArray(ref)) entries.push([name, ref.map((k) => state.cels.get(k))]);
+    else entries.push([name, state.cels.get(ref)]);
   }
   return entries;
 };

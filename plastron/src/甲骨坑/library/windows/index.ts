@@ -1,5 +1,5 @@
 import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
-import { bindNativeFns, resolveFn, withAccessor, bundleSegments } from "../../../kernel/index.js";
+import { bindNativeFns, resolveFn, withAccessor } from "../../../kernel/index.js";
 import { el as makeEl, text as T } from "../dom/index.js";
 import { README_INNER } from "./readme-content.js";
 import seed from "./甲骨.json" with { type: "json" };
@@ -274,7 +274,6 @@ const xResizeMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Prom
 const linkWindows = async (state: State, refA: string, refB: string, pair = true): Promise<void> => {
   const a = segOf(refA), b = segOf(refB);
   if (a === b) return;
-  bundleSegments(state, [a, b]);
   const merge = (st: WinState): string[] => Array.from(new Set([...(st.linked ?? []), a, b]));
   await setState(state, refA, { linked: merge(stateOf(state, refA)) });
   await setState(state, refB, { linked: merge(stateOf(state, refB)) });

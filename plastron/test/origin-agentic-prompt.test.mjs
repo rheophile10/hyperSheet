@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
-import { createInitialState, resolveFn, setAccessPolicy } from "../dist/index.js";
+import { createInitialState, resolveFn } from "../dist/index.js";
 
 // ============================================================================
 // origin-agentic-prompt — the per-turn system prompt chat.cellsend sends to the
@@ -32,7 +32,6 @@ const armedChat = async () => {
   }
   const client = resolveFn(state, "makeclient")("claude", "sk-ant-REALKEY", "");
   await setCel(state, `${SEG}.A1`, { celType: "ValueCel", v: client, metadata: { key: `${SEG}.A1`, segment: SEG, name: "A1" } });
-  setAccessPolicy(state, SEG, { get: ["origin"], set: "private" });
   await resolveFn(state, "runCycle")(state);
   return state;
 };
@@ -83,7 +82,6 @@ test("the appended state is SCOPED to the chat segment — sealed secrets.* / ot
   const state = await armedChat();
   // a sealed foreign secret and a foreign window cel
   await resolveFn(state, "setCel")(state, "secrets.A1", { celType: "ValueCel", v: "sk-ant-TOPSECRET", metadata: { key: "secrets.A1", segment: "secrets", name: "A1" } });
-  setAccessPolicy(state, "secrets", { get: "private", set: "private", setSealed: true });
   await resolveFn(state, "setCel")(state, "win.other.A1", { celType: "ValueCel", v: "OTHERWINDOW", metadata: { key: "win.other.A1", segment: "win.other", name: "A1" } });
   const prompt = await sendAndCapture(state, "hello");
   assert.ok(!prompt.includes("TOPSECRET"), "sealed secrets.* value did NOT leak into the prompt");

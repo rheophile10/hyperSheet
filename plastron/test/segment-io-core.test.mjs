@@ -38,8 +38,11 @@ test("the bundled substrate is recognised as boot-set; minted segments are not",
 
 test("documentSegments lists runtime-minted segments, never the substrate", async () => {
   const { state, put } = await boot();
-  await put('(cels 2 2 "books" (at "B2" 7))');
-  await put('(winapp "dash" "Dashboard" "(dom \'h2\' \'hi\')")');
+  // commit each genesis to its OWN cell — re-committing the same key (元) replaces
+  // its prior genesis (regeneration sweeps the old cels; cross-segment writes are
+  // open now that 访 is gone, so the old isolation no longer keeps both alive).
+  await put('(cels 2 2 "books" (at "B2" 7))', "books_gen");
+  await put('(winapp "dash" "Dashboard" "(dom \'h2\' \'hi\')")', "dash_gen");
 
   const docs = documentSegments(state);
   assert.ok(docs.includes("books"), "the workbook segment is a document segment");

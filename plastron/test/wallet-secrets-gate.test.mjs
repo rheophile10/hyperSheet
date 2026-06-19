@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
-import { createInitialState, resolveFn, accessPolicyOf, lockConsent, setConsent } from "../dist/index.js";
+import { createInitialState, resolveFn, lockConsent, setConsent } from "../dist/index.js";
 
 // ============================================================================
 // The wallet's secrets now live as cels in a SEALED `secrets` segment
@@ -28,18 +28,6 @@ const walletWithKey = async () => {
   await call(state, "wallet.set", "anthropic", { type: "change", target: { value: SECRET } });
   return state;
 };
-
-test("the secrets segment is minted SEALED (get: [clients], getSealed, set: private)", async () => {
-  const state = await walletWithKey();
-  const policy = accessPolicyOf(state, "secrets");
-  assert.deepEqual(policy.get, ["clients"], "only clients may read");
-  assert.equal(policy.getSealed, true, "get is sealed (encrypts at rest)");
-  assert.equal(policy.set, "private", "set is private (writes are top-level only)");
-  // and the secret really lives as a cel
-  assert.equal(state.cels.get("secrets.anthropic")?.v, SECRET, "secret stored as a secrets.* cel");
-  await call(state, "wallet.del", "anthropic");
-  await resolveFn(state, "wallet.lock")(state);
-});
 
 test("per-segment consent (locked): apiKey is allowed for `clients` but refused for another segment", async () => {
   const state = await walletWithKey();

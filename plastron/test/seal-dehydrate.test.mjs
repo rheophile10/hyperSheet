@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
-import { createInitialState, resolveFn, setAccessPolicy } from "../dist/index.js";
+import { createInitialState, resolveFn } from "../dist/index.js";
 
 // Layer-2 — encrypted dehydrate of SEALED segments (segment-access-capabilities.md).
 //
@@ -27,13 +27,11 @@ const sealedState = async () => {
   await hydrate(state, [{
     name: "vault",
     cels: [
-      { key: "vault.key", celType: "ValueCel", metadata: { key: "vault.key", segment: "vault", v: SECRET } },
-      { key: "vault.note", celType: "ValueCel", metadata: { key: "vault.note", segment: "vault", v: { a: 1, b: "two" } } },
+      { key: "vault.key", celType: "ValueCel", metadata: { key: "vault.key", segment: "vault", v: SECRET, sealed: true } },
+      { key: "vault.note", celType: "ValueCel", metadata: { key: "vault.note", segment: "vault", v: { a: 1, b: "two" }, sealed: true } },
     ],
   }], [mk("vault")]);
-  // SEAL the get direction (the declared list is authoritative; this is what
-  // makes the segment encrypt at rest).
-  setAccessPolicy(state, "vault", { get: ["clientmaker"], getSealed: true });
+  // metadata.sealed marks these cels to encrypt at rest (Layer 2).
   return state;
 };
 

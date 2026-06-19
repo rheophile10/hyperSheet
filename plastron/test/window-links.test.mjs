@@ -1,6 +1,6 @@
 import { test, afterEach } from "bun:test";
 import assert from "node:assert/strict";
-import { createInitialState, resolveFn, canGet, setAccessPolicy } from "../dist/index.js";
+import { createInitialState, resolveFn } from "../dist/index.js";
 
 // ============================================================================
 // window-links — the corner-grip LINK drag (visual-edge twin of titlebar

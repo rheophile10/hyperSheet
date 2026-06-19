@@ -4,9 +4,8 @@ import type {
 import {
   bindNativeFns, resolveFn, retireCel, precompute, runCascade, affectedFor,
   appendError, makeCelError, isCelError,
-  setAccessPolicy, hasDeclaredPolicy, DEFAULT_POLICY,
 } from "../../../kernel/index.js";
-import type { AccessPolicy } from "../../../kernel/index.js";
+type AccessPolicy = Record<string, unknown>;  // (vestigial: req.access/mints shape; no longer applied)
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -90,24 +89,8 @@ const drain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<v
     const segment = req.layer ?? generator.metadata.segment;
     const errors: string[] = [];
 
-    // MINTING: a layer-named genesis mints a SEGMENT — synthesize its access
-    // policy (a 访.<segment> cel) so it's a real closure. Default public-get/
-    // private-set; a generator that knows its boundary (e.g. the wallet) passes
-    // `access`. Write-once (regeneration must not clobber a later-tightened or
-    // bundle-granted policy) unless `reassert`. Undeclared segments stay
-    // unrestricted, so this only adds closures, never breaks existing writers.
-    if (req.layer && (req.reassert || !hasDeclaredPolicy(state, segment))) {
-      setAccessPolicy(state, segment, req.access ?? DEFAULT_POLICY);
-    }
-    // COMPOSED (segment(part1, part2, …)): each part minted its own segment — the
-    // parts' cels were stamped metadata.segment = their layer (below preserves
-    // it), and `mints` carries each part-layer's policy. Synthesize them so a
-    // boot desktop's windows are each their OWN closure, not all flattened into 元.
-    if (req.mints) {
-      for (const [seg, access] of Object.entries(req.mints)) {
-        if (!hasDeclaredPolicy(state, seg)) setAccessPolicy(state, seg, (access && Object.keys(access).length) ? access : DEFAULT_POLICY);
-      }
-    }
+    // (the 访 access-policy minting was removed — segments are no longer closures;
+    // req.access / req.mints are accepted for compatibility but no longer applied.)
 
     // current owned set
     const owned = new Map<Key, Cel>();

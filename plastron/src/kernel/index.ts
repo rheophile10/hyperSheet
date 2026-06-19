@@ -91,15 +91,12 @@ export {
   computeKernelClosure, kernelClosureOf, segmentMap, topologicalDependentOrder,
   registerSegmentLoader, loadSegment, ensureSegments, isSegmentPending,
   assertOneDirection, specTouchesEdges,
-  accessPolicyOf, setAccessPolicy, accessPolicyKeyOf, hasDeclaredPolicy,
-  canGet, canSet, bundleSegments, ACCESS_BUNDLES_KEY,
   currentAccessor, withAccessor,
   DANGEROUS, isDangerous, isConsented, requireConsent, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
-  resolveInputCel, deniedCel, isDenied, DENIED, DEFAULT_POLICY,
+  isDenied, DENIED,
   installDormant, dormantSegmentOf, dormantView, assertNotDormant,
   flush, wake, sleep, forget,
 } from "./segments/index.js";
-export type { AccessPolicy, AccessList } from "./segments/index.js";
 export type { DangerCategory, DangerSpec, ConsentGrant, DangerUse } from "./segments/index.js";
 export type { SegmentSink, SleepOptions, ForgetOptions } from "./segments/index.js";
 

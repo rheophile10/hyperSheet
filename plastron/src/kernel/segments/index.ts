@@ -15,12 +15,8 @@ export {
 } from "./load.js";
 export { assertOneDirection, specTouchesEdges } from "./edge-rule.js";
 export {
-  accessPolicyOf, setAccessPolicy, accessPolicyKeyOf, hasDeclaredPolicy,
-  canGet, canSet, bundleSegments, ACCESS_BUNDLES_KEY,
-  currentAccessor, withAccessor,
-  resolveInputCel, deniedCel, isDenied, DENIED, DEFAULT_POLICY,
+  currentAccessor, withAccessor, isDenied, DENIED,
 } from "./access.js";
-export type { AccessPolicy, AccessList } from "./access.js";
 export {
   DANGEROUS, isDangerous, isConsented, requireConsent, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
 } from "./consent.js";

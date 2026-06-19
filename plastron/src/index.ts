@@ -312,8 +312,6 @@ export {
   hydrate函, dehydrate函,
   wake, sleep, forget,
   registerSegmentLoader, loadSegment, ensureSegments, isSegmentPending,
-  setAccessPolicy, accessPolicyOf, accessPolicyKeyOf, hasDeclaredPolicy,
-  canGet, canSet, bundleSegments,
   DANGEROUS, isDangerous, isConsented, requireConsent, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
   currentAccessor, withAccessor, isDenied, DENIED,
   validateManifests,

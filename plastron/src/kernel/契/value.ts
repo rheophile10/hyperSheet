@@ -18,7 +18,6 @@ const observeMutation = (state: State, keys: Key[]): void => {
 import { compileCelBody } from "../hydrate/formula.js";
 import { flushChannels } from "./flush-channels.js";
 import { assertNotDormant, dormantSegmentOf, dormantView } from "../segments/dormant.js";
-import { canSet, currentAccessor } from "../segments/access.js";
 
 // ============================================================================
 // Data-plane writes — the recalc tier.
@@ -61,15 +60,8 @@ const validateValueWrite = (
   const cel = state.cels.get(key);
   if (!cel)        throw new Error(`${label}: unknown cel "${key}"`);
   if (cel.locked)  throw new Error(`${label}: cel "${key}" is locked`);
-  // SET choke point — the accessor (running cel's segment) must be in the
-  // target segment's set-list. Top-level/host (no accessor) is privileged.
-  const accessor = currentAccessor(state);
-  if (!canSet(state, accessor, cel.metadata.segment)) {
-    throw new Error(
-      `${label}: segment "${accessor}" may not write cel "${key}" in ` +
-      `segment "${cel.metadata.segment}" (set policy refuses it)`,
-    );
-  }
+  // (the 访 SET choke point was removed — cross-segment writes are open; untrusted
+  // code is confined by the jail, not in-process access policy.)
   if (!isDataCel(cel)) {
     throw new Error(
       `${label}: cel "${key}" is a ${cel.celType} — definitions are replaced via setCel`,

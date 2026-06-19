@@ -1,5 +1,5 @@
 import type { 甲骨, Cel, Fn, State, VElement } from "../../../types/index.js";
-import { bindNativeFns, isSecretHandleRef, resolveFn, bundleSegments, setAccessPolicy, precompute } from "../../../kernel/index.js";
+import { bindNativeFns, isSecretHandleRef, resolveFn, precompute } from "../../../kernel/index.js";
 import { el as makeEl, text as T, memo } from "../dom/index.js";
 import { fromXlsx } from "../xlsx/index.js";
 import { zipBytes, unzipBytes } from "../segment-archive/index.js";
@@ -603,11 +603,8 @@ const wsDrop: Fn = (async (state: State, _p: unknown, event?: WEvt & { clientX?:
   m[d.seg] = { ...(m[d.seg] ?? {}), host: ult };
   m[ult] = { ...(m[ult] ?? {}), tab: d.seg, min: 0 };
   await setGeom(state, m);
-  // tabbing IS sharing context: the stacked windows form a BUNDLE (a clique —
-  // mutual get/set among all tabs), so a minted worksheet can write its
-  // tab-mates' cels. Sealing still wins. (Tearoff leaving the bundle: next.)
-  const members = [ult, ...Object.keys(m).filter((k) => m[k]?.host === ult)];
-  bundleSegments(state, members);
+  // (tabbing used to BUNDLE the windows for shared memory; with 访 gone all cels
+  // are mutually reachable, so the stack is just a visual/host relationship.)
 }) as Fn;
 const wsTab: Fn = (async (state: State, payload: unknown): Promise<void> => { const p = payload as { host?: string; tab?: string }; if (!p?.host || !p?.tab) return; const m = geomMap(state); m[p.host] = { ...(m[p.host] ?? {}), tab: p.tab }; await setGeom(state, m); }) as Fn;
 // ── tab drag: reorder among siblings, or tear OFF into a standalone window ────
@@ -674,7 +671,7 @@ const wsSyncBundles: Fn = (async (state: State): Promise<void> => {
     if (typeof host === "string" && host !== seg) (hosts.get(host) ?? hosts.set(host, new Set([host])).get(host)!).add(seg);
   }
   let bundled = false;
-  for (const members of hosts.values()) if (members.size > 1) { bundleSegments(state, [...members]); bundled = true; }
+  for (const members of hosts.values()) if (members.size > 1) { bundled = true; }
   // a tabbed sheet's formula captured the #DENIED sentinel at first eval (before
   // the bundle existed). precompute re-resolves each inputMap ref through the now-
   // open gate; the real cel has a different object identity than the deniedCel, so
@@ -723,7 +720,6 @@ const materializeSheet = async (state: State, seg: string, cells: Record<string,
   state.cels.set(maker, makerCel);
   const gd = resolveFn(state, "genesis.drain") as Fn | undefined;
   if (gd) await gd([{ cel: makerCel, state }], state);
-  setAccessPolicy(state, seg, { get: ["origin"], set: "private" });
 };
 
 const wsNewtab: Fn = (async (state: State, host: unknown): Promise<void> => {
@@ -737,7 +733,6 @@ const wsNewtab: Fn = (async (state: State, host: unknown): Promise<void> => {
   m[seg] = { ...(m[seg] ?? {}), host: ult };
   m[ult] = { ...(m[ult] ?? {}), tab: seg, min: 0, closed: 0 };
   await setGeom(state, m);
-  bundleSegments(state, [ult, ...Object.keys(m).filter((k) => m[k]?.host === ult)]);
   // rebuild the view's cell list so the new sheet's cells show, then repaint.
   if (state.cels.get("view.refresh")) await Promise.resolve((resolveFn(state, "view.refresh") as Fn)(state));
   await wrepaint(state);

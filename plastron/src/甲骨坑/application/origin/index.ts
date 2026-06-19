@@ -1606,6 +1606,12 @@ const dbHandleName = (h: unknown): string =>
 const dbFn:     Fn = (name: unknown) => ({ originDb: "open", name: String(name ?? "main") });
 const sqlFn:    Fn = (handle: unknown, query: unknown) => ({ originDb: "sql", name: dbHandleName(handle), query: String(query ?? "") });
 const tablesFn: Fn = (handle: unknown) => ({ originDb: "sql", name: dbHandleName(handle), query: "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name" });
+// =dbseed(db, rows, "table") — bulk-load a JSON array of row objects into a table.
+// (Named dbseed because =seed already serializes the whole document.)
+const dbSeedFn: Fn = (handle: unknown, rows: unknown, table: unknown) =>
+  ({ originDb: "seed", name: dbHandleName(handle), query: JSON.stringify({ table: String(table ?? ""), rows: rows ?? [] }) });
+// =schema(db) — introspect tables/columns/PK/FK (groundwork for the visual query builder).
+const schemaFn: Fn = (handle: unknown) => ({ originDb: "schema", name: dbHandleName(handle) });
 
 // --- interlinked(seg) — the cel graph as a force-directed canvas. Nodes = the
 //     segment's coordinate cels; edges = their inputMap deps. The layout is
@@ -2004,6 +2010,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["db",             dbFn],
   ["sql",            sqlFn],
   ["tables",         tablesFn],
+  ["dbseed",         dbSeedFn],
+  ["schema",         schemaFn],
   ["interlinked",    interlinkedFn],
   ["simulate",       simulateFn],
   ["dragdrop",       dragdropFn],
