@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
-import { createInitialState, resolveFn, accessPolicyOf } from "../dist/index.js";
+import { createInitialState, resolveFn, accessPolicyOf, lockConsent, setConsent } from "../dist/index.js";
 
 // ============================================================================
 // The wallet's secrets now live as cels in a SEALED `secrets` segment
@@ -41,21 +41,22 @@ test("the secrets segment is minted SEALED (get: [clients], getSealed, set: priv
   await resolveFn(state, "wallet.lock")(state);
 });
 
-test("apiKey from `clients` returns the real key; from another segment it is refused", async () => {
+test("per-segment consent (locked): apiKey is allowed for `clients` but refused for another segment", async () => {
   const state = await walletWithKey();
+  // a LOCKED session with apiKey consented ONLY for `clients` (per-segment grant)
+  lockConsent(state);
+  setConsent(state, "apiKey", { allow: true, segments: ["clients"] });
 
-  // a whitelisted reader: a FORMULA in the `clients` segment
   await seg(state, "clients.k", { celType: "FormulaCel", f: '(apiKey "anthropic")', metadata: { segment: "clients", name: "k", parser: "f" } });
-  // a NON-whitelisted reader: a FORMULA in some other segment
   await seg(state, "evil.k", { celType: "FormulaCel", f: '(apiKey "anthropic")', metadata: { segment: "evil", name: "k", parser: "f" } });
   await cycle(state);
 
   const fromClients = state.cels.get("clients.k")?.v;
   const fromEvil = state.cels.get("evil.k")?.v;
 
-  assert.equal(fromClients, SECRET, "the whitelisted `clients` formula gets the real key");
-  assert.notEqual(fromEvil, SECRET, "a non-whitelisted segment never gets the key");
-  assert.ok(String(fromEvil).includes("#DENIED"), "the refusal is an explicit #DENIED string");
+  assert.equal(fromClients, SECRET, "the consented `clients` formula gets the real key");
+  assert.notEqual(fromEvil, SECRET, "a non-consented segment never gets the key");
+  assert.ok(String(fromEvil).includes("#BLACKLISTED"), "the refusal is an explicit #BLACKLISTED string");
   assert.ok(!String(fromEvil).includes(SECRET), "the refusal carries no trace of the secret");
 
   await call(state, "wallet.del", "anthropic");

@@ -1,7 +1,7 @@
 import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
 import {
   bindNativeFns, ensureSegments, resolveFn, secretHandle,
-  setAccessPolicy, hasDeclaredPolicy, canGet, currentAccessor, accessPolicyOf,
+  setAccessPolicy, hasDeclaredPolicy, currentAccessor, accessPolicyOf, requireConsent,
 } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
@@ -246,8 +246,8 @@ const keyFn: Fn = (name: unknown, _gen?: unknown) => {
   // secretsGen bump, and an apiKey call before unlock gets a clear refusal.
   if (!names) return `#NOKEY(apiKey "${n}": wallet locked — =unlockWallet() first)`;
   const accessor = currentAccessor(state);
-  if (!canGet(state, accessor, SECRETS_SEGMENT)) {
-    return `#DENIED(apiKey "${n}": segment "${accessor ?? "?"}" is not in secrets.get)`;
+  if (!requireConsent(state, "apiKey", accessor)) {
+    return `#BLACKLISTED(apiKey "${n}" — not consented; open =consentpanel() to allow secrets)`;
   }
   const v = rawSecret(state, n);
   if (!v) return `#NOKEY(apiKey "${n}": no such key — =unlockWallet(), then =setKey("${n}"))`;
