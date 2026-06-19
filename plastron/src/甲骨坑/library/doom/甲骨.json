@@ -1,0 +1,54 @@
+{
+ "version": "0.0.1",
+ "cels": [
+  {
+   "key": "doom",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "doom",
+    "segment": "doom",
+    "name": "doom",
+    "kind": "native",
+    "genesis": true,
+    "description": "() - open a DOOM window: a wasm-window (canvas) running Doom, lazy-fetching doom.wasm + the WAD from plastron.ca (consent-gated). Arrow keys / Ctrl (fire) / Space (use) drive the player when the window is focused. =doom()"
+   }
+  },
+  {
+   "key": "doom.arm",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "doom.arm",
+    "segment": "doom",
+    "name": "doom.arm",
+    "kind": "native",
+    "description": "(state) - fired when the DOOM window materialises; RAF-defers doom.boot so the canvas is mounted before the engine grabs it."
+   }
+  },
+  {
+   "key": "doom.boot",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "doom.boot",
+    "segment": "doom",
+    "name": "doom.boot",
+    "kind": "native",
+    "description": "(state) - the browser boot: consent-gate the asset load, fetch doom.wasm + WAD, createDoomHarness, hydrate the kind:wasm engine cel, start the RAF tick loop."
+   }
+  },
+  {
+   "key": "doom.stop",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "doom.stop",
+    "segment": "doom",
+    "name": "doom.stop",
+    "kind": "native",
+    "description": "(state) - stop the engine (cancel the RAF loop + dispose the harness)."
+   }
+  }
+ ]
+}

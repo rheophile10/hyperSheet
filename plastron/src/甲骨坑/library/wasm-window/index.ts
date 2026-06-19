@@ -1,6 +1,7 @@
-import type { State, Key, Fn, VNode, AttrValue, EventBinding } from "../../../types/index.js";
-import { resolveFn } from "../../../kernel/index.js";
+import type { State, Key, Fn, VNode, AttrValue, EventBinding, 甲骨, Cel } from "../../../types/index.js";
+import { resolveFn, bindNativeFns } from "../../../kernel/index.js";
 import { el as makeEl } from "../dom/index.js";
+import seed from "./甲骨.json" with { type: "json" };
 
 const el = (tag: string, attrs: Record<string, unknown>, children: VNode[], events?: Record<string, unknown>): VNode =>
   makeEl(tag, attrs as Record<string, AttrValue>, children, events as Record<string, EventBinding> | undefined);
@@ -116,3 +117,14 @@ export const wasmKeyHandler: Fn = (async (state: State, id: unknown, event: unkn
   wasmKey(state, String(id ?? ""), (event ?? {}) as KeyEvent);
   return state;
 }) as Fn;
+
+// wasmcanvas as a formula-callable verb (the content formula calls it).
+const wasmcanvasFn: Fn = ((id: unknown, engine?: unknown, active?: unknown): VNode => wasmcanvas(id, engine, active)) as Fn;
+
+export const name = "wasm-window" as const;
+export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
+  ["wasmcanvas", wasmcanvasFn],
+  ["wasmwin.focus", wasmFocus],
+  ["wasmwin.blur", wasmBlur],
+  ["wasmwin.key", wasmKeyHandler],
+]));

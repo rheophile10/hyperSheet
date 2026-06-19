@@ -28,6 +28,7 @@ export const DANGEROUS: Readonly<Record<Key, DangerSpec>> = {
   grok:            { category: "net", reason: "LLM (xAI) over HTTP", wiki: "grok" },
   claude:          { category: "net", reason: "LLM (Anthropic) over HTTP", wiki: "claude" },
   cdn:             { category: "net", reason: "loads code/data from a CDN", wiki: "cdn" },
+  doom:            { category: "net", reason: "loads the Doom engine + WAD (wasm/wad bytes) from plastron.ca", wiki: "doom" },
   "peer.connect":  { category: "net", reason: "opens a peer connection", wiki: "peer" },
   "peer.broadcast":{ category: "net", reason: "sends to all peers", wiki: "peer" },
   "peer.apply":    { category: "net", reason: "applies REMOTE writes into the graph", wiki: "peer" },

@@ -1,0 +1,35 @@
+{
+ "version": "0.0.1",
+ "cels": [
+  {
+   "key": "wasmcanvas",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "wasmcanvas",
+    "segment": "wasm-window",
+    "name": "wasmcanvas",
+    "kind": "native",
+    "description": "(id, engine?, active?) - the body of a wasm window: a focusable <canvas id=\"wasm-<id>\"> the engine grabs by id. Focus/blur toggle wasm.<id>.active; keydown/keyup route to the engine (active-gated)."
+   }
+  },
+  {
+   "key": "wasmwin.focus",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "wasmwin.focus", "segment": "wasm-window", "name": "wasmwin.focus", "kind": "native", "description": "(state, id) - the wasm canvas gained focus → mark it the active wasm window (keys route here)." }
+  },
+  {
+   "key": "wasmwin.blur",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "wasmwin.blur", "segment": "wasm-window", "name": "wasmwin.blur", "kind": "native", "description": "(state, id) - lost focus → no longer the active wasm window." }
+  },
+  {
+   "key": "wasmwin.key",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "wasmwin.key", "segment": "wasm-window", "name": "wasmwin.key", "kind": "native", "description": "(state, id, event) - a keystroke on the canvas → route to the engine inbox if this window is active." }
+  }
+ ]
+}

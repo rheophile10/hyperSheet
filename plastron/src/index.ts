@@ -29,6 +29,8 @@ import * as htmlTemplate    from "./甲骨坑/library/html-template-parser/index
 import * as plastronDom     from "./甲骨坑/library/dom/index.js";
 import * as sheetHost       from "./甲骨坑/library/sheet-host/index.js";
 import * as windows         from "./甲骨坑/library/windows/index.js";
+import * as wasmWindow      from "./甲骨坑/library/wasm-window/index.js";
+import * as doom            from "./甲骨坑/library/doom/index.js";
 import * as peer            from "./甲骨坑/library/peer/index.js";
 import * as xlsx            from "./甲骨坑/library/xlsx/index.js";
 import * as ioKeys          from "./甲骨坑/library/io-keys/index.js";
@@ -99,6 +101,8 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "dom":     () => [...plastronDom.cels],
   "sheet-host":       () => [...sheetHost.cels],
   "windows":          () => [...windows.cels],
+  "wasm-window":      () => [...wasmWindow.cels],
+  "doom":             () => [...doom.cels],
   "peer":             () => [...peer.cels],
   "xlsx":             () => [...xlsx.cels],
   "io-keys":          () => [...ioKeys.cels],
