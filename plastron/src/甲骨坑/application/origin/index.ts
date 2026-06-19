@@ -1832,12 +1832,20 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
           else if (blocked.length) result = `#REFUSED(import: ${blocked.join(", ")} ${blocked.length > 1 ? "are reserved boot-set names" : "is a reserved boot-set name"} — can't overwrite the substrate)`;
           else {
             // wholesale replace: retire every existing cel of each incoming
-            // segment first, so a stale cel left out of the new archive is swept.
+            // segment, AND its live generator cell (the genesis that minted it) so
+            // it can't re-mint over the import — the import wins (the stomp). 元 is
+            // never retired (the root cell). A stale cel left out of the new
+            // archive is therefore swept.
             const stale = new Set<Key>();
             const incoming = new Set(names);
-            for (const k of [...state.cels.keys()]) {
-              if (incoming.has(state.cels.get(k)?.metadata.segment as Key)) retireCel(state, k, stale);
+            const toRetire = new Set<Key>();
+            for (const [k, c] of state.cels) {
+              if (!incoming.has(c.metadata.segment as Key)) continue;
+              toRetire.add(k);
+              const gen = (c.metadata as { generatedBy?: unknown }).generatedBy;
+              if (typeof gen === "string" && gen !== "元") toRetire.add(gen);
             }
+            for (const k of toRetire) retireCel(state, k, stale);
             const added = await loadArchive(state, json);
             await (resolveFn(state, "runCycle") as Fn)(state);
             result = `imported ${added.join(", ")} (${added.length} segment${added.length > 1 ? "s" : ""})`;

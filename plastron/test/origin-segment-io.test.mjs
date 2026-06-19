@@ -85,6 +85,21 @@ test("=export(seg, 'encrypt', pass) → an aes blob; =import(blob, pass) round-t
   assert.equal(b.state.cels.get("books.B2")?.v, 7, "decrypted archive round-trips");
 });
 
+test("=import over a LIVE generator wins (generator retired, no re-mint)", async () => {
+  const { state, put } = await boot();
+  await put('(cels 2 2 "books" (at "A1" "from generator"))', "books_gen");
+  assert.equal(state.cels.get("books.A1")?.v, "from generator", "minted by the live generator");
+  assert.ok(state.cels.get("books_gen"), "the generator cell exists");
+
+  const other = await boot();
+  await other.put('(cels 1 1 "books" (at "A1" "from import"))', "books_gen2");
+  await other.put('=export("books")');
+  await put(`=import('${other.val()}')`);
+
+  assert.equal(state.cels.get("books.A1")?.v, "from import", "the imported version wins");
+  assert.equal(state.cels.get("books_gen"), undefined, "the live generator was retired (can't re-mint)");
+});
+
 test("=import refuses a boot-set (substrate) name", async () => {
   const { put, val } = await boot();
   // a hand-built archive claiming the reserved name `net`
