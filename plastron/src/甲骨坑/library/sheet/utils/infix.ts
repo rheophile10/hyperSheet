@@ -60,11 +60,12 @@ const tokenize = (src: string): Tok[] => {
   while (i < n) {
     const c = src[i]!;
     if (c === " " || c === "\t" || c === "\n" || c === "\r") { i++; continue; }
-    if (c === '"') {
-      let j = i + 1, s = "";
-      // backslash escapes the next char literally — so a string can hold a
-      // quote (\") or a backslash (\\), e.g. cel("cel(\"banana\")").
-      while (j < n && src[j] !== '"') {
+    if (c === '"' || c === "'") {
+      const q = c;                 // ' OR " delimits a string — so a nested formula
+      let j = i + 1, s = "";       // needs no escaping: at("A1", '=dom("h1","x")').
+      // backslash escapes the next char literally — so a string can also hold its
+      // own delimiter (\" / \') or a backslash (\\), e.g. cel("cel(\"banana\")").
+      while (j < n && src[j] !== q) {
         if (src[j] === "\\" && j + 1 < n) { s += src[j + 1]; j += 2; }
         else { s += src[j]; j++; }
       }

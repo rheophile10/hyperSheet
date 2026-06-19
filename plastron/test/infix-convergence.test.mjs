@@ -76,3 +76,18 @@ test("a bare symbol that is not a range reads the cel's value", async () => {
   await resolveFn(state, "runCycle")(state);
   assert.equal(v(state, "calc"), 15);
 });
+
+// ── single-quote string delimiter in infix (one level of nesting, no escaping) ─
+test("infix: ' delimits a string — double-quotes inside need no escaping", async () => {
+  const state = createInitialState();
+  await resolveFn(state, "setCel")(state, "s", { celType: "FormulaCel", f: `='he said "hi"'`, metadata: { key: "s", segment: "user", parser: "infix" } });
+  await resolveFn(state, "runCycle")(state);
+  assert.equal(state.cels.get("s")?.v, 'he said "hi"');
+});
+
+test("infix: existing \\\" escaping in \"…\" still works (backward compatible)", async () => {
+  const state = createInitialState();
+  await resolveFn(state, "setCel")(state, "s", { celType: "FormulaCel", f: `="he said \\"hi\\""`, metadata: { key: "s", segment: "user", parser: "infix" } });
+  await resolveFn(state, "runCycle")(state);
+  assert.equal(state.cels.get("s")?.v, 'he said "hi"');
+});

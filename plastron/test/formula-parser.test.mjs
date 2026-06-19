@@ -80,3 +80,28 @@ test("legacy metadata.compiler is migrated to metadata.parser on hydrate", async
   assert.equal(sumCel?.metadata.parser, "f", "parser slot populated from legacy compiler");
   assert.equal(sumCel?.metadata.compiler, undefined, "legacy compiler slot removed");
 });
+
+// ── single-quote string delimiter (one level of nesting, no escaping) ─────────
+const evalF = async (f) => {
+  const state = await bootWithCel({ key: "s", celType: "FormulaCel", metadata: { key: "s", segment: "user", parser: "f" }, f });
+  precompute(state); await precomputeOptional(state);
+  await resolveFn(state, "runCycle")(state);
+  return state.cels.get("s")?.v;
+};
+
+test("S-expr: ' delimits a string", async () => {
+  assert.equal(await evalF(`'hello'`), "hello");
+});
+
+test("S-expr: double-quotes inside a '…' string need NO escaping", async () => {
+  assert.equal(await evalF(`'he said "hi"'`), 'he said "hi"');
+});
+
+test("S-expr: a nested formula one level deep — '=dom(\"h1\",\"x\")' — is a clean string atom", async () => {
+  // the cell holds the inner formula as a STRING (no \\\" escaping needed)
+  assert.equal(await evalF(`'(dom "h1" "x")'`), '(dom "h1" "x")');
+});
+
+test("S-expr: existing \\\" escaping in \"…\" still works (backward compatible)", async () => {
+  assert.equal(await evalF(`"he said \\"hi\\""`), 'he said "hi"');
+});

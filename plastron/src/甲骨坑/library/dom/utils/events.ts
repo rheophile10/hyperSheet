@@ -62,15 +62,15 @@ const splitTopLevel = (source: string): string[] => {
   if (!s.startsWith("(") || !s.endsWith(")")) return [s];
   const inner = s.slice(1, -1);
   const parts: string[] = [];
-  let depth = 0, start = 0, inStr = false;
+  let depth = 0, start = 0, inStr = false, q = '"';
   for (let i = 0; i < inner.length; i++) {
     const c = inner[i]!;
     if (inStr) {
       if (c === "\\") { i++; continue; }
-      if (c === '"') inStr = false;
+      if (c === q) inStr = false;
       continue;
     }
-    if (c === '"') { inStr = true; continue; }
+    if (c === '"' || c === "'") { inStr = true; q = c; continue; }
     if (c === "(") { depth++; continue; }
     if (c === ")") { depth--; continue; }
     if (depth === 0 && (c === " " || c === "\t" || c === "\n" || c === "\r")) {

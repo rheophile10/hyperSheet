@@ -9,6 +9,7 @@ import {
 // `memo` attaches the diff's O(changed) short-circuit hint (see dom).
 import { el as makeEl, text as T } from "../../library/dom/index.js";
 import { openAsSheet } from "../../library/sheet-host/index.js";
+import { retryNetBlocked } from "../../library/net/index.js";
 import { encodeLink, decodeLink, encodeEncLink, decodeEncLink, ENC_METHOD,
   encodeOtpLink, otpDecryptPayload, parseOtpUrl, OTP_METHOD, type LinkCodec } from "./share-link.js";
 import seed from "./甲骨.json" with { type: "json" };
@@ -312,7 +313,7 @@ const matchParen = (s: string, open: number): number => {
   let d = 0;
   for (let j = open; j < s.length; j++) {
     const ch = s[j];
-    if (ch === '"') { j++; while (j < s.length && s[j] !== '"') { if (s[j] === "\\") j++; j++; } continue; }
+    if (ch === '"' || ch === "'") { const q = ch; j++; while (j < s.length && s[j] !== q) { if (s[j] === "\\") j++; j++; } continue; }
     if (ch === "(") d++; else if (ch === ")" && --d === 0) return j;
   }
   return s.length;
@@ -326,9 +327,9 @@ const formatFormula = (src: string): string => {
   let out = "", i = 0;
   while (i < s.length) {
     const c = s[i]!;
-    if (c === '"') { // copy a string literal verbatim (with \" escapes)
-      out += c; i++;
-      while (i < s.length) { if (s[i] === "\\") { out += s[i]! + (s[i + 1] ?? ""); i += 2; continue; } out += s[i]; if (s[i] === '"') { i++; break; } i++; }
+    if (c === '"' || c === "'") { // copy a string literal verbatim (with \ escapes)
+      const q = c; out += c; i++;
+      while (i < s.length) { if (s[i] === "\\") { out += s[i]! + (s[i + 1] ?? ""); i += 2; continue; } out += s[i]; if (s[i] === q) { i++; break; } i++; }
       continue;
     }
     if (c === "(") {
@@ -598,7 +599,13 @@ const collectArchive = (state: State): { v: number; cells: [string, string][]; d
 // serialize the whole document to a single recreating formula source. Grids →
 // cels("seg", r, c, at(addr, src)…); defs → def(…). One grid alone stays a
 // bare cels(…); anything composite wraps in segment(…).
-const qstr = (s: string): string => '"' + s.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+// Quote a string for re-serialized formula source (=seed/=link/save). Prefer the
+// delimiter that needs NO escaping: if the content has " but not ', wrap in ' (so
+// a nested formula like =dom("h1","x") dehydrates clean). Else default to ".
+const qstr = (s: string): string =>
+  (s.includes('"') && !s.includes("'"))
+    ? "'" + s.replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'"
+    : '"' + s.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
 const gridDims = (addrs: string[]): { r: number; c: number } => {
   let r = 1, c = 1;
   for (const a of addrs) {
@@ -851,6 +858,7 @@ const trustCycle: Fn = async (state: State, payload?: unknown): Promise<State> =
     const idx = TRUST_CYCLE.findIndex((p) => CAPS.every((c) => !!(TRUST_PRESETS[p] as Record<string, unknown>)[c] === !!cur[c]));
     const next = TRUST_CYCLE[(idx + 1) % TRUST_CYCLE.length]!;
     setTrust(state, seg, TRUST_PRESETS[next]!);
+    await retryNetBlocked(state); // a now-granted net re-fires any net-DENIED fetch
     await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 ${seg}: ${next}`]]);
   }
   return state;
@@ -962,6 +970,7 @@ const captoggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
     const seg = sel.split(".")[0] || "元";
     const cur = resolveTrust(state, seg) as Record<string, unknown>;
     setTrust(state, seg, { [c]: !cur[c] });
+    await retryNetBlocked(state);
     const t = resolveTrust(state, seg) as Record<string, unknown>;
     await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 ${seg}: ${CAPS.filter((x) => t[x]).join(", ") || "locked"}`]]);
   }
@@ -976,7 +985,7 @@ const captoggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
 // trust.kernel, the content formula depends on it, runCycle does the rest.
 const CAP_DOC: Record<string, { icon: string; title: string; about: string }> = {
   code:    { icon: "⚙",  title: "Code",    about: "Compile + run code (JS / Python / WASM). Off: only built-in verbs evaluate — no new lambdas run." },
-  net:     { icon: "🌐", title: "Network", about: "Outbound requests — =chat / =grok (only to CSP-allowed hosts). Off: those calls are blocked." },
+  net:     { icon: "🌐", title: "Network", about: "Outbound requests — =fetch / =chat / =claude / =grok (only to CSP-allowed hosts). Off: every network call is blocked at the gate." },
   storage: { icon: "💾", title: "Storage", about: "Read + write local data — OPFS files, =save / =open. Off: nothing persists to or loads from disk." },
   secrets: { icon: "🔑", title: "Secrets", about: "Use stored API keys via =apiKey. Off: secret values stay sealed and unreadable." },
 };
@@ -1035,6 +1044,7 @@ const trustToggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
   if ((CAPS as readonly string[]).includes(c)) {
     const cur = resolveTrust(state, undefined) as Record<string, unknown>;
     setTrust(state, "kernel", { [c]: !cur[c] });
+    await retryNetBlocked(state);
     await trustSync(state);
     const t = resolveTrust(state, undefined) as Record<string, unknown>;
     await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 kernel: ${CAPS.filter((x) => t[x]).join(", ") || "locked"}`]]);
@@ -1852,6 +1862,7 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const cap = String(req.cap);
         if ((CAPS as readonly string[]).includes(cap)) {
           setTrust(state, String(req.seg), { [cap]: !!req.on });
+          if (req.on) await retryNetBlocked(state);
           result = `${req.seg}: ${cap} ${req.on ? "granted" : "revoked"}`;
         } else result = `#DENIED(trust: unknown capability "${cap}" — use code/net/storage/secrets)`;
       } else if (req.originTrustOf) {

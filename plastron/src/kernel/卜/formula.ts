@@ -87,27 +87,28 @@ const tokenize = (src: string): string[] => {
     const c = src[i]!;
     if (c === " " || c === "\t" || c === "\n" || c === "\r") { i++; continue; }
     if (c === "(" || c === ")") { tokens.push(c); i++; continue; }
-    if (c === '"') {
-      let j = i + 1;
-      let s = '"';
+    if (c === '"' || c === "'") {
+      const q = c;                 // ' OR " delimits a string (one level of nesting
+      let j = i + 1;               // without escaping: at("A1", '=dom("h1","x")')).
+      let body = "";               // de-escaped CONTENT (without the wrapping quote)
       let closed = false;
       while (j < n) {
         const k = src[j]!;
         if (k === "\\" && j + 1 < n) {
           const e = src[j + 1]!;
-          if (e === "n") s += "\n";
-          else if (e === "t") s += "\t";
-          else if (e === "r") s += "\r";
-          else s += e;            // covers \\, \", and any other passthrough
+          if (e === "n") body += "\n";
+          else if (e === "t") body += "\t";
+          else if (e === "r") body += "\r";
+          else body += e;            // covers \\, \", \', and any other passthrough
           j += 2;
           continue;
         }
-        if (k === '"') { s += '"'; j++; closed = true; break; }
-        s += k;
+        if (k === q) { j++; closed = true; break; }
+        body += k;
         j++;
       }
       if (!closed) throw new Error(`Unterminated string in formula "${src}"`);
-      tokens.push(s);
+      tokens.push('"' + body + '"'); // normalize to a "-wrapped token (isStringLit reads first/last char)
       i = j;
       continue;
     }
@@ -116,7 +117,7 @@ const tokenize = (src: string): string[] => {
     while (j < n) {
       const k = src[j]!;
       if (k === " " || k === "\t" || k === "\n" || k === "\r" ||
-          k === "(" || k === ")" || k === '"') break;
+          k === "(" || k === ")" || k === '"' || k === "'") break;
       j++;
     }
     tokens.push(src.slice(i, j));
