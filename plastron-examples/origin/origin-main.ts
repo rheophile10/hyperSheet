@@ -17,7 +17,32 @@ setPainter(state, createPainter(state)); // real rAF + document
 await (resolve(state, "ensureSegments"))(state, ["origin"]);
 await (resolve(state, "hydrate"))(state, [], []);
 await (resolveFn(state, "precomputeOptional") ?? precomputeOptional)(state);
+await (resolve(state, "origin.viewportSync"))(state);   // seed viewport.* before first eval
+await (resolve(state, "origin.clockSync"))(state);      // seed clock before first eval
 await (resolve(state, "runCycle"))(state);
+
+// host-ticked clock: refresh the clock cel every second (clockSync no-ops unless
+// the minute rolled), then repaint so a taskbar referencing `clock` updates.
+setInterval(async () => {
+  const before = state.cels.get("clock")?.v;
+  await (resolve(state, "origin.clockSync"))(state);
+  if (state.cels.get("clock")?.v !== before) {
+    await (resolve(state, "runCycle"))(state);
+    await (resolve(state, "drain"))(state, "dom.paint");
+  }
+}, 1000);
+
+// reactive viewport: on resize, refresh the viewport.* cels and repaint, so
+// formulas that reference them (viewport.w / .h / .mobile / .orient) relayout.
+let vpT: ReturnType<typeof setTimeout> | undefined;
+globalThis.addEventListener?.("resize", () => {
+  clearTimeout(vpT);
+  vpT = setTimeout(async () => {
+    await (resolve(state, "origin.viewportSync"))(state);
+    await (resolve(state, "runCycle"))(state);
+    await (resolve(state, "drain"))(state, "dom.paint");
+  }, 120);
+});
 
 // URL boot? A #f= / #raw= shared formula is UNTRUSTED: bootFromHash LOCKS the
 // kernel and makes that formula BE 元, so a stranger's plastron renders jailed
@@ -27,6 +52,8 @@ const shared = location.hash ? await bootFromHash(state, location.hash) : null;
 if (shared) {
   await (resolve(state, "drain"))(state, "dom.paint");
 } else {
+  // seed trust.kernel so =trustpanel() reflects the live (full) kernel grant.
+  await (resolve(state, "origin.trustSync"))(state);
   // normal desktop boot: 元's value is a genesis (doc(desktop)…); commit drains
   // it so the wallpaper + app windows materialize (hydrate/runCycle alone don't
   // drain genesis). With an empty draft, commit re-applies the README seed.

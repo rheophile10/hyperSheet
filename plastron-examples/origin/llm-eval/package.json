@@ -1,0 +1,13 @@
+{
+  "name": "plastron-llm-eval",
+  "private": true,
+  "type": "module",
+  "description": "Feed the plastron system prompt (llms.md) to Claude / Grok / ChatGPT and validate the formulas/links they produce against the real parser.",
+  "scripts": {
+    "eval": "bun run.ts",
+    "check": "bun check.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.69.0"
+  }
+}

@@ -65,6 +65,19 @@ const SX = {
   glyphBtn: "border:0;background:#8882;border-radius:.2rem;cursor:pointer;font:600 1.1rem ui-monospace,monospace;line-height:1;padding:.2rem .4rem;color:#888",
 } as const;
 
+// window resize handles — [direction, position css]. 4 edges (6px) + 4 corners
+// (14px); corners come last so they paint over the edges and win the cursor.
+const WIN_RESIZE_EDGES: ReadonlyArray<readonly [string, string]> = [
+  ["n", "top:0;left:0;right:0;height:6px;cursor:ns-resize"],
+  ["s", "left:0;right:0;bottom:0;height:6px;cursor:ns-resize"],
+  ["e", "top:0;right:0;bottom:0;width:6px;cursor:ew-resize"],
+  ["w", "top:0;left:0;bottom:0;width:6px;cursor:ew-resize"],
+  ["nw", "top:0;left:0;width:14px;height:14px;cursor:nwse-resize"],
+  ["ne", "top:0;right:0;width:14px;height:14px;cursor:nesw-resize"],
+  ["sw", "bottom:0;left:0;width:14px;height:14px;cursor:nesw-resize"],
+  ["se", "bottom:0;right:0;width:14px;height:14px;cursor:nwse-resize"],
+];
+
 const displayCell = (v: unknown): V => {
   if (isVnode(v)) return v as V;
   if (v === null || v === undefined || v === "") return T("");
@@ -130,7 +143,8 @@ const sheetView: Fn = ((
   const BASE = c.base ?? "元", DRAFT = c.draftCel ?? "元.draft", EDIT = c.editHandler ?? "origin.edit", KEYH = c.keyHandler ?? "origin.key";
   const SELH = c.selectHandler ?? "origin.select", FIREH = c.fireHandler ?? "origin.fire";
   const selectedKey = typeof selected === "string" ? selected : null;   // the SELECTED cell key (Excel single-click; value stays in the grid)
-  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number; savemenu?: number }> : {};
+  type Rect = { x?: number; y?: number; w?: number; h?: number };
+  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number; savemenu?: number; mobile?: Rect; desktop?: Rect }> : {};
   // the tab chip currently being dragged (winsheet.tabdrag = {host, tab}); its
   // chip lights up in the SAME blue as a window's drop-target glow.
   const draggedTab = (tabdrag && typeof tabdrag === "object" && !Array.isArray(tabdrag)) ? (tabdrag as { tab?: unknown }).tab : undefined;
@@ -211,14 +225,36 @@ const sheetView: Fn = ((
     const g = GM[host] ?? {};
     if (g.closed) return el("div", { class: "pl-window-closed", "data-win": host, style: "display:none" }, []);
     if (g.min) return el("div", { class: "pl-window-min", "data-win": host, style: "display:none" }, []);
-    // NEW windows (no saved geom) default to FULL SCREEN. Any explicit geom —
-    // drag/resize/tile()/winsize() — overrides. We deliberately leave `max` UNSET
-    // so tile() still flows these (tile() skips only truly-maximized windows), which
-    // keeps the boot demos (demoMusic/demoMidi tile themselves) laid out, not stacked.
-    void i; // staggered default retired in favor of full-screen
-    const G = globalThis as { innerWidth?: number; innerHeight?: number };
-    const dw = Number(G.innerWidth) || 1200, dh = Math.max(160, (Number(G.innerHeight) || 800) - 46);
-    const x = gnum(g.x, 0), y = gnum(g.y, 0), w = gnum(g.w, dw), h = gnum(g.h, dh), z = gnum(g.z, 1);
+    // Window box — device-aware. viewport.mobile is in 元.view's inputMap, so this
+    // re-fires when the breakpoint flips (auto-reflow on rotate / resize).
+    //  • maximized (g.max) → position:FIXED to viewport minus taskbar (fixed, not
+    //    absolute, so it ignores .origin's body-margin offset + the taskbar).
+    //  • MOBILE (viewport ≤ 720) → drop out of absolute floating into an IN-FLOW
+    //    full-width stacked card (overlapping draggable windows don't work on a
+    //    phone), UNLESS a g.mobile rect is given (then honor it). Auto-reflows on
+    //    rotate via CSS width:100%.
+    //  • DESKTOP explicit geom (g.w/g.h or g.desktop) → absolute px.
+    //  • DESKTOP new (no geom) → size to CONTENT, cascaded by index i, clamped.
+    const TASKBAR = 48; // the fixed bottom taskbar's height
+    const mobile = (Number((globalThis as { innerWidth?: number }).innerWidth) || 1200) <= 720;
+    const z = gnum(g.z, 1);
+    let box: string;
+    if (g.max) {
+      box = `position:fixed;left:0;top:0;right:0;bottom:${TASKBAR}px`;
+    } else if (mobile) {
+      const mr = g.mobile;
+      box = (mr && (mr.w != null || mr.h != null))
+        ? `position:absolute;left:${gnum(mr.x, 0)}px;top:${gnum(mr.y, 0)}px;width:${gnum(mr.w, 360)}px;height:${gnum(mr.h, 280)}px`
+        : `position:relative;width:100%;max-width:100vw;height:max-content;max-height:calc(100vh - ${TASKBAR + 8}px);margin:0 0 .5rem`;
+    } else {
+      const d = { ...g, ...(g.desktop ?? {}) };
+      // geom-less desktop windows CASCADE by index (no auto-tile/layout pass any
+      // more) so multiple opens don't pile on one spot; drag to rearrange.
+      const cx = 8 + (i % 8) * 30, cy = 8 + (i % 8) * 30;
+      box = (d.w != null || d.h != null)
+        ? `position:absolute;left:${gnum(d.x, 0)}px;top:${gnum(d.y, 0)}px;width:${gnum(d.w, 480)}px;height:${gnum(d.h, 320)}px`
+        : `position:absolute;left:${gnum(d.x, cx)}px;top:${gnum(d.y, cy)}px;width:max-content;min-width:340px;max-width:calc(100vw - 24px);height:max-content;max-height:calc(100vh - ${TASKBAR + 16}px)`;
+    }
     // the tab strip — a "+" that genesis-creates a new blank sheet tabbed into
     // THIS window (winsheet.newtab), plus one chip per sheet WHEN tabbed (>1). A
     // single-sheet window shows just "+" (no self-chip), so the chips still read
@@ -238,13 +274,15 @@ const sheetView: Fn = ((
     // a drop-target GLOW (win.geom[host].glow) while a window/tab is dragged
     // over this one, so the user sees where it will land (tab/stack).
     const glow = g.glow ? ";outline:3px solid #4a90d9;outline-offset:1px;box-shadow:0 0 0 3px #4a90d955,0 4px 16px #0004" : ";box-shadow:0 4px 16px #0004";
-    return el("div", { class: "pl-window" + (g.glow ? " drop-target" : ""), "data-win": host, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas${glow};overflow:hidden` }, [
+    return el("div", { class: "pl-window" + (g.glow ? " drop-target" : ""), "data-win": host, style: `${box};z-index:${z};display:flex;flex-direction:column;border:1px solid #8886;border-radius:6px;background:Canvas${glow};overflow:hidden` }, [
       titlebar(host, !!g.max),
       ...(g.savemenu ? [saveMenu(host)] : []),
       ...(tabStrip ? [tabStrip] : []),
       formulaBar(tabs),
       el("div", { class: "pl-window-body", style: "flex:1 1 auto;overflow:auto;padding:.25rem;min-height:0" }, [activeTable]),
-      el("div", { class: "pl-resize", style: "position:absolute;right:0;bottom:0;width:15px;height:15px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" }, [], { pointerdown: { dispatch: "winsheet.grabResize", payload: host }, pointermove: { dispatch: "winsheet.resizeMove" }, pointerup: { dispatch: "winsheet.drop" } }),
+      // resize from every edge AND corner (was just the SE corner). Each handle
+      // carries its direction; the SE corner keeps the visible grip texture.
+      ...WIN_RESIZE_EDGES.map(([dir, pos]) => el("div", { class: "pl-resize pl-resize-" + dir, style: `position:absolute;${pos};touch-action:none;z-index:6${dir === "se" ? ";background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" : ""}` }, [], { pointerdown: { dispatch: "winsheet.grabResize", payload: { seg: host, dir } }, pointermove: { dispatch: "winsheet.resizeMove" }, pointerup: { dispatch: "winsheet.drop" } })),
     ], { pointerdown: { dispatch: "winsheet.raise", payload: host } });
   };
   const ks = Array.isArray(keys) ? (keys as string[]) : ["元"];
@@ -439,7 +477,7 @@ const sheetView: Fn = ((
 // sheetView gets it as one input. The handlers update that map; the cells inside
 // a window are unchanged, so editing/selection still work as before.
 interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number; savemenu?: number }
-interface WWinEl { offsetLeft?: number; offsetTop?: number }
+interface WWinEl { offsetLeft?: number; offsetTop?: number; offsetWidth?: number; offsetHeight?: number }
 interface WEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void; closest?: (s: string) => WWinEl | null }; stopPropagation?: () => void }
 // win.geom is in 元.view's inputMap, so a geom change re-fires the view — but
 // that re-fire must propagate through the cycle BEFORE we paint, or the first
@@ -452,7 +490,9 @@ const wrepaint = async (state: State): Promise<unknown> => {
 };
 const geomMap = (state: State): Record<string, WGeom> => { const v = state.cels.get("win.geom")?.v; return (v && typeof v === "object" && !Array.isArray(v)) ? { ...(v as Record<string, WGeom>) } : {}; };
 const setGeom = (state: State, m: Record<string, WGeom>): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.geom", m)).then(() => wrepaint(state));
-const wdrag = (state: State): { seg: string; ox: number; oy: number; resize?: boolean } | null | undefined => state.cels.get("winsheet.drag")?.v as { seg: string; ox: number; oy: number; resize?: boolean } | null | undefined;
+type WDrag = { seg: string; ox?: number; oy?: number; resize?: boolean;
+  dir?: string; x0?: number; y0?: number; w0?: number; h0?: number; px?: number; py?: number };
+const wdrag = (state: State): WDrag | null | undefined => state.cels.get("winsheet.drag")?.v as WDrag | null | undefined;
 const setWdrag = (state: State, v: unknown): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winsheet.drag", v));
 const wnum = (v: unknown, d = 0): number => { const n = Number(v); return Number.isFinite(n) ? n : d; };
 const wcap = (e?: WEvt): void => { try { e?.currentTarget?.setPointerCapture?.(wnum(e?.pointerId)); } catch { /* off-DOM */ } };
@@ -520,9 +560,38 @@ const winOriginAt = (state: State, seg: string, event?: WEvt): { x: number; y: n
   return { x: wnum(g.x, 60), y: wnum(g.y, 60) };
 };
 const wsGrab: Fn = (async (state: State, seg: unknown, event?: WEvt): Promise<void> => { wcap(event); const o = winOriginAt(state, String(seg), event); const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), z }; await setGeom(state, m); await setWdrag(state, { seg: String(seg), ox: wnum(event?.clientX) - o.x, oy: wnum(event?.clientY) - o.y }); }) as Fn;
-const wsMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d || d.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), x: wnum(event?.clientX) - d.ox, y: wnum(event?.clientY) - d.oy }; markGlow(m, winAtPoint(wnum(event?.clientX), wnum(event?.clientY), d.seg)); await setGeom(state, m); }) as Fn;
-const wsGrabResize: Fn = (async (state: State, seg: unknown, event?: WEvt): Promise<void> => { wcap(event); const g = geomMap(state)[String(seg)] ?? {}; await setWdrag(state, { seg: String(seg), ox: wnum(event?.clientX) - wnum(g.w, 360), oy: wnum(event?.clientY) - wnum(g.h, 260), resize: true }); }) as Fn;
-const wsResizeMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d?.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), w: Math.max(160, wnum(event?.clientX) - d.ox), h: Math.max(90, wnum(event?.clientY) - d.oy) }; await setGeom(state, m); }) as Fn;
+const wsMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => { const d = wdrag(state); if (!d || d.resize) return; const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), x: wnum(event?.clientX) - wnum(d.ox), y: wnum(event?.clientY) - wnum(d.oy) }; markGlow(m, winAtPoint(wnum(event?.clientX), wnum(event?.clientY), d.seg)); await setGeom(state, m); }) as Fn;
+// the window's ACTUAL rendered rect — reads the DOM box (works for content-sized
+// windows that have no explicit w/h yet), falling back to geom off-DOM (tests).
+const winRectAt = (state: State, seg: string, event?: WEvt): { x: number; y: number; w: number; h: number } => {
+  const w = event?.currentTarget?.closest?.(".pl-window");
+  if (w && Number.isFinite(w.offsetWidth) && Number.isFinite(w.offsetHeight))
+    return { x: Number(w.offsetLeft), y: Number(w.offsetTop), w: Number(w.offsetWidth), h: Number(w.offsetHeight) };
+  const g = geomMap(state)[seg] ?? {};
+  return { x: wnum(g.x, 60), y: wnum(g.y, 60), w: wnum(g.w, 360), h: wnum(g.h, 260) };
+};
+// resize from any edge/corner. payload = { seg, dir } where dir ∈ n/s/e/w/ne/nw/se/sw.
+// Anchor the OPPOSITE edge: dragging a 'w' edge moves x and shrinks/grows w so the
+// right edge stays put. Snapshots the start rect + pointer so the math is absolute.
+const wsGrabResize: Fn = (async (state: State, payload: unknown, event?: WEvt): Promise<void> => {
+  wcap(event);
+  const p = (payload && typeof payload === "object") ? payload as { seg: string; dir?: string } : { seg: String(payload), dir: "se" };
+  const r = winRectAt(state, p.seg, event);
+  await setWdrag(state, { seg: p.seg, resize: true, dir: p.dir ?? "se", x0: r.x, y0: r.y, w0: r.w, h0: r.h, px: wnum(event?.clientX), py: wnum(event?.clientY) });
+}) as Fn;
+const RESIZE_MINW = 200, RESIZE_MINH = 120;
+const wsResizeMove: Fn = (async (state: State, _p: unknown, event?: WEvt): Promise<void> => {
+  const d = wdrag(state); if (!d?.resize) return;
+  const dir = String(d.dir ?? "se");
+  const dx = wnum(event?.clientX) - wnum(d.px), dy = wnum(event?.clientY) - wnum(d.py);
+  let x = wnum(d.x0), y = wnum(d.y0), w = wnum(d.w0), h = wnum(d.h0);
+  if (dir.includes("e")) w = Math.max(RESIZE_MINW, wnum(d.w0) + dx);
+  if (dir.includes("s")) h = Math.max(RESIZE_MINH, wnum(d.h0) + dy);
+  if (dir.includes("w")) { const nw = Math.max(RESIZE_MINW, wnum(d.w0) - dx); x = wnum(d.x0) + (wnum(d.w0) - nw); w = nw; }
+  if (dir.includes("n")) { const nh = Math.max(RESIZE_MINH, wnum(d.h0) - dy); y = wnum(d.y0) + (wnum(d.h0) - nh); h = nh; }
+  const m = geomMap(state); m[d.seg] = { ...(m[d.seg] ?? {}), x, y, w, h, max: 0 };
+  await setGeom(state, m);
+}) as Fn;
 // dropping a window ONTO another consolidates it as a tab; a host's own children
 // re-home to the new ultimate host. Dropped in empty space → just repositioned.
 const wsDrop: Fn = (async (state: State, _p: unknown, event?: WEvt & { clientX?: number; clientY?: number }): Promise<void> => {
@@ -586,7 +655,10 @@ const wsMin: Fn = (async (state: State, seg: unknown): Promise<void> => { const 
 // worksheet window is NEVER destroyed (元 must stay restorable).
 const wsClose: Fn = (async (state: State, seg: unknown): Promise<void> => { const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), closed: 1 }; await setGeom(state, m); }) as Fn;
 const wsRestore: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), min: 0, closed: 0, z }; await setGeom(state, m); }) as Fn;
-const wsMax: Fn = (async (state: State, seg: unknown): Promise<void> => { const g = globalThis as { innerWidth?: number; innerHeight?: number }; const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { x: 0, y: 0, w: wnum(g.innerWidth, 1200), h: Math.max(160, wnum(g.innerHeight, 800) - 46), z, min: 0, max: 1 }; await setGeom(state, m); }) as Fn;
+// maximize → just set max:1; the renderer positions it FIXED to the viewport
+// (minus the taskbar), so it no longer inherits .origin's offset or clips under
+// the taskbar. Clearing w/h means restore (wsMid) gives a clean mid-size window.
+const wsMax: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { ...(m[String(seg)] ?? {}), w: undefined, h: undefined, x: 0, y: 0, z, min: 0, max: 1 }; await setGeom(state, m); }) as Fn;
 const wsMid: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { x: 90, y: 70, w: 540, h: 380, z, min: 0, max: 0 }; await setGeom(state, m); }) as Fn;
 const wsStop: Fn = ((_state: State, _p: unknown, event?: WEvt): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
 

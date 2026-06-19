@@ -66,7 +66,7 @@
         "name": "cels",
         "kind": "native",
         "genesis": true,
-        "description": "genesis: worksheets of editable cels, each like 元. cels(rows, cols) makes one sheet (auto-named g<r>x<c>); cels(rows, cols, \"name\") names it; cels(\"in\",4,3,\"out\",4,3) makes a workbook; cels(\"in\",4,3,at(\"a1\",\"apple\")) fills cells."
+        "description": "genesis: worksheets of editable cels, each like 元. TOP-LEVEL ONLY — a genesis builds the sheet; never nest it in dom()/canvas() (it stringifies to \"[object Object]\"). cels(rows, cols) makes one sheet (auto-named g<r>x<c>); cels(rows, cols, \"name\") names it; cels(\"in\",4,3,\"out\",4,3) makes a workbook; cels(\"in\",4,3,at(\"a1\",\"apple\")) fills cells. To chart a grid, put the chart in a cell OF it: at(\"A5\", '=canvas(360,200, barchart(g!A2:A4, g!B2:B4))')."
       },
       "locked": true
     }

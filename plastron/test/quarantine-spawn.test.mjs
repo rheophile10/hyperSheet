@@ -1,6 +1,6 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
-import { createInitialState, resolveFn, resolveTrust, setTrust } from "../dist/index.js";
+import { createInitialState, resolveFn, resolveTrust, setTrust, lockConsent } from "../dist/index.js";
 
 // ============================================================================
 // quarantine/spawn — `=kernel(seed, preset)` spawns a child plastron as a
@@ -42,11 +42,12 @@ test("a pure-formula seed computes inside the quarantine", async () => {
   assert.equal(state.cels.get(`${seg}.元`)?.v, 42, "locked sheet still computes — dom/cels/math are ungated");
 });
 
-test("a net-using seed is #DENIED in a locked spawn (the jail holds)", async () => {
+test("a net-using seed is refused in a consent-locked session (the gate holds)", async () => {
   const state = await boot();
+  lockConsent(state); // a locked session — a spawned seed's dangerous verbs need consent
   const seg = await spawn(state, `=chat("hi","k","m","https://api.anthropic.com")`, "locked");
   const v = state.cels.get(`${seg}.元`)?.v;
-  assert.ok(typeof v === "string" && v.startsWith("#DENIED(net"), `net refused in locked spawn (got ${JSON.stringify(v)})`);
+  assert.ok(typeof v === "string" && v.startsWith("#BLACKLISTED"), `net refused in locked session (got ${JSON.stringify(v)})`);
 });
 
 test("the 'net' preset grants net to the spawned segment", async () => {

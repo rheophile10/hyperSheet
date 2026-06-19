@@ -43,12 +43,14 @@ test("a #raw= human-readable URL boots the same way", async () => {
   assert.equal(kernelTrust(state).storage, false, "kernel locked");
 });
 
-test("a net-using shared formula is #DENIED on a URL boot (whole kernel jailed)", async () => {
+test("a net-using shared formula is refused on a URL boot (consent-locked)", async () => {
   const state = await boot();
+  // a URL boot consent-LOCKS the session, so a dangerous verb (chat → net) is
+  // #BLACKLISTED until the user Allows it via the consent panel.
   await bootFromHash(state, await encodeLink(`=chat("hi","k","m","https://api.anthropic.com")`, { base: "" }));
   await settle(state);
   const v = 元(state);
-  assert.ok(typeof v === "string" && v.startsWith("#DENIED(net"), `net refused (got ${JSON.stringify(v)})`);
+  assert.ok(typeof v === "string" && v.startsWith("#BLACKLISTED"), `net refused (got ${JSON.stringify(v)})`);
 });
 
 test("NO hash → the kernel stays FULL (normal desktop boot)", async () => {

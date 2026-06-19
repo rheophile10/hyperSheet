@@ -80,7 +80,7 @@
     "segment": "dom",
     "name": "dom",
     "kind": "native",
-    "description": "(tag, ...children) - a presentation vnode value. tag.class is emmet sugar; string children → text, nested dom(…) → elements, (style …)/(attr …)/(on …) → that element's style/attributes/events."
+    "description": "(tag, ...children) - a presentation vnode value. tag.class is emmet sugar; string children → text, nested dom(…) → elements, (style …)/(attr …)/(on …) → that element's style/attributes/events. Children must be vnodes/strings/style/attr/on — NOT a genesis: cels()/segment() build sheets and don't nest here (they'd stringify to \"[object Object]\"); make the grid top-level instead."
    }
   },
   {

@@ -317,6 +317,7 @@ export {
   resolveTrust, kernelTrust, canUse, trustAllowsReach, setTrust,
   extractNeeds, grantDelta, CAPABILITIES, FULL_TRUST, LOCKED_TRUST,
   TRUST_KERNEL_KEY, trustKeyOf,
+  DANGEROUS, isDangerous, isConsented, requireConsent, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
   currentAccessor, withAccessor, isDenied, DENIED,
   validateManifests,
   celDependencies, dependentsOf, downstreamOf, upstreamOf,

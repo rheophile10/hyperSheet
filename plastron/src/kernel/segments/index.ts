@@ -28,6 +28,10 @@ export {
 } from "./trust.js";
 export type { Trust, Capability } from "./trust.js";
 export {
+  DANGEROUS, isDangerous, isConsented, requireConsent, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
+} from "./consent.js";
+export type { DangerCategory, DangerSpec, ConsentGrant, DangerUse } from "./consent.js";
+export {
   installDormant, dormantSegmentOf, dormantView, assertNotDormant,
 } from "./dormant.js";
 export { flush } from "./flush.js";

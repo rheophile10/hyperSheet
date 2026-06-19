@@ -119,11 +119,12 @@
      "config": "元.viewConfig",
      "geom": "win.geom",
      "selected": "元.selected",
-     "tabdrag": "winsheet.tabdrag"
+     "tabdrag": "winsheet.tabdrag",
+     "vpmobile": "viewport.mobile"
     },
     "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place. Reads winsheet.tabdrag so the chip being dragged highlights in the drop-target blue."
    },
-   "f": "(sheetView 元.viewConfig editing draft mount error keys vals srcs geom selected tabdrag)"
+   "f": "(sheetView 元.viewConfig editing draft mount error keys vals srcs geom selected tabdrag vpmobile)"
   },
   {
    "key": "cels",
@@ -135,7 +136,7 @@
     "name": "cels",
     "kind": "native",
     "genesis": true,
-    "description": "genesis: worksheets of editable cels, each like 元. cels(rows, cols) makes one sheet (auto-named g<r>x<c>); cels(rows, cols, \"name\") names it; cels(\"in\", 4, 3, \"out\", 4, 3) makes a WORKBOOK; cels(\"in\", 4, 3, at(\"a1\", \"apple\"), at(\"b2\", \"cel(\\\"monkey\\\")\")) fills cells with initial values/formulas. delete the formula -> swept."
+    "description": "genesis: worksheets of editable cels, each like 元. TOP-LEVEL ONLY — a genesis builds the sheet; it is never a child of dom()/canvas() (nested it stringifies to \"[object Object]\" and never materializes). cels(rows, cols) makes one sheet (auto-named g<r>x<c>); cels(rows, cols, \"name\") names it; cels(\"in\", 4, 3, \"out\", 4, 3) makes a WORKBOOK; cels(\"in\", 4, 3, at(\"a1\", \"apple\"), at(\"b2\", \"cel(\\\"monkey\\\")\")) fills cells with initial values/formulas. To chart a grid, put the chart in a cell OF that grid: at(\"A5\", '=canvas(360,200, barchart(sales!A2:A4, sales!B2:B4))'). delete the formula -> swept."
    }
   },
   {
@@ -350,6 +351,78 @@
     "kind": "native",
     "emitsTo": "origin.effects",
     "description": "(segment?) - the values + functions usable in formulas (callable lambdas/compilers + value cels) with descriptions; no arg = across all loaded segments."
+   }
+  },
+  {
+   "key": "viewport",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "viewport",
+    "segment": "origin",
+    "name": "viewport",
+    "kind": "native",
+    "description": "() - current page metrics {w, h, mobile, orient} as a one-shot snapshot. For REACTIVE layout reference the cels instead: viewport.w / viewport.h / viewport.mobile / viewport.orient update on window resize, so a formula re-runs to relayout — =IF(viewport.mobile, dom(\"h1\",\"phone\"), win(\"app\",\"App\",body)) or =win(\"app\",\"App\",body, viewport.w, viewport.h - 40)."
+   }
+  },
+  {
+   "key": "origin.viewportSync",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.viewportSync",
+    "segment": "origin",
+    "name": "viewportSync",
+    "kind": "native",
+    "description": "(host) writes live page metrics into the viewport.* cels so formulas that reference them re-run; the host calls it at boot and on resize."
+   }
+  },
+  {
+   "key": "origin.clockSync",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.clockSync",
+    "segment": "origin",
+    "name": "clockSync",
+    "kind": "native",
+    "description": "(host) writes the current time into the clock (HH:MM) + clock.full cels so a formula referencing them (e.g. a taskbar) re-renders; the host calls it on an interval. Reference `clock` in a formula instead of a banned NOW()."
+   }
+  },
+  {
+   "key": "item",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "item",
+    "segment": "origin",
+    "name": "item",
+    "kind": "native",
+    "description": "(label, action, ...children) - one navigation menu node for nav(). label is text/emoji; action is a window KEY (clicking focuses that window) or a '=formula' (clicking spawns a new window running it), or omit action for a pure submenu parent. children are more item()s (WordPress-style nesting). e.g. item(\"📊 Charts\", item(\"🥧 Pie\", '=cels(3,2, ...piechart...)'))."
+   }
+  },
+  {
+   "key": "nav",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "nav",
+    "segment": "origin",
+    "name": "nav",
+    "kind": "native",
+    "description": "([mobile], ...items) - a navigation menu from item() nodes. Pass viewport.mobile as the first arg so it AUTO-SWITCHES: a collapsible left sidebar (☰) on mobile, desktop icon-launchers otherwise (it re-renders on rotate/resize). Nesting collapses via native <details>. e.g. =nav(viewport.mobile, item(\"📁 Files\",\"files\"), item(\"📊 Charts\", item(\"🥧 Pie\", '=cels(3,2,at(\"A1\",\"x\"))')))."
+   }
+  },
+  {
+   "key": "origin.navOpen",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.navOpen",
+    "segment": "origin",
+    "name": "navOpen",
+    "kind": "native",
+    "description": "dispatch target for a clicked nav leaf: a '=formula' action spawns a new window (trusted, capped by the kernel); any other action is a window key and focuses that window."
    }
   },
   {
@@ -828,6 +901,55 @@
     "name": "trustdom",
     "kind": "native",
     "description": "(view) - render the Trust panel body from a {code,net,storage,secrets} value (the trust.kernel cel). The Grant/Revoke buttons dispatch origin.trustToggle. Used by trustpanel()'s content formula; reference trust.kernel so it re-renders on any grant."
+   }
+  },
+  {
+   "key": "consentpanel",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "consentpanel",
+    "segment": "origin",
+    "name": "consentpanel",
+    "kind": "native",
+    "genesis": true,
+    "description": "() - open the Consent panel: the dangerous functions (I/O + code) the current page uses, each Allow/Revoke toggleable. Replaces the per-sheet trust shield. Reads consent.usage."
+   }
+  },
+  {
+   "key": "consentdom",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "consentdom",
+    "segment": "origin",
+    "name": "consentdom",
+    "kind": "native",
+    "description": "(usage) - render the consent list from the consent.usage value (each dangerous fn in use: category, reason, call-count, segments, Allow/Revoke). Buttons dispatch origin.consentToggle."
+   }
+  },
+  {
+   "key": "origin.consentToggle",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.consentToggle",
+    "segment": "origin",
+    "name": "consentToggle",
+    "kind": "native",
+    "description": "dispatch target: flip one function's consent (allow/deny) in the consent cel, then refresh consent.usage. Host/user-only (never a formula verb)."
+   }
+  },
+  {
+   "key": "origin.consentSync",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.consentSync",
+    "segment": "origin",
+    "name": "consentSync",
+    "kind": "native",
+    "description": "(host) recompute consent.usage = the dangerous functions the live graph references, so the Consent panel re-renders."
    }
   },
   {

@@ -2,14 +2,15 @@ import type {
   甲骨, Cel, ChannelEnqueue, Fn, Key, State, VNode, AttrValue, EventBinding,
 } from "../../../types/index.js";
 import {
-  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, canUse, setTrust, resolveTrust, LOCKED_TRUST,
+  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, setTrust, resolveTrust, LOCKED_TRUST,
+  dangerousUsage, setConsent, DANGEROUS, requireConsent, lockConsent,
 } from "../../../kernel/index.js";
 // Core rendering comes from the dom LIBRARY — the app doesn't re-roll
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
 // `memo` attaches the diff's O(changed) short-circuit hint (see dom).
 import { el as makeEl, text as T } from "../../library/dom/index.js";
 import { openAsSheet } from "../../library/sheet-host/index.js";
-import { retryNetBlocked } from "../../library/net/index.js";
+import { BUILTIN_DOCS } from "../../library/sheet/utils/infix.js";
 import { encodeLink, decodeLink, encodeEncLink, decodeEncLink, ENC_METHOD,
   encodeOtpLink, otpDecryptPayload, parseOtpUrl, OTP_METHOD, type LinkCodec } from "./share-link.js";
 import seed from "./甲骨.json" with { type: "json" };
@@ -201,12 +202,10 @@ const doc: Fn = (...parts: unknown[]): unknown => {
     }
     mints[layer] = (access && typeof access === "object") ? access : {};
   };
-  let layoutMode: string | undefined;
   for (const p of parts) {
-    // a bare string is the DESKTOP LAYOUT ARGUMENT — segment("masonry", …) /
-    // segment("free", …). Visible in the formula; it sets win.layout so the
-    // desktop arranges (or doesn't) accordingly.
-    if (typeof p === "string") { if (p === "masonry" || p === "rowflow" || p === "free") layoutMode = p; continue; }
+    // a bare string arg is ignored (legacy desktop-layout argument, removed —
+    // windows are content-sized + cascade now, no auto-layout pass).
+    if (typeof p === "string") continue;
     if (!p || typeof p !== "object") continue;
     const o = p as Record<string, unknown>;
     if (o.genesis === true && o.cels) {                                                  // cels(…)/winapp(…)/chatapp(…)
@@ -217,9 +216,7 @@ const doc: Fn = (...parts: unknown[]): unknown => {
       Object.assign(cels, o.cels as Record<string, unknown>);
     } else if (o.originDef === true) cels[String(o.name)] = { celType: "EditableLambdaCel", f: String(o.source ?? ""), metadata: { kind: String(o.kind ?? "js"), name: String(o.name) } };
   }
-  // carry the desktop layout mode on the genesis RESULT (not as a cel — a stray
-  // cel breaks the genesis drain); commit reads it off the value and sets win.layout.
-  return layoutMode ? { genesis: true, cels, mints, layout: layoutMode } : { genesis: true, cels, mints };
+  return { genesis: true, cels, mints };
 };
 
 // seed() — ask the drain (which has state) to serialize the whole document to a
@@ -258,19 +255,6 @@ const cellKeys = (state: State): string[] => {
     if (md.generatedBy || /^win\.[\w-]+\.(state|content|frame)$/.test(k) || k === "linkfx.overlay") out.push(k);
   }
   return [out[0]!, ...out.slice(1).sort()];
-};
-
-// The set of top-level worksheet SEGMENTS currently on the desktop (a genesis
-// grid lives at seg.A1, seg.B2, …). win.* layer cels are desktop furniture, not
-// worksheets. Used to detect windows freshly spawned by a formula-load so they
-// can auto-tile instead of stacking.
-const worksheetSegs = (state: State): Set<string> => {
-  const segs = new Set<string>();
-  for (const k of cellKeys(state)) {
-    const d = k.indexOf(".");
-    if (d > 0) { const seg = k.slice(0, d); if (seg !== "win") segs.add(seg); }
-  }
-  return segs;
 };
 
 // 元.view's `vals` is an ARRAY inputMap of the cell keys (→ array of
@@ -509,7 +493,6 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   const drain = resolveFn(state, "drain") as Fn;
   const gd = resolveFn(state, "genesis.drain") as Fn | undefined;
   const dd = resolveFn(state, "defn.drain") as Fn | undefined;
-  const wsBefore = worksheetSegs(state); // to detect windows this commit spawns
   for (let pass = 0; pass < 8; pass++) {
     const before = state.cels.size;
     await (resolveFn(state, "runCycle") as Fn)(state);
@@ -529,18 +512,9 @@ const commit: Fn = async (state: State, payload?: unknown) => {
   if (sync) await sync(state);
   await (resolveFn(state, "runCycle") as Fn)(state);
   await drain(state, "dom.paint");
-  // a segment("masonry"|"free", …) formula carries the desktop layout argument
-  // on its genesis VALUE — apply it to win.layout (the formula is the source of
-  // truth, visibly, so the bar shows the mode).
-  const gv = state.cels.get(key)?.v as { layout?: unknown } | undefined;
-  if (gv && typeof gv === "object" && (gv.layout === "masonry" || gv.layout === "rowflow" || gv.layout === "free")) {
-    await (resolveFn(state, "setValue") as Fn)(state, "win.layout", gv.layout);
-  }
-  // ≥2 new windows → reflow the WHOLE desktop as masonry (every open window, so
-  // nothing is left floating to overlap), 元 pinned top-left. Honors win.layout.
-  const gmNow = (state.cels.get("win.geom")?.v as Record<string, Record<string, unknown>>) ?? {};
-  const fresh = [...worksheetSegs(state)].filter((s) => !wsBefore.has(s) && gmNow[s]?.x === undefined);
-  if (fresh.length >= 2) await tile(state);
+  // keep the consent panel's usage list fresh while it's open (cheap-guarded so a
+  // normal commit doesn't walk every cel unless the panel exists).
+  if (state.cels.get("win.consent.state")) { await consentSync(state); await drain(state, "dom.paint"); }
   return state;
 };
 
@@ -811,7 +785,31 @@ const spawnQuarantined = async (state: State, seed: string, preset: string): Pro
 export const bootFromHash = async (state: State, hash: string): Promise<string | null> => {
   const h = String(hash || "");
   let formula: string | null = null;
-  if (new RegExp(`[#?&]${ENC_METHOD}=`).test(h)) {
+  // ── self-service tools for LLMs/agents: render a PLAIN-TEXT answer, don't run
+  // the formula as an app. #check=<urlenc formula> → is it valid?  #encode=<…> →
+  // its compressed #f= share link (so a model that can't deflate can still get a
+  // real link by handing the user this URL). Both boot locked + inert (just text).
+  const checkM = /[#?&]check=([^#?&]+)/.exec(h);
+  const encodeM = /[#?&]encode=([^#?&]+)/.exec(h);
+  if (checkM) {
+    const f = decodeURIComponent(checkM[1]!);
+    let verdict: string;
+    try {
+      await (resolveFn(state, "setValue") as Fn)(state, "元.draft", f);
+      await (resolveFn(state, "origin.commit") as Fn)(state, "元");
+      const err = String(state.cels.get("元.error")?.v ?? "").trim();
+      const v = state.cels.get("元")?.v;
+      if (err && err !== "null") verdict = "❌ INVALID\n\n" + err.replace(/^#/, "");
+      else if (v === undefined || v === null || v === "") verdict = "⚠️ parsed, but produced an empty value";
+      else verdict = "✅ VALID — parsed + evaluated";
+    } catch (e) { verdict = "❌ INVALID\n\n" + String((e as { message?: unknown })?.message ?? e); }
+    formula = `=dom("pre", ${JSON.stringify(verdict + "\n\nformula:\n" + f)})`;
+  } else if (encodeM) {
+    const f = decodeURIComponent(encodeM[1]!);
+    let out: string;
+    try { out = await encodeLink(f); } catch (e) { out = "encode failed: " + String((e as { message?: unknown })?.message ?? e); }
+    formula = `=dom("pre", ${JSON.stringify("compressed share link for your formula:\n\n" + out + "\n\n(open it to run the formula; it boots locked)")})`;
+  } else if (new RegExp(`[#?&]${ENC_METHOD}=`).test(h)) {
     // encrypted link: prompt for the passphrase, decrypt, then boot it LOCKED
     // like any shared formula. A wrong passphrase still boots (jailed) with a
     // legible error rather than a blank page.
@@ -826,7 +824,8 @@ export const bootFromHash = async (state: State, hash: string): Promise<string |
   } else if (/[#?&]f=/.test(h)) formula = await decodeLink(h);
   else { const m = /[#?&]raw=([^#?&]+)/.exec(h); if (m) formula = decodeURIComponent(m[1]!); }
   if (!formula) return null;
-  setTrust(state, "kernel", LOCKED_TRUST);                              // provenance = url → lock everything
+  lockConsent(state);                                                   // provenance = url → CONSENT-lock (dangerous fns need Allow)
+  setTrust(state, "kernel", LOCKED_TRUST);                              // (legacy 信 lock — removed once consent fully replaces it)
   await trustSync(state);                                               // seed trust.kernel so =trustpanel() shows the locked truth
   await (resolveFn(state, "setValue") as Fn)(state, "元.draft", formula);
   await (resolveFn(state, "origin.commit") as Fn)(state, "元");         // the shared formula IS the view, jailed
@@ -858,7 +857,6 @@ const trustCycle: Fn = async (state: State, payload?: unknown): Promise<State> =
     const idx = TRUST_CYCLE.findIndex((p) => CAPS.every((c) => !!(TRUST_PRESETS[p] as Record<string, unknown>)[c] === !!cur[c]));
     const next = TRUST_CYCLE[(idx + 1) % TRUST_CYCLE.length]!;
     setTrust(state, seg, TRUST_PRESETS[next]!);
-    await retryNetBlocked(state); // a now-granted net re-fires any net-DENIED fetch
     await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 ${seg}: ${next}`]]);
   }
   return state;
@@ -970,7 +968,6 @@ const captoggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
     const seg = sel.split(".")[0] || "元";
     const cur = resolveTrust(state, seg) as Record<string, unknown>;
     setTrust(state, seg, { [c]: !cur[c] });
-    await retryNetBlocked(state);
     const t = resolveTrust(state, seg) as Record<string, unknown>;
     await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 ${seg}: ${CAPS.filter((x) => t[x]).join(", ") || "locked"}`]]);
   }
@@ -1016,6 +1013,53 @@ const trustdomFn: Fn = ((view: unknown): V => {
   ]);
 }) as Fn;
 
+// ── consent panel — the UI for the consent model (will replace the 🛡 trust
+// panel). Lists the dangerous fns the live graph references, each toggleable.
+// origin.consentSync recomputes the usage cel the panel renders from.
+const consentSync: Fn = (async (state: State): Promise<State> => {
+  const usage = dangerousUsage(state);
+  if (state.cels.has("consent.usage")) await (resolveFn(state, "setValue") as Fn)(state, "consent.usage", usage);
+  else await (resolveFn(state, "setCel") as Fn)(state, "consent.usage", { celType: "ValueCel", v: usage, metadata: { key: "consent.usage", segment: "origin", name: "usage" } });
+  return state;
+}) as Fn;
+const CAT_ICON: Record<string, string> = { net: "🌐", fs: "📁", storage: "💾", db: "🗄", code: "⚙", secrets: "🔑", control: "🛂" };
+/** consentdom(usage) — render the consent list from the consent.usage value. */
+const consentdomFn: Fn = ((usage: unknown): V => {
+  const rows = (Array.isArray(usage) ? usage : []) as Array<{ fn: string; category: string; reason: string; consented: boolean; callCount: number; segments: string[] }>;
+  if (!rows.length) return el("div", { style: "font:13px system-ui;padding:.6rem;opacity:.75" }, [T("No dangerous functions in use — everything here is safe (dom / cels / math / charts).")]);
+  const row = (u: typeof rows[number]): V => el("div", { style: "display:flex;gap:.5rem;align-items:flex-start;padding:.5rem .35rem;border-bottom:1px solid #8882" }, [
+    el("div", { style: "font-size:1.1rem;width:1.5rem;text-align:center;flex:0 0 auto" }, [T(CAT_ICON[u.category] ?? "⚠")]),
+    el("div", { style: "flex:1 1 auto;min-width:0" }, [
+      el("div", { style: "font:600 .85rem ui-monospace,monospace" }, [T(`${u.fn}  `), el("span", { style: `color:${u.consented ? "#1a9c4e" : "#b1442f"}` }, [T(u.consented ? "ALLOWED" : "blocked")])]),
+      el("div", { style: "font:12px/1.4 system-ui;opacity:.8;margin-top:.1rem" }, [T(`${u.reason} · used ${u.callCount}× · ${u.segments.join(", ") || "—"}`)]),
+    ]),
+    el("button", { class: "consent-toggle", "data-fn": u.fn, style: `flex:0 0 auto;align-self:center;padding:.3rem .6rem;border:1px solid ${u.consented ? "#b1442f88" : "#1a9c4e88"};border-radius:.4rem;background:Canvas;color:CanvasText;cursor:pointer;font:600 .72rem ui-monospace,monospace` }, [T(u.consented ? "Revoke" : "Allow")], { click: { dispatch: "origin.consentToggle", payload: u.fn } }),
+  ]);
+  return el("div", { class: "consent-panel", style: "font:13px system-ui;padding:.1rem .25rem" }, [
+    el("p", { style: "margin:.2rem;opacity:.85" }, [T("Consent — only these functions do I/O or run code. Allow only what you trust this page to do.")]),
+    ...rows.map(row),
+  ]);
+}) as Fn;
+// origin.consentToggle — flip one fn's consent (host/user only), re-sync, repaint.
+const consentToggle: Fn = (async (state: State, payload?: unknown): Promise<State> => {
+  const fn = String(payload ?? ""); if (!fn) return state;
+  const consent = (state.cels.get("consent")?.v ?? {}) as Record<string, { allow?: boolean }>;
+  const cur = !!consent[fn]?.allow;
+  setConsent(state, fn, { allow: !cur, category: DANGEROUS[fn]?.category });
+  await consentSync(state);
+  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛂 ${fn}: ${!cur ? "allowed" : "blocked"}`]]);
+  return state;
+}) as Fn;
+// consentpanel() — open the consent list as a draggable window (reads consent.usage).
+const consentpanelFn: Fn = (((): unknown => {
+  const lay = "win.consent", sref = `${lay}.state`, cref = `${lay}.content`;
+  return { genesis: true, layer: lay, cels: {
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: 110, y: 96, w: 470, h: 430, z: 1, min: 0, max: 0, closed: 0, title: "🛂 Consent" }, metadata: { name: "state" } },
+    [cref]: { celType: "FormulaCel", f: "(consentdom consent.usage)", metadata: { name: "content", parser: "f" } },
+    [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f" } },
+  } };
+})) as Fn;
+
 // trustpanel() — open the panel as a draggable window (the winapp idiom: a state
 // cel + a content formula that REFERENCES trust.kernel + the winframe wrapper).
 const trustpanelFn: Fn = ((): unknown => {
@@ -1037,6 +1081,93 @@ const trustSync: Fn = async (state: State): Promise<State> => {
   return state;
 };
 
+// ── viewport — reactive page metrics. Formulas reference the cels (viewport.w /
+// viewport.h / viewport.mobile / viewport.orient) and re-run on resize, so a
+// sheet lays itself out responsively:
+//   =IF(viewport.mobile, dom("h1","phone view"), win("app","App","body"))
+//   =win("app", "App", body, viewport.w, viewport.h - 40)
+// =viewport() returns the same metrics as a one-shot snapshot object.
+const MOBILE_W = 720;
+const vpRead = (): { w: number; h: number; mobile: boolean; orient: string } => {
+  const g = globalThis as { innerWidth?: number; innerHeight?: number; matchMedia?: (q: string) => { matches: boolean } };
+  const w = Number(g.innerWidth) || 1200, h = Number(g.innerHeight) || 800;
+  const coarse = !!g.matchMedia?.("(pointer: coarse)").matches;
+  return { w, h, mobile: w <= MOBILE_W || coarse, orient: w >= h ? "landscape" : "portrait" };
+};
+/** viewport() — current page metrics {w, h, mobile, orient} as a one-shot
+ *  snapshot. For REACTIVE layout, reference the cels viewport.w / viewport.h /
+ *  viewport.mobile / viewport.orient instead — they update on window resize. */
+const viewportFn: Fn = () => vpRead();
+/** origin.viewportSync — write live page metrics into the viewport.* cels so
+ *  formulas that reference them re-run. The host calls it at boot and on resize. */
+const viewportSync: Fn = (async (state: State): Promise<State> => {
+  const m = vpRead();
+  const setV = resolveFn(state, "setValue") as Fn, setC = resolveFn(state, "setCel") as Fn;
+  for (const [k, v] of [["viewport.w", m.w], ["viewport.h", m.h], ["viewport.mobile", m.mobile], ["viewport.orient", m.orient]] as [string, unknown][]) {
+    if (state.cels.has(k)) await setV(state, k, v);
+    else await setC(state, k, { celType: "ValueCel", v, metadata: { key: k, segment: "origin", name: k.split(".")[1] } });
+  }
+  return state;
+}) as Fn;
+
+// ── clock — a host-ticked time cel (the Win-95 taskbar clock). NOW()/TODAY() are
+// banned as inline builtins (a pure formula can't read the wall clock), so the
+// sanctioned pattern is a host-ticked CEL formulas REFERENCE: clock (HH:MM) +
+// clock.full (locale date+time). The host calls origin.clockSync on an interval;
+// it only writes when the minute rolls, so it re-renders ~once a minute.
+const clockSync: Fn = (async (state: State): Promise<State> => {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, "0"), mm = String(d.getMinutes()).padStart(2, "0");
+  const hhmm = `${hh}:${mm}`;
+  if (state.cels.get("clock")?.v === hhmm) return state; // unchanged → no re-fire
+  const setV = resolveFn(state, "setValue") as Fn, setC = resolveFn(state, "setCel") as Fn;
+  for (const [k, v] of [["clock", hhmm], ["clock.full", d.toLocaleString()]] as [string, unknown][]) {
+    if (state.cels.has(k)) await setV(state, k, v);
+    else await setC(state, k, { celType: "ValueCel", v, metadata: { key: k, segment: "origin", name: k.split(".").pop() } });
+  }
+  return state;
+}) as Fn;
+
+// ── navbar — a pasteable menu. item(label, action, …children) is a WordPress-
+// style menu node (arbitrary nesting); nav(mobile, …items) renders ONE tree two
+// ways, switched by viewport.mobile: a collapsible ☰ left sidebar on mobile,
+// desktop icon-launchers otherwise. Nesting uses native <details> (no toggle
+// state cel needed). Clicking a LEAF dispatches origin.navOpen with its action:
+// a window KEY focuses that window; a "=formula" spawns a new window.
+interface NavItem { __navitem: true; label: string; action: string; children: NavItem[] }
+const isNavItem = (v: unknown): v is NavItem => !!v && typeof v === "object" && (v as { __navitem?: unknown }).__navitem === true;
+const itemFn: Fn = ((label?: unknown, action?: unknown, ...children: unknown[]): NavItem =>
+  ({ __navitem: true, label: String(label ?? ""), action: action == null ? "" : String(action), children: children.filter(isNavItem) })) as Fn;
+const navNode = (it: NavItem, depth: number): VNode => {
+  const pad = "padding:.4rem .6rem";
+  if (it.children.length) return makeEl("details", { class: "pl-nav-group", ...(depth === 0 ? { open: "" } : {}) }, [
+    makeEl("summary", { style: `${pad};cursor:pointer;font:600 .9rem ui-monospace,monospace` }, [T(it.label)]),
+    makeEl("div", { style: `padding-left:.7rem;display:flex;flex-direction:column;gap:.1rem` }, it.children.map((c) => navNode(c, depth + 1))),
+  ]);
+  return makeEl("button", { class: "pl-nav-item", style: `${pad};display:flex;gap:.5rem;align-items:center;border:0;background:transparent;color:CanvasText;cursor:pointer;font:600 .9rem ui-monospace,monospace;text-align:left;width:100%;border-radius:.4rem` },
+    [T(it.label)], { click: { dispatch: "origin.navOpen", payload: it.action } });
+};
+/** nav([mobile], item, …) — a navigation menu. Pass viewport.mobile as the first
+ *  arg to auto-switch (mobile = collapsible ☰ sidebar; else desktop launchers).
+ *  =nav(viewport.mobile, item("📁 Files","files"), item("📊 Charts", item("🥧 Pie", '=…'))). */
+const navFn: Fn = ((...args: unknown[]): VNode => {
+  const mobile = typeof args[0] === "boolean" ? (args[0] as boolean) : false;
+  const items = args.filter(isNavItem);
+  const list = makeEl("div", { class: "pl-nav-list", style: "display:flex;flex-direction:column;gap:.15rem;padding:.3rem;min-width:11rem" }, items.map((it) => navNode(it, 0)));
+  if (mobile) return makeEl("details", { class: "pl-nav pl-nav-mobile", style: "position:fixed;left:0;top:0;z-index:90;background:Canvas;border:1px solid #8884;border-radius:0 0 .6rem 0;max-width:84vw;max-height:92vh;overflow:auto;box-shadow:2px 2px 14px #0004" },
+    [makeEl("summary", { style: "padding:.45rem .7rem;cursor:pointer;font:600 1.4rem ui-monospace,monospace" }, [T("☰")]), list]);
+  return makeEl("div", { class: "pl-nav pl-nav-desktop", style: "position:fixed;left:.6rem;top:.6rem;z-index:40;background:#8881;border:1px solid #8883;border-radius:.6rem;backdrop-filter:blur(4px)" }, [list]);
+}) as Fn;
+/** origin.navOpen — a nav leaf was clicked. A "=formula" spawns a new window
+ *  (trusted preset, capped by the kernel); anything else is a window key → focus it. */
+const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> => {
+  const action = String(payload ?? "").trim();
+  if (!action) return state;
+  if (/^[=(]/.test(action)) await spawnQuarantined(state, action, "trusted");
+  else await (resolveFn(state, "winsheet.raise") as Fn)(state, action);
+  return state;
+}) as Fn;
+
 // origin.trustToggle — flip ONE kernel capability (the Grant/Revoke buttons
 // dispatch here with the cap name), then re-sync so the panel re-renders.
 const trustToggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
@@ -1044,7 +1175,6 @@ const trustToggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
   if ((CAPS as readonly string[]).includes(c)) {
     const cur = resolveTrust(state, undefined) as Record<string, unknown>;
     setTrust(state, "kernel", { [c]: !cur[c] });
-    await retryNetBlocked(state);
     await trustSync(state);
     const t = resolveTrust(state, undefined) as Record<string, unknown>;
     await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛡 kernel: ${CAPS.filter((x) => t[x]).join(", ") || "locked"}`]]);
@@ -1054,91 +1184,6 @@ const trustToggle: Fn = async (state: State, cap?: unknown): Promise<State> => {
 // origin.demoMusic — open the Symphony-of-Cels example (score + keyboard +
 // melody worksheets) from the stored 音.demo formula, so it loads with one
 // click instead of a fragile copy-pasted URL.
-// a worksheet's row / column extent (from its A1-style cells) — the size the
-// creation formula implied via cels(name, ROWS, COLS).
-const colNum = (letters: string): number => { let n = 0; for (const c of letters) n = n * 26 + (c.charCodeAt(0) - 64); return n; };
-const sheetExtent = (state: State, seg: string): { rows: number; cols: number } => {
-  let rows = 1, cols = 1;
-  const re = new RegExp(`^${seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.([A-Z]+)(\\d+)$`);
-  for (const k of state.cels.keys()) { const m = re.exec(k); if (m) { rows = Math.max(rows, Number(m[2])); cols = Math.max(cols, colNum(m[1]!)); } }
-  return { rows, cols };
-};
-// origin.tile — the desktop MASONRY layout. Honors the desktop layout argument
-// win.layout: when "masonry" it arranges the VISIBLE windows (not minimized, not
-// maximized, not closed) into a Pinterest pack whose column count comes from the
-// SCREEN WIDTH (1 on a phone, more on a wide desktop). Each window's size is read
-// from its OWN win.geom (w/h) — seeded at creation from the grid's rows×cols,
-// changed by a resize-drag — NOT by measuring the DOM, so the layout is a pure
-// function of state. 元 leads, landing top-left. One-shot, not reactive.
-// payload: a seg list / "a,b,c" string, or absent → all visible worksheet windows.
-const tile: Fn = async (state: State, payload?: unknown): Promise<State> => {
-  const mode = String(state.cels.get("win.layout")?.v ?? "rowflow");
-  if (mode === "free") return state;                       // leave every window where it is
-  const g = globalThis as { innerWidth?: number; innerHeight?: number };
-  const gm0 = (state.cels.get("win.geom")?.v as Record<string, Record<string, unknown>>) ?? {};
-  const visible = (s: string): boolean => !gm0[s]?.closed && !gm0[s]?.min && !gm0[s]?.max && !(typeof gm0[s]?.host === "string");
-  const WALLPAPER = new Set(["desktop"]); // the fixed-mount wallpaper/panel sheet — never a tile
-  // default set = EVERY open window (any sheet with an A1 cell), so the whole
-  // desktop packs and nothing is left floating to overlap the rest.
-  const allWins = (): string[] => {
-    const segs = new Set<string>();
-    for (const k of state.cels.keys()) if (k.endsWith(".A1")) { const s = k.slice(0, -3); if (s !== "win" && !WALLPAPER.has(s)) segs.add(s); }
-    return [...segs];
-  };
-  const raw = Array.isArray(payload) ? payload.map(String)
-    : (typeof payload === "string" && payload) ? payload.split(",").map((s) => s.trim())
-    : allWins();
-  // 元 leads (top-left); then the rest NEWEST-FIRST, so windows a formula just
-  // opened (the MIDI demo's sheets) land in the top rows, not buried at the end.
-  const rest = raw.filter((s) => s !== "元" && visible(s) && !WALLPAPER.has(s));
-  if (!Array.isArray(payload)) rest.reverse();
-  const segs = [...(state.cels.get("元") ? ["元"] : []), ...rest];
-  if (!segs.length) return state;
-  const VW = Number(g.innerWidth) || 1280, VH = (Number(g.innerHeight) || 800) - 50;
-  const PAD = 12, MAXH = VH - 2 * PAD;
-  // HEIGHT from win.geom, else derived from the grid's row count.
-  const heightOf = (seg: string): number => {
-    const gh = Number(gm0[seg]?.h);
-    if (Number.isFinite(gh) && gh > 0) return Math.min(MAXH, gh);
-    if (seg === "元") return Math.min(MAXH, 480);
-    return Math.max(150, Math.min(MAXH, sheetExtent(state, seg).rows * 26 + 120));
-  };
-  const sized = segs.map((seg) => ({ seg, h: heightOf(seg) }));
-  const gm = { ...gm0 };
-  let z = Number(state.cels.get("win.topz")?.v) || 100;
-  if (mode === "masonry") {
-    // MASONRY — narrow uniform columns from the screen width; each window drops
-    // into the currently-shortest column (Pinterest pack).
-    const COLMIN = 300;
-    const N = Math.max(1, Math.floor((VW - PAD) / (COLMIN + PAD)));
-    const colW = Math.floor((VW - PAD - N * PAD) / N);
-    const colY = new Array<number>(N).fill(PAD);
-    for (const { seg, h } of sized) {
-      let ci = 0; for (let i = 1; i < N; i++) if (colY[i]! < colY[ci]!) ci = i;
-      const x = PAD + ci * (colW + PAD), y = colY[ci]!;
-      z += 1; gm[seg] = { ...(gm[seg] ?? {}), x, y, w: colW, h, z, min: 0, closed: 0 };
-      colY[ci] = y + h + PAD;
-    }
-  } else {
-    // ROW-FLOW (default) — WIDE windows (min of ~IDEAL and the screen width) laid
-    // in rows that wrap and overflow DOWNWARD, never to the right.
-    const IDEAL = 600;
-    const N = Math.max(1, Math.floor((VW - PAD) / (IDEAL + PAD)));
-    const w = Math.min(VW - 2 * PAD, Math.floor((VW - PAD - N * PAD) / N));
-    let x = PAD, y = PAD, rowH = 0;
-    for (const { seg, h } of sized) {
-      if (x + w > VW - PAD && x > PAD) { x = PAD; y += rowH + PAD; rowH = 0; } // wrap to the next row
-      z += 1; gm[seg] = { ...(gm[seg] ?? {}), x, y, w, h, z, min: 0, closed: 0 };
-      x += w + PAD; rowH = Math.max(rowH, h);
-    }
-  }
-  const sc = resolveFn(state, "setCel") as Fn;
-  await sc(state, "win.topz", { celType: "ValueCel", v: z, metadata: { key: "win.topz", segment: "win" } });
-  await sc(state, "win.geom", { celType: "ValueCel", v: gm, metadata: { key: "win.geom", segment: "win" } });
-  await (resolveFn(state, "runCycle") as Fn)(state);
-  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
-  return state;
-};
 const demoMusic: Fn = async (state: State): Promise<State> => {
   const f = String(state.cels.get("音.demo")?.v ?? "");
   if (!f) return state;
@@ -1147,7 +1192,6 @@ const demoMusic: Fn = async (state: State): Promise<State> => {
   await commit(state, "音.run"); // the segment(...) genesis spawns the worksheets
   for (let i = 0; i < 8; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
   await drain(state, "dom.paint"); // render once so tile() can measure content
-  await (tile as Fn)(state); // full-desktop masonry, 元 top-left
   return state;
 };
 // origin.demoMidi — a MIDI demo: a worksheet that IS a table of note cells
@@ -1184,7 +1228,6 @@ const demoMidi: Fn = async (state: State): Promise<State> => {
   await commit(state, "音乐.run");
   for (let i = 0; i < 8; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
   await drain(state, "dom.paint");
-  await (tile as Fn)(state); // full-desktop masonry, 元 top-left
   return state;
 };
 /** origin.autoload — restore the default slot on boot (the host calls this). */
@@ -1270,18 +1313,33 @@ const wrap = (s: string, w = 68): string =>
  *  drain AND the Pages build (bundle.ts → <noscript>) emit the SAME catalog. */
 export const vocabText = (state: State, segment = ""): string => {
   const desc = (c: Cel): string => String((c.metadata as { description?: unknown }).description ?? "");
-  const fns: string[] = []; const vals: string[] = [];
+  const segOf = (c: Cel): string => String((c.metadata as { segment?: unknown }).segment ?? "misc");
+  // group callable cels by their segment so the catalog reads as labelled
+  // sections (charts, dom, grids, …) — the grouping is the metadata.segment
+  // every cel already carries, not a hand-kept list.
+  const bySeg = new Map<string, string[]>(); const vals: string[] = [];
   for (const [k, c] of state.cels) {
     if (segment && c.metadata.segment !== segment) continue;
     if (k.includes(".")) continue; // skip namespaced internals (g.A1, foo.bar)
     if (c.celType === "LockedLambdaCel" || c.celType === "EditableLambdaCel" || c.celType === "CompilerCel") {
-      fns.push(`  ${k}${desc(c) ? `  — ${desc(c)}` : ""}`);
+      const line = `  ${k}${desc(c) ? `  — ${desc(c)}` : ""}`;
+      const s = segOf(c); (bySeg.get(s) ?? bySeg.set(s, []).get(s)!).push(line);
     } else if (c.celType === "ValueCel") {
       vals.push(`  ${k} = ${JSON.stringify(c.v)?.slice(0, 40)}`);
     }
   }
-  return [`functions (call as (${"name"} …) or =name(…)):`, ...fns.sort(),
-    "", "values (reference by name):", ...vals.sort()].join("\n");
+  const out: string[] = [`functions (call as (${"name"} …) or =name(…)), grouped by segment:`];
+  for (const s of [...bySeg.keys()].sort()) { out.push("", `[${s}]`, ...bySeg.get(s)!.sort()); }
+  // [excel] — the inline infix builtins (IF/SUM/VLOOKUP/LET/…). They are NOT
+  // cels (evaluated inline, dependency-free), so they don't appear above; list
+  // them from BUILTIN_DOCS so the catalog is complete for an LLM. Only in the
+  // unfiltered catalog (a segment filter asks for ONE segment's cels).
+  if (!segment) {
+    out.push("", "[excel]  (infix builtins — call as =NAME(…); inline, not cels)");
+    for (const k of Object.keys(BUILTIN_DOCS).sort()) out.push(`  ${k}  — ${BUILTIN_DOCS[k]}`);
+  }
+  out.push("", "values (reference by name):", ...vals.sort());
+  return out.join("\n");
 };
 
 // ── origin.effects: load / cels requests (effects at drain) ─────────────────
@@ -1731,15 +1789,16 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
     // the next runCycle can't re-evaluate the formula over the result.
     let result: unknown;
     try {
-      // Capability gate (quarantine, Layer-B): an effect that reaches the
-      // network or persistent storage needs the requesting segment to hold
-      // `net` / `storage`. A quarantined segment/kernel gets #DENIED — the
-      // formula already ran, only the EFFECT is refused.
-      const capNeeded = req.originChat ? "net" as const
-        : (req.originSave || req.originOpen || req.originFs || req.originSeg || req.originDb) ? "storage" as const
+      // Consent gate: an effect that reaches the network / storage / DB is a
+      // DANGEROUS verb — in a LOCKED (shared/URL) session it runs only if the
+      // user consented. The formula already ran; only the EFFECT is refused.
+      // (Own/unlocked session → requireConsent is always true.)
+      const verbOf = req.originChat ? (req.provider === "grok" ? "grok" : "chat")
+        : req.originSave ? "save" : req.originOpen ? "open"
+        : req.originDb ? "sql" : req.originFs ? "write" : req.originSeg ? "saveSeg"
         : null;
-      if (capNeeded && !canUse(state, cel.metadata.segment, capNeeded)) {
-        result = `#DENIED(${capNeeded}: segment "${cel.metadata.segment}" is quarantined — grant ${capNeeded} in trust settings)`;
+      if (verbOf && !requireConsent(state, verbOf, cel.metadata.segment)) {
+        result = `#BLACKLISTED(${verbOf} — not consented; open =consentpanel() to allow it)`;
       } else if (req.originLoad && req.name) {
         await ensureSegments(state, [String(req.name)]);
         result = `loaded "${req.name}" - its vocabulary is callable now`;
@@ -1862,7 +1921,6 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const cap = String(req.cap);
         if ((CAPS as readonly string[]).includes(cap)) {
           setTrust(state, String(req.seg), { [cap]: !!req.on });
-          if (req.on) await retryNetBlocked(state);
           result = `${req.seg}: ${cap} ${req.on ? "granted" : "revoked"}`;
         } else result = `#DENIED(trust: unknown capability "${cap}" — use code/net/storage/secrets)`;
       } else if (req.originTrustOf) {
@@ -2014,6 +2072,12 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["inspect",        inspectFn],
   ["segments",       segmentsFn],
   ["vocab",          vocabFn],
+  ["viewport",       viewportFn],
+  ["origin.viewportSync", viewportSync],
+  ["origin.clockSync", clockSync],
+  ["nav",            navFn],
+  ["item",           itemFn],
+  ["origin.navOpen", navOpenFn],
   ["def",            defFn],
   ["chat",           chatFn],
   ["grok",           grokFn],
@@ -2036,6 +2100,10 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.captoggle", captoggle],
   ["trustdom", trustdomFn],
   ["trustpanel", trustpanelFn],
+  ["consentdom", consentdomFn],
+  ["consentpanel", consentpanelFn],
+  ["origin.consentToggle", consentToggle],
+  ["origin.consentSync", consentSync],
   ["origin.trustSync", trustSync],
   ["origin.trustToggle", trustToggle],
   ["origin.savepage", download],
@@ -2046,7 +2114,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.playmelody", playmelody],
   ["origin.demoMusic", demoMusic],
   ["origin.demoMidi", demoMidi],
-  ["origin.tile",    tile],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],

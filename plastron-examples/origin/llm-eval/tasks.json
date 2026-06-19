@@ -1,0 +1,50 @@
+[
+  {
+    "id": "keyboard",
+    "prompt": "Write ONE plastron formula that builds a piano-style musical keyboard that LOOKS like a keyboard: a row of white note keys (C D E F G A B) sized and bordered like piano keys, each a clickable button that plays its tone via origin.tone. When a key is pressed it should visibly change colour. Use the verbs in the guide. Output only the formula (or a #raw= link), nothing else."
+  },
+  {
+    "id": "solar-system",
+    "prompt": "Write ONE plastron formula that renders a simple solar-system model: the sun and a few planets as circles, drawn on a canvas (or as dom). Output only the formula (or a #raw= link), nothing else."
+  },
+  {
+    "id": "spreadsheet-chart",
+    "prompt": "Write ONE plastron formula that makes a small spreadsheet of data (a few labeled rows with numbers) and draws a bar chart of those numbers. Output only the formula (or a #raw= link), nothing else."
+  },
+  {
+    "id": "invoice-let",
+    "prompt": "Write ONE plastron formula for an invoice line: given price in A1 and quantity in A2, compute the subtotal, 13% tax, and grand total. Use LET so the subtotal is named and not recomputed, and return the grand total. Output only the formula (or a #raw= link), nothing else."
+  },
+  {
+    "id": "sum-of-squares",
+    "prompt": "Write ONE plastron formula that makes a sheet with the numbers 1..6 in a column and, in another cell of the SAME sheet, computes the sum of their squares using MAP and LAMBDA. Output only the formula (or a #raw= link), nothing else."
+  },
+  {
+    "id": "running-total",
+    "prompt": "Write ONE plastron formula that makes a sheet with a column of daily amounts and, in adjacent cells, shows the running total using SCAN with a LAMBDA. Output only the formula (or a #raw= link), nothing else."
+  },
+  {
+    "id": "rowwise-totals",
+    "prompt": "Write ONE plastron formula that makes a small grid of numbers (a few rows, a few columns) and computes each row's total in a new column using BYROW with a LAMBDA. Output only the formula (or a #raw= link), nothing else."
+  },
+  {
+    "id": "share-raw",
+    "prompt": "Build a small plastron: a clickable button that plays middle C (origin.tone 261.63). Give me a #raw= shareable plastron.ca link that opens it. Output ONLY the link."
+  },
+  {
+    "id": "share-encoded",
+    "prompt": "Build a small plastron: a clickable button that plays middle C (origin.tone 261.63). Give me a COMPRESSED #f= (base64url) shareable plastron.ca link that opens it. Output ONLY the link, or \u2014 if you cannot produce the compressed payload yourself \u2014 the exact plastron formula I should run to generate the link."
+  },
+  {
+    "id": "share-aes",
+    "prompt": "Build a small plastron: a clickable button that plays middle C (origin.tone 261.63). Give me an AES-256-GCM password-encrypted shareable plastron.ca link for it, password \"cels\". Output ONLY the link, or \u2014 if you cannot encrypt it yourself \u2014 the exact plastron formula I should run to generate the link."
+  },
+  {
+    "id": "share-otp",
+    "prompt": "Build a small plastron: a clickable button that plays middle C (origin.tone 261.63). Give me a one-time-pad (OTP / Vernam) encrypted shareable plastron.ca link for it, using the plastron card image as the pad. Output ONLY the link, or \u2014 if you cannot encrypt it yourself \u2014 the exact plastron formula I should run to generate the link."
+  },
+  {
+    "id": "navbar",
+    "prompt": "Build a navigation menu for a plastron desktop: top-level entries for Files, a Charts menu with two nested chart options (a pie chart and a bar chart, each generating a small data sheet+chart when clicked), and an entry that focuses the origin (\u5143) window. It must work on BOTH mobile and desktop. Output only the formula (or a #raw= link), nothing else."
+  }
+]

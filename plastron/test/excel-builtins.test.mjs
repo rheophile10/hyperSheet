@@ -216,3 +216,58 @@ test("builtins add NO dependency edge: extractDeps(=ROUND(A1,2)) ⊆ {sheet.A1}"
   await resolveFn(state, "setValue")(state, "sheet.A1", 2.71828);
   assert.equal(v(state, "sheet.B1"), 2.72);
 });
+
+// ── variables + higher-order: LET / LAMBDA / MAP / REDUCE / SCAN / BYROW ──────
+// Lexical, in-formula, evaluated INLINE (not cels). LET binds names for the
+// formula; LAMBDA is a callable value MAP/REDUCE/SCAN/BYROW apply over ranges.
+
+test("LET binds names for the formula (sequential, reusable)", async () => {
+  const state = await bootSheet({
+    A1: "5",
+    B1: "=LET(x, A1, y, x+1, x+y)",   // x=5, y=6 → 11
+    B2: "=LET(r, 3, r*r)",            // 9
+    B3: "=LET(w, 800, cols, 2, w/cols)", // 400 (pure, no refs)
+  });
+  assert.equal(v(state, "sheet.B1"), 11);
+  assert.equal(v(state, "sheet.B2"), 9);
+  assert.equal(v(state, "sheet.B3"), 400);
+});
+
+test("LET-bound names add NO dependency edge (only real refs do)", async () => {
+  const state = await bootSheet({ A1: "10", B1: "=LET(x, A1, x+1)" });
+  assert.equal(v(state, "sheet.B1"), 11);
+  const deps = Object.values(state.cels.get("sheet.B1").metadata.inputMap);
+  assert.deepEqual(deps, ["sheet.A1"], "x is local; only A1 is a dependency");
+  // reactive: editing A1 recomputes
+  await resolveFn(state, "setValue")(state, "sheet.A1", 41);
+  assert.equal(v(state, "sheet.B1"), 42);
+});
+
+test("MAP / REDUCE / SCAN over a range with a LAMBDA", async () => {
+  const state = await bootSheet({
+    A1: "1", A2: "2", A3: "3", A4: "4",
+    B1: "=SUM(MAP(A1:A4, LAMBDA(x, x*x)))",          // 1+4+9+16 = 30
+    B2: "=REDUCE(0, A1:A4, LAMBDA(acc, x, acc+x))",  // 10
+    B3: "=REDUCE(1, A1:A4, LAMBDA(acc, x, acc*x))",  // 24
+    B4: "=SCAN(0, A1:A4, LAMBDA(acc, x, acc+x))",    // [1,3,6,10]
+  });
+  assert.equal(v(state, "sheet.B1"), 30);
+  assert.equal(v(state, "sheet.B2"), 10);
+  assert.equal(v(state, "sheet.B3"), 24);
+  assert.deepEqual(v(state, "sheet.B4"), [1, 3, 6, 10]);
+});
+
+test("BYROW applies a LAMBDA to each row (an array)", async () => {
+  const state = await bootSheet({
+    A1: "1", B1: "10",
+    A2: "2", B2: "20",
+    C1: "=BYROW(A1:B2, LAMBDA(row, SUM(row)))",   // [11, 22]
+  });
+  assert.deepEqual(v(state, "sheet.C1"), [11, 22]);
+});
+
+test("higher-order deps: extractDeps(=SUM(MAP(A1:A4, LAMBDA(x, x*x)))) is the range only", async () => {
+  const state = await bootSheet({ A1: "1", A2: "2", A3: "3", A4: "4", B1: "=SUM(MAP(A1:A4, LAMBDA(x, x*x)))" });
+  const deps = Object.values(state.cels.get("sheet.B1").metadata.inputMap).sort();
+  assert.deepEqual(deps, ["sheet.A1", "sheet.A2", "sheet.A3", "sheet.A4"], "x (lambda param) adds no edge");
+});

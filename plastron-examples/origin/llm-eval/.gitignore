@@ -1,0 +1,7 @@
+node_modules/
+last-run.json
+.env
+shots/
+research-run.json
+scores.json
+REPORT.md

@@ -84,8 +84,13 @@ const tokenize = (src: string): Tok[] => {
       continue;
     }
     if ((c >= "A" && c <= "Z") || (c >= "a" && c <= "z")) {
+      // A name may carry dots/underscores so namespaced cel keys are
+      // referenceable (viewport.mobile, trust.kernel). `-` is excluded — it is
+      // the subtraction operator (a-b stays a minus b); hyphenated keys need
+      // the S-expr surface. A trailing dot isn't a key char, so don't eat it.
       let j = i;
-      while (j < n && /[A-Za-z0-9]/.test(src[j]!)) j++;
+      while (j < n && /[A-Za-z0-9_.]/.test(src[j]!)) j++;
+      while (j > i + 1 && src[j - 1] === ".") j--;   // give back a trailing dot
       toks.push({ k: "name", v: src.slice(i, j) });
       i = j;
       continue;
@@ -291,7 +296,13 @@ const flatNums = (args: Node[], lookup: Lookup): number[] => {
       const vs = a.keys ? a.keys.map(lookup) : rangeValues(a.range, lookup);
       for (const v of vs) out.push(num(v));
     }
-    else out.push(num(evalNode(a, lookup)));
+    else {
+      // a value may itself be an array (MAP/SCAN/BYROW result, or a row/range
+      // bound to a LAMBDA param) — flatten it so SUM(MAP(…)) / SUM(row) work.
+      const v = evalNode(a, lookup);
+      if (Array.isArray(v)) for (const x of (v as unknown[]).flat(8)) out.push(num(x));
+      else out.push(num(v));
+    }
   }
   return out;
 };
@@ -321,7 +332,11 @@ const flatVals = (args: Node[], lookup: Lookup): unknown[] => {
     if (a.t === "range") {
       const vs = a.keys ? a.keys.map(lookup) : rangeValues(a.range, lookup);
       for (const v of vs) out.push(v);
-    } else out.push(evalNode(a, lookup));
+    } else {
+      const v = evalNode(a, lookup); // flatten array results (MAP/BYROW/row param)
+      if (Array.isArray(v)) for (const x of (v as unknown[]).flat(8)) out.push(x);
+      else out.push(v);
+    }
   }
   return out;
 };
@@ -468,7 +483,37 @@ const BUILTIN_CALLS: ReadonlySet<string> = new Set([
   "TRIM", "UPPER", "LOWER",
   // date (pure, literal args only)
   "DATE",
+  // variables + higher-order (lexical, in-formula — NOT cels)
+  "LET", "LAMBDA", "MAP", "REDUCE", "SCAN", "BYROW",
 ]);
+
+// One-line docs for every inline builtin — co-located with BUILTIN_CALLS so the
+// =vocab()/llms.txt catalog can surface an [excel] section WITHOUT making each
+// function a cel (the shipped excel-formulas-segment design keeps eval inline,
+// dependency-free). Keep this in sync when adding an arm to evalCall.
+export const BUILTIN_DOCS: Readonly<Record<string, string>> = {
+  SUM: "(range…) sum", MIN: "(range…) minimum", MAX: "(range…) maximum",
+  AVERAGE: "(range…) mean (AVG)", IF: "(cond, then, else) branch",
+  ROUND: "(x, n) round to n places", ROUNDUP: "(x, n) round away from 0", ROUNDDOWN: "(x, n) round toward 0",
+  ABS: "(x) absolute value", INT: "(x) floor", MOD: "(a, b) remainder",
+  COUNT: "(range) count numbers", COUNTA: "(range) count non-empty",
+  COUNTIF: "(range, crit) count matching", SUMIF: "(range, crit, [sumRange]) sum matching",
+  AVERAGEIF: "(range, crit, [avgRange]) mean matching",
+  VLOOKUP: "(key, range, col, [exact]) vertical lookup", HLOOKUP: "(key, range, row, [exact]) horizontal lookup",
+  INDEX: "(range, row, [col]) cell at position (1-based)", MATCH: "(key, range, [type]) 1-based position",
+  AND: "(…) all true", OR: "(…) any true", NOT: "(x) negate",
+  IFS: "(cond, val, …) first true", IFERROR: "(value, fallback) catch errors",
+  CONCAT: "(…) join (CONCATENATE)", TEXTJOIN: "(delim, ignoreEmpty, …) join with delimiter",
+  LEFT: "(s, n) first n chars", RIGHT: "(s, n) last n chars", MID: "(s, start, len) substring",
+  LEN: "(s) length", TRIM: "(s) collapse spaces", UPPER: "(s) uppercase", LOWER: "(s) lowercase",
+  DATE: "(y, m, d) ISO date string",
+  LET: "(name, value, …, calc) bind names for THIS formula, then compute calc — reuse a sub-expression without repeating it: =LET(r, A1*2, r + r*r)",
+  LAMBDA: "(param, …, body) an inline function value — pass to MAP/REDUCE/etc: =LAMBDA(x, x*x)",
+  MAP: "(range, fn) apply fn to each value → array: =SUM(MAP(A1:A9, LAMBDA(x, x*x)))",
+  REDUCE: "(init, range, fn) fold: =REDUCE(0, A1:A9, LAMBDA(acc, x, acc + x))",
+  SCAN: "(init, range, fn) running fold → array of each step",
+  BYROW: "(range, fn) apply fn to each ROW (an array) → array: =BYROW(A1:C3, LAMBDA(row, SUM(row)))",
+};
 
 const evalCall = (node: { name: string; args: Node[] }, lookup: Lookup): unknown => {
   const A = node.args;
@@ -480,6 +525,65 @@ const evalCall = (node: { name: string; args: Node[] }, lookup: Lookup): unknown
     case "IF": {
       const cond = evalNode(A[0]!, lookup);
       return truthy(cond) ? evalNode(A[1]!, lookup) : (A[2] ? evalNode(A[2], lookup) : false);
+    }
+
+    // ── variables + higher-order (lexical scope, inline — no cels) ────────
+    // LET(name1, val1, …, calc): bind names (evaluated left-to-right, each can
+    // see earlier ones) for the duration of THIS formula, then return calc.
+    case "LET": {
+      if (A.length < 3 || A.length % 2 === 0) return VALUE(); // need pairs + a final calc
+      const scope = new Map<string, unknown>();
+      const lk: Lookup = (k) => (scope.has(k) ? scope.get(k) : lookup(k));
+      for (let i = 0; i + 1 < A.length; i += 2) {
+        const nameNode = A[i]!;
+        if (nameNode.t !== "sym") return VALUE(); // a name must be a bare identifier
+        scope.set(nameNode.name, evalNode(A[i + 1]!, lk));
+      }
+      return evalNode(A[A.length - 1]!, lk);
+    }
+    // LAMBDA(param1, …, body): a callable VALUE. Invoked (by MAP/REDUCE/… or a
+    // cell that calls it) with actual values bound to the params.
+    case "LAMBDA": {
+      if (A.length < 1) return VALUE();
+      const params = A.slice(0, -1);
+      const body = A[A.length - 1]!;
+      if (params.some((p) => p.t !== "sym")) return VALUE();
+      const names = params.map((p) => (p as { name: string }).name);
+      return ((...vals: unknown[]): unknown => {
+        const scope = new Map<string, unknown>();
+        names.forEach((nm, i) => scope.set(nm, vals[i]));
+        return evalNode(body, (k) => (scope.has(k) ? scope.get(k) : lookup(k)));
+      }) as Fn;
+    }
+    case "MAP": {
+      const fn = evalNode(A[1]!, lookup);
+      if (typeof fn !== "function") return VALUE();
+      return argVals(A[0], lookup).map((v) => (fn as Fn)(v));
+    }
+    case "REDUCE": {
+      const init = evalNode(A[0]!, lookup);
+      const fn = evalNode(A[2]!, lookup);
+      if (typeof fn !== "function") return VALUE();
+      return argVals(A[1], lookup).reduce((acc, v) => (fn as Fn)(acc, v), init);
+    }
+    case "SCAN": {
+      const fn = evalNode(A[2]!, lookup);
+      if (typeof fn !== "function") return VALUE();
+      let acc = evalNode(A[0]!, lookup);
+      return argVals(A[1], lookup).map((v) => (acc = (fn as Fn)(acc, v)));
+    }
+    case "BYROW": {
+      const fn = evalNode(A[1]!, lookup);
+      if (typeof fn !== "function") return VALUE();
+      const g = rangeGrid(A[0], lookup);
+      if (isCelError(g)) return g;
+      const out: unknown[] = [];
+      for (let r = 0; r < g.rows; r++) {
+        const row: unknown[] = [];
+        for (let c = 0; c < g.cols; c++) row.push(gridAt(g, r, c));
+        out.push((fn as Fn)(row));
+      }
+      return out;
     }
 
     // ── math / rounding ──────────────────────────────────────────────────
@@ -675,7 +779,28 @@ const collectDeps = (node: Node, acc: Set<Key>): void => {
     case "un": collectDeps(node.e, acc); break;
     case "bin": collectDeps(node.l, acc); collectDeps(node.r, acc); break;
     case "call": {
-      if (!BUILTIN_CALLS.has(node.name.toUpperCase())) acc.add(node.name);
+      const up = node.name.toUpperCase();
+      // LET/LAMBDA bind names that are NOT cel refs — collect the deps of the
+      // value/body expressions, then drop the locally-bound names so they don't
+      // become phantom inputMap edges.
+      if (up === "LET" || up === "LAMBDA") {
+        const bound = new Set<Key>();
+        const tmp = new Set<Key>();
+        if (up === "LET") {
+          for (let i = 0; i + 1 < node.args.length; i += 2) {
+            const nm = node.args[i]!;
+            if (nm.t === "sym") bound.add(nm.name);
+            collectDeps(node.args[i + 1]!, tmp);
+          }
+        } else {
+          for (const p of node.args.slice(0, -1)) if (p.t === "sym") bound.add(p.name);
+        }
+        const body = node.args[node.args.length - 1];
+        if (body) collectDeps(body, tmp);
+        for (const d of tmp) if (!bound.has(d)) acc.add(d);
+        break;
+      }
+      if (!BUILTIN_CALLS.has(up)) acc.add(node.name);
       for (const a of node.args) collectDeps(a, acc);
       break;
     }
