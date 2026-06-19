@@ -1713,6 +1713,7 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
       const verbOf = req.originChat ? (req.provider === "grok" ? "grok" : "chat")
         : req.originSave ? "save" : req.originOpen ? "open"
         : req.originDb ? "sql" : req.originFs ? "write" : req.originSeg ? "saveSeg"
+        : req.originCdn ? "cdn"
         : null;
       if (verbOf && !requireConsent(state, verbOf, cel.metadata.segment)) {
         result = `#BLACKLISTED(${verbOf} — not consented; open =consentpanel() to allow it)`;
