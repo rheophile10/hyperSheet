@@ -1,7 +1,9 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, precomputeOptional, resolveFn } from "../dist/index.js";
-import { wasmwinGenesis, graphBridge, isActive, wasmKey } from "../dist/甲骨坑/library/wasm-window/index.js";
+import { wasmwinGenesis, graphBridge, isActive, wasmKey, wasmcanvas, wasmFocus, wasmKeyHandler } from "../dist/甲骨坑/library/wasm-window/index.js";
+
+const find = (n, p, o = []) => { if (n && typeof n === "object") { if (p(n)) o.push(n); for (const c of n.children ?? []) find(c, p, o); } return o; };
 
 // wasm-window — the reusable canvas-window core: genesis shape, the graph↔engine
 // message bridge, and active-gated key routing. (Canvas render + real key events
@@ -46,6 +48,27 @@ test("graphBridge: graph→engine (recv) and engine→graph (send) over the brid
   bridge.send({ score: 42 });
   await resolveFn(state, "runCycle")(state);
   assert.deepEqual(state.cels.get("wasm.demo.out")?.v, { score: 42 }, "graph reads what the engine sent to .out");
+});
+
+test("wasmcanvas: a focusable <canvas> by id, wired to focus/blur + key dispatch", () => {
+  const v = wasmcanvas("doom", null, 0);
+  const canvas = find(v, (n) => n.tag === "canvas")[0];
+  assert.ok(canvas, "renders a <canvas>");
+  assert.equal(canvas.attrs.id, "wasm-doom", "by a stable id the engine's onInstantiate grabs");
+  assert.equal(canvas.attrs.tabindex, "0", "focusable (so it can receive keys)");
+  assert.equal(canvas.events.focus.dispatch, "wasmwin.focus", "focus → mark active");
+  assert.equal(canvas.events.blur.dispatch, "wasmwin.blur", "blur → inactive");
+  assert.equal(canvas.events.keydown.dispatch, "wasmwin.key", "keydown routes to the engine");
+  assert.equal(canvas.events.keyup.dispatch, "wasmwin.key", "keyup too");
+  assert.equal(canvas.events.keydown.payload, "doom", "carries the window id");
+});
+
+test("wasmFocus / wasmKeyHandler: focusing activates, then keys deliver", async () => {
+  const state = await boot();
+  await wasmFocus(state, "demo");
+  assert.equal(isActive(state, "demo"), true, "focus marks the window active");
+  await wasmKeyHandler(state, "demo", { type: "keydown", key: "Control", code: "ControlLeft" });
+  assert.deepEqual(graphBridge(state, "demo").recv(), { key: "Control", code: "ControlLeft", down: true }, "the keystroke reached the engine inbox");
 });
 
 test("wasmKey: keystrokes reach the engine ONLY when the window is active", async () => {

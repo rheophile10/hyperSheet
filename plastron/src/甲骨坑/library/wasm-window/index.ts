@@ -1,5 +1,9 @@
-import type { State, Key, Fn } from "../../../types/index.js";
+import type { State, Key, Fn, VNode, AttrValue, EventBinding } from "../../../types/index.js";
 import { resolveFn } from "../../../kernel/index.js";
+import { el as makeEl } from "../dom/index.js";
+
+const el = (tag: string, attrs: Record<string, unknown>, children: VNode[], events?: Record<string, unknown>): VNode =>
+  makeEl(tag, attrs as Record<string, AttrValue>, children, events as Record<string, EventBinding> | undefined);
 
 // wasm-window — a reusable WINDOW (like a dom/winapp window) that hosts a wasm app
 // on a <canvas>, routes keystrokes to it WHEN ACTIVE, and bridges messages to/from
@@ -76,3 +80,39 @@ export const wasmwinGenesis = (id: string, title: string, engineCel: string, opt
     [`${L}.frame`]:  { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f", segment: L } },
   } };
 };
+
+// ── the canvas renderer (the thing keys land on) ────────────────────────────
+/** wasmcanvas(id, engine?, active?) — the window body: a focusable <canvas id=
+ *  "wasm-<id>"> the engine's onInstantiate grabs BY ID. Focus/blur toggle
+ *  wasm.<id>.active (so key routing targets the focused game); keydown/keyup
+ *  dispatch wasmwin.key (active-gated routing into the engine's inbox). The
+ *  engine value is accepted so the formula re-renders when the engine (re)loads. */
+export const wasmcanvas = (id: unknown, _engine?: unknown, _active?: unknown): VNode => {
+  const i = String(id ?? "w");
+  return el("div", { class: "wasm-host", style: "width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden" }, [
+    el("canvas", {
+      id: `wasm-${i}`, "data-wasm": i, tabindex: "0", width: "640", height: "400",
+      style: "max-width:100%;max-height:100%;image-rendering:pixelated;outline:none;cursor:pointer",
+    }, [], {
+      focus:   { dispatch: "wasmwin.focus", payload: i },
+      blur:    { dispatch: "wasmwin.blur",  payload: i },
+      keydown: { dispatch: "wasmwin.key",   payload: i },
+      keyup:   { dispatch: "wasmwin.key",   payload: i },
+    }),
+  ]);
+};
+
+// ── focus / key handlers (dispatch targets the canvas wires) ────────────────
+const setActive = async (state: State, id: string, on: number): Promise<State> => {
+  await (resolveFn(state, "setValue") as Fn)(state, `${lay(id)}.active`, on);
+  return state;
+};
+/** wasmwin.focus — this canvas gained focus → it's the active wasm window. */
+export const wasmFocus: Fn = (async (state: State, id: unknown): Promise<State> => setActive(state, String(id ?? ""), 1)) as Fn;
+/** wasmwin.blur — lost focus → no longer active (keys stop routing here). */
+export const wasmBlur: Fn = (async (state: State, id: unknown): Promise<State> => setActive(state, String(id ?? ""), 0)) as Fn;
+/** wasmwin.key — a keystroke on the canvas → route to the engine if active. */
+export const wasmKeyHandler: Fn = (async (state: State, id: unknown, event: unknown): Promise<State> => {
+  wasmKey(state, String(id ?? ""), (event ?? {}) as KeyEvent);
+  return state;
+}) as Fn;
