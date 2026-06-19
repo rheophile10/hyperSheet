@@ -1,5 +1,5 @@
 import type { State, Key, Cel } from "../../../types/index.js";
-import { resolveFn, dehydrate, getSegmentManifest } from "../../../kernel/index.js";
+import { resolveFn, dehydrate, getSegmentManifest, setSegmentManifest, segmentEntries } from "../../../kernel/index.js";
 
 // segment-io — consolidated serialize/transport for SEGMENTS (segment-kinds-and-io.md,
 // accepted). Scope is keyed on BOOT-SET MEMBERSHIP, not role: the boot substrate
@@ -33,6 +33,11 @@ export const isSubstrateSegment = (state: State, name: Key): boolean => {
  *  this heuristic. */
 export const documentSegments = (state: State): Key[] => {
   const owned = new Set<Key>();
+  // imported segments carry a role:"user" manifest (loadArchive registers one)
+  for (const [name, m] of segmentEntries(state) as Iterable<[Key, { role?: string }]>) {
+    if (m?.role === "user") owned.add(name);
+  }
+  // freshly-minted segments (genesis) carry generatedBy on their cels, no manifest
   for (const [, c] of state.cels as Map<Key, Cel>) {
     const md = c.metadata as { segment?: Key; generatedBy?: unknown } | undefined;
     if (md?.segment && md?.generatedBy != null) owned.add(md.segment);
@@ -50,12 +55,33 @@ export const documentSegments = (state: State): Key[] => {
 export const dumpArchive = (state: State, seg: Key): string =>
   JSON.stringify(dehydrate(state, { onlySegments: [seg] }));
 
+/** Dump SEVERAL segments to one `甲骨` archive string — whole-doc export passes
+ *  `documentSegments(state)` (every minted segment; the substrate stays out). */
+export const dumpSegments = (state: State, segs: Key[]): string =>
+  JSON.stringify(dehydrate(state, { onlySegments: segs }));
+
+/** The segment names a `甲骨` archive string would install — for the boot-set
+ *  name-guard BEFORE loading (refuse a substrate-name collision). */
+export const archiveSegmentNames = (json: string): Key[] => {
+  try { return ((JSON.parse(json) as { segments?: Array<{ name: Key }> }).segments ?? []).map((s) => s.name); }
+  catch { return []; }
+};
+
 /** Load a `甲骨` archive string into `state` (hydrate). WHOLESALE: same-key cels
  *  are replaced. Returns the segment names installed. Caller enforces the
  *  boot-set-name guard (origin task) — this is the raw materialiser. */
 export const loadArchive = async (state: State, json: string): Promise<Key[]> => {
-  const arch = JSON.parse(json) as { segments?: Array<{ name: Key }>; manifests?: unknown[]; formatVersion?: number };
+  const arch = JSON.parse(json) as { segments?: Array<{ name: Key; cels?: Array<{ metadata?: Record<string, unknown> }> }>; manifests?: unknown[]; formatVersion?: number };
+  const segments = arch.segments ?? [];
+  // An imported segment is STATIC DATA, not a live genesis bloom: strip
+  // metadata.generatedBy so the genesis drain can't sweep its cels as orphaned
+  // (their original generator is absent here). Mark each segment role:"user" so
+  // it stays a tracked, stompable DOCUMENT segment (never substrate).
+  for (const s of segments) {
+    for (const c of (s.cels ?? [])) { if (c.metadata) delete c.metadata.generatedBy; }
+  }
   const hydrate = resolveFn(state, "hydrate") as (s: State, seg: unknown, man: unknown, v?: number) => Promise<unknown>;
-  await hydrate(state, arch.segments ?? [], arch.manifests ?? [], arch.formatVersion);
-  return (arch.segments ?? []).map((s) => s.name);
+  await hydrate(state, segments, arch.manifests ?? [], arch.formatVersion);
+  for (const s of segments) setSegmentManifest(state, { name: s.name, version: "0.0.0", description: "imported document segment", dependencies: [], role: "user" } as never);
+  return segments.map((s) => s.name);
 };

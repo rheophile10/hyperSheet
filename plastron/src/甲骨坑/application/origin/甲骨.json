@@ -178,6 +178,32 @@
    }
   },
   {
+   "key": "export",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "export",
+    "segment": "origin",
+    "name": "export",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(segment?) - dump a document segment (or, with no arg, the WHOLE document stack) to a lossless 甲骨 archive json string; the boot substrate is never included. Paste it into =import() elsewhere. The formula form is =seed() (whole doc) / =link() (a URL)."
+   }
+  },
+  {
+   "key": "import",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "import",
+    "segment": "origin",
+    "name": "import",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(src) - load an archive json string (or a =formula) into the document stack: ADD a new segment, or wholesale-REPLACE a same-named one. Refuses a boot-set name (net/dom/origin/…). =import(\"{...}\")"
+   }
+  },
+  {
    "key": "origin.commit",
    "celType": "LockedLambdaCel",
    "locked": true,

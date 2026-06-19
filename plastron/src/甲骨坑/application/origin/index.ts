@@ -2,9 +2,12 @@ import type {
   甲骨, Cel, ChannelEnqueue, Fn, Key, State, VNode, AttrValue, EventBinding,
 } from "../../../types/index.js";
 import {
-  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError,
+  bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, retireCel,
   dangerousUsage, setConsent, DANGEROUS, requireConsent, lockConsent,
 } from "../../../kernel/index.js";
+import {
+  dumpArchive, dumpSegments, loadArchive, documentSegments, isSubstrateSegment, archiveSegmentNames,
+} from "../../library/segment-io/index.js";
 // Core rendering comes from the dom LIBRARY — the app doesn't re-roll
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
 // `memo` attaches the diff's O(changed) short-circuit hint (see dom).
@@ -222,6 +225,13 @@ const doc: Fn = (...parts: unknown[]): unknown => {
 // seed() — ask the drain (which has state) to serialize the whole document to a
 // single recreating formula. Callable from ANY cel; its value becomes the source.
 const seedFn: Fn = () => ({ originSeed: true });
+// export(seg?) — dump a document segment (or, with no arg, the WHOLE document
+// stack) to a lossless 甲骨 archive json STRING. The boot substrate is never
+// included. Paste the string into =import() elsewhere. Formula form = =seed()/=link().
+const exportFn: Fn = (seg?: unknown) => ({ originExport: true, seg: seg == null ? "" : String(seg) });
+// import(src) — load an archive json string (or a =formula) into the document
+// stack: ADD or wholesale-REPLACE same-named segments. Refuses a boot-set name.
+const importFn: Fn = (src?: unknown) => ({ originImport: true, src: String(src ?? "") });
 
 // ── the entry gesture ────────────────────────────────────────────────────────
 
@@ -1764,6 +1774,38 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
       } else if (req.originSeed) {
         result = buildSeed(state); // the whole document as one paste-able formula
 
+      } else if (req.originExport) {
+        // archive json of one document segment, or (no arg) the whole document
+        // stack. The boot substrate is never serialised (documentSegments).
+        const seg = String(req.seg ?? "");
+        if (seg && isSubstrateSegment(state, seg)) result = `#REFUSED(export: "${seg}" is boot substrate — only document segments export)`;
+        else result = seg ? dumpArchive(state, seg) : dumpSegments(state, documentSegments(state));
+      } else if (req.originImport) {
+        const src = String(req.src ?? "").trim();
+        if (!src) result = "(import: paste an archive json string, or a =formula)";
+        else if (src.startsWith("{")) {
+          const names = archiveSegmentNames(src);
+          const blocked = names.filter((n) => isSubstrateSegment(state, n));
+          if (!names.length) result = "(import: not a valid 甲骨 archive)";
+          else if (blocked.length) result = `#REFUSED(import: ${blocked.join(", ")} ${blocked.length > 1 ? "are reserved boot-set names" : "is a reserved boot-set name"} — can't overwrite the substrate)`;
+          else {
+            // wholesale replace: retire every existing cel of each incoming
+            // segment first, so a stale cel left out of the new archive is swept.
+            const stale = new Set<Key>();
+            const incoming = new Set(names);
+            for (const k of [...state.cels.keys()]) {
+              if (incoming.has(state.cels.get(k)?.metadata.segment as Key)) retireCel(state, k, stale);
+            }
+            const added = await loadArchive(state, src);
+            await (resolveFn(state, "runCycle") as Fn)(state);
+            result = `imported ${added.join(", ")} (${added.length} segment${added.length > 1 ? "s" : ""})`;
+          }
+        } else if (src.startsWith("=") || src.startsWith("(")) {
+          // formula form — replay through the commit path; genesis re-mints.
+          await (resolveFn(state, "setValue") as Fn)(state, "元.draft", src);
+          await commit(state, "元");
+          result = "imported (formula replayed into 元)";
+        } else result = "(import: not an archive json `{…}` or a =formula)";
       } else if (req.originSave) {
         const ls = LS();
         if (!ls) result = "(no localStorage here)";
@@ -1941,6 +1983,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["segment",        doc],   // primary (was doc — composes a SEGMENT)
   ["doc",            doc],   // deprecated legacy alias
   ["seed",           seedFn],
+  ["export",         exportFn],
+  ["import",         importFn],
   ["origin.drain",   effectsDrain],
   ["members",        celsFn],
   ["inspect",        inspectFn],
