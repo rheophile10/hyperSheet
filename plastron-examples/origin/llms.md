@@ -75,15 +75,31 @@ LOGIC / DATA
   =1+1   =A1*2   =SUM(A1:A10)   =IF(A1>0,"yes","no")
   =LET(x, A1*2, x + x*x)                  name a sub-expression, reuse it (readability)
   =SUM(MAP(A1:A9, LAMBDA(v, v*v)))        LAMBDA + MAP/REDUCE/SCAN/BYROW over a range
-  =db("main")   =sql("select * from t")   =tables()        browser SQLite
   =claude(chat!A1, apiKey("anthropic"))                    ask an LLM (reactive)
   =chat(prompt, apiKey("grok"))                            OpenAI-shaped endpoint
+
+DATABASE (browser SQLite — persistent, runs in a Worker; the db NAME is the handle)
+  =sqlitedemo()                           one formula: makes a table, seeds it, opens the client
+  =sqlclient("mydb")                      a SQL client WINDOW — query editor, tables sidebar, results grid
+  =sql("mydb", "create table t(a,b)")     run SQL on a db; writes persist. The first arg is the db name
+  =sql("mydb", "select * from t")         …or a handle from =db(); SELECT returns rows
+  =dbseed("mydb", rows, "t")              bulk-load a JSON array of row-objects (or a range) into table t
+  =schema("mydb")   =tables("mydb")       introspect tables/columns/PK·FK   ·   list table names
+  Results from =sqlclient land in real `sqlres.*` cels you can chart or reference.
 
 FILES (OPFS, in-browser)
   =write("/a.txt","hi")  =cat("/a.txt")  =ls("/")  =mkdir("/d")  =upload("/")
 
 WINDOWS / LAYOUT
   =win(key,"title","body")     =winsize("keys","max")  (maximize)     =jail(seed)
+  =doom()                      Doom in a wasm window (consent-gated asset load)
+
+SEGMENTS — every workbook / window / app you make is a SEGMENT (a named layer)
+  =segments()                  list the loaded segments
+  =members("seg")              the cels in a segment
+  =segnav()                    an auto navbar that switches between your segments
+  Each =cels/=winapp/=doom/=jail MINTS a document segment (kind workbook/winapp/
+  wasm/jail); the substrate (net/dom/origin/…) is reserved and not exported.
 
 NAVBAR / MENUS (a pasteable menu; one formula, mobile + desktop)
   item(label, action, ...children)   one menu node. label = emoji+text; action =
@@ -118,25 +134,38 @@ app encode it** — never hand-roll the compressed form.
 - `=link("元")`             → encode one cell's source
 - `#raw=<url-encoded-formula>` → the simplest link YOU can build by hand:
       https://plastron.ca/#raw=%3Dcels(8%2C5%2C%22todo%22)   (just URL-encode a valid `=formula`)
-- DO NOT construct `#f=` yourself. It is `tag + base64url(deflateRaw(formula))` — a
-  compression format. There is **no JSON wrapper**. If you can't run `=link()`,
-  use `#raw=`.
-
-SELF-SERVICE TOOLS (open the URL → it answers in PLAIN TEXT; no app runs):
+SELF-SERVICE URLs (open one → it answers in PLAIN TEXT; no app runs):
 - `https://plastron.ca/#check=<url-encoded-formula>`  → "✅ VALID" or "❌ INVALID + error".
-      Use this to TEST a formula before you share it.
 - `https://plastron.ca/#encode=<url-encoded-formula>` → the compressed `#f=` link for it.
-      This is how you give a `#f=` link without deflating yourself: build the `#encode=`
-      URL, the page returns the real `#f=` link.
-  Example: to share `=cels(3,3)` → open `https://plastron.ca/#encode=%3Dcels(3%2C3)`.
+      Example: to share `=cels(3,3)` → open `https://plastron.ca/#encode=%3Dcels(3%2C3)`.
 
-Encrypted variants (open one → it boots a LOCKED, sandboxed kernel):
-- `=encrypt(passphrase)`    → `#aes256gcm=…`  (passphrase prompt on open; AES-256-GCM)
-- `=otpEncrypt()`           → `#otp=<padId>.…` (one-time **pad** = the Vernam cipher,
-                              NOT one-time-password; pick a pad file; unconditional secrecy)
+THE #f= CODEC — build a link by hand, no app needed. `#f=<payload>` where payload is:
+      tag "0" + base64url(utf8(formula))              ← plain
+      tag "1" + base64url(deflateRaw(utf8(formula)))  ← compressed (raw DEFLATE)
+  Emit whichever is SHORTER; the leading tag char tells the decoder which. base64url =
+  base64 with "+"→"-", "/"→"_", trailing "=" stripped. **No JSON wrapper.** Worked (plain):
+      =vocab()  →  utf8 3D 76 6F 63 61 62 28 29  →  base64url PXZvY2FiKCk  →  #f=0PXZvY2FiKCk
 
-Opening any `#f= / #raw= / #aes256gcm= / #otp=` link is safe: it boots locked — no
-net/storage/code/secrets until a human grants them via the 🛡 trust controls.
+ENCRYPTED links — the URL param NAMES the method (a self-describing booter):
+- `=encrypt(pass)`  → `#aes256gcm=<payload>`  (passphrase prompt on open)
+      payload = base64url( salt[16] ‖ iv[12] ‖ AES-256-GCM(deflateRaw(formula)) )
+      key = PBKDF2-HMAC-SHA256(pass, salt, 600k) → AES-256. Compress-THEN-encrypt.
+- `=otpEncrypt()`   → `#otp=<padId>.<payload>`  (one-time **pad** = Vernam, NOT a password)
+      payload = base64url( (formula XOR pad) ‖ oneTimeMAC[16] ). NO compression (would leak length).
+      A one-time Carter–Wegman MAC over GF(2^127-1) makes integrity unconditional too. ONE pad
+      = ONE message; never reuse a pad. `=otpDecrypt(url)` decodes it (file picker for the pad).
+
+Opening any `#f= / #raw= / #aes256gcm= / #otp=` link is safe: it boots locked — every
+dangerous fn (net/storage/db/code/secrets) is blocked until a human Allows it in the
+Consent panel (`=consentpanel()` lists exactly what the page wants to use).
+
+SEGMENT ARCHIVES — the lossless complement to formula-share (=link/=seed):
+- `=export("seg")`            → a 甲骨 archive json string of one document segment
+- `=export("seg","formula")`  → its re-minting =cels(…)/=def(…) formula
+- `=export("seg","encrypt",p) → an `aes256gcm:<blob>` (encrypted archive)
+- `=export()`                 → the whole document stack (substrate excluded)
+- `=import('{…}')` / `=import(blob, pass)` → load it back: ADD or wholesale-REPLACE
+  a same-named segment (refuses a reserved substrate name). Mix in, either form out.
 
 ────────────────────────────────────────────────────────────────────────────
 WORKED ONE-TIME-PAD DEMO (the pad is PUBLIC → a codec demo, not a secret message)
