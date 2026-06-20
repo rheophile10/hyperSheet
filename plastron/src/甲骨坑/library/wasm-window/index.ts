@@ -83,7 +83,7 @@ export const wasmwinGenesis = (id: string, title: string, engineCel: string, opt
     [`${L}.out`]:    { celType: "ValueCel", v: null, metadata: { name: "out", segment: L } },  // engine → graph
     [`${L}.active`]: { celType: "ValueCel", v: 0, metadata: { name: "active", segment: L } },  // is this window focused?
     [cref]:          { celType: "FormulaCel", f: body, metadata: { name: "content", parser: "f", segment: L } },
-    [`${L}.frame`]:  { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f", segment: L } },
+    [`${L}.frame`]:  { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f", segment: L, channel: ["dom.paint"] } },
   } };
 };
 
