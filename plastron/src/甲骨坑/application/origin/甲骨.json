@@ -354,6 +354,19 @@
    }
   },
   {
+   "key": "segnav",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "segnav",
+    "segment": "origin",
+    "name": "segnav",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "([mobile]) - an AUTO navbar built from the live DOCUMENT segments; each item switches to its segment (wakes it if dormant, raises its window). The segment switcher, beside the hand-authored =nav(=item(...)). =mount(\"top\", =segnav())"
+   }
+  },
+  {
    "key": "vocab",
    "celType": "LockedLambdaCel",
    "locked": true,

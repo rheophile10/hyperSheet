@@ -4,6 +4,7 @@ import type {
 import {
   bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, retireCel,
   dangerousUsage, setConsent, DANGEROUS, requireConsent, lockConsent,
+  getSegmentManifest, isSegmentPending,
 } from "../../../kernel/index.js";
 import {
   dumpArchive, dumpSegments, loadArchive, documentSegments, isSubstrateSegment, archiveSegmentNames,
@@ -1088,10 +1089,22 @@ const navFn: Fn = ((...args: unknown[]): VNode => {
 const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> => {
   const action = String(payload ?? "").trim();
   if (!action) return state;
-  if (/^[=(]/.test(action)) await spawnQuarantined(state, action, "trusted");
+  if (action.startsWith("seg:")) {
+    // SWITCH to a segment (segment-nav-and-memory): wake it if dormant (lazy load),
+    // then raise its window if it has one. (Sleeping the others to a budget is the
+    // LRU/pin layer — a follow-up.)
+    const seg = action.slice(4);
+    if (isSegmentPending(state, seg)) await (resolveFn(state, "wake") as Fn)(state, seg);
+    try { await (resolveFn(state, "winsheet.raise") as Fn)(state, `${seg}.state`); } catch { /* not a windowed segment */ }
+  } else if (/^[=(]/.test(action)) await spawnQuarantined(state, action, "trusted");
   else await (resolveFn(state, "winsheet.raise") as Fn)(state, action);
   return state;
 }) as Fn;
+// segnav([mobile]) — an AUTO navbar built from the live document segments (each a
+// =item that switches to it). The engine-agnostic switcher; beside the hand-authored
+// =nav(=item(...)). A snapshot (re-eval to refresh); a seg-list cel for reactivity is
+// the follow-up. Effect (the drain has state; a formula verb can't read the registry).
+const segnavFn: Fn = ((mobile?: unknown) => ({ originSegnav: true, mobile: !!mobile })) as Fn;
 
 // origin.demoMusic — open the Symphony-of-Cels example (score + keyboard +
 // melody worksheets) from the stored 音.demo formula, so it loads with one
@@ -1776,6 +1789,13 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
           segs.push(`${m.name}  [${m.role ?? "?"}] v${m.version ?? "?"}${m.dependencies?.length ? `  ← ${m.dependencies.join(", ")}` : ""}`);
         }
         result = segs.sort().join("\n") || "(no segments)";
+      } else if (req.originSegnav) {
+        // build the auto navbar from the live document segments — each a switcher item.
+        const items = documentSegments(state).map((seg) => {
+          const k = String((getSegmentManifest(state, seg) as { kind?: string } | undefined)?.kind ?? "segment");
+          return (itemFn as Fn)(`${seg}  ·${k}`, `seg:${seg}`);
+        });
+        result = items.length ? (navFn as Fn)(!!req.mobile, ...items) : "(no document segments — mint one with =cels/=winapp/=doom or =import one)";
       } else if (req.originVocab) {
         result = vocabText(state, String(req.segment ?? ""));
       } else if (req.originDef && req.name) {
@@ -2041,6 +2061,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.clockSync", clockSync],
   ["nav",            navFn],
   ["item",           itemFn],
+  ["segnav",         segnavFn],
   ["origin.navOpen", navOpenFn],
   ["def",            defFn],
   ["chat",           chatFn],
