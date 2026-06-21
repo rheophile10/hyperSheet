@@ -149,6 +149,21 @@ const sqlInline =
   await Bun.write(HTML, h2);
 }
 
+// DOOM assets — =doom() fetches /doom.wasm + /freedoom1.wad from the site root at
+// RUNTIME (too big to inline: the 28 MB WAD would wreck the single-file bundle, so
+// they ride alongside index.html, not inside it). rm() wiped dist/ at the top, so
+// copy them back — otherwise a local `bun bundle.ts` + static server 404s on DOOM.
+// The Pages deploy ships them the same way (.github/workflows/pages.yml).
+for (const a of ["doom.wasm", "freedoom1.wad"]) {
+  const src = Bun.file(join(import.meta.dir, "..", "doom", a));
+  if (await src.exists()) {
+    await Bun.write(join(OUT, a), src);
+    console.log(`✔ dist/${a} — ${((await Bun.file(join(OUT, a)).bytes()).length / 1024 / 1024).toFixed(1)} MB`);
+  } else {
+    console.log(`⚠ ${a} not found — DOOM won't load until it's present (run plastron-examples/doom build)`);
+  }
+}
+
 // Relocate Bun's ~1.9 MB inlined module bundle from <head> to the END of <body>,
 // so <head> stays tiny and the readable document (guide block + body) comes first
 // — a raw-HTML reader then gets everything before the megabytes. The bundle is
@@ -168,6 +183,7 @@ const sqlInline =
 }
 
 const bytes = (await Bun.file(HTML).bytes()).length;
-const leftovers = (await readdir(OUT)).filter((f) => f !== "index.html" && f !== "llms.txt");
+const ALLOWED = new Set(["index.html", "llms.txt", "doom.wasm", "freedoom1.wad"]);
+const leftovers = (await readdir(OUT)).filter((f) => !ALLOWED.has(f));
 console.log(`✔ dist/index.html — ${(bytes / 1024).toFixed(1)} KB`);
-if (leftovers.length) throw new Error(`bundle: expected index.html + llms.txt, found extra: ${leftovers.join(", ")}`);
+if (leftovers.length) throw new Error(`bundle: unexpected extra files in dist/: ${leftovers.join(", ")}`);
