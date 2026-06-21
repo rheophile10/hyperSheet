@@ -61,6 +61,10 @@ jobs:
           # llms.txt — the guide as plain text/plain (the #llms div is buried ~2/3
           # through the 2.9 MB bundle + hidden, so fetch tools truncate/strip it)
           cp plastron-examples/origin/dist/llms.txt deploy/llms.txt
+          # DOOM assets — =doom() fetches these from "/" at runtime (too big to inline:
+          # the 28 MB WAD would wreck the single-file bundle). Ship them alongside.
+          cp plastron-examples/doom/doom.wasm deploy/doom.wasm
+          cp plastron-examples/doom/freedoom1.wad deploy/freedoom1.wad
           # custom domain — tells GitHub Pages to serve + provision a cert for plastron.ca
           echo 'plastron.ca' > deploy/CNAME
 
