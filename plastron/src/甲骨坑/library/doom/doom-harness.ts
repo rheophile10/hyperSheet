@@ -48,6 +48,10 @@ export interface DoomHarnessOptions {
   wadName?: string;
   onLog?: (line: string) => void;
   onExit?: (code: number) => void;
+  /** Called when the canvas leaves the DOM (its window was closed/minimized).
+   *  The RAF loop is already stopped; the host should free the harness + stop
+   *  audio so a hidden game doesn't keep ticking the demo (and firing SFX). */
+  onDetach?: () => void;
 
   // ── sound dispatch (optional — silent without it) ──────────────────────
   // The harness parses doom's DMX SFX header (rate + PCM offset) and
@@ -139,6 +143,7 @@ export function createDoomHarness(
           wadName = "doom1.wad",
           onLog = () => {},
           onExit = () => {},
+          onDetach = () => {},
           playPcm, stopPcm, updatePcm, isPcmPlaying } = opts;
   // ── Mutable state ──────────────────────────────────────────────────────
   let instance: WasmInstance | null = null;
@@ -564,6 +569,14 @@ export function createDoomHarness(
 
     const tick = () => {
       if (stopped) return;
+      // the window was closed/minimized — frameFn dropped the canvas from the DOM.
+      // Stop: a detached game must not keep ticking the attract demo (and firing
+      // SFX). onDetach lets the host free the harness + cut audio.
+      if ((canvas as unknown as { isConnected?: boolean }).isConnected === false) {
+        stop();
+        onDetach();
+        return;
+      }
       try {
         (instance!.exports.doomgeneric_Tick as () => void)();
       } catch (e) {

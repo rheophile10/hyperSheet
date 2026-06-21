@@ -105,6 +105,19 @@ export const boot = async (stateArg: State): Promise<void> => {
           if (drain) await drain(state, "dom.paint");
         });
       },
+      // window CLOSED/MINIMIZED (the ✕ or – just flip wasm.doom.state, dropping the
+      // canvas) → free the harness + CUT AUDIO so the hidden demo stops making
+      // noise. Unlike onExit, do NOT touch window state (the window is already
+      // hidden; closing a minimized one would yank it from the taskbar). Freeing
+      // _harness lets a reopen/restore re-arm → reboot a fresh engine.
+      onDetach: () => {
+        _harness = null; _booting = false;
+        void Promise.resolve().then(async () => {
+          const stopAll = resolveFn(state, "sound.stop-all") as Fn | undefined;
+          if (stopAll) await stopAll(state);
+          setOut(state, "stopped");
+        });
+      },
     });
 
     await (resolveFn(state, "setCel") as Fn)(state, "doom-provider", {

@@ -97,7 +97,10 @@ try {
   await page.keyboard.press("y");
   await page.waitForFunction(() => globalThis.plastron.state.cels.get("wasm.doom.state")?.v?.closed === 1, { timeout: 8000 }).catch(() => {});
   ok((await page.evaluate(() => globalThis.plastron.state.cels.get("wasm.doom.state")?.v?.closed)) === 1, "quit-to-DOS (Esc → Quit Game → y) closes the DOOM window");
-  ok(await page.evaluate(() => { const w = [...document.querySelectorAll(".pl-window")].find((x) => x.getAttribute("data-win") === "wasm.doom.state"); return !w || w.offsetParent === null; }), "the DOOM window is gone from the desktop after quit");
+  // the closed cel flips before onExit's async drain repaints the stub — poll the DOM.
+  const winGone = () => page.evaluate(() => { const w = [...document.querySelectorAll(".pl-window")].find((x) => x.getAttribute("data-win") === "wasm.doom.state"); return !w || w.offsetParent === null; });
+  await page.waitForFunction(() => { const w = [...document.querySelectorAll(".pl-window")].find((x) => x.getAttribute("data-win") === "wasm.doom.state"); return !w || w.offsetParent === null; }, { timeout: 4000 }).catch(() => {});
+  ok(await winGone(), "the DOOM window is gone from the desktop after quit");
 
   ok(errs.length === 0, `no page errors${errs.length ? ": " + errs[0] : ""}`);
 } finally {
