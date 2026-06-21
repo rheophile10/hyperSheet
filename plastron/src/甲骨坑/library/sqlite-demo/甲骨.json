@@ -1,0 +1,14 @@
+{
+  "name": "sqlite-demo",
+  "cels": [
+    {
+      "key": "sqlitedemo",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sqlitedemo", "segment": "sqlite-demo", "name": "sqlitedemo", "kind": "native", "genesis": true,
+        "description": "([db]) - lay down a worked SQLite example: a db handle, a CREATE-TABLE schema, a JSON seed, get/aggregate queries, and the client window opened on it. e.g. =sqlitedemo()"
+      },
+      "locked": true
+    }
+  ]
+}

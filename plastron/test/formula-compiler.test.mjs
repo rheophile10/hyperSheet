@@ -13,7 +13,7 @@ import { createInitialState, resolveFn } from "../dist/index.js";
 const boot = async () => {
   const state = createInitialState();
   const R = (k) => resolveFn(state, k);
-  await R("ensureSegments")(state, ["builtins", "defn", "formula-compiler", "quickjs-compiler", "html-template-parser", "dom"]);
+  await R("ensureSegments")(state, ["builtins", "defn", "formula-compiler", "js-compiler", "html-template-parser", "dom"]);
   await R("hydrate")(state, [], []);
   await R("runCycle")(state);
   return state;

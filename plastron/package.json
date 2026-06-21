@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@jitl/quickjs-singlefile-cjs-release-sync": "^0.32.0",
+    "@sqlite.org/sqlite-wasm": "^3.53.0-build1",
     "php-wasm": "^0.1.0",
     "pyodide": "^0.29.4",
     "quickjs-emscripten": "^0.32.0",
@@ -34,7 +35,8 @@
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
-  "license": "MIT"
+  "license": "Apache-2.0"
 }

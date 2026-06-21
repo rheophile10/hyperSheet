@@ -127,7 +127,7 @@ const watCompiler: Compiler = (async (source: string, state?: State): Promise<Co
 
 // wasm-to-wat — render any wasm module's bytes as its WAT text form.
 // Useful for inspecting wat cels' compiled output (round-trip canonical
-// form) and, more interestingly, for inspecting Javy / Rust-compiled
+// form) and, more interestingly, for inspecting Rust / other-language
 // wasm produced by other kinds. Apps build whatever UI they want on
 // top; the cel just returns the text.
 const wasmToWat: Fn = async (bytes: unknown): Promise<string> => {

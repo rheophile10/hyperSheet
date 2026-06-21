@@ -2,16 +2,18 @@ import type { Key, State, ValueCel } from "../../types/index.js";
 
 // ============================================================================
 // Consent — the replacement for 信 capability-trust + 访 segment-access. ONE
-// idea: a small set of functions are DANGEROUS (they do I/O or run code); each
-// one is allowed or denied via a single `consent` cel. ENFORCEMENT is a runtime
-// self-check the dangerous fn makes when it actually runs (`requireConsent`) —
-// assembly-proof, unlike a source scan. The static dep-scan (elsewhere) is only
-// the VISIBILITY surface that tells the UI what to ask about.
+// idea: a small set of functions are DANGEROUS (they do I/O or run code) — the
+// blacklist TAG (membership in DANGEROUS). ENFORCEMENT is ONE central, tag-driven
+// gate in runCycle's fireCel: in a LOCKED session, a cel whose formula references
+// an un-consented DANGEROUS fn takes a #BLACKLISTED value instead of firing. No
+// per-verb hand map, no per-fn self-check — the tag is the whole policy. Because
+// every verb is a cel and a formula's inputMap lists the cels it calls,
+// referencing a dangerous fn IS the thing that gets gated. The compile tier has a
+// twin gate (hydrate/formula.ts) keyed on a code cel's `kind`.
 //
-// This module is additive: it defines the standing blacklist + the consent
-// predicates. Wiring the dangerous fns to call `requireConsent`, and the
-// dep-scan/#BLACKLISTED marking, land when enforcement is switched on (and 信/访
-// removed). See docs/1-design/1-under-consideration/consent-security-model.md.
+// `isConsented(state, fnKey, accessor)` is the predicate both gates call.
+// `dangerousUsage` is the VISIBILITY surface (what the consent UI asks about).
+// See docs/1-design/3-accepted/.../consent-security-model.md.
 // ============================================================================
 
 export type DangerCategory = "net" | "fs" | "storage" | "db" | "code" | "secrets" | "control";
@@ -29,6 +31,10 @@ export const DANGEROUS: Readonly<Record<Key, DangerSpec>> = {
   claude:          { category: "net", reason: "LLM (Anthropic) over HTTP", wiki: "claude" },
   cdn:             { category: "net", reason: "loads code/data from a CDN", wiki: "cdn" },
   doom:            { category: "net", reason: "loads the Doom engine + WAD (wasm/wad bytes) from plastron.ca", wiki: "doom" },
+  "doom.arm":      { category: "net", reason: "arms the Doom boot — fetches doom.wasm + the WAD (engine/byte load) from plastron.ca", wiki: "doom" },
+  "doom.boot":     { category: "net", reason: "boots the Doom engine — fetches doom.wasm + the WAD (engine/byte load) from plastron.ca", wiki: "doom" },
+  localload:       { category: "net", reason: "downloads a ~400MB local LLM model (WebLLM + weights from plastron.ca)", wiki: "localload" },
+  localchat:       { category: "net", reason: "runs a local LLM — triggers the model download on first use", wiki: "localload" },
   "peer.connect":  { category: "net", reason: "opens a peer connection", wiki: "peer" },
   "peer.broadcast":{ category: "net", reason: "sends to all peers", wiki: "peer" },
   "peer.apply":    { category: "net", reason: "applies REMOTE writes into the graph", wiki: "peer" },
@@ -47,19 +53,27 @@ export const DANGEROUS: Readonly<Record<Key, DangerSpec>> = {
   "fs.rename":     { category: "fs", reason: "renames a path", wiki: "fs.rename" },
   "fs.command":    { category: "fs", reason: "filesystem command channel", wiki: "fs.command" },
   write:           { category: "fs", reason: "writes a file", wiki: "write" },
+  "origin.reseed": { category: "fs", reason: "overwrites the OPFS starter files from the bundle", wiki: "reseed" },
   touch:           { category: "fs", reason: "creates a file", wiki: "touch" },
   mkdir:           { category: "fs", reason: "creates a directory", wiki: "mkdir" },
   rm:              { category: "fs", reason: "deletes a path", wiki: "rm" },
   mv:              { category: "fs", reason: "moves a path", wiki: "mv" },
+  cat:             { category: "fs", reason: "reads a file's contents", wiki: "cat" },
+  ls:              { category: "fs", reason: "lists a directory", wiki: "ls" },
+  tree:            { category: "fs", reason: "lists the file tree", wiki: "tree" },
+  stat:            { category: "fs", reason: "reads file metadata", wiki: "stat" },
   upload:          { category: "fs", reason: "reads a local file into OPFS", wiki: "upload" },
   download:        { category: "fs", reason: "writes a file to the user's disk", wiki: "download" },
   downloadSeg:     { category: "fs", reason: "downloads a segment archive", wiki: "downloadSeg" },
   // ── storage (localStorage / IndexedDB persistence) ─────────────────────────
-  save:            { category: "storage", reason: "persists the sheet to local storage", wiki: "save" },
-  open:            { category: "storage", reason: "loads a sheet from local storage", wiki: "open" },
+  save:            { category: "fs", reason: "writes the sheet to a file in OPFS", wiki: "save" },
+  open:            { category: "fs", reason: "reads a sheet file from OPFS", wiki: "open" },
+  vaultsave:       { category: "secrets", reason: "writes the secrets vault to an encrypted file in OPFS", wiki: "vaultsave" },
+  vaultload:       { category: "secrets", reason: "reads the secrets vault from an encrypted file in OPFS", wiki: "vaultload" },
   saveSeg:         { category: "storage", reason: "persists a segment archive", wiki: "saveSeg" },
   openSeg:         { category: "storage", reason: "loads a segment archive", wiki: "openSeg" },
   delSeg:          { category: "storage", reason: "deletes a stored segment", wiki: "delSeg" },
+  segs:            { category: "storage", reason: "lists stored segment archives", wiki: "segs" },
   savepage:        { category: "storage", reason: "downloads the whole page", wiki: "savepage" },
   checkpoint:            { category: "storage", reason: "persisted snapshots", wiki: "checkpoint" },
   "checkpoint.snapshot": { category: "storage", reason: "writes a snapshot", wiki: "checkpoint" },
@@ -70,25 +84,27 @@ export const DANGEROUS: Readonly<Record<Key, DangerSpec>> = {
   db:              { category: "db", reason: "opens a SQLite database", wiki: "db" },
   sql:             { category: "db", reason: "runs arbitrary SQL", wiki: "sql" },
   tables:          { category: "db", reason: "reads the DB schema", wiki: "tables" },
+  schema:          { category: "db", reason: "reads the DB schema (tables/columns/keys)", wiki: "schema" },
+  dbseed:          { category: "db", reason: "bulk-loads rows into a table", wiki: "dbseed" },
+  dbexport:        { category: "fs", reason: "writes the database out to an OPFS file", wiki: "dbexport" },
+  dbimport:        { category: "db", reason: "loads a .db file, replacing the database", wiki: "dbimport" },
   // ── code (arbitrary execution — the irreducible high-trust capability) ──────
   js:              { category: "code", reason: "runs arbitrary JavaScript", wiki: "js" },
   py:              { category: "code", reason: "runs arbitrary Python", wiki: "py" },
   wat:             { category: "code", reason: "runs arbitrary WebAssembly", wiki: "wat" },
-  quickjs:         { category: "code", reason: "runs arbitrary JS in QuickJS", wiki: "quickjs" },
   def:             { category: "code", reason: "defines + runs a function from source", wiki: "def" },
   "defn.drain":    { category: "code", reason: "compiles user-defined functions", wiki: "def" },
   // ── secrets (reads / manages stored secrets) ───────────────────────────────
   apiKey:          { category: "secrets", reason: "reads a stored API key", wiki: "apiKey" },
   apiKeys:         { category: "secrets", reason: "lists stored API keys", wiki: "apiKey" },
-  wallet:          { category: "secrets", reason: "the secrets wallet", wiki: "wallet" },
-  walletKeys:      { category: "secrets", reason: "lists wallet keys", wiki: "wallet" },
-  setKey:          { category: "secrets", reason: "stores a secret", wiki: "wallet" },
-  editKey:         { category: "secrets", reason: "edits a secret", wiki: "wallet" },
-  identity:        { category: "secrets", reason: "the wallet identity", wiki: "wallet" },
-  unlockWallet:    { category: "secrets", reason: "unlocks the secrets wallet", wiki: "wallet" },
-  "wallet.set":    { category: "secrets", reason: "stores a secret", wiki: "wallet" },
-  "wallet.export": { category: "secrets", reason: "exports secrets", wiki: "wallet" },
-  "wallet.import": { category: "secrets", reason: "imports secrets", wiki: "wallet" },
+  vaultKeys:       { category: "secrets", reason: "lists vault keys", wiki: "vault" },
+  setKey:          { category: "secrets", reason: "stores a secret", wiki: "vault" },
+  editKey:         { category: "secrets", reason: "edits a secret", wiki: "vault" },
+  identity:        { category: "secrets", reason: "the vault identity", wiki: "vault" },
+  unlockVault:     { category: "secrets", reason: "unlocks the vault", wiki: "vault" },
+  "vault.set":     { category: "secrets", reason: "stores a secret", wiki: "vault" },
+  "vault.export":  { category: "secrets", reason: "exports secrets", wiki: "vault" },
+  "vault.import":  { category: "secrets", reason: "imports secrets", wiki: "vault" },
   "seal.lock":     { category: "secrets", reason: "seals a segment at rest", wiki: "seal" },
 };
 
@@ -129,11 +145,6 @@ export const isConsented = (state: State, fnKey: Key, accessor: Key | undefined)
   if (!g.segments) return true;                 // global grant
   return accessor === undefined || g.segments.includes(accessor); // host privileged
 };
-
-/** The enforcement primitive a dangerous fn calls at its entry. Returns true if
- *  permitted; false if it must refuse (the caller raises #BLOCKED). */
-export const requireConsent = (state: State, fnKey: Key, accessor: Key | undefined): boolean =>
-  isConsented(state, fnKey, accessor);
 
 /** Grant / revoke consent for a dangerous fn (host/user only — never a
  *  formula-callable verb, else a payload consents itself). */

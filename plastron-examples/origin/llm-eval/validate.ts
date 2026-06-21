@@ -41,7 +41,7 @@ const runFormula = async (formula: string): Promise<{ ok: boolean; note: string 
   await (resolveFn(st, "hydrate") as Fn)(st, [], []);
   try {
     await (resolveFn(st, "setValue") as Fn)(st, "元.draft", formula);
-    await (resolveFn(st, "origin.commit") as Fn)(st, "元");
+    await (resolveFn(st, "origin.run") as Fn)(st, "元");
   } catch (e) { return { ok: false, note: "threw: " + String((e as { message?: unknown })?.message ?? e) }; }
   const err = String((st.cels.get("元.error")?.v ?? "")).trim();
   if (err && err !== "null") return { ok: false, note: "error cel: " + err.slice(0, 140) };

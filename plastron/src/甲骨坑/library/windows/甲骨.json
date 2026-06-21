@@ -349,89 +349,6 @@
       }
     },
     {
-      "key": "winx.linkGrab",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "winx.linkGrab",
-        "segment": "windows",
-        "name": "winx.linkGrab",
-        "kind": "native",
-        "description": "pointerdown on a window's 🔗 corner grip — start a LINK drag: record the source window ref + start point in win.linkdrag, capture the pointer, stopPropagation so the titlebar MOVE handler doesn't also fire. The visual-edge twin of titlebar stacking; both end in the SAME shared-memory bundle."
-      },
-      "locked": true
-    },
-    {
-      "key": "winx.linkMove",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "winx.linkMove",
-        "segment": "windows",
-        "name": "winx.linkMove",
-        "kind": "native",
-        "description": "pointermove while link-dragging — track the live pointer in win.linkdrag (the linkoverlay reads it to draw the transient line) and glow the window under the cursor as a candidate link target."
-      },
-      "locked": true
-    },
-    {
-      "key": "winx.linkDrop",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "winx.linkDrop",
-        "segment": "windows",
-        "name": "winx.linkDrop",
-        "kind": "native",
-        "description": "pointerup ending a link drag. Over ANOTHER window (any region, via elementsFromPoint → .pl-window data-win) → LINK them: bundle the two segments (Layer-1 bundleSegments — shared memory, sealing still wins) AND record the {a,b} pair in win.links so the edge persists. Over empty desktop → cancel. Clears win.linkdrag + the glow either way."
-      },
-      "locked": true
-    },
-    {
-      "key": "win.links",
-      "celType": "ValueCel",
-      "v": [],
-      "metadata": {
-        "key": "win.links",
-        "segment": "win",
-        "name": "links",
-        "description": "the persistent corner-link registry: an array of {a,b} window .state-ref pairs. Each pair both bundled the two segments (shared memory) and is drawn as an edge by linkoverlay. Genesis-seeded empty by linkwins(); dehydrates with the desktop."
-      }
-    },
-    {
-      "key": "win.linkdrag",
-      "celType": "ValueCel",
-      "v": null,
-      "metadata": {
-        "key": "win.linkdrag",
-        "segment": "win",
-        "name": "linkdrag",
-        "description": "transient corner-link drag {from, x, y} or null — the source window ref + the live pointer. The linkoverlay reads it to draw the in-progress line; cleared on pointerup."
-      }
-    },
-    {
-      "key": "linkoverlay",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "linkoverlay",
-        "segment": "windows",
-        "name": "linkoverlay",
-        "kind": "native",
-        "description": "(links, linkdrag, states) - a transparent SVG layer over the desktop drawing one dashed <line> per win.links pair (between the two windows' corners, read from the live .state geometry in `states`) plus the transient drag line. pointer-events:none so it never blocks the windows. `states` is an array-inputMap kept in sync with win.links, so moving a linked window re-fires this reactively (inputMap doctrine)."
-      },
-      "locked": true
-    },
-    {
-      "key": "linkwins",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "linkwins",
-        "segment": "windows",
-        "name": "linkwins",
-        "kind": "native",
-        "genesis": true,
-        "description": "() - GENESIS: the persistent link-edge layer. Seeds win.links (the {a,b} pair list) + win.linkdrag empty and a win.linkoverlay FormulaCel that mounts the SVG onto .origin, referencing both plus a `states` array-inputMap (rewired as links form) of the linked windows' .state cels. Boot it once so the desktop draws corner-link edges."
-      },
-      "locked": true
-    },
-    {
       "key": "win.active",
       "celType": "ValueCel",
       "v": "",
@@ -462,7 +379,7 @@
         "name": "winapp",
         "kind": "native",
         "genesis": true,
-        "description": "(id, title, contentSource) — create a window backed by a state cel whose content is a FORMULA (win.<id>.content). Mounts a real app: =winapp(\"wallet\",\"Wallet\",\"(domWallet (locked walletNote) (apiKeys))\")"
+        "description": "(id, title, contentSource) — create a window backed by a state cel whose content is a FORMULA (win.<id>.content). Mounts a real app: =winapp(\"secrets\",\"Secrets\",\"(secrets (locked secretsNote) (apiKeys))\")"
       }
     },
     {

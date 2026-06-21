@@ -186,7 +186,7 @@ const winFn: Fn = ((key: unknown, title: unknown, content: unknown, x?: unknown,
 // write to that cel BY ITS REF, so to close/open/move/repaint a window you just
 // modify its state value; the frame re-renders. winmake() genesis-creates the
 // state cel + the frame; sheetView ignores it (no grid cells), so no double-window.
-interface WinState { ref?: string; x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; max?: number; closed?: number; title?: string; linked?: string[]; glow?: number }
+interface WinState { ref?: string; x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; max?: number; closed?: number; title?: string }
 const segOf = (ref: string): string => ref.replace(/\.state$/, "");
 const stateOf = (state: State, ref: string): WinState => { const v = state.cels.get(ref)?.v; return (v && typeof v === "object" && !Array.isArray(v)) ? { ...(v as WinState) } : {}; };
 const setState = (state: State, ref: string, patch: WinState): Promise<unknown> => Promise.resolve((resolveFn(state, "setValue") as Fn)(state, ref, { ...stateOf(state, ref), ...patch })).then(() => repaint(state));
@@ -211,15 +211,8 @@ const frameFn: Fn = ((st: unknown, active: unknown, content: unknown): V => {
   const gg = globalThis as { innerWidth?: number; innerHeight?: number };
   const x = s.max ? 0 : num(s.x, 80), y = s.max ? 0 : num(s.y, 80), w = s.max ? num(gg.innerWidth, 1200) : num(s.w, 380), h = s.max ? num(gg.innerHeight, 800) - 46 : num(s.h, 260), z = num(s.z, 1);
   const body = isVnode(content) ? content : T(content == null ? "" : String(content));
-  // a drop-target GLOW while another window is dragged over this one (winx.drop
-  // stacks them); cleared on leave/drop. Wins over the active highlight.
-  const glowOutline = s.glow ? ";outline:3px solid #4a90d9;outline-offset:1px" : "";
-  return el("div", { class: "pl-window" + (isActive ? " active" : "") + (s.glow ? " drop-target" : ""), "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:${isActive ? "2px solid #4a90d9" : "1px solid #8886"};border-radius:6px;background:Canvas;box-shadow:${s.glow ? "0 0 0 3px #4a90d955,0 6px 22px #4a90d966" : (isActive ? "0 6px 22px #4a90d966" : "0 4px 16px #0004")}${glowOutline};overflow:hidden` }, [
+  return el("div", { class: "pl-window" + (isActive ? " active" : ""), "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:${isActive ? "2px solid #4a90d9" : "1px solid #8886"};border-radius:6px;background:Canvas;box-shadow:${isActive ? "0 6px 22px #4a90d966" : "0 4px 16px #0004"};overflow:hidden` }, [
     el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
-      // 🔗 LINK GRIP (upper-left): pointerdown starts a corner-link drag — drag a
-      // line to another window to LINK (shared-memory bundle) them. stopPropagation
-      // in winx.linkGrab keeps it from also starting a titlebar MOVE.
-      el("button", { class: "pl-link-grip", title: "link — drag to another window to share memory", style: XBTN + ";flex:0 0 auto;cursor:crosshair;font-size:.78rem;touch-action:none" }, [T("🔗")], { pointerdown: { dispatch: "winx.linkGrab", payload: ref }, pointermove: { dispatch: "winx.linkMove" }, pointerup: { dispatch: "winx.linkDrop" } }),
       el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto" }, [T(String(s.title ?? ref))]),
       el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
         // W — open this window's wiki article (docgraph's wiki.open). A host
@@ -239,57 +232,14 @@ const frameFn: Fn = ((st: unknown, active: unknown, content: unknown): V => {
   ], { pointerdown: { dispatch: "winx.raise", payload: ref } });
 }) as Fn;
 
-// the data-win of a state-cel window's titlebar under (x,y), excluding selfRef.
-const winRefAtPoint = (x: number, y: number, selfRef?: string): string | undefined => {
-  const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => { getAttribute?: (a: string) => string | null } | null }> } }).document;
-  for (const e of doc?.elementsFromPoint?.(x, y) ?? []) {
-    if (!e.closest?.(".pl-titlebar")) continue;
-    const w = e.closest?.(".pl-window"); const dw = (w as { getAttribute?: (a: string) => string | null } | null)?.getAttribute?.("data-win") ?? undefined;
-    if (dw && dw !== selfRef) return dw;
-  }
-  return undefined;
-};
-// set/clear the glow flag across all state-cel windows so exactly `target` (a
-// .state ref) glows. Repaints once via setState's drain.
-const setGlowState = async (state: State, target?: string): Promise<void> => {
-  for (const [k, cel] of state.cels) {
-    if (!k.endsWith(".state")) continue;
-    const v = cel.v as WinState | undefined; if (!v || typeof v !== "object") continue;
-    const want = k === target ? 1 : undefined;
-    if ((v.glow ? 1 : undefined) !== want) await setState(state, k, { glow: want });
-  }
-};
 const xGrab: Fn = (async (state: State, ref: unknown, event?: DomEvt): Promise<void> => { capture(event); const s = stateOf(state, String(ref)); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", { ref: String(ref), ox: num(event?.clientX) - num(s.x, 80), oy: num(event?.clientY) - num(s.y, 80) })); }) as Fn;
-const xMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d || d.resize) return; await setState(state, d.ref, { x: num(event?.clientX) - d.ox, y: num(event?.clientY) - d.oy }); await setGlowState(state, winRefAtPoint(num(event?.clientX), num(event?.clientY), d.ref)); }) as Fn;
+const xMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d || d.resize) return; await setState(state, d.ref, { x: num(event?.clientX) - d.ox, y: num(event?.clientY) - d.oy }); }) as Fn;
 const xGrabResize: Fn = (async (state: State, ref: unknown, event?: DomEvt): Promise<void> => { capture(event); const s = stateOf(state, String(ref)); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", { ref: String(ref), ox: num(event?.clientX) - num(s.w, 380), oy: num(event?.clientY) - num(s.h, 260), resize: true })); }) as Fn;
 const xResizeMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => { const d = xdrag(state); if (!d?.resize) return; await setState(state, d.ref, { w: Math.max(160, num(event?.clientX) - d.ox), h: Math.max(90, num(event?.clientY) - d.oy) }); }) as Fn;
-// linkWindows — the SHARED access bundle two window refs form, whether by
-// titlebar-stacking (xDrop) or by corner-grip drag (xLinkDrop). It (1) bundles
-// the two SEGMENTS (Layer-1 bundleSegments — shared memory; a SEALED direction
-// is never widened, the seal wins inside canGet), (2) marks both titlebars 🔗 via
-// state.linked, and (3) records the {a,b} ref pair in win.links so a persistent
-// edge can be drawn. Idempotent on the pair. `pair` defaults true (corner-link);
-// titlebar-stacking passes false (it predates the visible edge and only needs
-// the bundle + 🔗 marker, keeping its committed tests unchanged).
-const linkWindows = async (state: State, refA: string, refB: string, pair = true): Promise<void> => {
-  const a = segOf(refA), b = segOf(refB);
-  if (a === b) return;
-  const merge = (st: WinState): string[] => Array.from(new Set([...(st.linked ?? []), a, b]));
-  await setState(state, refA, { linked: merge(stateOf(state, refA)) });
-  await setState(state, refB, { linked: merge(stateOf(state, refB)) });
-  if (pair) await pushLinkPair(state, refA, refB);
-};
 
-// xDrop — release. If a window was dropped ONTO another window's titlebar, STACK
-// them: bundle the two window SEGMENTS — "connecting windows into shared memory".
-const xDrop: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => {
-  const d = xdrag(state);
+// xDrop — release: just clear the transient drag state.
+const xDrop: Fn = (async (state: State, _p: unknown, _event?: DomEvt): Promise<void> => {
   await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "winx.drag", null));
-  await setGlowState(state);                            // clear any drop-target glow
-  if (!d || d.resize || !event) return;
-  const target = winRefAtPoint(num(event.clientX), num(event.clientY), d.ref);
-  if (!target) return;
-  await linkWindows(state, d.ref, target, false);       // stacking: bundle + 🔗, no drawn edge
 }) as Fn;
 const xRaise: Fn = (async (state: State, ref: unknown): Promise<void> => { const r = String(ref); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.active", r)); if (state.cels.get("keys.active")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "keys.active", r)); await setState(state, r, { z: await nextZ(state) }); }) as Fn;
 const xMin: Fn = (async (state: State, ref: unknown): Promise<void> => { const s = stateOf(state, String(ref)); await setState(state, String(ref), { min: s.min ? 0 : 1 }); }) as Fn;
@@ -297,126 +247,6 @@ const xMax: Fn = (async (state: State, ref: unknown): Promise<void> => { const s
 const xClose: Fn = (async (state: State, ref: unknown): Promise<void> => { await setState(state, String(ref), { closed: 1 }); }) as Fn;
 const xShow: Fn = (async (state: State, ref: unknown): Promise<void> => { const r = String(ref); await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.active", r)); if (state.cels.get("keys.active")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "keys.active", r)); await setState(state, r, { closed: 0, min: 0, z: await nextZ(state) }); }) as Fn;
 const xStop: Fn = ((_state: State, _p: unknown, event?: { stopPropagation?: () => void }): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
-
-// ── window LINKS — the corner-grip drag (visual-edge twin of titlebar stacking) ─
-// A link is a {a,b} pair of window .state refs. The list lives in win.links so
-// the edge PERSISTS + dehydrates; forming one ALSO bundles the two segments
-// (linkWindows), identical shared-memory to stacking. The persistent edge is
-// drawn by the linkoverlay verb (mounted on .origin), which reads win.links +
-// each linked window's .state geometry — so it re-renders reactively as the
-// windows move (the overlay's `states` inputMap holds those .state cels).
-interface LinkPair { a: string; b: string }
-interface LinkDrag { from: string; x?: number; y?: number }
-const readLinks = (state: State): LinkPair[] => { const v = state.cels.get("win.links")?.v; return Array.isArray(v) ? (v as LinkPair[]).filter((p) => p && p.a && p.b) : []; };
-const samePair = (p: LinkPair, a: string, b: string): boolean => (p.a === a && p.b === b) || (p.a === b && p.b === a);
-const linkdragOf = (state: State): LinkDrag | null => (state.cels.get("win.linkdrag")?.v as LinkDrag | null) ?? null;
-
-// rewire the linkoverlay's `states` array-inputMap to EXACTLY the .state cels
-// named by win.links, so the overlay re-fires when any linked window moves
-// (inputMap doctrine — no hand-rolled repaint). Mirrors origin's rewireView.
-const rewireOverlay = async (state: State): Promise<void> => {
-  const cel = state.cels.get("linkfx.overlay"); if (!cel) return;
-  const refs = Array.from(new Set(readLinks(state).flatMap((p) => [p.a, p.b]))).filter((r) => state.cels.has(r));
-  const im = { ...(cel.metadata.inputMap as Record<string, string | string[]> | undefined) };
-  im.states = refs;
-  await Promise.resolve((resolveFn(state, "setCel") as Fn)(state, "linkfx.overlay", { metadata: { inputMap: im } }));
-};
-
-// push a {a,b} pair into win.links (idempotent) + rewire the overlay so the new
-// edge's endpoints are in its inputMap, then re-fire + repaint. The inputMap
-// edit is a recompile-tier change, so runCycle must recompute the overlay before
-// the paint lands the new edge (a bare drain only paints already-computed values).
-const pushLinkPair = async (state: State, refA: string, refB: string): Promise<void> => {
-  const links = readLinks(state);
-  if (links.some((p) => samePair(p, refA, refB))) return;
-  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.links", [...links, { a: refA, b: refB }]));
-  await rewireOverlay(state);
-  await Promise.resolve((resolveFn(state, "runCycle") as Fn)(state));
-  await repaint(state);
-};
-
-// xLinkGrab — pointerdown on a window's 🔗 corner grip: record the source ref +
-// start point as win.linkdrag, capture the pointer. stopPropagation so it does
-// NOT also start a titlebar MOVE (mirrors the titlebar buttons' winx.stop).
-const xLinkGrab: Fn = (async (state: State, ref: unknown, event?: DomEvt & { stopPropagation?: () => void }): Promise<void> => {
-  try { event?.stopPropagation?.(); } catch { /* off-DOM */ }
-  capture(event);
-  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.linkdrag", { from: String(ref), x: num(event?.clientX), y: num(event?.clientY) }));
-  await repaint(state);
-}) as Fn;
-
-// xLinkMove — pointermove while link-dragging: track the live pointer in
-// win.linkdrag (the overlay reads it to draw the transient line) + glow the
-// window under the cursor as a candidate drop target.
-const xLinkMove: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => {
-  const d = linkdragOf(state); if (!d) return;
-  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.linkdrag", { from: d.from, x: num(event?.clientX), y: num(event?.clientY) }));
-  await setGlowState(state, winAtPoint(num(event?.clientX), num(event?.clientY), d.from));
-}) as Fn;
-
-// xLinkDrop — pointerup. Over ANOTHER window (any part, not just the titlebar) →
-// LINK them: linkWindows bundles the segments + records the {a,b} pair (visible
-// edge). Over empty desktop → cancel. Always clears win.linkdrag + the glow.
-const xLinkDrop: Fn = (async (state: State, _p: unknown, event?: DomEvt): Promise<void> => {
-  const d = linkdragOf(state);
-  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.linkdrag", null));
-  await setGlowState(state);
-  if (!d || !event) { await repaint(state); return; }
-  const target = winAtPoint(num(event.clientX), num(event.clientY), d.from);
-  if (target) await linkWindows(state, d.from, target, true);
-  await repaint(state);
-}) as Fn;
-
-// the .state ref of ANY window (any region, not just the titlebar) under (x,y),
-// excluding selfRef — the link drop hit-test (a corner-link can land anywhere on
-// the target window, unlike the titlebar-only stack drop).
-const winAtPoint = (x: number, y: number, selfRef?: string): string | undefined => {
-  const doc = (globalThis as { document?: { elementsFromPoint?: (x: number, y: number) => Array<{ closest?: (s: string) => { getAttribute?: (a: string) => string | null } | null }> } }).document;
-  for (const e of doc?.elementsFromPoint?.(x, y) ?? []) {
-    const w = e.closest?.(".pl-window"); const dw = (w as { getAttribute?: (a: string) => string | null } | null)?.getAttribute?.("data-win") ?? undefined;
-    if (dw && dw !== selfRef) return dw;
-  }
-  return undefined;
-};
-
-// linkoverlay(links, linkdrag, states) — a transparent SVG layer over the whole
-// desktop drawing one <line> per win.links pair (between the two windows' current
-// corners, read from `states` — the live .state values) PLUS a transient line
-// from the link-drag source to the live pointer. pointer-events:none so it never
-// blocks the windows under it. `states` is an array-inputMap kept in sync with
-// win.links by rewireOverlay, so moving a linked window re-fires this formula.
-const cornerOf = (st: WinState): { x: number; y: number; cx: number; cy: number } => {
-  const x = num(st.x, 80), y = num(st.y, 80), w = num(st.w, 380), h = num(st.h, 260);
-  return { x, y, cx: x + w / 2, cy: y + h / 2 };       // grip corner + window centre
-};
-const linkOverlayFn: Fn = ((links: unknown, linkdrag: unknown, states: unknown): V => {
-  const pairs: LinkPair[] = Array.isArray(links) ? (links as LinkPair[]).filter((p) => p && p.a && p.b) : [];
-  const sts: WinState[] = Array.isArray(states) ? (states as WinState[]).filter((s) => s && typeof s === "object") : [];
-  const byRef = new Map<string, WinState>(); for (const s of sts) if (s.ref) byRef.set(s.ref, s);
-  const lines: V[] = [];
-  for (const p of pairs) {
-    const a = byRef.get(p.a), b = byRef.get(p.b);
-    if (!a || !b || a.closed || a.min || b.closed || b.min) continue;
-    const ca = cornerOf(a), cb = cornerOf(b);
-    lines.push(el("line", { class: "pl-link-edge", x1: ca.x, y1: ca.y, x2: cb.x, y2: cb.y, stroke: "#4a90d9", "stroke-width": 2, "stroke-dasharray": "6 4", "stroke-linecap": "round" }, []));
-  }
-  const d = (linkdrag && typeof linkdrag === "object") ? linkdrag as LinkDrag : null;
-  if (d && d.from && byRef.get(d.from)) {
-    const c = cornerOf(byRef.get(d.from)!);
-    lines.push(el("line", { class: "pl-link-drag", x1: c.x, y1: c.y, x2: num(d.x, c.x), y2: num(d.y, c.y), stroke: "#4a90d9", "stroke-width": 2, "stroke-dasharray": "3 3", "stroke-linecap": "round" }, []));
-  }
-  return el("svg", { class: "pl-link-overlay", style: "position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:9000" }, lines);
-}) as Fn;
-
-// linkwins() — GENESIS: the persistent edge layer, on its OWN segment `linkfx`
-// (so it never collides with a window's `win.*` layer). win.links (the {a,b}
-// pair list) + win.linkdrag (the transient drag) are SEEDED empty by the windows
-// catalog; this only mints the linkfx.overlay FormulaCel that mounts the SVG
-// onto .origin and references both, plus a `states` array-inputMap (rewired by
-// rewireOverlay) of the linked windows' .state cels.
-const linkOverlayGenesisFn: Fn = ((): unknown => ({ genesis: true, layer: "linkfx", cels: {
-  "linkfx.overlay": { celType: "FormulaCel", f: "(mount \".origin\" (linkoverlay win.links win.linkdrag states))", metadata: { name: "linkoverlay", segment: "linkfx", parser: "f", inputMap: { states: [] } } },
-} })) as Fn;
 
 // winmake(id, title, content) — the formula: genesis a window-STATE cel + its
 // FRAME render (mounted). The state cel is the source of truth; modify it to
@@ -442,16 +272,7 @@ const makeFn: Fn = ((id: unknown, title: unknown, content: unknown): unknown => 
 // The content formula must REFERENCE the cels it should react to (inputMap
 // doctrine): a bare "(secrets)" renders the locked panel and never re-fires,
 // so unlocking appears to do nothing.
-// linkList — normalize an optional `linked` arg (an array, or a space/comma-
-// separated string of segment names) into a string[] | undefined. Used by
-// winapp/chatapp to seed state.linked at creation (a 🔗 titlebar).
-const linkList = (linked: unknown): string[] | undefined => {
-  if (Array.isArray(linked)) { const a = linked.map(String).filter(Boolean); return a.length ? a : undefined; }
-  if (typeof linked === "string") { const a = linked.split(/[\s,]+/).filter(Boolean); return a.length ? a : undefined; }
-  return undefined;
-};
-
-const appFn: Fn = ((id: unknown, title: unknown, contentSource: unknown, linked?: unknown): unknown => {
+const appFn: Fn = ((id: unknown, title: unknown, contentSource: unknown): unknown => {
   const lay = `win.${String(id ?? "w")}`;
   const sref = `${lay}.state`, cref = `${lay}.content`;
   let hsh = 0; for (const ch of String(id ?? "w")) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
@@ -459,13 +280,8 @@ const appFn: Fn = ((id: unknown, title: unknown, contentSource: unknown, linked?
   const t = String(title ?? id ?? "window").replace(/"/g, "'");
   const src = String(contentSource ?? "");
   const parser = src.trim().startsWith("=") ? "infix" : "f";
-  // optional `linked` (array OR a space-separated string of segment names) seeds
-  // state.linked at creation so the titlebar shows 🔗 — a STATIC declaration of a
-  // link, the seeded twin of winx.drop's runtime bundling. Pure cosmetic
-  // indicator; no bundle is granted.
-  const link = linkList(linked);
   return { genesis: true, kind: "winapp", layer: lay, cels: {
-    [sref]: { celType: "ValueCel", v: { ref: sref, x: dx, y: dy, w: 440, h: 320, z: 1, min: 0, max: 0, closed: 0, title: t, ...(link && link.length ? { linked: link } : {}) }, metadata: { name: "state" } },
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: dx, y: dy, w: 440, h: 320, z: 1, min: 0, max: 0, closed: 0, title: t }, metadata: { name: "state" } },
     [cref]: { celType: "FormulaCel", f: src, metadata: { name: "content", parser } },
     [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f" } },
   } };
@@ -541,7 +357,7 @@ const chatSend: Fn = (async (state: State, channel: unknown): Promise<void> => {
   if (!text) return;
   await Promise.resolve((resolveFn(state, "setValueBatch") as Fn)(state, [[`chat.${ch}.input`, ""]]));
   await pushMsg(state, ch, { from: "me", text });
-  if (ch === "claude" || ch === "grok") {                 // LLM channels — the bot is a user
+  if (ch === "claude" || ch === "grok" || ch === "local") {  // LLM channels — the bot is a user (local = in-browser)
     const client = (state.cels.get(`chat.${ch}.client`)?.v ?? state.cels.get(`clients.${ch}`)?.v) as { __client?: boolean } | undefined;  // explicit, else the clients sheet
     const agentic = !!(state.cels.get(`chat.${ch}.agentic`)?.v);   // opt-in: lets the bot edit this chat's cels
     const prompt = agentic ? AGENT_PROMPT + text : text;
@@ -569,22 +385,16 @@ const chatKey: Fn = (async (state: State, channel: unknown, event?: { key?: stri
 
 // chatapp(channel, title) — a chat WINDOW: seeds the log/input + a winframe whose
 // content is (chat channel …). =chatapp("claude","Claude") / chatapp("grok","Grok").
-// An LLM channel (claude/grok) reads its client via clients.<channel> (the
-// clientsheet whitelists win.chat-<channel> into the clients get-policy), so its
-// titlebar seeds 🔗 to surface that link. An explicit `linked` overrides.
-const chatappFn: Fn = ((channel: unknown, title: unknown, linked?: unknown): unknown => {
+const chatappFn: Fn = ((channel: unknown, title: unknown): unknown => {
   const ch = String(channel ?? "chat");
   const lay = `win.chat-${ch}`, sref = `${lay}.state`;
   let hsh = 0; for (const c of ch) hsh = (hsh * 31 + c.charCodeAt(0)) >>> 0;
   const dx = 70 + (hsh % 6) * 50, dy = 60 + (hsh % 4) * 44;
   const t = String(title ?? ch).replace(/"/g, "'");
-  // optional `linked` seeds state.linked → titlebar 🔗 (see appFn). For an LLM
-  // channel, default it to the clients ↔ chat link so the boot call stays bare.
-  const link = linkList(linked) ?? ((ch === "claude" || ch === "grok") ? ["clients", lay] : undefined);
   return { genesis: true, layer: lay, cels: {
     [`chat.${ch}.log`]: { celType: "ValueCel", v: [], metadata: { name: "log" } },
     [`chat.${ch}.input`]: { celType: "ValueCel", v: "", metadata: { name: "input" } },
-    [sref]: { celType: "ValueCel", v: { ref: sref, x: dx, y: dy, w: 360, h: 460, z: 1, min: 0, max: 0, closed: 0, title: t, ...(link && link.length ? { linked: link } : {}) }, metadata: { name: "state" } },
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: dx, y: dy, w: 360, h: 460, z: 1, min: 0, max: 0, closed: 0, title: t }, metadata: { name: "state" } },
     [`${lay}.content`]: { celType: "FormulaCel", f: `(chatui "${ch}" chat.${ch}.log chat.${ch}.input)`, metadata: { name: "content", parser: "f" } },
     [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${lay}.content))`, metadata: { name: "frame", parser: "f" } },
   } };
@@ -603,10 +413,10 @@ const desktopFn: Fn = ((): unknown => ({ genesis: true, layer: "desktop", cels: 
 // explorerwin() — GENESIS: a standalone OPFS file-explorer WINDOW. Seeds the
 // navigation cels (explorer.cwd = "/", explorer.preview = "") and a content
 // formula (explorer explorer.cwd explorer.preview) that REFERENCES them, so
-// clicking a folder (→ origin.explorerNav writes explorer.cwd) or a file (→
-// origin.explorerOpen writes explorer.preview) re-fires the listing. The
-// explorer verb itself lives in origin (where the OPFS vocabulary lives); this
-// only wires it into a draggable window with its reactive state.
+// clicking a folder (→ explorer.nav writes explorer.cwd) or a file (→
+// explorer.open writes explorer.preview) re-fires the listing. The explorer
+// verb + handlers live in the `file-explorer` LIBRARY; this only wires them
+// into a draggable window with its reactive state.
 const explorerwinFn: Fn = ((): unknown => {
   const lay = "win.explorer", sref = `${lay}.state`;
   return { genesis: true, layer: lay, cels: {
@@ -625,7 +435,7 @@ const readmeFn: Fn = ((): V => el("div", { class: "readme", style: "font:13px/1.
   el("p", { style: "margin:.3rem 0;opacity:.85" }, [T("A reactive cel substrate. Every worksheet is a window; formulas build apps; chat treats claude / grok / peers as users.")]),
   el("p", { style: "margin:.3rem 0 .15rem" }, [T("Type a formula in any cell:")]),
   el("pre", { style: "background:#8881;padding:.45rem;border-radius:.35rem;white-space:pre-wrap;margin:.15rem 0" }, [T('=cels(3, 3)                              a sheet, in its own window\n=chatapp("claude", "Claude")             a chat window\n=winapp("secrets", "Secrets", "(secrets (locked secretsNote) (apiKeys))")   the secrets panel\n=desktop()                               the wallpaper')]),
-  el("p", { style: "margin:.35rem 0;opacity:.85" }, [T("Drag a titlebar onto another window's titlebar to make tabs; double-click a tab to pop it back out. ◱ mid · ⛶ max · – min · ✕ close.")]),
+  el("p", { style: "margin:.35rem 0;opacity:.85" }, [T("Drag a titlebar to move; drag the corner to resize. ◱ mid · ⛶ max · – min · ✕ close.")]),
 ]) ) as Fn;
 
 // readmewin() — GENESIS: the readme WINDOW, content = the full plastron README
@@ -652,8 +462,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["winframe", frameFn],
   ["winx.grab", xGrab], ["winx.move", xMove], ["winx.grabResize", xGrabResize], ["winx.resizeMove", xResizeMove], ["winx.drop", xDrop],
   ["winx.raise", xRaise], ["winx.min", xMin], ["winx.max", xMax], ["winx.close", xClose], ["winx.show", xShow], ["winx.stop", xStop],
-  ["winx.linkGrab", xLinkGrab], ["winx.linkMove", xLinkMove], ["winx.linkDrop", xLinkDrop],
-  ["linkoverlay", linkOverlayFn], ["linkwins", linkOverlayGenesisFn],
   ["window", windowFn],
   ["win.grab", grabFn],
   ["win.move", moveFn],

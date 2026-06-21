@@ -49,10 +49,10 @@ test("the formula-bar gun svg paints via createElementNS (SVG namespace)", async
   await resolveFn(state, "hydrate")(state, [], []);
   await precomputeOptional(state);
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "origin.commit")(state, "元");
+  await resolveFn(state, "origin.run")(state, "元");
   await resolveFn(state, "drain")(state, "dom.paint"); m.run();
-  // select a turtles cell so a window formula bar (with the gun) renders
-  await resolveFn(state, "origin.select")(state, "turtles.B4"); m.run();
+  // select a turtle_data cell so a window formula bar (with the gun) renders
+  await resolveFn(state, "origin.select")(state, "turtle_data.B4"); m.run();
 
   const fire = walk(root, (n) => /(^| )pl-fxbar-fire( |$)/.test(String(n.attrs?.class ?? "")))[0];
   assert.ok(fire, "the gun fire button rendered");

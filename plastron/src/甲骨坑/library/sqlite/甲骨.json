@@ -9,7 +9,7 @@
         "segment": "sqlite",
         "name": "sqlite.command",
         "kind": "native",
-        "description": "(state, op, name, query) - in-browser SQLite (sql.js), OPFS-backed. op=open returns a {__db} handle; op=sql runs a query (writes persist to /plastron/dbs). Host db()/sql()/tables() verbs delegate here."
+        "description": "(state, op, name, query) - in-browser SQLite (@sqlite.org/sqlite-wasm over the opfs-sahpool VFS, in a Worker). op=open returns a {__db} handle; op=sql runs a query (writes persist incrementally to OPFS); op=seed bulk-inserts JSON rows; op=schema introspects tables/columns/PK/FK; op=export serializes the db to a file-store path; op=import loads a .db file-store blob into the db. Host db()/sql()/tables()/dbseed()/schema()/dbexport()/dbimport() verbs delegate here."
       },
       "locked": true
     }

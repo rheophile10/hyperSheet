@@ -2,7 +2,7 @@ import type { Fn, State } from "../types/index.js";
 
 // ============================================================================
 // loadScript — the kernel's one host-capability for pulling an EXTERNAL
-// resource at runtime. External libraries (Pyodide, wabt, quickjs) can't ride
+// resource at runtime. External libraries (Pyodide, wabt) can't ride
 // in a bundle that marks them `external`; a browser host loads them from a CDN
 // instead. Rather than bake a <script> into each host's HTML, loading is an
 // explicit, idempotent call so it's visible in the graph and reusable.

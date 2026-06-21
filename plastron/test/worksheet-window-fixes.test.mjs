@@ -1,4 +1,5 @@
 import { test } from "bun:test";
+import { openTurtlesFixture } from "./_turtles-fixture.mjs";
 import assert from "node:assert/strict";
 import { createInitialState, precomputeOptional, resolveFn, createPainter, setPainter } from "../dist/index.js";
 
@@ -9,8 +10,8 @@ import { createInitialState, precomputeOptional, resolveFn, createPainter, setPa
 //   B) worksheet windows have a red ✕ close button → winsheet.close sets
 //      win.geom[seg].closed; frameOf hides it; winsheet.restore brings it back
 //      (元 is never destroyed).
-//   C) the boot seeds a `turtlecharts` worksheet tabbed with `turtles`
-//      (win.geom[turtlecharts].host === "turtles") instead of 3 chart windows.
+//   C) the boot seeds a `turtle_charts` worksheet tabbed with `turtle_data`
+//      (win.geom[turtle_charts].host === "turtle_data") instead of 3 chart windows.
 
 const mkEl = (tag) => {
   const L = new Map();
@@ -52,7 +53,10 @@ const boot = async () => {
   await resolveFn(state, "hydrate")(state, [], []);
   await precomputeOptional(state);
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "origin.commit")(state, "元"); // boot genesis: turtles + turtlecharts materialize
+  await resolveFn(state, "origin.run")(state, "元"); // minimal boot (wallpaper only)
+  // open the README bundle (turtle_data + turtle_charts) as the fixture — the desktop
+  // no longer auto-opens worksheets (they're launcher-driven now).
+  await openTurtlesFixture(state, resolveFn);
   await resolveFn(state, "drain")(state, "dom.paint");
   m.run();
   return { state, root, m };
@@ -62,26 +66,26 @@ const boot = async () => {
 
 test("FIX A: clicking a windowed worksheet cell opens the editor in ONE gesture", async () => {
   const { state, root, m } = await boot();
-  assert.equal(cellVal(root, "turtles.B4"), "75", "B4 shows its seeded value");
-  assert.ok(!hasEditor(root, "turtles.B4"), "no editor before the click");
+  assert.equal(cellVal(root, "turtle_data.B4"), "75", "B4 shows its seeded value");
+  assert.ok(!hasEditor(root, "turtle_data.B4"), "no editor before the click");
   // the click→origin.edit gesture (a single dispatch). The editor must render
   // after this one call — no extra runCycle/drain from the caller.
-  await resolveFn(state, "origin.edit")(state, "turtles.B4");
+  await resolveFn(state, "origin.edit")(state, "turtle_data.B4");
   m.run();
-  assert.equal(state.cels.get("元.editing")?.v, "turtles.B4", "the cell is now editing");
-  assert.ok(hasEditor(root, "turtles.B4"), "the editor textarea rendered in the SAME gesture (paint landed)");
+  assert.equal(state.cels.get("元.editing")?.v, "turtle_data.B4", "the cell is now editing");
+  assert.ok(hasEditor(root, "turtle_data.B4"), "the editor textarea rendered in the SAME gesture (paint landed)");
 });
 
 test("FIX A: editing a windowed worksheet cell persists AND the window re-renders the new value", async () => {
   const { state, root, m } = await boot();
-  assert.equal(state.cels.get("turtles.B4")?.v, 75, "seed value");
-  assert.equal(cellVal(root, "turtles.B4"), "75", "rendered seed value");
+  assert.equal(state.cels.get("turtle_data.B4")?.v, 75, "seed value");
+  assert.equal(cellVal(root, "turtle_data.B4"), "75", "rendered seed value");
   // drive the real gesture: edit → draft → commit
-  await resolveFn(state, "origin.edit")(state, "turtles.B4"); m.run();
+  await resolveFn(state, "origin.edit")(state, "turtle_data.B4"); m.run();
   await resolveFn(state, "setValue")(state, "元.draft", "7900");
-  await resolveFn(state, "origin.commit")(state, "turtles.B4"); m.run();
-  assert.equal(state.cels.get("turtles.B4")?.v, 7900, "the cel value persisted");
-  assert.equal(cellVal(root, "turtles.B4"), "7900", "the window re-rendered the new value");
+  await resolveFn(state, "origin.run")(state, "turtle_data.B4"); m.run();
+  assert.equal(state.cels.get("turtle_data.B4")?.v, 7900, "the cel value persisted");
+  assert.equal(cellVal(root, "turtle_data.B4"), "7900", "the window re-rendered the new value");
 });
 
 // ── FIX B ────────────────────────────────────────────────────────────────────
@@ -89,22 +93,20 @@ test("FIX A: editing a windowed worksheet cell persists AND the window re-render
 test("FIX B: winsheet.close hides a worksheet window; frameOf returns the stub; restore brings it back", async () => {
   const { state, root, m } = await boot();
   const geom = () => state.cels.get("win.geom")?.v ?? {};
-  const turtlesWin = () => walk(root, (n) => String(n.attrs?.class ?? "").includes("pl-window") && n.attrs["data-win"] === "turtles")[0];
-  const turtlesShown = () => { const w = turtlesWin(); return !!w && !String(w.attrs?.class ?? "").includes("pl-window-closed"); };
+  const turtle_dataWin = () => walk(root, (n) => String(n.attrs?.class ?? "").includes("pl-window") && n.attrs["data-win"] === "turtle_data")[0];
+  const turtle_dataShown = () => { const w = turtle_dataWin(); return !!w && !String(w.attrs?.class ?? "").includes("pl-window-closed"); };
 
-  assert.ok(turtlesShown(), "turtles window visible before close");
-  await resolveFn(state, "winsheet.close")(state, "turtles"); m.run();
-  assert.equal(geom().turtles?.closed, 1, "win.geom[turtles].closed set");
-  assert.ok(!turtlesShown(), "frameOf hides the closed window (stub)");
+  assert.ok(turtle_dataShown(), "turtle_data window visible before close");
+  await resolveFn(state, "winsheet.close")(state, "turtle_data"); m.run();
+  assert.equal(geom().turtle_data?.closed, 1, "win.geom[turtle_data].closed set");
+  assert.ok(!turtle_dataShown(), "frameOf hides the closed window (stub)");
 
-  // still listed in the taskbar so it can be restored (never destroyed)
-  const taskWins = walk(root, (n) => String(n.attrs?.class ?? "").includes("pl-task") && n.attrs["data-win"] === "turtles");
-  assert.ok(taskWins.length >= 1, "closed worksheet window still listed in the taskbar");
-
-  await resolveFn(state, "winsheet.restore")(state, "turtles"); m.run();
-  assert.ok(!geom().turtles?.closed, "restore cleared closed");
-  assert.ok(!geom().turtles?.min, "restore cleared min");
-  assert.ok(turtlesShown(), "the window is back");
+  // (the bottom taskbar was removed — a closed worksheet restores via its launcher
+  // / winsheet.restore, which the next lines exercise.)
+  await resolveFn(state, "winsheet.restore")(state, "turtle_data"); m.run();
+  assert.ok(!geom().turtle_data?.closed, "restore cleared closed");
+  assert.ok(!geom().turtle_data?.min, "restore cleared min");
+  assert.ok(turtle_dataShown(), "the window is back");
 });
 
 test("FIX B: 元 is restorable after close (never permanently destroyed)", async () => {
@@ -117,28 +119,23 @@ test("FIX B: 元 is restorable after close (never permanently destroyed)", async
   assert.ok(!geom()["元"]?.closed, "元 restored");
 });
 
-// ── FIX C ────────────────────────────────────────────────────────────────────
+// ── the turtles demo: charts + data as TWO SEPARATE windows ──────────────────
 
-test("FIX C: boot seeds a turtlecharts worksheet tabbed with turtles (no standalone chart windows)", async () => {
+test("the turtles demo opens turtle_charts + turtle_data as SEPARATE windows", async () => {
   const { state, root } = await boot();
-  // the charts live in a worksheet, rendering the chart verbs from turtles data
-  assert.ok(state.cels.get("turtlecharts.A1"), "turtlecharts.A1 chart cell materialized");
-  assert.ok(state.cels.get("turtlecharts.A2"), "turtlecharts.A2");
-  assert.ok(state.cels.get("turtlecharts.A3"), "turtlecharts.A3");
+  // the charts live in their own worksheet, rendering the chart verbs from the
+  // turtle_data data (cross-sheet turtle_data! ranges).
+  assert.ok(state.cels.get("turtle_charts.A1"), "turtle_charts.A1 chart cell materialized");
+  assert.ok(state.cels.get("turtle_charts.B1"), "turtle_charts.B1");
+  assert.ok(state.cels.get("turtle_charts.C1"), "turtle_charts.C1");
   // the canvas verb produced a vnode value (the chart renders)
-  assert.equal(state.cels.get("turtlecharts.A1")?.v?.tag, "canvas", "A1 holds a chart canvas vnode");
-  // the old standalone chart windows are gone
-  assert.ok(!state.cels.get("win.chart-bar.state"), "old chart-bar window removed");
-  assert.ok(!state.cels.get("win.chart-line.state"), "old chart-line window removed");
-  assert.ok(!state.cels.get("win.chart-pie.state"), "old chart-pie window removed");
-  // tabbing: turtlecharts rides turtles' window
-  assert.equal(state.cels.get("win.geom")?.v?.turtlecharts?.host, "turtles", "turtlecharts hosted by turtles");
-  // the data|formula pair renders as ONE tabbed window: the strip shows
-  // [turtles, turtlecharts] adjacent (other boot apps add their own tab pairs).
-  const tabs = walk(root, (n) => String(n.attrs?.class ?? "").includes("pl-tab") && n.attrs["data-tab"]).map((n) => n.attrs["data-tab"]);
-  const ti = tabs.indexOf("turtles");
-  assert.ok(ti >= 0 && tabs[ti + 1] === "turtlecharts", `[turtles | turtlecharts] is one tabbed window (tabs: ${tabs.join(",")})`);
-  // turtlecharts has NO standalone top-level window of its own
+  assert.equal(state.cels.get("turtle_charts.A1")?.v?.tag, "canvas", "A1 holds a chart canvas vnode");
+  // NOT tabbed: turtle_charts carries no host — it's its own window (charts on top,
+  // data below, via the seeded win.geom positions).
+  assert.equal(state.cels.get("win.geom")?.v?.turtle_charts?.host, undefined, "turtle_charts is NOT tabbed (no host)");
+  assert.equal(state.cels.get("win.geom")?.v?.turtle_data?.host, undefined, "turtle_data is NOT tabbed (no host)");
+  // BOTH render as standalone top-level windows.
   const topWins = walk(root, (n) => String(n.attrs?.class ?? "").includes("pl-window") && n.attrs["data-win"] && !n.attrs["data-win"].includes(".state")).map((n) => n.attrs["data-win"]);
-  assert.ok(!topWins.includes("turtlecharts"), "turtlecharts does not get its own window (it's a tab)");
+  assert.ok(topWins.includes("turtle_charts"), "turtle_charts is its own window");
+  assert.ok(topWins.includes("turtle_data"), "turtle_data is its own window");
 });

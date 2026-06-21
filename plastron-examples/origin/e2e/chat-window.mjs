@@ -21,7 +21,7 @@ try {
   await page.waitForFunction(() => !!globalThis.plastron, { timeout: 8000 });
   await page.waitForTimeout(250);
   // materialize the boot desktop genesis (the segment(...) batch)
-  await page.evaluate(async () => { const { state, resolveFn } = globalThis.plastron; await resolveFn(state, "origin.commit")(state, "元"); });
+  await page.evaluate(async () => { const { state, resolveFn } = globalThis.plastron; await resolveFn(state, "origin.run")(state, "元"); });
   await page.waitForTimeout(250);
 
   // CLIENTS sheet status cells

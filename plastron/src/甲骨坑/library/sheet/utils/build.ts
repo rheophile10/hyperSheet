@@ -62,7 +62,7 @@ export const buildSheet = (opts: BuildSheetOpts): 甲骨 & { version: string; de
   dc.push(ctrl("sheet.dims", { rows: opts.rows, cols: opts.cols }));
   dc.push(ctrl("sheet.segment", segment));
   // "defn" is structural: every grid supports the binder gesture
-  // (`=JS(A1, "name")` → defn.commit). Compiler edges (js, quickjs, …)
+  // (`=JS(A1, "name")` → defn.commit). Compiler edges (js, py, wat, …)
   // stay UNdeclared — they're user-introduced per formula, and the
   // precompute drift warning reports them truthfully.
   return { name: segment, version: "0.0.1", dependencies: ["sheet", "defn"], cels: dc };

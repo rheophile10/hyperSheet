@@ -17,7 +17,7 @@ try {
     const { state, resolveFn } = globalThis.plastron;
     await resolveFn(state, "origin.edit")(state, key);
     await resolveFn(state, "setValue")(state, "元.draft", src);
-    await resolveFn(state, "origin.commit")(state, key);
+    await resolveFn(state, "origin.run")(state, key);
     for (let i = 0; i < 6; i++) { await resolveFn(state, "runCycle")(state); if (state.cels.get("origin.effects")) await resolveFn(state, "drain")(state, "origin.effects"); }
     return String(state.cels.get(key)?.v ?? "");
   }, { src, key });

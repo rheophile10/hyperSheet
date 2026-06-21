@@ -15,7 +15,7 @@ const put = (src,key)=>page.evaluate(async([s,k])=>{
   const {state,resolveFn}=globalThis.plastron;
   await resolveFn(state,"origin.edit")(state,k);
   await resolveFn(state,"setValue")(state,"元.draft",s);
-  await resolveFn(state,"origin.commit")(state,k);
+  await resolveFn(state,"origin.run")(state,k);
   await new Promise(r=>setTimeout(r,100));
   return state.cels.get(k)?.v ?? null;
 },[src,key]);

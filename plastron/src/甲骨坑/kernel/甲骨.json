@@ -344,7 +344,7 @@
         "segment": "kernel",
         "name": "loadScript",
         "kind": "native",
-        "description": "(url) - load an external script from a URL (a CDN) at runtime; resolves once it loads. Browser-only (injects a <script>); off-browser it resolves immediately. Idempotent per URL. The one place external libraries (Pyodide, wabt, quickjs) enter the page."
+        "description": "(url) - load an external script from a URL (a CDN) at runtime; resolves once it loads. Browser-only (injects a <script>); off-browser it resolves immediately. Idempotent per URL. The one place external libraries (Pyodide, wabt) enter the page."
       },
       "locked": true
     },

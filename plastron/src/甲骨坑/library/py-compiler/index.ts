@@ -78,11 +78,15 @@ const getPyodide = (): Promise<PyodideAPI> => {
   if (!_pyodide) {
     const g = globalThis as {
       loadPyodide?: (opts?: Record<string, unknown>) => Promise<PyodideAPI>;
-      __pyodideCdn?: string; document?: unknown;
+      __pyodideCdn?: string; process?: { versions?: { node?: string } };
     };
     _pyodide = (async (): Promise<PyodideAPI> => {
-      // Node/Bun: the package is installed — import it directly.
-      if (!g.document) {
+      // Node/Bun: the package is installed — import it directly. Detect the
+      // server runtime by process.versions.node (the file-store pattern), NOT
+      // by the absence of `document`: a test harness can install a fake DOM in
+      // Bun, and that must still use the installed package — never the browser
+      // CDN path (where `import("pyodide")` is bundle-external and unresolvable).
+      if (typeof g.process?.versions?.node === "string") {
         const m = await import("pyodide") as unknown as { loadPyodide: (o?: Record<string, unknown>) => Promise<PyodideAPI> };
         return m.loadPyodide();
       }

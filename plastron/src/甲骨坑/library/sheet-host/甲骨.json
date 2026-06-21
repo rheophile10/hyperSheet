@@ -248,7 +248,7 @@
         "segment": "sheet-host",
         "name": "winsheet.syncBundles",
         "kind": "native",
-        "description": "(state) - make SEEDED tab relationships grant shared memory like a runtime drop does: scan win.geom and bundleSegments each {host, tabs...} clique, so a sheet minted private-get (a closure) can read its host's cels when win.geom seeds seg.host (e.g. turtlecharts tabbed into turtles reads turtles!). Idempotent; the host calls it after the desktop genesis materializes."
+        "description": "(state) - vestigial since 访 access-control was removed: all cels are mutually readable now, so seeded tabs need no shared-memory bundling. Kept as a near-no-op the host still calls after the desktop genesis materializes (safe to drop later)."
       },
       "locked": true
     },

@@ -14,7 +14,7 @@ const call = (k, ...a) => page.evaluate(([key,args]) => { const {state,resolveFn
 
 await call("origin.edit","元");
 await call("setValue","元.draft","=walletKeys(walletNote)");
-await call("origin.commit","元");
+await call("origin.run","元");
 await page.waitForTimeout(250);
 ok(Object.keys(await keyc()).length===0, "locked → no key cels");
 

@@ -77,6 +77,24 @@ const sqlInline =
   await Bun.write(HTML, html);
 }
 
+// Bake the STARTER KIT ([[STARTER_KIT]] sentinel): an inert JSON manifest mapping
+// each repo starter/ file to its OPFS path. The first desktop boot's
+// origin.seedStarter reads this and fs.writes any missing file, so readme/keyboard
+// are real, discoverable files in OPFS rather than baked seed cells.
+{
+  const starterDir = join(import.meta.dir, "starter");
+  const manifest: Record<string, string> = {};
+  for (const f of (await readdir(starterDir)).sort()) {
+    manifest[`/${f}`] = await Bun.file(join(starterDir, f)).text();
+  }
+  const json = JSON.stringify(manifest).replace(/<\/script>/g, "<\\/script>");
+  let html = await Bun.file(HTML).text();
+  if (!html.includes("[[STARTER_KIT]]")) throw new Error("bundle: [[STARTER_KIT]] sentinel missing from index.html");
+  html = html.replace("[[STARTER_KIT]]", () => json);   // function form — json has $ patterns
+  await Bun.write(HTML, html);
+  console.log(`✔ starter kit — ${Object.keys(manifest).length} files (${(json.length / 1024).toFixed(1)} KB)`);
+}
+
 // Bake the WORKED OTP DEMO ([[OTP_DEMO]] sentinel) using the SHIPPED card.png as
 // the pad — the deploy serves the identical card at /card.png, so the URL is
 // always byte-consistent with what visitors download. The pad is PUBLIC, so this

@@ -22,13 +22,13 @@ import * as builtins        from "./甲骨坑/library/builtins/index.js";
 import * as watCompiler     from "./甲骨坑/library/wat-compiler/index.js";
 import * as wasmBytes       from "./甲骨坑/library/wasm-bytes/index.js";
 import * as pyCompiler      from "./甲骨坑/library/py-compiler/index.js";
-import * as quickjsCompiler from "./甲骨坑/library/quickjs-compiler/index.js";
 import * as formulaCompiler from "./甲骨坑/library/formula-compiler/index.js";
 import * as fileStore       from "./甲骨坑/library/file-store/index.js";
 import * as htmlTemplate    from "./甲骨坑/library/html-template-parser/index.js";
 import * as plastronDom     from "./甲骨坑/library/dom/index.js";
 import * as sheetHost       from "./甲骨坑/library/sheet-host/index.js";
 import * as windows         from "./甲骨坑/library/windows/index.js";
+import * as fileExplorer    from "./甲骨坑/library/file-explorer/index.js";
 import * as wasmWindow      from "./甲骨坑/library/wasm-window/index.js";
 import * as doom            from "./甲骨坑/library/doom/index.js";
 import * as peer            from "./甲骨坑/library/peer/index.js";
@@ -41,19 +41,20 @@ import * as cliSegmentExport from "./甲骨坑/library/cli-segment-export/index.
 import * as sheet           from "./甲骨坑/library/sheet/index.js";
 import * as userSpaceOps    from "./甲骨坑/library/user-space-ops/index.js";
 import * as segmentArchive  from "./甲骨坑/library/segment-archive/index.js";
-import * as appHost         from "./甲骨坑/library/app-host/index.js";
 import * as defn            from "./甲骨坑/library/defn/index.js";
 import * as genesis         from "./甲骨坑/library/genesis/index.js";
 import * as checkpoint      from "./甲骨坑/library/checkpoint/index.js";
 import * as plastronCanvas  from "./甲骨坑/library/plastron-canvas/index.js";
 import * as charts          from "./甲骨坑/library/charts/index.js";
-import * as unsafeWallet    from "./甲骨坑/library/unsafe-wallet/index.js";
+import * as vault           from "./甲骨坑/library/vault/index.js";
 import * as net             from "./甲骨坑/library/net/index.js";
 import * as cryptoLib       from "./甲骨坑/library/crypto/index.js";
 import * as seal            from "./甲骨坑/library/seal/index.js";
 import * as llm             from "./甲骨坑/library/llm/index.js";
 import * as sqlite          from "./甲骨坑/library/sqlite/index.js";
-import * as domWallet       from "./甲骨坑/library/dom-wallet/index.js";
+import * as sqliteClient    from "./甲骨坑/library/sqlite-client/index.js";
+import * as sqliteDemo      from "./甲骨坑/library/sqlite-demo/index.js";
+import * as botsheet        from "./甲骨坑/library/botsheet/index.js";
 import * as docgraph        from "./甲骨坑/library/docgraph/index.js";
 import * as forcegraph      from "./甲骨坑/library/forcegraph/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
@@ -94,13 +95,13 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "wat-compiler":     () => [...watCompiler.cels],
   "wasm-bytes":       () => [...wasmBytes.cels],
   "py-compiler":      () => [...pyCompiler.cels],
-  "quickjs-compiler": () => [...quickjsCompiler.cels],
   "formula-compiler": () => [...formulaCompiler.cels],
   "file-store":       () => [...fileStore.cels],
   "html-template-parser": () => [...htmlTemplate.cels],
   "dom":     () => [...plastronDom.cels],
   "sheet-host":       () => [...sheetHost.cels],
   "windows":          () => [...windows.cels],
+  "file-explorer":    () => [...fileExplorer.cels],
   "wasm-window":      () => [...wasmWindow.cels],
   "doom":             () => [...doom.cels],
   "peer":             () => [...peer.cels],
@@ -113,7 +114,6 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "sheet":            () => [...sheet.cels],
   "user-space-ops":   () => [...userSpaceOps.cels],
   "segment-archive":  () => [...segmentArchive.cels],
-  "app-host":         () => [...appHost.cels],
   "sound":            () => [...sound.cels],
   "music":            () => [...music.cels],
   "defn":             () => [...defn.cels],
@@ -121,19 +121,20 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "checkpoint":       () => [...checkpoint.cels],
   "plastron-canvas":  () => [...plastronCanvas.cels],
   "charts":           () => [...charts.cels],
-  "unsafe-wallet":    () => [...unsafeWallet.cels],
+  "vault":            () => [...vault.cels],
   "net":              () => [...net.cels],
   "crypto":           () => [...cryptoLib.cels],
   "seal":             () => [...seal.cels],
   "llm":              () => [...llm.cels],
   "sqlite":           () => [...sqlite.cels],
-  "dom-wallet":       () => [...domWallet.cels],
+  "sqlite-client":    () => [...sqliteClient.cels],
+  "sqlite-demo":      () => [...sqliteDemo.cels],
+  "botsheet":         () => [...botsheet.cels],
   "docgraph":         () => [...docgraph.cels],
   "forcegraph":       () => [...forcegraph.cels],
 };
 
-// application/ segments. notepad + web-editor boot via host-called builders
-// (buildNotepad, buildWebEditor); origin is the freespace host application,
+// application/ segments. origin is the freespace host application,
 // loaded by `ensureSegments(["origin"])` and parked-by-default below.
 const applicationLoaders: Record<Key, () => Cel[]> = {
   "origin":           () => [...origin.cels],
@@ -215,8 +216,8 @@ export const createInitialState = (opts?: CreateInitialStateOptions): State => {
   const cels     = new Map<Key, Cel>();
   const lazy     = new Set(opts?.lazy ?? []);
   // `origin` is a HOST CHOICE, parked by default: it paints the freespace
-  // starting point to "#app", which a host providing its own root (e.g.
-  // plastron-os) does not want. The origin host wakes it explicitly —
+  // starting point to "#app", which a host providing its own root does not
+  // want. The origin host wakes it explicitly —
   // `await ensureSegments(state, ["origin"])` then `hydrate(state, [], [])`.
   // Pass `lazy: []` (or any list without "origin") to opt OUT of parking.
   if (opts?.lazy === undefined) lazy.add("origin");
@@ -316,7 +317,7 @@ export {
   hydrate函, dehydrate函,
   wake, sleep, forget,
   registerSegmentLoader, loadSegment, ensureSegments, isSegmentPending,
-  DANGEROUS, isDangerous, isConsented, requireConsent, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
+  DANGEROUS, isDangerous, isConsented, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
   currentAccessor, withAccessor, isDenied, DENIED,
   validateManifests,
   celDependencies, dependentsOf, downstreamOf, upstreamOf,
@@ -334,6 +335,4 @@ export { isRangeNode } from "./kernel/卜/formula.js";
 export { isWitPrimitive, isWasmHandle } from "./kernel/wit.js";
 export { isCelError, makeCelError } from "./kernel/index.js";
 export { buildSheet } from "./甲骨坑/library/sheet/index.js";
-export { buildNotepad, installNotepadActions } from "./甲骨坑/application/notepad/index.js";
-export { buildWebEditor, installWebEditorActions, COUNTER_EXAMPLE, WEATHER_EXAMPLE } from "./甲骨坑/application/web-editor/index.js";
 export { createPainter, getPainter, setPainter, el, text, memo } from "./甲骨坑/library/dom/index.js";

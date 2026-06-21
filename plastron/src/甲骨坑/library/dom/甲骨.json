@@ -116,7 +116,7 @@
     "segment": "dom",
     "name": "on",
     "kind": "native",
-    "description": "(event handlerKey [payload]) - bind a dom event to a handler cel; pass as a child of dom(). =dom(\"button\", on(\"click\", \"wallet.lock\"), \"lock\"). The handler runs (state, payload, event)."
+    "description": "(event handlerKey [payload]) - bind a dom event to a handler cel; pass as a child of dom(). =dom(\"button\", on(\"click\", \"vault.lock\"), \"lock\"). The handler runs (state, payload, event)."
    }
   },
   {

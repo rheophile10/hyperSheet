@@ -59,9 +59,15 @@ const boot = async () => {
   await resolveFn(state, "hydrate")(state, [], []);
   await precomputeOptional(state);
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "origin.commit")(state, "元"); // materialize the boot desktop genesis
+  await resolveFn(state, "origin.run")(state, "元"); // minimal boot (wallpaper only)
   m.run();
-  await resolveFn(state, "origin.explorerRefresh")(state); // populate the explorer's initial listing
+  // the desktop no longer auto-opens the explorer; open it as the 📁 Files launcher
+  // does (=explorerwin) so the explorer-window tests have their subject.
+  await resolveFn(state, "setValue")(state, "元.draft", "=explorerwin()");
+  await resolveFn(state, "origin.run")(state, "explorer.run");
+  for (let i = 0; i < 6; i++) { await resolveFn(state, "runCycle")(state); if (state.cels.get("genesis.commit")) await resolveFn(state, "drain")(state, "genesis.commit"); }
+  m.run();
+  await resolveFn(state, "explorer.refresh")(state); // populate the explorer's initial listing
   m.run();
   return { state, root, m };
 };
@@ -69,34 +75,23 @@ const boot = async () => {
 const put = async (state, m, src, key) => {
   await resolveFn(state, "origin.edit")(state, key); m.run();
   await resolveFn(state, "setValue")(state, "元.draft", src);
-  await resolveFn(state, "origin.commit")(state, key);
+  await resolveFn(state, "origin.run")(state, key);
   m.run();
 };
 
 // ── 1. wallpaper loads FROM an OPFS file ─────────────────────────────────────
 
-test("seedWallpaper writes the wallpaper to OPFS and points desktop.A2 at the file", async () => {
+test("desktop bg renders from the wallpaper data-URI (no OPFS seeding)", async () => {
   const { state } = await boot();
-  const root = state.cels.get("file-store.root").v;
-
-  // the boot desktop bg is a formula over the wallpaper-path cell + the constant
+  // the desktop bg is a formula: an img over the wallpaper-path cell, then the
+  // shipped windows.wallpaper data-URI constant as the fallback.
   const bg = state.cels.get("desktop.A1");
-  assert.match(String(bg?.f ?? ""), /\(img desktop\.A2 windows\.wallpaper/, "bg img reads the wallpaper-path cell first");
-  assert.equal(state.cels.get("desktop.A2")?.v, "", "wallpaper-path cell ships empty (uses the constant fallback)");
-
-  await resolveFn(state, "origin.seedWallpaper")(state);
-
-  const a2 = state.cels.get("desktop.A2")?.v;
-  assert.match(String(a2), /^\/desktop\/wallpaper\./, "desktop.A2 now points at an OPFS file path");
-
-  // the file really exists in the store, and is the decoded image bytes (non-empty)
-  const onDisk = path.resolve(root, a2.replace(/^\//, ""));
-  const bytes = await fs.readFile(onDisk);
-  assert.ok(bytes.length > 100, "the wallpaper file holds real image bytes");
-
-  // and the bg img now references a "/..." OPFS path → painter hydrates it
-  const img = resolveFn(state, "img")(a2, state.cels.get("windows.wallpaper").v);
-  assert.equal(img.attrs["data-opfs-src"], a2, "the wallpaper img is an OPFS reference now, not a constant");
+  assert.match(String(bg?.f ?? ""), /\(img desktop\.A2 windows\.wallpaper/, "bg img reads the wallpaper-path cell, then the data-URI fallback");
+  assert.equal(state.cels.get("desktop.A2")?.v, "", "wallpaper-path cell ships empty → falls through to the data-URI");
+  // empty path → the img falls through to the data-URI, which paints straight
+  // through (no "/path" → no OPFS hydration needed). seedWallpaper is gone.
+  const img = resolveFn(state, "img")(state.cels.get("desktop.A2").v, state.cels.get("windows.wallpaper").v);
+  assert.ok(String(img.attrs?.src ?? "").startsWith("data:"), "wallpaper img src is the data-URI, painted without OPFS");
 });
 
 // ── 2. upload + download cels render their controls ──────────────────────────
@@ -106,26 +101,19 @@ test("upload() renders a file input; download() renders a download button", asyn
   const up = resolveFn(state, "upload")("/");
   assert.equal(up.tag, "input");
   assert.equal(up.attrs.type, "file");
-  assert.equal(up.events.change.dispatch, "origin.upload");
+  assert.equal(up.events.change.dispatch, "explorer.upload");
   assert.equal(up.events.change.payload, "/");
 
   const dn = resolveFn(state, "download")("/desktop/wallpaper.jpg");
   assert.equal(dn.tag, "button");
-  assert.equal(dn.events.click.dispatch, "origin.download");
+  assert.equal(dn.events.click.dispatch, "explorer.download");
   assert.equal(dn.events.click.payload, "/desktop/wallpaper.jpg");
   assert.match(txtV(dn), /wallpaper\.jpg/);
 });
 
-test("the boot desktop seeds a files sheet whose cels render an upload input + download button", async () => {
-  const { state, root } = await boot();
-  // files.A1 = =upload("/"), files.A2 = =download("/desktop/wallpaper.jpg")
-  assert.match(String(state.cels.get("files.A1")?.f ?? ""), /upload/, "files.A1 is an upload cel");
-  assert.match(String(state.cels.get("files.A2")?.f ?? ""), /download/, "files.A2 is a download cel");
-  const inputs = walk(root, (n) => n.tag === "input" && String(n.attrs.class ?? "").includes("opfs-upload"));
-  const btns = walk(root, (n) => n.tag === "button" && String(n.attrs.class ?? "").includes("opfs-btn"));
-  assert.ok(inputs.length >= 1, "an OPFS upload input rendered on the desktop");
-  assert.ok(btns.length >= 1, "an OPFS download button rendered on the desktop");
-});
+// (the boot "files" demo worksheet — files.A1=upload / files.A2=download — was
+// dropped from the minimal desktop. The upload()/download() verbs' rendering is
+// covered by the direct verb tests above; file management is the 📁 Files explorer.)
 
 // ── 3. explorer verb lists OPFS entries ──────────────────────────────────────
 
@@ -141,14 +129,14 @@ test("explorer() renders OPFS folders + files from a listing as a dom value", as
   const dirRow = walkV(val, (n) => String(n.attrs?.class ?? "").includes("fe-dir"))[0];
   // the file row holds a clickable name span (preview) + per-file action buttons
   const fileName = walkV(val, (n) => String(n.attrs?.class ?? "").includes("fe-name"))[0];
-  assert.equal(dirRow?.events?.click?.dispatch, "origin.explorerNav", "folders descend");
-  assert.equal(fileName?.events?.click?.dispatch, "origin.explorerOpen", "files preview");
+  assert.equal(dirRow?.events?.click?.dispatch, "explorer.nav", "folders descend");
+  assert.equal(fileName?.events?.click?.dispatch, "explorer.open", "files preview");
   // per-file action buttons render: delete / rename / download
   const acts = walkV(val, (n) => String(n.attrs?.class ?? "").includes("fe-act"));
   const dispatches = acts.map((a) => a.events?.click?.dispatch);
-  assert.ok(dispatches.includes("origin.explorerDelete"), "a 🗑 delete button renders");
-  assert.ok(dispatches.includes("origin.explorerRename"), "a ✎ rename button renders");
-  assert.ok(dispatches.includes("origin.explorerDownload"), "a ⬇ download button renders");
+  assert.ok(dispatches.includes("explorer.delete"), "a 🗑 delete button renders");
+  assert.ok(dispatches.includes("explorer.rename"), "a ✎ rename button renders");
+  assert.ok(dispatches.includes("explorer.download"), "a ⬇ download button renders");
 });
 
 test("the explorer window lists real OPFS entries + descends reactively", async () => {
@@ -158,7 +146,7 @@ test("the explorer window lists real OPFS entries + descends reactively", async 
   await resolveFn(state, "fs.mkdir")(p("sub"));
   await resolveFn(state, "fs.writeText")(p("hello.txt"), "world");
 
-  await resolveFn(state, "origin.explorerNav")(state, p(""));
+  await resolveFn(state, "explorer.nav")(state, p(""));
   assert.equal(state.cels.get("explorer.cwd")?.v, p(""), "cwd updated");
   const listing = state.cels.get("explorer.listing")?.v;
   const names = (listing?.entries ?? []).map((e) => e.name);
@@ -170,7 +158,7 @@ test("the explorer window lists real OPFS entries + descends reactively", async 
   assert.match(txtV(content), /hello\.txt/, "the explorer window now shows the file");
 
   // open the file → preview pane cats it
-  await resolveFn(state, "origin.explorerOpen")(state, p("hello.txt"));
+  await resolveFn(state, "explorer.open")(state, p("hello.txt"));
   assert.equal(state.cels.get("explorer.preview")?.v, p("hello.txt"), "preview path set");
   assert.equal(state.cels.get("explorer.listing")?.v?.previewText, "world", "the file was cat'd into the preview");
   assert.match(txtV(state.cels.get("win.explorer.content")?.v), /world/, "the preview pane shows the file text");
@@ -202,8 +190,8 @@ test("a .wasm file is NOT text-previewed — the preview shows a binary placehol
   const wasm = new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0xff, 0xfe]);
   await resolveFn(state, "fs.write")(p("mod.wasm"), wasm);
 
-  await resolveFn(state, "origin.explorerNav")(state, p(""));
-  await resolveFn(state, "origin.explorerOpen")(state, p("mod.wasm"));
+  await resolveFn(state, "explorer.nav")(state, p(""));
+  await resolveFn(state, "explorer.open")(state, p("mod.wasm"));
   const listing = state.cels.get("explorer.listing")?.v;
   assert.equal(listing?.previewBinary, true, "the .wasm preview is flagged binary");
   assert.match(String(listing?.previewText ?? ""), /^binary file/, "the preview is a placeholder, not the decoded bytes");
@@ -212,14 +200,14 @@ test("a .wasm file is NOT text-previewed — the preview shows a binary placehol
   const content = state.cels.get("win.explorer.content")?.v;
   const dl = walkV(content, (n) => String(n.attrs?.class ?? "").includes("fe-dl"))[0];
   assert.ok(dl, "the binary preview renders a download button");
-  assert.equal(dl?.events?.click?.dispatch, "origin.explorerDownload", "download wired to the per-file download dispatch");
+  assert.equal(dl?.events?.click?.dispatch, "explorer.download", "download wired to the per-file download dispatch");
 });
 
 test("a .wad file is never read as text either (extension guard)", async () => {
   const { state } = await boot();
   await resolveFn(state, "fs.write")(p("level.wad"), new Uint8Array([0x49, 0x57, 0x41, 0x44, 0x00, 0x01]));
-  await resolveFn(state, "origin.explorerNav")(state, p(""));
-  await resolveFn(state, "origin.explorerOpen")(state, p("level.wad"));
+  await resolveFn(state, "explorer.nav")(state, p(""));
+  await resolveFn(state, "explorer.open")(state, p("level.wad"));
   const listing = state.cels.get("explorer.listing")?.v;
   assert.equal(listing?.previewBinary, true, ".wad flagged binary");
   assert.match(String(listing?.previewText ?? ""), /binary file/, ".wad shows the placeholder");
@@ -228,8 +216,8 @@ test("a .wad file is never read as text either (extension guard)", async () => {
 test("a small valid-UTF-8 text file IS previewed (the guard doesn't over-block)", async () => {
   const { state } = await boot();
   await resolveFn(state, "fs.writeText")(p("notes.txt"), "hello world");
-  await resolveFn(state, "origin.explorerNav")(state, p(""));
-  await resolveFn(state, "origin.explorerOpen")(state, p("notes.txt"));
+  await resolveFn(state, "explorer.nav")(state, p(""));
+  await resolveFn(state, "explorer.open")(state, p("notes.txt"));
   const listing = state.cels.get("explorer.listing")?.v;
   assert.equal(listing?.previewBinary, false, "a small text file is not binary");
   assert.equal(listing?.previewText, "hello world", "the text file IS previewed");
@@ -240,11 +228,11 @@ test("a small valid-UTF-8 text file IS previewed (the guard doesn't over-block)"
 test("explorerDelete removes a file and refreshes the listing", async () => {
   const { state } = await boot();
   await resolveFn(state, "fs.writeText")(p("doomed.txt"), "x");
-  await resolveFn(state, "origin.explorerNav")(state, p(""));
+  await resolveFn(state, "explorer.nav")(state, p(""));
   let names = (state.cels.get("explorer.listing")?.v?.entries ?? []).map((e) => e.name);
   assert.ok(names.includes("doomed.txt"), "the file is listed before delete");
 
-  await resolveFn(state, "origin.explorerDelete")(state, p("doomed.txt"));
+  await resolveFn(state, "explorer.delete")(state, p("doomed.txt"));
   assert.equal(await resolveFn(state, "fs.exists")(p("doomed.txt")), false, "the file was removed from OPFS");
   names = (state.cels.get("explorer.listing")?.v?.entries ?? []).map((e) => e.name);
   assert.ok(!names.includes("doomed.txt"), "the listing refreshed — the file is gone");
@@ -255,8 +243,8 @@ test("explorerRename moves a file (prompt-driven) and refreshes", async () => {
   globalThis.prompt = () => "renamed.txt"; // stub the browser prompt
   try {
     await resolveFn(state, "fs.writeText")(p("orig.txt"), "data");
-    await resolveFn(state, "origin.explorerNav")(state, p(""));
-    await resolveFn(state, "origin.explorerRename")(state, p("orig.txt"));
+    await resolveFn(state, "explorer.nav")(state, p(""));
+    await resolveFn(state, "explorer.rename")(state, p("orig.txt"));
     assert.equal(await resolveFn(state, "fs.exists")(p("orig.txt")), false, "old name gone");
     assert.equal(await resolveFn(state, "fs.exists")(p("renamed.txt")), true, "new name exists");
     assert.equal(await resolveFn(state, "fs.readText")(p("renamed.txt")), "data", "bytes preserved");
@@ -265,18 +253,8 @@ test("explorerRename moves a file (prompt-driven) and refreshes", async () => {
   } finally { delete globalThis.prompt; }
 });
 
-// ── 6. index.html seed ───────────────────────────────────────────────────────
-
-test("seedIndexHtml writes the page's served HTML to /plastron/index.html", async () => {
-  const { state } = await boot();
-  // give the mock document an outerHTML the seed can read
-  globalThis.document.documentElement = { outerHTML: "<html><body>plastron page</body></html>" };
-  await resolveFn(state, "origin.seedIndexHtml")(state);
-  assert.equal(await resolveFn(state, "fs.exists")("/plastron/index.html"), true, "the index.html was seeded into OPFS");
-  const html = await resolveFn(state, "fs.readText")("/plastron/index.html");
-  assert.match(html, /plastron page/, "the served HTML was written");
-  assert.match(html, /doctype html/i, "with a doctype prefix");
-});
+// (seedIndexHtml removed — the explorer shows real user files, not the page's
+//  own served HTML; nothing is seeded into OPFS at boot.)
 
 // cleanup the test subtree
 test("cleanup", async () => {

@@ -1,0 +1,41 @@
+{
+  "name": "botsheet",
+  "cels": [
+    {
+      "key": "botsheet",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "botsheet", "segment": "botsheet", "name": "botsheet", "kind": "native", "genesis": true,
+        "description": "([provider]) - open an 'ask a bot' window: a cel GRID inside a jail() (sandboxed iframe). You edit cells and hit Send; the parent mediates the LLM call with its own key (never crossed in); the bot replies by writing formulas/values into cells that render live. provider = grok | chatgpt | claude. e.g. =botsheet('grok')"
+      },
+      "locked": true
+    },
+    {
+      "key": "botbar",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "botbar", "segment": "botsheet", "name": "botbar", "kind": "native", "genesis": true,
+        "description": "JAIL side: seeds bot.provider / bot.status and mounts the Send bar over the grid."
+      },
+      "locked": true
+    },
+    {
+      "key": "botsendbar",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "botsendbar", "segment": "botsheet", "name": "botsendbar", "kind": "native",
+        "description": "(provider, status) - the floating Send bar vnode (status line + ▶ Send button)."
+      },
+      "locked": true
+    },
+    {
+      "key": "bot.send",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "bot.send", "segment": "botsheet", "name": "bot.send", "kind": "native",
+        "description": "JAIL handler: serialize the grid → jailask (parent mediates the LLM) → parse the bot's `set ADDR = …` lines → write them into bot.* cells (render live)."
+      },
+      "locked": true
+    }
+  ]
+}

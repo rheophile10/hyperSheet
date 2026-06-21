@@ -9,7 +9,7 @@
         "segment": "js-compiler",
         "name": "js",
         "kind": "native",
-        "description": "kind \"js\" — now an ALIAS for QuickJS (wasm sandbox); new Function removed (wasm-only-functions). Delegates to the quickjs compiler."
+        "description": "kind \"js\" — JS source (last expression must be a callable) → runtime Fn via QuickJS-emscripten (a JS-in-wasm sandbox). new Function removed (wasm-only-functions): no DOM, no eval, no host APIs unless granted via the host segment. Lazy-loads the ~1MB runtime on first compile."
       },
       "locked": true
     },
@@ -20,7 +20,7 @@
         "key": "load-deps.js",
         "segment": "js-compiler",
         "schema": "boolean",
-        "description": "Bootstrap switch. JS compilation is in-process and instant, so this is trivially true. Reserved for symmetry with worker-backed kinds."
+        "description": "Bootstrap switch. Lazy: the QuickJS runtime (~1MB) loads on first js cel compile. Defaults true."
       },
       "v": true
     },
@@ -31,7 +31,7 @@
         "key": "js.ready",
         "segment": "js-compiler",
         "schema": "boolean",
-        "description": "Runtime-ready sentinel. Always true for the in-process JS compiler."
+        "description": "Runtime-ready sentinel. Stays true at boot (lazy-load masks the transition); v2 with explicit lifecycle will flip false→true at runtime spawn."
       },
       "v": true
     },
@@ -42,7 +42,7 @@
         "key": "js.alive",
         "segment": "js-compiler",
         "schema": "boolean",
-        "description": "Catastrophic-death sentinel. Main-thread kinds never die."
+        "description": "Catastrophic-death sentinel. Main-thread QuickJS doesn't crash without taking the process down; trivially true. Becomes meaningful with worker isolation."
       },
       "v": true
     },

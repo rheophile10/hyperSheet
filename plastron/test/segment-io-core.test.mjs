@@ -22,7 +22,7 @@ const boot = async () => {
   const put = async (src, key = "元") => {
     await resolveFn(state, "origin.edit")(state, key);
     await resolveFn(state, "setValue")(state, "元.draft", src);
-    await resolveFn(state, "origin.commit")(state, key);
+    await resolveFn(state, "origin.run")(state, key);
     for (let i = 0; i < 5; i++) { await resolveFn(state, "runCycle")(state); if (state.cels.get("genesis.commit")) await resolveFn(state, "drain")(state, "genesis.commit"); }
   };
   return { state, put };

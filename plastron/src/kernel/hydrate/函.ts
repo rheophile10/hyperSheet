@@ -36,7 +36,7 @@ import { assertOneDirection } from "../segments/edge-rule.js";
 //      then apply boot.set via setValueBatch({ flush: "all" }). A set write
 //      to a cel in a segment boot.wake did NOT wake throws (dormant write) —
 //      a 函 author must wake what they set (or target an always-awake
-//      kernel/app-host cel).
+//      kernel cel).
 //
 // The kernel never imports 甲骨坑: store access is via resolveFn'd fn cels
 // (in wake), the bundled loaders are the persistent table seeded at

@@ -15,7 +15,7 @@ const put = (src, key="元") => page.evaluate(async ([s,k])=>{
   const {state,resolveFn}=globalThis.plastron;
   await resolveFn(state,"origin.edit")(state,k);
   await resolveFn(state,"setValue")(state,"元.draft",s);
-  await resolveFn(state,"origin.commit")(state,k);
+  await resolveFn(state,"origin.run")(state,k);
   await new Promise(r=>setTimeout(r,150));
   return state.cels.get(k)?.v ?? null;
 }, [src,key]);
@@ -45,6 +45,14 @@ ok((await cel("g2x2.A1"))===42, "g2x2.A1 restored to 42 after openSeg");
 ok(/deleted/.test(await P(`=delSeg("mywork")`)), "delSeg removes it");
 ok(!(await P(`=segs()`)).includes("mywork"), "segs no longer lists it");
 // --- download (button cel → browser save) ---
+// the desktop boots clean (元 hidden); these tests render into 元 + read the DOM,
+// so OPEN 元 first (un-hide its window) — what the 🧮 Origin launcher does.
+await page.evaluate(async () => {
+  const {state,resolveFn}=globalThis.plastron;
+  const g={...(state.cels.get("win.geom")?.v ?? {})}; g["元"]={...(g["元"]??{}),closed:0};
+  await resolveFn(state,"setValue")(state,"win.geom",g);
+  await resolveFn(state,"runCycle")(state); await resolveFn(state,"drain")(state,"dom.paint");
+});
 await P(`=write("/updl/f.txt", "download me")`);
 await put(`=download("/updl/f.txt")`, "元");
 await page.waitForSelector("button.opfs-btn", { timeout: 4000 });
@@ -61,30 +69,32 @@ ok((await P(`=cat("/updl/up.txt")`)) === "uploaded content", "uploaded file land
 
 ok(errs.length===0, "no console/page errors"+(errs.length?": "+errs.slice(0,2).join(" | "):""));
 
-// --- file explorer: index.html seed + binary guard + per-file actions ---
-// on a FRESH page (the prior =upload/=download puts left 元 holding a non-desktop
-// value on `page`, unmounting the explorer window). A clean boot re-seeds
-// /plastron/index.html and re-mounts the explorer window on the desktop.
+// --- file explorer: binary guard + per-file actions ---
+// On a FRESH page, OPEN the explorer window (=explorerwin — the 📁 Files launcher),
+// then drive it to a dir holding a real .wasm. (The desktop no longer auto-opens
+// the explorer or seeds /plastron/index.html — apps open by navigation now.)
 const page2 = await ctx.newPage();
 const errs2=[]; page2.on("pageerror",e=>errs2.push(String(e))); page2.on("console",m=>{if(m.type()==="error" && !/favicon|Failed to load resource/.test(m.text()))errs2.push(m.text());});
 await page2.goto("http://localhost:8761/index.html");
 await page2.waitForFunction(()=>!!globalThis.plastron,{timeout:8000});
 await page2.waitForTimeout(300);
 const cel2 = (k) => page2.evaluate((kk)=>globalThis.plastron.state.cels.get(kk)?.v ?? null, k);
-// the boot seeded the page's own HTML so the explorer isn't empty
 ok((await cel2("file-store.backend")) === "opfs", "OPFS backend is live in the browser");
 ok(String((await cel2("explorer.listing"))?.previewText ?? "").length >= 0, "explorer listing populated at boot");
-ok(typeof (await page2.evaluate(async()=>{const{state,resolveFn}=globalThis.plastron;return await resolveFn(state,"fs.readText")("/plastron/index.html");})) === "string", "/plastron/index.html was seeded at boot");
-// drive the explorer to the seeded dir + open a real .wasm → never text-previewed
+// write a probe .wasm, open the explorer window, then drive it to /plastron.
 await page2.evaluate(async () => {
   const {state,resolveFn}=globalThis.plastron;
+  await resolveFn(state,"fs.mkdir")("/plastron");
   await resolveFn(state,"fs.write")("/plastron/probe.wasm", new Uint8Array([0,97,115,109,1,0,0,0,255]));
-  await resolveFn(state,"origin.explorerNav")(state,"/plastron");
-  await resolveFn(state,"origin.explorerOpen")(state,"/plastron/probe.wasm");
+  await resolveFn(state,"setValue")(state,"元.draft","=explorerwin()");
+  await resolveFn(state,"origin.run")(state,"元");
+  await resolveFn(state,"explorer.nav")(state,"/plastron");
+  await resolveFn(state,"explorer.open")(state,"/plastron/probe.wasm");
+  await resolveFn(state,"drain")(state,"dom.paint");
 });
 await page2.waitForTimeout(200);
 const lst = await cel2("explorer.listing");
-ok((lst?.entries ?? []).some(e=>e.name==="index.html"), "explorer lists the seeded index.html");
+ok((lst?.entries ?? []).some(e=>e.name==="probe.wasm"), "explorer lists the probe file");
 ok(lst?.previewBinary === true, "the .wasm preview is flagged binary (not read as text)");
 ok(/^binary file/.test(String(lst?.previewText ?? "")), "the .wasm shows a binary placeholder");
 // the explorer window rendered the per-file action buttons + the binary download

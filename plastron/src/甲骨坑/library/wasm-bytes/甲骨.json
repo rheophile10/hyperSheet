@@ -6,7 +6,7 @@
       "celType": "LockedLambdaCel",
       "metadata": {
         "key": "wasm", "segment": "wasm-bytes", "name": "wasm", "kind": "native",
-        "description": "Precompiled-wasm loader. Takes a precompiled .wasm module as base64 bytes (inline source) or a 'file-store:<path>' reference, instantiates it via WebAssembly.instantiate, and exposes one export as a callable Fn. The sibling to wat/py/quickjs that takes bytes instead of source. Export chosen by metadata.wasmExport (else prefer 'main', else the single export). Imports default to { host }; metadata.imports names a provider cel for WASI/env shims. Gated on csp.wasm-available."
+        "description": "Precompiled-wasm loader. Takes a precompiled .wasm module as base64 bytes (inline source) or a 'file-store:<path>' reference, instantiates it via WebAssembly.instantiate, and exposes one export as a callable Fn. The sibling to wat/py/js that takes bytes instead of source. Export chosen by metadata.wasmExport (else prefer 'main', else the single export). Imports default to { host }; metadata.imports names a provider cel for WASI/env shims. Gated on csp.wasm-available."
       },
       "locked": true
     },

@@ -10,7 +10,7 @@ import seed from "./甲骨.json" with { type: "json" };
 // ============================================================================
 // defn — the named-function commit channel (named-function-cels design).
 //
-// A BINDER formula (`=QUICKJS(A1, "times100")` / `(quickjs src "times100")`)
+// A BINDER formula (`=JS(A1, "times100")` / `(js src "times100")`)
 // computes a definition REQUEST as its value and enqueues here; the
 // drain commits it:
 //

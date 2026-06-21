@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import { createInitialState, resolveFn } from "../dist/index.js";
 
 // ============================================================================
-// REACTIVE ARMING: a client cel made from a wallet apiKey handle must re-fire
+// REACTIVE ARMING: a client cel made from a vault apiKey handle must re-fire
 // when a key lands. apiKey() is a NATIVE verb — it reads `secrets` INTERNALLY,
 // so a key change wires NO formula-dep edge and (before the fix) never re-fired
 // the client cels: they stayed error:✗ no key until something forced a recompute.
 //
-// The fix: the wallet owns a `secretsGen` version cel, bumped on every
+// The fix: the vault owns a `secretsGen` version cel, bumped on every
 // unlock/lock/setKey/del. The client formula references it INSIDE the apiKey
 // call — (makeclient "claude" (apiKey "anthropic" secretsGen)) — so extractDeps
 // wires the edge and runCycle re-arms the client. This test proves:
@@ -25,12 +25,12 @@ const call = (state, k, ...a) => resolveFn(state, k)(state, ...a);
 
 const SECRET = "sk-ant-REARM-TOPSECRET";
 
-const bootWallet = async () => {
+const bootVault = async () => {
   const state = createInitialState();
-  await resolveFn(state, "ensureSegments")(state, ["unsafe-wallet", "llm"]);
-  // unlock (no key yet) — a new wallet
-  await call(state, "wallet.unlock", null, { type: "change", target: { value: "hunter2" } });
-  // a CLIENT cel in the whitelisted `clients` segment, armed from the wallet
+  await resolveFn(state, "ensureSegments")(state, ["vault", "llm"]);
+  // unlock (no key yet) — a new vault
+  await call(state, "vault.unlock", null, { type: "change", target: { value: "hunter2" } });
+  // a CLIENT cel in the whitelisted `clients` segment, armed from the vault
   // via apiKey — referencing secretsGen so a key change re-fires it.
   await seg(state, "clients.A1", {
     celType: "FormulaCel", f: '(makeclient "claude" (apiKey "anthropic" secretsGen))',
@@ -41,7 +41,7 @@ const bootWallet = async () => {
 };
 
 test("secretsGen is bumped by setKey/del and the client cel re-arms through the graph", async () => {
-  const state = await bootWallet();
+  const state = await bootVault();
 
   // the client cel is wired to depend on secretsGen (extractDeps read the
   // formula; the deps land as _inputEntries [key, cel] pairs)
@@ -56,8 +56,8 @@ test("secretsGen is bumped by setKey/del and the client cel re-arms through the 
 
   const genBefore = Number(state.cels.get("secretsGen")?.v ?? -1);
 
-  // set the key — the wallet stores it AND bumps secretsGen
-  await call(state, "wallet.set", "anthropic", { type: "change", target: { value: SECRET } });
+  // set the key — the vault stores it AND bumps secretsGen
+  await call(state, "vault.set", "anthropic", { type: "change", target: { value: SECRET } });
   const genAfter = Number(state.cels.get("secretsGen")?.v ?? -1);
   assert.ok(genAfter > genBefore, "setKey bumped secretsGen (the trigger advanced)");
 
@@ -69,25 +69,25 @@ test("secretsGen is bumped by setKey/del and the client cel re-arms through the 
   // and the secret is still NOT in the cel value
   assert.ok(!JSON.stringify(armed).includes(SECRET), "the key is never in the client cel value");
 
-  // remove the key — the wallet blanks it AND bumps secretsGen
+  // remove the key — the vault blanks it AND bumps secretsGen
   const genArmed = Number(state.cels.get("secretsGen")?.v ?? -1);
-  await call(state, "wallet.del", "anthropic");
+  await call(state, "vault.del", "anthropic");
   assert.ok(Number(state.cels.get("secretsGen")?.v ?? -1) > genArmed, "del bumped secretsGen");
   await cycle(state);
   const disarmed = state.cels.get("clients.A1")?.v;
   assert.equal(disarmed?.status, "error", "removing the key flipped the client back to error");
 
-  await resolveFn(state, "wallet.lock")(state);
+  await resolveFn(state, "vault.lock")(state);
 });
 
-test("locking the wallet bumps secretsGen and disarms an armed client", async () => {
-  const state = await bootWallet();
-  await call(state, "wallet.set", "anthropic", { type: "change", target: { value: SECRET } });
+test("locking the vault bumps secretsGen and disarms an armed client", async () => {
+  const state = await bootVault();
+  await call(state, "vault.set", "anthropic", { type: "change", target: { value: SECRET } });
   await cycle(state);
   assert.equal(state.cels.get("clients.A1")?.v?.status, "ready", "armed after setKey");
 
   const genReady = Number(state.cels.get("secretsGen")?.v ?? -1);
-  await resolveFn(state, "wallet.lock")(state);
+  await resolveFn(state, "vault.lock")(state);
   assert.ok(Number(state.cels.get("secretsGen")?.v ?? -1) > genReady, "lock bumped secretsGen");
   await cycle(state);
   assert.equal(state.cels.get("clients.A1")?.v?.status, "error", "locking disarmed the client");

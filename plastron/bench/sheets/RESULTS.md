@@ -3,8 +3,8 @@
 Counters are the signal; wall-clock has run noise. Fresh process per
 cell, warmup pass before timed loops. Phases/sizes per
 docs/1-design/3-accepted/00-ontology/sheets-bench-harness.md.
-View-side phases (select/diff/paint) live in plastron-os
-bench-fragments.mjs until the shared-helper migration.
+This harness measures the graph; view-side phases (select/diff/paint)
+are out of scope.
 
 ## baseline — 2026-06-07, tree at 1201378+working (pre-genesis), bun, linux x64
 

@@ -27,7 +27,7 @@ test("wasmwinGenesis: in-process mode seeds a canvas window + bridge cels", () =
   assert.equal(g.layer, "wasm.doom");
   assert.deepEqual(Object.keys(g.cels).sort(),
     ["wasm.doom.active", "wasm.doom.content", "wasm.doom.frame", "wasm.doom.in", "wasm.doom.out", "wasm.doom.state"]);
-  assert.match(g.cels["wasm.doom.content"].f, /^\(wasmcanvas "doom" doom\.engine wasm\.doom\.active\)$/, "canvas binds the engine cel + active flag");
+  assert.match(g.cels["wasm.doom.content"].f, /^\(wasmcanvas "doom"\)$/, "canvas binds the engine cel + active flag");
   assert.match(g.cels["wasm.doom.frame"].f, /winframe wasm\.doom\.state win\.active wasm\.doom\.content/, "a real draggable window frame");
   assert.equal(g.cels["wasm.doom.state"].v.w, 640);
 });

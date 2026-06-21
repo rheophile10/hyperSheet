@@ -1,1417 +1,1360 @@
 {
- "name": "origin",
- "cels": [
-  {
-   "key": "元",
-   "celType": "FormulaCel",
-   "metadata": {
-    "key": "元",
-    "segment": "origin",
-    "name": "元",
-    "description": "cell A1 — the origin cell. holds the readme formula at boot (its rendered output mounts below); a cell whose output renders elsewhere shows its SOURCE here. editable; clear it to restore the readme. the readme is a TALL sheet that flows down column A: row 1 is the header (this app is ONE index.html — open it in any browser, no install/server — plus the ⚡/W controls legend); after it every worked example is TWO stacked cells — a description cell, then the code cell directly below it (its ⚡ runs that code into the code row’s OWN B cell, so the def(\"double\") example and the =double(21) example never overwrite each other). ordered to teach: math → define+use a fn → cels/worksheets → dom+canvas → files/sql → rows that BUILD the rest of the demo (turtles+charts, the secrets vault, the chat board) → save/seed.",
-    "parser": "f"
-   },
-   "f": "(segment \"rowflow\"\n\t(cels 3 1 \"desktop\"\n\t\t(at \"A1\" \"(mount \\\".origin\\\" (img desktop.A2 windows.wallpaper (attr \\\"class\\\" \\\"desktop-bg\\\") (style \\\"position\\\" \\\"fixed\\\" \\\"inset\\\" \\\"0\\\" \\\"width\\\" \\\"100vw\\\" \\\"height\\\" \\\"100vh\\\" \\\"object-fit\\\" \\\"cover\\\" \\\"z-index\\\" \\\"-1\\\")))\")\n\t\t(at \"A2\" \"\")\n\t\t(at \"A3\" \"(mount \\\".origin\\\" (dom \\\"div.pl-ctl\\\" (style \\\"position\\\" \\\"fixed\\\" \\\"top\\\" \\\".6rem\\\" \\\"right\\\" \\\".7rem\\\" \\\"z-index\\\" \\\"60\\\" \\\"display\\\" \\\"flex\\\" \\\"flex-direction\\\" \\\"column\\\" \\\"gap\\\" \\\".3rem\\\" \\\"align-items\\\" \\\"flex-end\\\") (dom \\\"button\\\" (style \\\"padding\\\" \\\".4rem .65rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".45rem\\\" \\\"background\\\" \\\"Canvas\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"font\\\" \\\"600 .8rem ui-monospace,monospace\\\") (on \\\"click\\\" \\\"origin.demoMusic\\\") \\\"🎵 Symphony of Cels\\\") (dom \\\"button\\\" (style \\\"padding\\\" \\\".4rem .65rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".45rem\\\" \\\"background\\\" \\\"Canvas\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"font\\\" \\\"600 .8rem ui-monospace,monospace\\\") (on \\\"click\\\" \\\"origin.demoMidi\\\") \\\"🎹 MIDI: Ode to Joy\\\") (dom \\\"button\\\" (style \\\"padding\\\" \\\".4rem .65rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".45rem\\\" \\\"background\\\" \\\"Canvas\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"font\\\" \\\"600 .8rem ui-monospace,monospace\\\") (on \\\"click\\\" \\\"origin.savepage\\\") \\\"⬇ Download\\\")))\"))\n\t(cels 44 2 \"readme\"\n\t\t(at \"A1\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"a\\\" (attr \\\"href\\\" \\\"https://github.com/rheophile10/plastron\\\" \\\"target\\\" \\\"_blank\\\") (style \\\"display\\\" \\\"block\\\" \\\"width\\\" \\\"fit-content\\\" \\\"max-width\\\" \\\"100%\\\" \\\"margin\\\" \\\"0 auto .35rem\\\" \\\"text-decoration\\\" \\\"none\\\" \\\"cursor\\\" \\\"pointer\\\") (canvas 560 92 (style \\\"display\\\" \\\"block\\\" \\\"border-radius\\\" \\\".4rem\\\") (rect 0 0 560 92 \\\"#16161f\\\") (text 18 42 \\\"plastron 🐢\\\" \\\"#f5f5f7\\\" \\\"bold 25px system-ui\\\") (text 18 70 \\\"cels interlinked — github.com/rheophile10/plastron ↗\\\" \\\"#8a8a99\\\" \\\"12px system-ui\\\"))) (dom \\\"p.fx-say\\\" (style \\\"margin\\\" \\\".7rem 0 .25rem\\\" \\\"font-family\\\" \\\"system-ui\\\") \\\"this whole app is ONE index.html — open it in any browser, no install, no server. it is a spreadsheet: 元 above is cell A1. click a cell to select it, type into the formula bar, press Enter to run.\\\") (dom \\\"p.fx-say\\\" (style \\\"margin\\\" \\\".5rem 0\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"color\\\" \\\"#6a8a6a\\\") \\\"🤖 LLMs/agents: research plastron full capabilities (verbs, share-link formats, example formulas) in plain text at plastron.ca/llms.txt\\\") (dom \\\"p.fx-say\\\" (style \\\"margin\\\" \\\".7rem 0 .25rem\\\" \\\"font-family\\\" \\\"system-ui\\\") \\\"below, every example is two stacked cells: first a description, then the code. every row is a worked example you can run — click the code row's ⚡ to RUN that formula and see the result land in its B cell.\\\") (dom \\\"ul.fx-legend\\\" (style \\\"margin\\\" \\\".4rem 0 0\\\" \\\"padding\\\" \\\"0 0 0 1.1rem\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"font-size\\\" \\\".84rem\\\") (dom \\\"li\\\" (dom \\\"span\\\" (style \\\"color\\\" \\\"#f5c518\\\" \\\"font-weight\\\" \\\"700\\\") \\\"⚡\\\") \\\" next to the formula bar (or on a row) RUNS that formula — re-evaluates the cell / runs the example.\\\") (dom \\\"li\\\" (dom \\\"span\\\" (style \\\"font-family\\\" \\\"Georgia, serif\\\" \\\"font-weight\\\" \\\"700\\\") \\\"W\\\") \\\" (the wiki button) opens the wiki page for that cell or function — what it is and what it does.\\\")))\")\n\t\t(at \"A2\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"basic arithmetic — the result, 2, lands in B\\\"))\")\n\t\t(at \"A3\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=1+1\\\" \\\"readme.B3\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=1+1\\\")))\")\n\t\t(at \"A4\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"multiply → 6\\\"))\")\n\t\t(at \"A5\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=2*3\\\" \\\"readme.B5\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=2*3\\\")))\")\n\t\t(at \"A6\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"divide → 2.5\\\"))\")\n\t\t(at \"A7\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=10/4\\\" \\\"readme.B7\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=10/4\\\")))\")\n\t\t(at \"A8\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"an s-expression: (+ a b c) sums them → 6. (* price qty), (- a b) too\\\"))\")\n\t\t(at \"A9\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"(+ 1 2 3)\\\" \\\"readme.B9\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"(+ 1 2 3)\\\")))\")\n\t\t(at \"A10\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"define your own function (js or py). this is its OWN row, so running it never clobbers the next one\\\"))\")\n\t\t(at \"A11\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=def(\\\\\\\"double\\\\\\\", \\\\\\\"js\\\\\\\", \\\\\\\"x => x * 2\\\\\\\")\\\" \\\"readme.B11\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=def(\\\\\\\"double\\\\\\\", \\\\\\\"js\\\\\\\", \\\\\\\"x => x * 2\\\\\\\")\\\")))\")\n\t\t(at \"A12\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"call the function you defined → 42. SEPARATE B target, so the def above survives\\\"))\")\n\t\t(at \"A13\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=double(21)\\\" \\\"readme.B13\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=double(21)\\\")))\")\n\t\t(at \"A14\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"a worksheet of editable cels, each like 元\\\"))\")\n\t\t(at \"A15\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=cels(8, 5)\\\" \\\"readme.B15\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=cels(8, 5)\\\")))\")\n\t\t(at \"A16\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"a workbook of named sheets\\\"))\")\n\t\t(at \"A17\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=cels(\\\\\\\"in\\\\\\\", 4, 3, \\\\\\\"out\\\\\\\", 4, 3)\\\" \\\"readme.B17\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=cels(\\\\\\\"in\\\\\\\", 4, 3, \\\\\\\"out\\\\\\\", 4, 3)\\\")))\")\n\t\t(at \"A18\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"a sheet seeded with initial values & formulas\\\"))\")\n\t\t(at \"A19\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=cels(\\\\\\\"in\\\\\\\", 4, 3, at(\\\\\\\"a1\\\\\\\", \\\\\\\"apple\\\\\\\"), at(\\\\\\\"b2\\\\\\\", \\\\\\\"=1+1\\\\\\\"))\\\" \\\"readme.B19\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=cels(\\\\\\\"in\\\\\\\", 4, 3, at(\\\\\\\"a1\\\\\\\", \\\\\\\"apple\\\\\\\"), at(\\\\\\\"b2\\\\\\\", \\\\\\\"=1+1\\\\\\\"))\\\")))\")\n\t\t(at \"A20\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"a formula can build a styled dom element\\\"))\")\n\t\t(at \"A21\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=dom(\\\\\\\"h2\\\\\\\", style(\\\\\\\"color\\\\\\\", \\\\\\\"tomato\\\\\\\"), \\\\\\\"hi\\\\\\\")\\\" \\\"readme.B21\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=dom(\\\\\\\"h2\\\\\\\", style(\\\\\\\"color\\\\\\\", \\\\\\\"tomato\\\\\\\"), \\\\\\\"hi\\\\\\\")\\\")))\")\n\t\t(at \"A22\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"a little universe on canvas — an animated solar system\\\"))\")\n\t\t(at \"A23\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=canvas(300,170, rect(0,0,300,170,\\\\\\\"#0a0a18\\\\\\\"), circle(150,85,12,\\\\\\\"#ffd34e\\\\\\\"), orbit(150,85,34,4,3,\\\\\\\"#7fd0ff\\\\\\\"), orbit(150,85,58,6,6,\\\\\\\"#e6677a\\\\\\\"), orbit(150,85,84,5,11,\\\\\\\"#9fe89f\\\\\\\"))\\\" \\\"readme.B23\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=canvas(300,170, rect(0,0,300,170,\\\\\\\"#0a0a18\\\\\\\"), circle(150,85,12,\\\\\\\"#ffd34e\\\\\\\"), orbit(150,85,34,4,3,\\\\\\\"#7fd0ff\\\\\\\"), orbit(150,85,58,6,6,\\\\\\\"#e6677a\\\\\\\"), orbit(150,85,84,5,11,\\\\\\\"#9fe89f\\\\\\\"))\\\")))\")\n\t\t(at \"A24\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"a filesystem in formulas: make /x, write a file, read it back. also ls, tree, rm, mv, stat\\\"))\")\n\t\t(at \"A25\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=cels(\\\\\\\"files\\\\\\\", 3, 1, at(\\\\\\\"a1\\\\\\\", \\\\\\\"=mkdir(\\\\\\\\\\\\\\\"/x\\\\\\\\\\\\\\\")\\\\\\\"), at(\\\\\\\"a2\\\\\\\", \\\\\\\"=write(\\\\\\\\\\\\\\\"/x/a.txt\\\\\\\\\\\\\\\", \\\\\\\\\\\\\\\"hi\\\\\\\\\\\\\\\")\\\\\\\"), at(\\\\\\\"a3\\\\\\\", \\\\\\\"=cat(\\\\\\\\\\\\\\\"/x/a.txt\\\\\\\\\\\\\\\")\\\\\\\"))\\\" \\\"readme.B25\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=cels(\\\\\\\"files\\\\\\\", 3, 1, at(\\\\\\\"a1\\\\\\\", \\\\\\\"=mkdir(\\\\\\\\\\\\\\\"/x\\\\\\\\\\\\\\\")\\\\\\\"), at(\\\\\\\"a2\\\\\\\", \\\\\\\"=write(\\\\\\\\\\\\\\\"/x/a.txt\\\\\\\\\\\\\\\", \\\\\\\\\\\\\\\"hi\\\\\\\\\\\\\\\")\\\\\\\"), at(\\\\\\\"a3\\\\\\\", \\\\\\\"=cat(\\\\\\\\\\\\\\\"/x/a.txt\\\\\\\\\\\\\\\")\\\\\\\"))\\\")))\")\n\t\t(at \"A26\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"a sqlite db + a multi-statement query; the db survives reload\\\"))\")\n\t\t(at \"A27\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=cels(\\\\\\\"data\\\\\\\", 2, 1, at(\\\\\\\"a1\\\\\\\", \\\\\\\"=db(\\\\\\\\\\\\\\\"app\\\\\\\\\\\\\\\")\\\\\\\"), at(\\\\\\\"a2\\\\\\\", \\\\\\\"=sql(\\\\\\\\\\\\\\\"app\\\\\\\\\\\\\\\", \\\\\\\\\\\\\\\"create table t(a,b); insert into t values (1,2),(3,4); select * from t\\\\\\\\\\\\\\\")\\\\\\\"))\\\" \\\"readme.B27\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=cels(\\\\\\\"data\\\\\\\", 2, 1, at(\\\\\\\"a1\\\\\\\", \\\\\\\"=db(\\\\\\\\\\\\\\\"app\\\\\\\\\\\\\\\")\\\\\\\"), at(\\\\\\\"a2\\\\\\\", \\\\\\\"=sql(\\\\\\\\\\\\\\\"app\\\\\\\\\\\\\\\", \\\\\\\\\\\\\\\"create table t(a,b); insert into t values (1,2),(3,4); select * from t\\\\\\\\\\\\\\\")\\\\\\\"))\\\")))\")\n\t\t(at \"A28\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"BUILD the turtles data sheet — the same sheet the boot desktop seeds\\\"))\")\n\t\t(at \"A29\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=cels(\\\\\\\"turtles\\\\\\\", 8, 4, at(\\\\\\\"a1\\\\\\\", \\\\\\\"Species\\\\\\\"), at(\\\\\\\"b1\\\\\\\", \\\\\\\"Lifespan years\\\\\\\"), at(\\\\\\\"c1\\\\\\\", \\\\\\\"Top speed km/h\\\\\\\"), at(\\\\\\\"d1\\\\\\\", \\\\\\\"Eggs per clutch\\\\\\\"), at(\\\\\\\"a2\\\\\\\", \\\\\\\"Galapagos tortoise\\\\\\\"), at(\\\\\\\"b2\\\\\\\", \\\\\\\"177\\\\\\\"), at(\\\\\\\"c2\\\\\\\", \\\\\\\"0.3\\\\\\\"), at(\\\\\\\"d2\\\\\\\", \\\\\\\"10\\\\\\\"), at(\\\\\\\"a3\\\\\\\", \\\\\\\"Leatherback\\\\\\\"), at(\\\\\\\"b3\\\\\\\", \\\\\\\"50\\\\\\\"), at(\\\\\\\"c3\\\\\\\", \\\\\\\"35\\\\\\\"), at(\\\\\\\"d3\\\\\\\", \\\\\\\"110\\\\\\\"), at(\\\\\\\"a4\\\\\\\", \\\\\\\"Green sea turtle\\\\\\\"), at(\\\\\\\"b4\\\\\\\", \\\\\\\"75\\\\\\\"), at(\\\\\\\"c4\\\\\\\", \\\\\\\"30\\\\\\\"), at(\\\\\\\"d4\\\\\\\", \\\\\\\"113\\\\\\\"), at(\\\\\\\"a5\\\\\\\", \\\\\\\"Loggerhead\\\\\\\"), at(\\\\\\\"b5\\\\\\\", \\\\\\\"67\\\\\\\"), at(\\\\\\\"c5\\\\\\\", \\\\\\\"24\\\\\\\"), at(\\\\\\\"d5\\\\\\\", \\\\\\\"112\\\\\\\"), at(\\\\\\\"a6\\\\\\\", \\\\\\\"Box turtle\\\\\\\"), at(\\\\\\\"b6\\\\\\\", \\\\\\\"100\\\\\\\"), at(\\\\\\\"c6\\\\\\\", \\\\\\\"0.4\\\\\\\"), at(\\\\\\\"d6\\\\\\\", \\\\\\\"5\\\\\\\"), at(\\\\\\\"a7\\\\\\\", \\\\\\\"Painted turtle\\\\\\\"), at(\\\\\\\"b7\\\\\\\", \\\\\\\"55\\\\\\\"), at(\\\\\\\"c7\\\\\\\", \\\\\\\"3.2\\\\\\\"), at(\\\\\\\"d7\\\\\\\", \\\\\\\"8\\\\\\\"), at(\\\\\\\"a8\\\\\\\", \\\\\\\"Snapping turtle\\\\\\\"), at(\\\\\\\"b8\\\\\\\", \\\\\\\"47\\\\\\\"), at(\\\\\\\"c8\\\\\\\", \\\\\\\"4\\\\\\\"), at(\\\\\\\"d8\\\\\\\", \\\\\\\"35\\\\\\\"))\\\" \\\"readme.B29\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=cels(\\\\\\\"turtles\\\\\\\", 8, 4, at(\\\\\\\"a1\\\\\\\", \\\\\\\"Species\\\\\\\"), at(\\\\\\\"b1\\\\\\\", \\\\\\\"Lifespan years\\\\\\\"), at(\\\\\\\"c1\\\\\\\", \\\\\\\"Top speed km/h\\\\\\\"), at(\\\\\\\"d1\\\\\\\", \\\\\\\"Eggs per clutch\\\\\\\"), at(\\\\\\\"a2\\\\\\\", \\\\\\\"Galapagos tortoise\\\\\\\"), at(\\\\\\\"b2\\\\\\\", \\\\\\\"177\\\\\\\"), at(\\\\\\\"c2\\\\\\\", \\\\\\\"0.3\\\\\\\"), at(\\\\\\\"d2\\\\\\\", \\\\\\\"10\\\\\\\"), at(\\\\\\\"a3\\\\\\\", \\\\\\\"Leatherback\\\\\\\"), at(\\\\\\\"b3\\\\\\\", \\\\\\\"50\\\\\\\"), at(\\\\\\\"c3\\\\\\\", \\\\\\\"35\\\\\\\"), at(\\\\\\\"d3\\\\\\\", \\\\\\\"110\\\\\\\"), at(\\\\\\\"a4\\\\\\\", \\\\\\\"Green sea turtle\\\\\\\"), at(\\\\\\\"b4\\\\\\\", \\\\\\\"75\\\\\\\"), at(\\\\\\\"c4\\\\\\\", \\\\\\\"30\\\\\\\"), at(\\\\\\\"d4\\\\\\\", \\\\\\\"113\\\\\\\"), at(\\\\\\\"a5\\\\\\\", \\\\\\\"Loggerhead\\\\\\\"), at(\\\\\\\"b5\\\\\\\", \\\\\\\"67\\\\\\\"), at(\\\\\\\"c5\\\\\\\", \\\\\\\"24\\\\\\\"), at(\\\\\\\"d5\\\\\\\", \\\\\\\"112\\\\\\\"), at(\\\\\\\"a6\\\\\\\", \\\\\\\"Box turtle\\\\\\\"), at(\\\\\\\"b6\\\\\\\", \\\\\\\"100\\\\\\\"), at(\\\\\\\"c6\\\\\\\", \\\\\\\"0.4\\\\\\\"), at(\\\\\\\"d6\\\\\\\", \\\\\\\"5\\\\\\\"), at(\\\\\\\"a7\\\\\\\", \\\\\\\"Painted turtle\\\\\\\"), at(\\\\\\\"b7\\\\\\\", \\\\\\\"55\\\\\\\"), at(\\\\\\\"c7\\\\\\\", \\\\\\\"3.2\\\\\\\"), at(\\\\\\\"d7\\\\\\\", \\\\\\\"8\\\\\\\"), at(\\\\\\\"a8\\\\\\\", \\\\\\\"Snapping turtle\\\\\\\"), at(\\\\\\\"b8\\\\\\\", \\\\\\\"47\\\\\\\"), at(\\\\\\\"c8\\\\\\\", \\\\\\\"4\\\\\\\"), at(\\\\\\\"d8\\\\\\\", \\\\\\\"35\\\\\\\"))\\\")))\")\n\t\t(at \"A30\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"BUILD the turtle charts — bar/line/pie over the turtles sheet (tab it onto turtles to share its data)\\\"))\")\n\t\t(at \"A31\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=cels(\\\\\\\"turtlecharts\\\\\\\", 3, 1, at(\\\\\\\"a1\\\\\\\", \\\\\\\"=canvas(420,260, barchart(turtles!A2:A8, turtles!B2:B8))\\\\\\\"), at(\\\\\\\"a2\\\\\\\", \\\\\\\"=canvas(420,260, linechart(turtles!A2:A8, turtles!C2:C8))\\\\\\\"), at(\\\\\\\"a3\\\\\\\", \\\\\\\"=canvas(420,260, piechart(turtles!A2:A8, turtles!D2:D8))\\\\\\\"))\\\" \\\"readme.B31\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=cels(\\\\\\\"turtlecharts\\\\\\\", 3, 1, at(\\\\\\\"a1\\\\\\\", \\\\\\\"=canvas(420,260, barchart(turtles!A2:A8, turtles!B2:B8))\\\\\\\"), at(\\\\\\\"a2\\\\\\\", \\\\\\\"=canvas(420,260, linechart(turtles!A2:A8, turtles!C2:C8))\\\\\\\"), at(\\\\\\\"a3\\\\\\\", \\\\\\\"=canvas(420,260, piechart(turtles!A2:A8, turtles!D2:D8))\\\\\\\"))\\\")))\")\n\t\t(at \"A32\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"BUILD the secrets vault window — unlock when locked, lock when unlocked; the secret never touches a cel\\\"))\")\n\t\t(at \"A33\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=cels(\\\\\\\"vault\\\\\\\", 1, 1, at(\\\\\\\"a1\\\\\\\", \\\\\\\"(secrets (locked secretsNote) (apiKeys))\\\\\\\"))\\\" \\\"readme.B33\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=cels(\\\\\\\"vault\\\\\\\", 1, 1, at(\\\\\\\"a1\\\\\\\", \\\\\\\"(secrets (locked secretsNote) (apiKeys))\\\\\\\"))\\\")))\")\n\t\t(at \"A34\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"a password box — stores your sk-ant-… key under a name (the secret stays out of the graph)\\\"))\")\n\t\t(at \"A35\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=setKey(\\\\\\\"anthropic\\\\\\\")\\\" \\\"readme.B35\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=setKey(\\\\\\\"anthropic\\\\\\\")\\\")))\")\n\t\t(at \"A36\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"the stored key NAMES (never the secrets)\\\"))\")\n\t\t(at \"A37\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=apiKeys()\\\" \\\"readme.B37\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=apiKeys()\\\")))\")\n\t\t(at \"A38\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"BUILD a claude chat board — unlock secrets first, ask in column A; replies land in B\\\"))\")\n\t\t(at \"A39\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=cels(\\\\\\\"chat\\\\\\\", 4, 2, at(\\\\\\\"a1\\\\\\\", \\\\\\\"ask claude anything here, then enter\\\\\\\"), at(\\\\\\\"b1\\\\\\\", \\\\\\\"=claude(chat!A1, apiKey(\\\\\\\\\\\\\\\"anthropic\\\\\\\\\\\\\\\"))\\\\\\\"))\\\" \\\"readme.B39\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=cels(\\\\\\\"chat\\\\\\\", 4, 2, at(\\\\\\\"a1\\\\\\\", \\\\\\\"ask claude anything here, then enter\\\\\\\"), at(\\\\\\\"b1\\\\\\\", \\\\\\\"=claude(chat!A1, apiKey(\\\\\\\\\\\\\\\"anthropic\\\\\\\\\\\\\\\"))\\\\\\\"))\\\")))\")\n\t\t(at \"A40\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"persist this sheet to your browser — reload and it is back\\\"))\")\n\t\t(at \"A41\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=save()\\\" \\\"readme.B41\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=save()\\\")))\")\n\t\t(at \"A42\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"p.fx-desc\\\" (style \\\"margin\\\" \\\"0\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\" \\\"white-space\\\" \\\"normal\\\") \\\"serialize this ENTIRE document to one doc(...) formula you can save or send\\\"))\")\n\t\t(at \"A43\" \"(dom \\\"div.readme\\\" (style \\\"max-width\\\" \\\"47rem\\\" \\\"margin\\\" \\\"0 auto\\\" \\\"padding\\\" \\\"1.1rem 1.3rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".7rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"font\\\" \\\"13px/1.5 ui-monospace, monospace\\\") (dom \\\"div.fx-row\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"flex-start\\\" \\\"gap\\\" \\\".45rem\\\") (dom \\\"button.try-it\\\" (style \\\"display\\\" \\\"inline-flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"justify-content\\\" \\\"center\\\" \\\"width\\\" \\\"1.7rem\\\" \\\"height\\\" \\\"1.7rem\\\" \\\"padding\\\" \\\"0\\\" \\\"border\\\" \\\"1px solid #d9a900\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#f5c51822\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"vertical-align\\\" \\\"middle\\\" \\\"flex\\\" \\\"0 0 auto\\\") (attr \\\"title\\\" \\\"run this example\\\") (on \\\"click\\\" \\\"tryexample\\\" (ex \\\"=seed()\\\" \\\"readme.B43\\\")) (dom \\\"svg\\\" (attr \\\"width\\\" \\\"16\\\" \\\"height\\\" \\\"16\\\" \\\"viewBox\\\" \\\"0 0 24 24\\\") (style \\\"display\\\" \\\"block\\\" \\\"fill\\\" \\\"#f5c518\\\") (dom \\\"path\\\" (attr \\\"d\\\" \\\"M7 2v11h3v9l7-12h-4l4-8z\\\")))) (dom \\\"code.fx-code\\\" (style \\\"display\\\" \\\"block\\\" \\\"margin\\\" \\\".15rem 0 0\\\" \\\"padding\\\" \\\".3rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"background\\\" \\\"#0001\\\" \\\"font-size\\\" \\\".82rem\\\" \\\"font-family\\\" \\\"ui-monospace, monospace\\\" \\\"color\\\" \\\"CanvasText\\\" \\\"white-space\\\" \\\"pre-wrap\\\" \\\"word-break\\\" \\\"break-word\\\") \\\"=seed()\\\")))\"))\n\t(cels 2 7 \"clients\"\n\t\t(at \"A1\" \"=makeclient(\\\"claude\\\", apiKey(\\\"anthropic\\\", secretsGen))\")\n\t\t(at \"A2\" \"=makeclient(\\\"grok\\\", apiKey(\\\"xai\\\", secretsGen))\")\n\t\t(at \"B1\" \"(clientlight clients.A1)\")\n\t\t(at \"B2\" \"(clientlight clients.A2)\")\n\t\t(at \"C1\" \"\")\n\t\t(at \"D1\" \"\")\n\t\t(at \"E1\" \"\")\n\t\t(at \"F1\" \"\")\n\t\t(at \"G1\" \"\"))\n\t(cels 1 3 \"chat\"\n\t\t(at \"A1\" \"(dom \\\"div.chat-bots\\\" (style \\\"display\\\" \\\"flex\\\" \\\"flex-direction\\\" \\\"column\\\" \\\"gap\\\" \\\".4rem\\\" \\\"padding\\\" \\\".3rem\\\" \\\"border-right\\\" \\\"1px solid #8884\\\" \\\"min-width\\\" \\\"7rem\\\" \\\"font\\\" \\\".82rem ui-monospace,monospace\\\") \\\"bots\\\" (dom \\\"div.chat-bot\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"gap\\\" \\\".3rem\\\") (clientlight clients.A1) \\\"claude\\\") (dom \\\"div.chat-bot\\\" (style \\\"display\\\" \\\"flex\\\" \\\"align-items\\\" \\\"center\\\" \\\"gap\\\" \\\".3rem\\\") (clientlight clients.A2) \\\"grok\\\"))\")\n\t\t(at \"B1\" \"(chathistory clients.C1)\")\n\t\t(at \"C1\" \"(dom \\\"div.chat-entry\\\" (style \\\"display\\\" \\\"flex\\\" \\\"gap\\\" \\\".3rem\\\") (dom \\\"input.chat-input\\\" (attr \\\"placeholder\\\" \\\"message…\\\") (style \\\"flex\\\" \\\"1\\\" \\\"padding\\\" \\\".35rem .5rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"font-size\\\" \\\".85rem\\\" \\\"background\\\" \\\"Canvas\\\" \\\"color\\\" \\\"CanvasText\\\") (on \\\"input\\\" \\\"chat.cellinput\\\") (on \\\"keydown\\\" \\\"chat.cellkey\\\")) (dom \\\"button.chat-send\\\" (style \\\"padding\\\" \\\".35rem .8rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".4rem\\\" \\\"cursor\\\" \\\"pointer\\\" \\\"font-size\\\" \\\".85rem\\\" \\\"background\\\" \\\"#8881\\\" \\\"color\\\" \\\"CanvasText\\\") (on \\\"click\\\" \\\"chat.cellsend\\\") (on \\\"pointerdown\\\" \\\"winsheet.stop\\\") \\\"send\\\"))\"))\n\t(cels 2 1 \"vault\"\n\t\t(at \"A1\" \"(secrets (locked secretsNote) (apiKeys))\")\n\t\t(at \"A2\" \"(dom \\\"div\\\" (style \\\"display\\\" \\\"flex\\\" \\\"flex-direction\\\" \\\"column\\\" \\\"gap\\\" \\\".3rem\\\" \\\"font-family\\\" \\\"ui-monospace,monospace\\\" \\\"font-size\\\" \\\".8rem\\\") (dom \\\"span\\\" (style \\\"color\\\" \\\"GrayText\\\" \\\"font-family\\\" \\\"system-ui\\\") \\\"your public key — share this; your private key never leaves the keystore\\\") (dom \\\"code\\\" (style \\\"word-break\\\" \\\"break-all\\\" \\\"padding\\\" \\\".15rem .4rem\\\" \\\"border\\\" \\\"1px solid #8884\\\" \\\"border-radius\\\" \\\".3rem\\\" \\\"background\\\" \\\"#8881\\\") (identity secretsGen)))\"))\n\t(cels 8 4 \"turtles\"\n\t\t(at \"A1\" \"Species\")\n\t\t(at \"B1\" \"Lifespan years\")\n\t\t(at \"C1\" \"Top speed km/h\")\n\t\t(at \"D1\" \"Eggs per clutch\")\n\t\t(at \"A2\" \"Galapagos tortoise\")\n\t\t(at \"B2\" \"177\")\n\t\t(at \"C2\" \"0.3\")\n\t\t(at \"D2\" \"10\")\n\t\t(at \"A3\" \"Leatherback\")\n\t\t(at \"B3\" \"50\")\n\t\t(at \"C3\" \"35\")\n\t\t(at \"D3\" \"110\")\n\t\t(at \"A4\" \"Green sea turtle\")\n\t\t(at \"B4\" \"75\")\n\t\t(at \"C4\" \"30\")\n\t\t(at \"D4\" \"113\")\n\t\t(at \"A5\" \"Loggerhead\")\n\t\t(at \"B5\" \"67\")\n\t\t(at \"C5\" \"24\")\n\t\t(at \"D5\" \"112\")\n\t\t(at \"A6\" \"Box turtle\")\n\t\t(at \"B6\" \"100\")\n\t\t(at \"C6\" \"0.4\")\n\t\t(at \"D6\" \"5\")\n\t\t(at \"A7\" \"Painted turtle\")\n\t\t(at \"B7\" \"55\")\n\t\t(at \"C7\" \"3.2\")\n\t\t(at \"D7\" \"8\")\n\t\t(at \"A8\" \"Snapping turtle\")\n\t\t(at \"B8\" \"47\")\n\t\t(at \"C8\" \"4\")\n\t\t(at \"D8\" \"35\"))\n\t(cels 3 1 \"turtlecharts\"\n\t\t(at \"A1\" \"=canvas(420,260, barchart(turtles!A2:A8, turtles!B2:B8))\")\n\t\t(at \"A2\" \"=canvas(420,260, linechart(turtles!A2:A8, turtles!C2:C8))\")\n\t\t(at \"A3\" \"=canvas(420,260, piechart(turtles!A2:A8, turtles!D2:D8))\"))\n\t(cels 2 1 \"files\"\n\t\t(at \"A1\" \"=upload(\\\"/\\\")\")\n\t\t(at \"A2\" \"=download(\\\"/desktop/wallpaper.jpg\\\")\"))\n\t(explorerwin))"
-  },
-  {
-   "key": "元.mount",
-   "celType": "ValueCel",
-   "metadata": {
-    "key": "元.mount",
-    "segment": "origin",
-    "name": "元.mount",
-    "description": "where the sheet view mounts. the host's one knob; null hides it."
-   },
-   "v": "#app"
-  },
-  {
-   "key": "元.editing",
-   "celType": "ValueCel",
-   "metadata": {
-    "key": "元.editing",
-    "segment": "origin",
-    "name": "元.editing",
-    "description": "key of the cell currently being edited (null = none)."
-   },
-   "v": null
-  },
-  {
-   "key": "元.draft",
-   "celType": "ValueCel",
-   "metadata": {
-    "key": "元.draft",
-    "segment": "origin",
-    "name": "元.draft",
-    "description": "the edit input's in-progress text."
-   },
-   "v": ""
-  },
-  {
-   "key": "元.error",
-   "celType": "ValueCel",
-   "metadata": {
-    "key": "元.error",
-    "segment": "origin",
-    "name": "元.error",
-    "description": "compile/parse error for the cell being edited (null = none); shown under the active editor so a bad formula doesn't fail silently."
-   },
-   "v": null
-  },
-  {
-   "key": "元.selected",
-   "celType": "ValueCel",
-   "metadata": {
-    "key": "元.selected",
-    "segment": "origin",
-    "name": "元.selected",
-    "description": "key of the currently SELECTED cell (Excel single-click). The cell keeps rendering its VALUE; the formula bar shows this cell's source and edits commit here. null = no selection."
-   },
-   "v": null
-  },
-  {
-   "key": "元.cells",
-   "celType": "ValueCel",
-   "metadata": {
-    "key": "元.cells",
-    "segment": "origin",
-    "name": "元.cells",
-    "description": "ordered spreadsheet cell keys: 元 (A1) + genesis-created grid cels."
-   },
-   "v": [
-    "元"
-   ]
-  },
-  {
-   "key": "元.srcs",
-   "celType": "ValueCel",
-   "metadata": {
-    "key": "元.srcs",
-    "segment": "origin",
-    "name": "元.srcs",
-    "description": "cell SOURCES parallel to 元.cells — the view shows a cell's source when its value renders elsewhere (a mount)."
-   },
-   "v": [
-    "(mount \".origin\"\n  (dom \"div.readme\" (style \"max-width\" \"47rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.5 ui-monospace, monospace\")\n    (canvas 560 92 (style \"display\" \"block\" \"border-radius\" \".4rem\" \"margin\" \"0 auto .35rem\") (rect 0 0 560 92 \"#16161f\") (text 18 42 \"plastron 🐢\" \"#f5f5f7\" \"bold 25px system-ui\") (text 18 70 \"a spreadsheet tool on an index.html — steal and use this anywhere\" \"#8a8a99\" \"12px system-ui\"))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"this readme is the formula in the cel above. drag that cell's corner to resize it, or replace its contents with your own formulas. for more cels, use a cels formula:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cels(8, 5)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a worksheet of editable cels\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cels(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a workbook of named sheets\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cels(\\\"in\\\", 4, 3, at(\\\"a1\\\", \\\"apple\\\"), at(\\\"b2\\\", \\\"=1+1\\\"))\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a sheet with initial cell values & formulas\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"or make a single new cel beside this one:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cel(\\\"monkey\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a new cel holding the value monkey\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cel(\\\"cel(\\\\\\\"banana\\\\\\\")\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a new cel holding a formula (that makes another cel)\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"you can make your own functions and use them in formulas after:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"define a function — js or py (first py use downloads pyodide, ~10MB)\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=double(21)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"call it → 42\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"you can make dom objects with formulas — and a little universe running on canvas:\")\n    (canvas 300 170 (style \"display\" \"block\" \"border-radius\" \".4rem\" \"margin\" \"0 auto .35rem\") (rect 0 0 300 170 \"#0a0a18\") (circle 150 85 12 \"#ffd34e\") (orbit 150 85 34 4 3 \"#7fd0ff\") (orbit 150 85 58 6 6 \"#e6677a\") (orbit 150 85 84 5 11 \"#9fe89f\"))\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"hi\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a styled dom element\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=canvas(300,170, rect(0,0,300,170,\\\"#0a0a18\\\"), circle(150,85,12,\\\"#ffd34e\\\"), orbit(150,85,34,4,3,\\\"#7fd0ff\\\"), orbit(150,85,58,6,6,\\\"#e6677a\\\"), orbit(150,85,84,5,11,\\\"#9fe89f\\\"))\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"↑ that animated solar system\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"inspect functions and the plastron segments they came from:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=inspect(\\\"mount\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a function's signature + source\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=segments()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"the plastron segments loaded\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"talk to grok — with an api key:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=grok(\\\"say hi in 5 words\\\", key)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a chat completion (key = a cel holding your api key)\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"save your work:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=save()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"persist this sheet to your browser — reload and it's back\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"share your whole app as one formula — paste a friend's doc(...) into the cel above to run it:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=seed()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"serialize this ENTIRE document to one doc(...) formula you can save or send\"))))\n    (dom \"p.fx-repo\" (style \"margin\" \".9rem 0 0\") (dom \"a\" (attr \"href\" \"https://github.com/rheophile10/plastron\" \"target\" \"_blank\") (style \"color\" \"LinkText\") \"github.com/rheophile10/plastron →\"))))"
-   ]
-  },
-  {
-   "key": "元.view",
-   "celType": "FormulaCel",
-   "metadata": {
-    "key": "元.view",
-    "segment": "origin",
-    "name": "元.view",
-    "parser": "f",
-    "schema": "render-spec",
-    "channel": [
-     "dom.paint"
-    ],
-    "inputMap": {
-     "editing": "元.editing",
-     "draft": "元.draft",
-     "mount": "元.mount",
-     "error": "元.error",
-     "keys": "元.cells",
-     "vals": [
-      "元"
-     ],
-     "srcs": "元.srcs",
-     "config": "元.viewConfig",
-     "geom": "win.geom",
-     "selected": "元.selected",
-     "tabdrag": "winsheet.tabdrag",
-     "vpmobile": "viewport.mobile"
+  "name": "origin",
+  "cels": [
+    {
+      "key": "元",
+      "celType": "FormulaCel",
+      "metadata": {
+        "key": "元",
+        "segment": "origin",
+        "name": "元",
+        "description": "cell A1 — the origin cell. its formula IS the desktop genesis: a wallpaper mount (.origin) plus the navpanel app launcher; editing it rebuilds the desktop, clearing it restores this seed. a cell whose output renders elsewhere shows its SOURCE here. type a formula to grow an app; the navpanel icons open the readme, keyboard, consent, segments, files, vault and DOOM.",
+        "parser": "f"
+      },
+      "f": "(segment \"rowflow\"\n\t(cels 3 1 \"desktop\"\n\t\t(at \"A1\" '(mount \".origin\" (img desktop.A2 windows.wallpaper (attr \"class\" \"desktop-bg\") (style \"position\" \"fixed\" \"inset\" \"0\" \"width\" \"100vw\" \"height\" \"100vh\" \"object-fit\" \"cover\" \"z-index\" \"-1\")))')\n\t\t(at \"A2\" \"\")\n\t\t(at \"A3\" '(mount \".origin\" (dom \"button.pl-reseed\" (style \"position\" \"fixed\" \"bottom\" \".6rem\" \"right\" \".8rem\" \"z-index\" \"60\" \"padding\" \".3rem .6rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".4rem\" \"background\" \"Canvas\" \"color\" \"CanvasText\" \"cursor\" \"pointer\" \"font\" \".72rem ui-monospace,monospace\" \"opacity\" \".55\") (on \"click\" \"origin.reseed\") \"↻ reseed\"))'))\n\t(navpanel))"
     },
-    "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place. Reads winsheet.tabdrag so the chip being dragged highlights in the drop-target blue."
-   },
-   "f": "(sheetView 元.viewConfig editing draft mount error keys vals srcs geom selected tabdrag vpmobile)"
-  },
-  {
-   "key": "cels",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "cels",
-    "segment": "origin",
-    "name": "cels",
-    "kind": "native",
-    "genesis": true,
-    "description": "genesis: worksheets of editable cels, each like 元. TOP-LEVEL ONLY — a genesis builds the sheet; it is never a child of dom()/canvas() (nested it stringifies to \"[object Object]\" and never materializes). cels(rows, cols) makes one sheet (auto-named g<r>x<c>); cels(rows, cols, \"name\") names it; cels(\"in\", 4, 3, \"out\", 4, 3) makes a WORKBOOK; cels(\"in\", 4, 3, at(\"a1\", \"apple\"), at(\"b2\", \"cel(\\\"monkey\\\")\")) fills cells with initial values/formulas. To chart a grid, put the chart in a cell OF that grid: at(\"A5\", '=canvas(360,200, barchart(sales!A2:A4, sales!B2:B4))'). delete the formula -> swept."
-   }
-  },
-  {
-   "key": "at",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "at",
-    "segment": "origin",
-    "name": "at",
-    "kind": "native",
-    "description": "at(addr, content) - one cell's initial content for a cels() grid, e.g. cels(\"in\", 4, 3, at(\"a1\", \"apple\"))."
-   }
-  },
-  {
-   "key": "doc",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "doc",
-    "segment": "origin",
-    "name": "doc",
-    "kind": "native",
-    "genesis": true,
-    "description": "DEPRECATED legacy alias of seg/甲. genesis: compose a whole document from cels()/def()/cel() parts in one formula, e.g. doc(cels(\"in\",2,2,at(\"a1\",\"x\")), def(\"f\",\"js\",\"x=>x\")). What seed() emits — paste it into 元 to recreate an app."
-   }
-  },
-  {
-   "key": "seed",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "seed",
-    "segment": "origin",
-    "name": "seed",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "() - serialize the WHOLE document to a single recreating formula (a doc(...) / cels(...) you can paste into 元). Callable from any cel; its value becomes the seed source."
-   }
-  },
-  {
-   "key": "export",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "export",
-    "segment": "origin",
-    "name": "export",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(segment?) - dump a document segment (or, with no arg, the WHOLE document stack) to a lossless 甲骨 archive json string; the boot substrate is never included. Paste it into =import() elsewhere. The formula form is =seed() (whole doc) / =link() (a URL)."
-   }
-  },
-  {
-   "key": "import",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "import",
-    "segment": "origin",
-    "name": "import",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(src) - load an archive json string (or a =formula) into the document stack: ADD a new segment, or wholesale-REPLACE a same-named one. Refuses a boot-set name (net/dom/origin/…). =import(\"{...}\")"
-   }
-  },
-  {
-   "key": "origin.commit",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.commit",
-    "segment": "origin",
-    "name": "origin.commit",
-    "kind": "native",
-    "description": "(state, cellKey) - set the cell's content from the draft and re-evaluate; rebuild the cell list (new grids in, swept out); 元 un-deletable (empty restores readme)."
-   }
-  },
-  {
-   "key": "origin.edit",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.edit",
-    "segment": "origin",
-    "name": "origin.edit",
-    "kind": "native",
-    "description": "(state, cellKeyOrForceSpec) - start INLINE editing a cell (seed draft with its source); the Excel double-click path (single-click SELECTS via origin.select). Payload is the cell key, or { key, force: true } to start editing past the form-control guard."
-   }
-  },
-  {
-   "key": "origin.select",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.select",
-    "segment": "origin",
-    "name": "origin.select",
-    "kind": "native",
-    "description": "(state, cellKey, event) - SELECT a cell (Excel single-click): set 元.selected + 元.selectedSrc + seed 元.draft from its source, WITHOUT swapping it to the inline editor, so the grid keeps showing the value while the formula bar shows the source. A click on a form control a formula rendered is left alone."
-   }
-  },
-  {
-   "key": "origin.fire",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.fire",
-    "segment": "origin",
-    "name": "origin.fire",
-    "kind": "native",
-    "description": "(state, cellKey?) - FIRE (re-evaluate) the selected cell (or the given key): a FormulaCel re-applies its source via setValue (recompile + re-cascade); a ValueCel re-writes its own value (re-cascades dependents). Wired to the 🔫 button on the formula bar."
-   }
-  },
-  {
-   "key": "ex",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "ex",
-    "segment": "origin",
-    "name": "ex",
-    "kind": "native",
-    "description": "(formula, target) - a try-it payload pairing an example formula with the cell key it should run in. Used inside the readme's yellow-lightning buttons: (on \"click\" \"tryexample\" (ex \"=cels(8, 5)\" \"readme.B2\")). Returns a marker the painter hands to tryexample verbatim as the click payload."
-   }
-  },
-  {
-   "key": "tryexample",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "tryexample",
-    "segment": "origin",
-    "name": "tryexample",
-    "kind": "native",
-    "description": "(state, exPayload) - the readme 'try it' handler. Clicking a yellow ⚡ next to an example copies that example's formula into a scratch cell beside the readme (its B-column target) and evaluates it, so the result appears. Implemented by seeding 元.draft with the formula then running origin.commit on the target cell, which sniffs the source into a FormulaCel, writes it, re-evaluates, and repaints."
-   }
-  },
-  {
-   "key": "origin.key",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.key",
-    "segment": "origin",
-    "name": "origin.key",
-    "kind": "native",
-    "description": "(state, cellKey, event) - Enter commits the draft."
-   }
-  },
-  {
-   "key": "origin.effects",
-   "celType": "ChannelCel",
-   "metadata": {
-    "key": "origin.effects",
-    "segment": "origin",
-    "name": "origin.effects",
-    "drain": "origin.drain",
-    "description": "load/cels requests commit here (effects at drain)."
-   },
-   "v": {
-    "drain": "origin.drain"
-   },
-   "locked": true
-  },
-  {
-   "key": "origin.drain",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.drain",
-    "segment": "origin",
-    "name": "origin.drain",
-    "kind": "native",
-    "description": "(items) - execute cels (segment listing) requests; result text replaces the request as the cel's value."
-   }
-  },
-  {
-   "key": "members",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "members",
-    "segment": "origin",
-    "name": "members",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(segment) - readable listing of a segment's cels (skill first; locked marked)."
-   }
-  },
-  {
-   "key": "inspect",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "inspect",
-    "segment": "origin",
-    "name": "inspect",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(key) - the cel's full definition (celType, value, formula, metadata) as readable JSON."
-   }
-  },
-  {
-   "key": "segments",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "segments",
-    "segment": "origin",
-    "name": "segments",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "() - every loaded segment with role, version, dependencies."
-   }
-  },
-  {
-   "key": "segnav",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "segnav",
-    "segment": "origin",
-    "name": "segnav",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "([mobile]) - an AUTO navbar built from the live DOCUMENT segments; each item switches to its segment (wakes it if dormant, raises its window). The segment switcher, beside the hand-authored =nav(=item(...)). =mount(\"top\", =segnav())"
-   }
-  },
-  {
-   "key": "vocab",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "vocab",
-    "segment": "origin",
-    "name": "vocab",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(segment?) - the values + functions usable in formulas (callable lambdas/compilers + value cels) with descriptions; no arg = across all loaded segments."
-   }
-  },
-  {
-   "key": "viewport",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "viewport",
-    "segment": "origin",
-    "name": "viewport",
-    "kind": "native",
-    "description": "() - current page metrics {w, h, mobile, orient} as a one-shot snapshot. For REACTIVE layout reference the cels instead: viewport.w / viewport.h / viewport.mobile / viewport.orient update on window resize, so a formula re-runs to relayout — =IF(viewport.mobile, dom(\"h1\",\"phone\"), win(\"app\",\"App\",body)) or =win(\"app\",\"App\",body, viewport.w, viewport.h - 40)."
-   }
-  },
-  {
-   "key": "origin.viewportSync",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.viewportSync",
-    "segment": "origin",
-    "name": "viewportSync",
-    "kind": "native",
-    "description": "(host) writes live page metrics into the viewport.* cels so formulas that reference them re-run; the host calls it at boot and on resize."
-   }
-  },
-  {
-   "key": "origin.clockSync",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.clockSync",
-    "segment": "origin",
-    "name": "clockSync",
-    "kind": "native",
-    "description": "(host) writes the current time into the clock (HH:MM) + clock.full cels so a formula referencing them (e.g. a taskbar) re-renders; the host calls it on an interval. Reference `clock` in a formula instead of a banned NOW()."
-   }
-  },
-  {
-   "key": "item",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "item",
-    "segment": "origin",
-    "name": "item",
-    "kind": "native",
-    "description": "(label, action, ...children) - one navigation menu node for nav(). label is text/emoji; action is a window KEY (clicking focuses that window) or a '=formula' (clicking spawns a new window running it), or omit action for a pure submenu parent. children are more item()s (WordPress-style nesting). e.g. item(\"📊 Charts\", item(\"🥧 Pie\", '=cels(3,2, ...piechart...)'))."
-   }
-  },
-  {
-   "key": "nav",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "nav",
-    "segment": "origin",
-    "name": "nav",
-    "kind": "native",
-    "description": "([mobile], ...items) - a navigation menu from item() nodes. Pass viewport.mobile as the first arg so it AUTO-SWITCHES: a collapsible left sidebar (☰) on mobile, desktop icon-launchers otherwise (it re-renders on rotate/resize). Nesting collapses via native <details>. e.g. =nav(viewport.mobile, item(\"📁 Files\",\"files\"), item(\"📊 Charts\", item(\"🥧 Pie\", '=cels(3,2,at(\"A1\",\"x\"))')))."
-   }
-  },
-  {
-   "key": "origin.navOpen",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.navOpen",
-    "segment": "origin",
-    "name": "navOpen",
-    "kind": "native",
-    "description": "dispatch target for a clicked nav leaf: a '=formula' action spawns a new window (trusted, capped by the kernel); any other action is a window key and focuses that window."
-   }
-  },
-  {
-   "key": "def",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "def",
-    "segment": "origin",
-    "name": "def",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(name, kind, source) - define a callable function from source in a compiler kind (\"js\" works out of the box). =def(\"double\", \"js\", \"x => x * 2\") then call it: =double(21) -> 42."
-   }
-  },
-  {
-   "key": "chat",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "chat",
-    "segment": "origin",
-    "name": "chat",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(prompt, apiKey [, model] [, url]) - a chat-completion request to an OpenAI-shaped endpoint; the reply text lands in the cell. apiKey is the value - a literal string or a cel reference holding the key."
-   }
-  },
-  {
-   "key": "grok",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "grok",
-    "segment": "origin",
-    "name": "grok",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(prompt, apiKey [, model]) - chat() pinned to xAI Grok. =grok(\"say hi\", apiKeyCel) or =grok(\"say hi\", \"xai-...\"). browser CORS may block direct calls; works from a CLI/Bun host."
-   }
-  },
-  {
-   "key": "cdn",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "cdn",
-    "segment": "origin",
-    "name": "cdn",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(url) - load an external script/library from a URL via the kernel loadScript primitive. =cdn(\"https://cdn.jsdelivr.net/npm/canvas-confetti\") then call what it exposes."
-   }
-  },
-  {
-   "key": "ls",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "ls",
-    "segment": "origin",
-    "name": "ls",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(path?) - list a directory in OPFS (default /). dirs show a trailing /."
-   }
-  },
-  {
-   "key": "tree",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "tree",
-    "segment": "origin",
-    "name": "tree",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(path?) - recursive directory tree in OPFS (default /)."
-   }
-  },
-  {
-   "key": "mkdir",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "mkdir",
-    "segment": "origin",
-    "name": "mkdir",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(path) - make a directory in OPFS (recursive)."
-   }
-  },
-  {
-   "key": "rm",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "rm",
-    "segment": "origin",
-    "name": "rm",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(path) - remove a file or directory from OPFS (auto file-vs-dir)."
-   }
-  },
-  {
-   "key": "mv",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "mv",
-    "segment": "origin",
-    "name": "mv",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(from, to) - move/rename a file or directory in OPFS."
-   }
-  },
-  {
-   "key": "cat",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "cat",
-    "segment": "origin",
-    "name": "cat",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(path) - read a text file from OPFS into the cell."
-   }
-  },
-  {
-   "key": "write",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "write",
-    "segment": "origin",
-    "name": "write",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(path, text) - write text to a file in OPFS (create/overwrite)."
-   }
-  },
-  {
-   "key": "touch",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "touch",
-    "segment": "origin",
-    "name": "touch",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(path) - create an empty file in OPFS if it does not exist."
-   }
-  },
-  {
-   "key": "stat",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "stat",
-    "segment": "origin",
-    "name": "stat",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(path) - size / isDir / mtime of an OPFS path."
-   }
-  },
-  {
-   "key": "explorer",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "explorer",
-    "segment": "origin",
-    "name": "explorer",
-    "kind": "native",
-    "description": "(cwd, preview, listing) - a PURE OPFS file-explorer vnode: renders the folders (📁, click→origin.explorerNav to descend) and files (📄, click→origin.explorerOpen to preview) from `listing` ({entries,previewText}) at cwd, plus a '..' row and an upload input. The async OPFS read lives in the nav/open handlers (which write explorer.listing); this fn is pure so the window content formula (explorer explorer.cwd explorer.preview explorer.listing) re-fires reactively."
-   }
-  },
-  {
-   "key": "origin.explorerNav",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.explorerNav",
-    "segment": "origin",
-    "name": "origin.explorerNav",
-    "kind": "native",
-    "description": "(state, path) - dispatch target: set explorer.cwd to path (descend a folder / climb via '..'); the explorer content formula references explorer.cwd so the listing re-fires."
-   }
-  },
-  {
-   "key": "origin.explorerOpen",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.explorerOpen",
-    "segment": "origin",
-    "name": "origin.explorerOpen",
-    "kind": "native",
-    "description": "(state, path) - dispatch target: set explorer.preview to a file path; the explorer content formula re-fires and the drain cats it into the preview pane."
-   }
-  },
-  {
-   "key": "origin.explorerOpenSheet",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.explorerOpenSheet",
-    "segment": "origin",
-    "name": "origin.explorerOpenSheet",
-    "kind": "native",
-    "description": "(state, path) - dispatch target on a file row's DOUBLE-click: a .csv/.xlsx/.甲 file is read from OPFS and opened as a NEW standalone sheet window via sheet-host's openAsSheet (format detected by extension: csv->values grid, xlsx->fromXlsx, 甲->rich archive with cels+formulas). Any other file falls back to the single-click text-preview behavior."
-   }
-  },
-  {
-   "key": "origin.explorerRefresh",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.explorerRefresh",
-    "segment": "origin",
-    "name": "origin.explorerRefresh",
-    "kind": "native",
-    "description": "(state) - populate explorer.listing from the current explorer.cwd/preview (one OPFS read). Host-called once at boot so the explorer window shows its initial listing; the nav/open handlers refresh it thereafter. The listing's preview is GUARDED: a known-binary extension (.wasm/.wad/.png/.甲/.xlsx/fonts/...) OR a file over 256 KB OR bytes that aren't valid UTF-8 are NEVER read as text (that would blow out browser memory) — the preview shows a 'binary file — <ext>, <size> — download to inspect' placeholder instead; only small valid-UTF-8 text files are decoded into the preview pane."
-   }
-  },
-  {
-   "key": "origin.explorerDelete",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.explorerDelete",
-    "segment": "origin",
-    "name": "origin.explorerDelete",
-    "kind": "native",
-    "description": "(state, path) - dispatch target for the explorer's 🗑 button: fs.delete the file, clear explorer.preview if it was showing that file, then refresh explorer.listing (reactive via the content formula — no hand-rolled repaint)."
-   }
-  },
-  {
-   "key": "origin.explorerRename",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.explorerRename",
-    "segment": "origin",
-    "name": "origin.explorerRename",
-    "kind": "native",
-    "description": "(state, path) - dispatch target for the explorer's ✎ button: prompt() for a new name in the same dir, fs.rename the file, follow explorer.preview if it moved, then refresh explorer.listing. No-op off-DOM (no prompt available)."
-   }
-  },
-  {
-   "key": "origin.explorerDownload",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.explorerDownload",
-    "segment": "origin",
-    "name": "origin.explorerDownload",
-    "kind": "native",
-    "description": "(state, path) - dispatch target for the explorer's ⬇ button (and the binary-preview download): reuses origin.download to read OPFS bytes into a browser file save."
-   }
-  },
-  {
-   "key": "segs",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "segs",
-    "segment": "origin",
-    "name": "segs",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "() - list sheets saved to OPFS (=saveSeg/openSeg/delSeg manage them)."
-   }
-  },
-  {
-   "key": "saveSeg",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "saveSeg",
-    "segment": "origin",
-    "name": "saveSeg",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(name) - save the whole current sheet to an OPFS file under /plastron/sheets."
-   }
-  },
-  {
-   "key": "openSeg",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "openSeg",
-    "segment": "origin",
-    "name": "openSeg",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(name) - restore a sheet previously saved with saveSeg from OPFS."
-   }
-  },
-  {
-   "key": "delSeg",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "delSeg",
-    "segment": "origin",
-    "name": "delSeg",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(name) - delete a saved sheet from OPFS."
-   }
-  },
-  {
-   "key": "download",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "download",
-    "segment": "origin",
-    "name": "download",
-    "kind": "native",
-    "description": "(path) - a button that downloads an OPFS file to your disk."
-   }
-  },
-  {
-   "key": "downloadSeg",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "downloadSeg",
-    "segment": "origin",
-    "name": "downloadSeg",
-    "kind": "native",
-    "description": "(name) - a button that downloads a saved sheet (.json) from OPFS."
-   }
-  },
-  {
-   "key": "upload",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "upload",
-    "segment": "origin",
-    "name": "upload",
-    "kind": "native",
-    "description": "(dir?) - a file picker; the chosen file is written into OPFS (default /)."
-   }
-  },
-  {
-   "key": "db",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "db",
-    "segment": "origin",
-    "name": "db",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(name?) - open/create a sqlite database in OPFS (default main). returns a handle for sql()/tables()."
-   }
-  },
-  {
-   "key": "sql",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "sql",
-    "segment": "origin",
-    "name": "sql",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(db, query) - run SQL against a db handle; SELECT returns rows, writes persist to OPFS."
-   }
-  },
-  {
-   "key": "tables",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "tables",
-    "segment": "origin",
-    "name": "tables",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(db) - list the tables in a db."
-   }
-  },
-  {
-   "key": "interlinked",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "interlinked",
-    "segment": "origin",
-    "name": "interlinked",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(seg) - force-directed graph of a grid segment's cels (nodes) + their inputMap deps (edges), drawn on canvas."
-   }
-  },
-  {
-   "key": "simulate",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "simulate",
-    "segment": "origin",
-    "name": "simulate",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(fnName, n?) - def-driven animation: run a def'd frame fn (i -> [x, y]) n times and play the trajectory on an animated canvas."
-   }
-  },
-  {
-   "key": "dragdrop",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "dragdrop",
-    "segment": "origin",
-    "name": "dragdrop",
-    "kind": "native",
-    "description": "(w?, h?) - two drop zones (A, B) + a rectangle you drag between them; it snaps to the nearest zone on release."
-   }
-  },
-  {
-   "key": "origin.download",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.download",
-    "segment": "origin",
-    "name": "origin.download",
-    "kind": "native",
-    "description": "(state, path, event) - dispatch target: read OPFS bytes → browser download."
-   }
-  },
-  {
-   "key": "consentpanel",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "consentpanel",
-    "segment": "origin",
-    "name": "consentpanel",
-    "kind": "native",
-    "genesis": true,
-    "description": "() - open the Consent panel: the dangerous functions (I/O + code) the current page uses, each Allow/Revoke toggleable. Replaces the per-sheet trust shield. Reads consent.usage."
-   }
-  },
-  {
-   "key": "consentdom",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "consentdom",
-    "segment": "origin",
-    "name": "consentdom",
-    "kind": "native",
-    "description": "(usage) - render the consent list from the consent.usage value (each dangerous fn in use: category, reason, call-count, segments, Allow/Revoke). Buttons dispatch origin.consentToggle."
-   }
-  },
-  {
-   "key": "origin.consentToggle",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.consentToggle",
-    "segment": "origin",
-    "name": "consentToggle",
-    "kind": "native",
-    "description": "dispatch target: flip one function's consent (allow/deny) in the consent cel, then refresh consent.usage. Host/user-only (never a formula verb)."
-   }
-  },
-  {
-   "key": "origin.consentSync",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.consentSync",
-    "segment": "origin",
-    "name": "consentSync",
-    "kind": "native",
-    "description": "(host) recompute consent.usage = the dangerous functions the live graph references, so the Consent panel re-renders."
-   }
-  },
-  {
-   "key": "origin.upload",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.upload",
-    "segment": "origin",
-    "name": "origin.upload",
-    "kind": "native",
-    "description": "(state, dir, event) - dispatch target: write the picked file's bytes into OPFS."
-   }
-  },
-  {
-   "key": "save",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "save",
-    "segment": "origin",
-    "name": "save",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(name?) - persist your sheet (cell sources + def'd functions) to this browser's localStorage. =save() then reload and it's back; =save(\"v2\") for a named slot."
-   }
-  },
-  {
-   "key": "open",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "open",
-    "segment": "origin",
-    "name": "open",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(name?) - restore a saved sheet from localStorage. =open() loads the default slot; =open(\"v2\") a named one."
-   }
-  },
-  {
-   "key": "link",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "link",
-    "segment": "origin",
-    "name": "link",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(target?, base?) - a shareable URL that rebuilds a plastron from the page address (#f= hash, deflate+base64url). =link() encodes the WHOLE sheet; =link(\"元\") encodes one cell's source; =link(\"\", \"\") makes a relative #f= that works from a file. Paste the URL anywhere — it survives a tweet (t.co shortens it)."
-   }
-  },
-  {
-   "key": "unlink",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "unlink",
-    "segment": "origin",
-    "name": "unlink",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(url) - decode a =link() URL (or bare #f= payload) back to its formula source, as text. The inverse of link. Does NOT run it — paste the source into a cell yourself."
-   }
-  },
-  {
-   "key": "encrypt",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "encrypt",
-    "segment": "origin",
-    "name": "encrypt",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(passphrase?, target?, base?) - like link, but AES-256-GCM the source behind a passphrase. The URL parameter names the method: https://plastron.ca/#aes256gcm=<ciphertext>. =encrypt() encrypts the WHOLE sheet; =encrypt(\"\", \"元\") one cell. Omit the passphrase to be PROMPTED (so it never lands in the sheet). Pipeline: deflate → AES-256-GCM (PBKDF2-SHA256, 600k) → base64url; AES-256 is quantum-resistant. The URL is opaque; share the passphrase out-of-band. Caveat: the decrypted formula lives in browser memory — run a local index.html offline for high stakes."
-   }
-  },
-  {
-   "key": "decrypt",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "decrypt",
-    "segment": "origin",
-    "name": "decrypt",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(url, passphrase?) - decode a =encrypt() URL (or bare #aes256gcm= payload) back to its formula source, as text. The inverse of encrypt. Omit the passphrase to be PROMPTED. Does NOT run it — paste the source into a cell yourself. A wrong passphrase or tampered link yields an error (GCM authenticates)."
-   }
-  },
-  {
-   "key": "otpEncrypt",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "otpEncrypt",
-    "segment": "origin",
-    "name": "otpEncrypt",
-    "kind": "native",
-    "description": "(target?) - ONE-TIME-PAD encrypt with UNCONDITIONAL secrecy (perfect, quantum-immune). Renders a file picker: choose a pad file of random bytes (≥ message length + 32) shared with your peer. Produces https://plastron.ca/#otp=<padName>.<ciphertext> — ciphertext = formula XOR pad, plus a one-time Carter-Wegman MAC for unconditional integrity. NO compression (would leak length info). One pad file = ONE message: DELETE it from both stacks after use; never reuse a pad. target \"\" = whole sheet; a cell key = its source."
-   }
-  },
-  {
-   "key": "otpDecrypt",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "otpDecrypt",
-    "segment": "origin",
-    "name": "otpDecrypt",
-    "kind": "native",
-    "description": "(url) - decode a =otpEncrypt() #otp= link. Renders a file picker for the matching pad (the URL names which pad). Returns the formula source as text in the formula bar; does NOT run it. A wrong pad or tampered message fails the MAC check. Delete the pad after use."
-   }
-  },
-  {
-   "key": "otpLoader",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "otpLoader",
-    "segment": "origin",
-    "name": "otpLoader",
-    "kind": "native",
-    "description": "(padId, payload) - the boot view a #otp= URL renders as 元: a file picker to load the named pad and decrypt the shared plastron (kernel stays LOCKED). Used by bootFromHash; not usually called by hand."
-   }
-  },
-  {
-   "key": "origin.otpEncrypt",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.otpEncrypt",
-    "segment": "origin",
-    "name": "origin.otpEncrypt",
-    "kind": "native",
-    "description": "(state, target, event) - dispatch target: XOR the source with the picked pad → an #otp= URL in the formula bar; warns to delete the spent pad."
-   }
-  },
-  {
-   "key": "origin.otpDecrypt",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.otpDecrypt",
-    "segment": "origin",
-    "name": "origin.otpDecrypt",
-    "kind": "native",
-    "description": "(state, url, event) - dispatch target: decrypt an #otp= payload with the picked pad → the formula source in the formula bar (does not run it)."
-   }
-  },
-  {
-   "key": "origin.otpUnlock",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.otpUnlock",
-    "segment": "origin",
-    "name": "origin.otpUnlock",
-    "kind": "native",
-    "description": "(state, payload, event) - boot dispatch target: load the pad → decrypt → the shared formula becomes 元 (still jailed/locked)."
-   }
-  },
-  {
-   "key": "kernel",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "kernel",
-    "segment": "origin",
-    "name": "kernel",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(seed, preset?) - spawn a QUARANTINED child plastron from a seed formula in a fresh segment (app1, app2, …). preset = locked (default) | compute | net | trusted, capped by THIS kernel's trust. The child's cells live under <seg>.*; gated capabilities (code/net/storage) come back #DENIED unless the preset grants them. A #f= share URL is just a locked seed."
-   }
-  },
-  {
-   "key": "jail",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "jail",
-    "segment": "origin",
-    "name": "jail",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(seed) - render a SANDBOXED iframe running the seed formula as its OWN kernel. allow-scripts but no allow-same-origin → opaque origin: it cannot touch localStorage, the parent page, or other tabs. The browser's real Layer-A jail for untrusted plastrons."
-   }
-  },
-  {
-   "key": "winsize",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "winsize",
-    "segment": "origin",
-    "name": "winsize",
-    "kind": "native",
-    "emitsTo": "origin.effects",
-    "description": "(seg, w, h) - set a worksheet window's size in px, so a sheet can lay itself out (e.g. a wide score). winsize(seg, \"max\") (or \"full\"/\"fullscreen\") MAXIMIZES the window to the viewport. Writes win.geom[seg]."
-   }
-  },
-  {
-   "key": "origin.savepage",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.savepage",
-    "segment": "origin",
-    "name": "origin.savepage",
-    "kind": "native",
-    "description": "(state) - download the running plastron as a single self-contained 龜甲.html you can re-open or redeploy anywhere. Wired to the ⬇ 龜甲 button in the desktop's upper-right corner."
-   }
-  },
-  {
-   "key": "origin.tone",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.tone",
-    "segment": "origin",
-    "name": "origin.tone",
-    "kind": "native",
-    "description": "(state, freq) - play ONE Web Audio oscillator note at the given frequency (Hz). Loads the sound segment on first use. Wire it to a button: (on \"click\" \"origin.tone\" 440)."
-   }
-  },
-  {
-   "key": "origin.music",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.music",
-    "segment": "origin",
-    "name": "origin.music",
-    "kind": "native",
-    "description": "(state) - play a short melody (Ode to Joy) via the Web Audio sound segment. Browser audio is autoplay-gated, so trigger it from a click."
-   }
-  },
-  {
-   "key": "origin.compose",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.compose",
-    "segment": "origin",
-    "name": "origin.compose",
-    "kind": "native",
-    "description": "(state) - start 'Symphony of Cels', an ORIGINAL generative phase piece (pentatonic voices at incommensurate periods, evolving harmony). Web Audio autoplay-gated → start from a click. origin.composeStop ends it."
-   }
-  },
-  {
-   "key": "origin.composeStop",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.composeStop",
-    "segment": "origin",
-    "name": "origin.composeStop",
-    "kind": "native",
-    "description": "(state) - stop the generative piece started by origin.compose."
-   }
-  },
-  {
-   "key": "origin.playmelody",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.playmelody",
-    "segment": "origin",
-    "name": "origin.playmelody",
-    "kind": "native",
-    "description": "(state, seg) - read column A of sheet seg as a RANGE of note frequencies (Hz) and play them in sequence. Type numbers down a column to write a tune; wire a button: on(\"click\",\"origin.playmelody\",\"melody\")."
-   }
-  },
-  {
-   "key": "origin.demoMusic",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.demoMusic",
-    "segment": "origin",
-    "name": "origin.demoMusic",
-    "kind": "native",
-    "description": "(state) - open the Symphony of Cels example: the score, keyboard, and melody worksheets, as windows. Wired to the desktop launcher button."
-   }
-  },
-  {
-   "key": "origin.demoMidi",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.demoMidi",
-    "segment": "origin",
-    "name": "origin.demoMidi",
-    "kind": "native",
-    "description": "(state) - open the MIDI demo: a worksheet that is a table of note cells (track, channel, pitch, notename, start, dur, velocity) plus a =miditrack(...) player cell. Sample tune is Ode to Joy (Beethoven, public domain)."
-   }
-  },
-  {
-   "key": "origin.tile",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.tile",
-    "segment": "origin",
-    "name": "origin.tile",
-    "kind": "native",
-    "description": "(state, segs?) - auto-layout worksheet windows: size each to its CONTENT (capped to the viewport) and PACK them non-overlapping instead of stacked. segs = a list/comma-string, or all open windows."
-   }
-  },
-  {
-   "key": "音.demo",
-   "celType": "ValueCel",
-   "locked": true,
-   "metadata": {
-    "key": "音.demo",
-    "segment": "origin",
-    "name": "音.demo",
-    "description": "The Symphony of Cels demo — a segment(...) formula that opens the score, keyboard, and melody worksheets. Loaded by origin.demoMusic."
-   },
-   "v": "=segment(cels(\"score\",6,7,at(\"a1\",\"voice\"),at(\"b1\",\"period\"),at(\"c1\",\"note Hz\"),at(\"d1\",\"gain\"),at(\"f1\",\"=dom(\\\"button\\\",style(\\\"padding\\\",\\\".4rem .9rem\\\",\\\"border\\\",\\\"0\\\",\\\"border-radius\\\",\\\".4rem\\\",\\\"background\\\",\\\"#5fae6f\\\",\\\"color\\\",\\\"#fff\\\",\\\"cursor\\\",\\\"pointer\\\",\\\"font\\\",\\\"600 .9rem system-ui\\\"),on(\\\"click\\\",\\\"origin.compose\\\"),\\\"▶ play\\\")\"),at(\"g1\",\"=dom(\\\"button\\\",style(\\\"padding\\\",\\\".4rem .9rem\\\",\\\"border\\\",\\\"1px solid #888\\\",\\\"border-radius\\\",\\\".4rem\\\",\\\"background\\\",\\\"transparent\\\",\\\"color\\\",\\\"#333\\\",\\\"cursor\\\",\\\"pointer\\\",\\\"font\\\",\\\"600 .9rem system-ui\\\"),on(\\\"click\\\",\\\"origin.composeStop\\\"),\\\"⏹\\\")\"),at(\"a2\",\"bass\"),at(\"b2\",\"8\"),at(\"c2\",\"98\"),at(\"d2\",\"0.22\"),at(\"f2\",\"=dom(\\\"div.pl-viz\\\",style(\\\"display\\\",\\\"inline-flex\\\",\\\"padding\\\",\\\".4rem\\\"),dom(\\\"style\\\",\\\".pl-viz .dot{opacity:.45}.pl-viz.on .dot{animation:pul var(--p) ease-in-out infinite}@keyframes pul{0%,100%{transform:scale(.5);opacity:.2}50%{transform:scale(1.2);opacity:1}}\\\"),dom(\\\"div\\\",style(\\\"display\\\",\\\"grid\\\",\\\"grid-template-columns\\\",\\\"repeat(8,12px)\\\",\\\"gap\\\",\\\"7px\\\"),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"1.70s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#e8d8a0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"1.90s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#e8d8a0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.10s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#e8d8a0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.30s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#e8d8a0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.50s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#e8d8a0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.70s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#e8d8a0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.90s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#e8d8a0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"3.10s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#e8d8a0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"1.70s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#9ad29a\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"1.90s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#9ad29a\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.10s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#9ad29a\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.30s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#9ad29a\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.50s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#9ad29a\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.70s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#9ad29a\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.90s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#9ad29a\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"3.10s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#9ad29a\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"1.70s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#6ec6ff\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"1.90s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#6ec6ff\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.10s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#6ec6ff\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.30s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#6ec6ff\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.50s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#6ec6ff\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.70s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#6ec6ff\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.90s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#6ec6ff\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"3.10s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#6ec6ff\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"1.70s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#c79af0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"1.90s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#c79af0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.10s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#c79af0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.30s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#c79af0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.50s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#c79af0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.70s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#c79af0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"2.90s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#c79af0\\\")),dom(\\\"div.dot\\\",style(\\\"--p\\\",\\\"3.10s\\\",\\\"width\\\",\\\"12px\\\",\\\"height\\\",\\\"12px\\\",\\\"border-radius\\\",\\\"50%\\\",\\\"background\\\",\\\"#c79af0\\\"))))\"),at(\"a3\",\"v1\"),at(\"b3\",\"3\"),at(\"c3\",\"196\"),at(\"d3\",\"0.3\"),at(\"a4\",\"v2\"),at(\"b4\",\"4\"),at(\"c4\",\"294\"),at(\"d4\",\"0.26\"),at(\"a5\",\"v3\"),at(\"b5\",\"5\"),at(\"c5\",\"392\"),at(\"d5\",\"0.24\"),at(\"a6\",\"v4\"),at(\"b6\",\"7\"),at(\"c6\",\"523\"),at(\"d6\",\"0.2\"),at(\"g6\",\"=winsize(\\\"score\\\",720,290)\")),cels(\"keyboard\",2,6,at(\"a1\",\"=dom(\\\"button\\\",style(\\\"width\\\",\\\"100%\\\",\\\"height\\\",\\\"54px\\\",\\\"border\\\",\\\"1px solid #444\\\",\\\"border-radius\\\",\\\".3rem\\\",\\\"background\\\",\\\"#fafafa\\\",\\\"color\\\",\\\"#222\\\",\\\"cursor\\\",\\\"pointer\\\",\\\"font\\\",\\\"700 .9rem ui-monospace\\\"),on(\\\"click\\\",\\\"origin.tone\\\",262),\\\"C\\\")\"),at(\"b1\",\"=dom(\\\"button\\\",style(\\\"width\\\",\\\"100%\\\",\\\"height\\\",\\\"54px\\\",\\\"border\\\",\\\"1px solid #444\\\",\\\"border-radius\\\",\\\".3rem\\\",\\\"background\\\",\\\"#fafafa\\\",\\\"color\\\",\\\"#222\\\",\\\"cursor\\\",\\\"pointer\\\",\\\"font\\\",\\\"700 .9rem ui-monospace\\\"),on(\\\"click\\\",\\\"origin.tone\\\",294),\\\"D\\\")\"),at(\"c1\",\"=dom(\\\"button\\\",style(\\\"width\\\",\\\"100%\\\",\\\"height\\\",\\\"54px\\\",\\\"border\\\",\\\"1px solid #444\\\",\\\"border-radius\\\",\\\".3rem\\\",\\\"background\\\",\\\"#fafafa\\\",\\\"color\\\",\\\"#222\\\",\\\"cursor\\\",\\\"pointer\\\",\\\"font\\\",\\\"700 .9rem ui-monospace\\\"),on(\\\"click\\\",\\\"origin.tone\\\",330),\\\"E\\\")\"),at(\"d1\",\"=dom(\\\"button\\\",style(\\\"width\\\",\\\"100%\\\",\\\"height\\\",\\\"54px\\\",\\\"border\\\",\\\"1px solid #444\\\",\\\"border-radius\\\",\\\".3rem\\\",\\\"background\\\",\\\"#fafafa\\\",\\\"color\\\",\\\"#222\\\",\\\"cursor\\\",\\\"pointer\\\",\\\"font\\\",\\\"700 .9rem ui-monospace\\\"),on(\\\"click\\\",\\\"origin.tone\\\",392),\\\"G\\\")\"),at(\"e1\",\"=dom(\\\"button\\\",style(\\\"width\\\",\\\"100%\\\",\\\"height\\\",\\\"54px\\\",\\\"border\\\",\\\"1px solid #444\\\",\\\"border-radius\\\",\\\".3rem\\\",\\\"background\\\",\\\"#fafafa\\\",\\\"color\\\",\\\"#222\\\",\\\"cursor\\\",\\\"pointer\\\",\\\"font\\\",\\\"700 .9rem ui-monospace\\\"),on(\\\"click\\\",\\\"origin.tone\\\",440),\\\"A\\\")\"),at(\"f1\",\"=dom(\\\"button\\\",style(\\\"width\\\",\\\"100%\\\",\\\"height\\\",\\\"54px\\\",\\\"border\\\",\\\"1px solid #444\\\",\\\"border-radius\\\",\\\".3rem\\\",\\\"background\\\",\\\"#fafafa\\\",\\\"color\\\",\\\"#222\\\",\\\"cursor\\\",\\\"pointer\\\",\\\"font\\\",\\\"700 .9rem ui-monospace\\\"),on(\\\"click\\\",\\\"origin.tone\\\",523),\\\"C\\\")\"),at(\"a2\",\"=winsize(\\\"keyboard\\\",430,180)\")),cels(\"melody\",13,2,at(\"a1\",392),at(\"a2\",440),at(\"a3\",523),at(\"a4\",587),at(\"a5\",523),at(\"a6\",440),at(\"a7\",392),at(\"a8\",330),at(\"a9\",294),at(\"a10\",330),at(\"a11\",392),at(\"a12\",523),at(\"b1\",\"=dom(\\\"button\\\",style(\\\"padding\\\",\\\".4rem .9rem\\\",\\\"border\\\",\\\"0\\\",\\\"border-radius\\\",\\\".4rem\\\",\\\"background\\\",\\\"#7c5cff\\\",\\\"color\\\",\\\"#fff\\\",\\\"cursor\\\",\\\"pointer\\\",\\\"font\\\",\\\"600 .9rem system-ui\\\"),on(\\\"click\\\",\\\"origin.playmelody\\\",\\\"melody\\\"),\\\"▶ play melody\\\")\"),at(\"b2\",\"=winsize(\\\"melody\\\",300,470)\")))"
-  },
-  {
-   "key": "origin.autoload",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.autoload",
-    "segment": "origin",
-    "name": "origin.autoload",
-    "kind": "native",
-    "description": "(state) - restore the default saved sheet on boot; the host calls this after hydrate."
-   }
-  },
-  {
-   "key": "origin.seedWallpaper",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.seedWallpaper",
-    "segment": "origin",
-    "name": "origin.seedWallpaper",
-    "kind": "native",
-    "description": "(state) - write the shipped wallpaper (windows.wallpaper data-URI) into an OPFS file at /desktop/wallpaper.<ext> and point desktop.A2 at it, so the desktop background LOADS FROM A FILE in OPFS, not a hard-coded constant. Idempotent; preserves a user-set wallpaper path. Host-called once after boot."
-   }
-  },
-  {
-   "key": "origin.seedIndexHtml",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "origin.seedIndexHtml",
-    "segment": "origin",
-    "name": "origin.seedIndexHtml",
-    "kind": "native",
-    "description": "(state) - seed the page's OWN served HTML (document.documentElement.outerHTML) into OPFS at /plastron/index.html so the file explorer isn't empty — it shows 'the index.html that plastron makes'. Best-effort; no-op off-DOM or when the file-store backend is none. Host-called once after boot. NOTE: only OPFS contents are reachable from the browser sandbox — the full repo tree is not."
-   }
-  },
-  {
-   "key": "view.refresh",
-   "celType": "LockedLambdaCel",
-   "metadata": {
-    "key": "view.refresh",
-    "segment": "origin",
-    "name": "view.refresh",
-    "kind": "native",
-    "description": "host hook called by settleStructural after out-of-band structure materializes — rebuilds 元.cells + repaints"
-   },
-   "locked": true
-  },
-  {
-   "key": "元.viewConfig",
-   "celType": "ValueCel",
-   "metadata": {
-    "key": "元.viewConfig",
-    "segment": "origin",
-    "name": "元.viewConfig"
-   },
-   "v": {
-    "base": "元",
-    "draftCel": "元.draft",
-    "editHandler": "origin.edit",
-    "keyHandler": "origin.key"
-   }
-  },
-  {
-   "key": "mount",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "mount",
-    "segment": "origin",
-    "name": "mount",
-    "kind": "native",
-    "description": "(target content) - pin a dom under another element of the sheet instead of in the cell that holds it. target is a selector matched against the view: \".sheet\" pins under the cells, \"div.cell\" under the first cell, \"#id\" by id; a bare word (\"top\"/\"bottom\") is a region anchor laid out around the sheet. Deleting the formula removes it."
-   }
-  },
-  {
-   "key": "win.layout",
-   "celType": "ValueCel",
-   "metadata": {
-    "key": "win.layout",
-    "segment": "origin",
-    "description": "Desktop layout argument: \"rowflow\" (default) lays WIDE windows in rows that wrap and overflow downward; \"masonry\" packs them into narrow screen-width columns; \"free\" leaves them. 元 leads top-left. Set visibly via segment(\"rowflow\"|\"masonry\"|\"free\", ...)."
-   },
-   "v": "rowflow"
-  },
-  {
-   "key": "win.geom",
-   "celType": "ValueCel",
-   "metadata": {
-    "key": "win.geom",
-    "segment": "origin",
-    "name": "win.geom",
-    "description": "per-window geometry (x/y/w/h/z) and tab relationships (host) keyed by sheet segment. readme is seeded BIG and roughly centered (x 300, y 90, w 860, h 680) so the welcome card lands front-and-centre; chat/turtlecharts carry only host so they tab into clients/turtles."
-   },
-   "v": {
-    "chat": {
-     "host": "clients"
+    {
+      "key": "元.mount",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.mount",
+        "segment": "origin",
+        "name": "元.mount",
+        "description": "where the sheet view mounts. the host's one knob; null hides it."
+      },
+      "v": "#app"
     },
-    "turtlecharts": {
-     "host": "turtles"
+    {
+      "key": "元.editing",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.editing",
+        "segment": "origin",
+        "name": "元.editing",
+        "description": "key of the cell currently being edited (null = none)."
+      },
+      "v": null
     },
-    "readme": {
-     "x": 300,
-     "y": 90,
-     "w": 860,
-     "h": 680
+    {
+      "key": "元.draft",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.draft",
+        "segment": "origin",
+        "name": "元.draft",
+        "description": "the edit input's in-progress text."
+      },
+      "v": ""
+    },
+    {
+      "key": "元.error",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.error",
+        "segment": "origin",
+        "name": "元.error",
+        "description": "compile/parse error for the cell being edited (null = none); shown under the active editor so a bad formula doesn't fail silently."
+      },
+      "v": null
+    },
+    {
+      "key": "元.selected",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.selected",
+        "segment": "origin",
+        "name": "元.selected",
+        "description": "key of the currently SELECTED cell (Excel single-click). The cell keeps rendering its VALUE; the formula bar shows this cell's source and edits commit here. null = no selection."
+      },
+      "v": null
+    },
+    {
+      "key": "元.cells",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.cells",
+        "segment": "origin",
+        "name": "元.cells",
+        "description": "ordered spreadsheet cell keys: 元 (A1) + genesis-created grid cels."
+      },
+      "v": [
+        "元"
+      ]
+    },
+    {
+      "key": "元.srcs",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.srcs",
+        "segment": "origin",
+        "name": "元.srcs",
+        "description": "cell SOURCES parallel to 元.cells — the view shows a cell's source when its value renders elsewhere (a mount)."
+      },
+      "v": [
+        "(mount \".origin\"\n  (dom \"div.readme\" (style \"max-width\" \"47rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.5 ui-monospace, monospace\")\n    (canvas 560 92 (style \"display\" \"block\" \"border-radius\" \".4rem\" \"margin\" \"0 auto .35rem\") (rect 0 0 560 92 \"#16161f\") (text 18 42 \"plastron 🐢\" \"#f5f5f7\" \"bold 25px system-ui\") (text 18 70 \"a spreadsheet tool on an index.html — steal and use this anywhere\" \"#8a8a99\" \"12px system-ui\"))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"this readme is the formula in the cel above. drag that cell's corner to resize it, or replace its contents with your own formulas. for more cels, use a cels formula:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cels(8, 5)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a worksheet of editable cels\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cels(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a workbook of named sheets\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cels(\\\"in\\\", 4, 3, at(\\\"a1\\\", \\\"apple\\\"), at(\\\"b2\\\", \\\"=1+1\\\"))\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a sheet with initial cell values & formulas\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"or make a single new cel beside this one:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cel(\\\"monkey\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a new cel holding the value monkey\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cel(\\\"cel(\\\\\\\"banana\\\\\\\")\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a new cel holding a formula (that makes another cel)\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"you can make your own functions and use them in formulas after:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"define a function — js or py (first py use downloads pyodide, ~10MB)\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=double(21)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"call it → 42\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"you can make dom objects with formulas — and a little universe running on canvas:\")\n    (canvas 300 170 (style \"display\" \"block\" \"border-radius\" \".4rem\" \"margin\" \"0 auto .35rem\") (rect 0 0 300 170 \"#0a0a18\") (circle 150 85 12 \"#ffd34e\") (orbit 150 85 34 4 3 \"#7fd0ff\") (orbit 150 85 58 6 6 \"#e6677a\") (orbit 150 85 84 5 11 \"#9fe89f\"))\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"hi\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a styled dom element\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=canvas(300,170, rect(0,0,300,170,\\\"#0a0a18\\\"), circle(150,85,12,\\\"#ffd34e\\\"), orbit(150,85,34,4,3,\\\"#7fd0ff\\\"), orbit(150,85,58,6,6,\\\"#e6677a\\\"), orbit(150,85,84,5,11,\\\"#9fe89f\\\"))\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"↑ that animated solar system\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"inspect functions and the plastron segments they came from:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=inspect(\\\"mount\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a function's signature + source\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=segments()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"the plastron segments loaded\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"talk to grok — with an api key:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=grok(\\\"say hi in 5 words\\\", key)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a chat completion (key = a cel holding your api key)\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"save your work:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=save()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"persist this sheet to your browser — reload and it's back\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"share your whole app as one formula — paste a friend's doc(...) into the cel above to run it:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=seed()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"serialize this ENTIRE document to one doc(...) formula you can save or send\"))))\n    (dom \"p.fx-repo\" (style \"margin\" \".9rem 0 0\") (dom \"a\" (attr \"href\" \"https://github.com/rheophile10/plastron\" \"target\" \"_blank\") (style \"color\" \"LinkText\") \"github.com/rheophile10/plastron →\"))))"
+      ]
+    },
+    {
+      "key": "元.view",
+      "celType": "FormulaCel",
+      "metadata": {
+        "key": "元.view",
+        "segment": "origin",
+        "name": "元.view",
+        "parser": "f",
+        "schema": "render-spec",
+        "channel": [
+          "dom.paint"
+        ],
+        "inputMap": {
+          "editing": "元.editing",
+          "draft": "元.draft",
+          "mount": "元.mount",
+          "error": "元.error",
+          "keys": "元.cells",
+          "vals": [
+            "元"
+          ],
+          "srcs": "元.srcs",
+          "config": "元.viewConfig",
+          "geom": "win.geom",
+          "selected": "元.selected",
+          "tabdrag": "winsheet.tabdrag",
+          "vpmobile": "viewport.mobile"
+        },
+        "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place. Reads winsheet.tabdrag so the chip being dragged highlights in the drop-target blue."
+      },
+      "f": "(sheetView 元.viewConfig editing draft mount error keys vals srcs geom selected tabdrag vpmobile)"
+    },
+    {
+      "key": "cels",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "cels",
+        "segment": "origin",
+        "name": "cels",
+        "kind": "native",
+        "genesis": true,
+        "description": "genesis: worksheets of editable cels, each like 元. TOP-LEVEL ONLY — a genesis builds the sheet; it is never a child of dom()/canvas() (nested it stringifies to \"[object Object]\" and never materializes). cels(rows, cols) makes one sheet (auto-named g<r>x<c>); cels(rows, cols, \"name\") names it; cels(\"in\", 4, 3, \"out\", 4, 3) makes a WORKBOOK; cels(\"in\", 4, 3, at(\"a1\", \"apple\"), at(\"b2\", \"cel(\\\"monkey\\\")\")) fills cells with initial values/formulas. To chart a grid, put the chart in a cell OF that grid: at(\"A5\", '=canvas(360,200, barchart(sales!A2:A4, sales!B2:B4))'). delete the formula -> swept."
+      }
+    },
+    {
+      "key": "at",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "at",
+        "segment": "origin",
+        "name": "at",
+        "kind": "native",
+        "description": "at(addr, content) - one cell's initial content for a cels() grid, e.g. cels(\"in\", 4, 3, at(\"a1\", \"apple\"))."
+      }
+    },
+    {
+      "key": "geom",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "geom",
+        "segment": "origin",
+        "name": "geom",
+        "kind": "native",
+        "description": "geom(x, y, w, h [, minW, minH]) - a cels() grid's WINDOW geometry, CSS-style: x/y = left/top, w/h = the (proportional) width/height, minW/minH = min-width/min-height FLOORS the window never renders or resizes below (like CSS width:50%; min-width:340px). A value in (0,1] is a PROPORTION of the viewport (→ viewport.w/.h); >1 is absolute pixels. e.g. cels(\"app\", 4, 4, geom(0.1, 0.1, 0.5, 0.4, 340, 200), at(\"a1\", …)). Written into win.geom[name] the first time the window materializes; a later user drag/resize is preserved."
+      }
+    },
+    {
+      "key": "doc",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "doc",
+        "segment": "origin",
+        "name": "doc",
+        "kind": "native",
+        "genesis": true,
+        "description": "DEPRECATED legacy alias of seg/甲. genesis: compose a whole document from cels()/def()/cel() parts in one formula, e.g. doc(cels(\"in\",2,2,at(\"a1\",\"x\")), def(\"f\",\"js\",\"x=>x\")). What seed() emits — paste it into 元 to recreate an app."
+      }
+    },
+    {
+      "key": "seed",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "seed",
+        "segment": "origin",
+        "name": "seed",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "() - serialize the WHOLE document to a single recreating formula (a doc(...) / cels(...) you can paste into 元). Callable from any cel; its value becomes the seed source."
+      }
+    },
+    {
+      "key": "export",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "export",
+        "segment": "origin",
+        "name": "export",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(segment?, form?) - serialize a document segment (or, with no arg, the WHOLE document stack); the boot substrate is never included. form \"archive\" (default) = a lossless 甲骨 json string for =import(); form \"formula\" = the re-minting formula (=cels(...)/=def(...)) for a workbook/function segment. Whole-doc formula is also =seed()/=link()."
+      }
+    },
+    {
+      "key": "import",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "import",
+        "segment": "origin",
+        "name": "import",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(src) - load an archive json string (or a =formula) into the document stack: ADD a new segment, or wholesale-REPLACE a same-named one. Refuses a boot-set name (net/dom/origin/…). =import(\"{...}\")"
+      }
+    },
+    {
+      "key": "origin.run",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.run",
+        "segment": "origin",
+        "name": "origin.run",
+        "kind": "native",
+        "description": "(state, cellKey) - set the cell's content from the draft and re-evaluate; rebuild the cell list (new grids in, swept out); 元 un-deletable (empty restores readme)."
+      }
+    },
+    {
+      "key": "origin.edit",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.edit",
+        "segment": "origin",
+        "name": "origin.edit",
+        "kind": "native",
+        "description": "(state, cellKeyOrForceSpec) - start INLINE editing a cell (seed draft with its source); the Excel double-click path (single-click SELECTS via origin.select). Payload is the cell key, or { key, force: true } to start editing past the form-control guard."
+      }
+    },
+    {
+      "key": "origin.select",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.select",
+        "segment": "origin",
+        "name": "origin.select",
+        "kind": "native",
+        "description": "(state, cellKey, event) - SELECT a cell (Excel single-click): set 元.selected + 元.selectedSrc + seed 元.draft from its source, WITHOUT swapping it to the inline editor, so the grid keeps showing the value while the formula bar shows the source. A click on a form control a formula rendered is left alone."
+      }
+    },
+    {
+      "key": "origin.fire",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.fire",
+        "segment": "origin",
+        "name": "origin.fire",
+        "kind": "native",
+        "description": "(state, cellKey?) - FIRE (re-evaluate) the selected cell (or the given key): a FormulaCel re-applies its source via setValue (recompile + re-cascade); a ValueCel re-writes its own value (re-cascades dependents). Wired to the 🔫 button on the formula bar."
+      }
+    },
+    {
+      "key": "ex",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "ex",
+        "segment": "origin",
+        "name": "ex",
+        "kind": "native",
+        "description": "(formula, target) - a try-it payload pairing an example formula with the cell key it should run in. Used inside the readme's yellow-lightning buttons: (on \"click\" \"tryexample\" (ex \"=cels(8, 5)\" \"readme.B2\")). Returns a marker the painter hands to tryexample verbatim as the click payload."
+      }
+    },
+    {
+      "key": "tryexample",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "tryexample",
+        "segment": "origin",
+        "name": "tryexample",
+        "kind": "native",
+        "description": "(state, exPayload) - the readme 'try it' handler. Clicking a yellow ⚡ next to an example copies that example's formula into a scratch cell beside the readme (its B-column target) and evaluates it, so the result appears. Implemented by seeding 元.draft with the formula then running origin.run on the target cell, which sniffs the source into a FormulaCel, writes it, re-evaluates, and repaints."
+      }
+    },
+    {
+      "key": "origin.key",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.key",
+        "segment": "origin",
+        "name": "origin.key",
+        "kind": "native",
+        "description": "(state, cellKey, event) - Enter commits the draft."
+      }
+    },
+    {
+      "key": "origin.effects",
+      "celType": "ChannelCel",
+      "metadata": {
+        "key": "origin.effects",
+        "segment": "origin",
+        "name": "origin.effects",
+        "drain": "origin.drain",
+        "description": "load/cels requests commit here (effects at drain)."
+      },
+      "v": {
+        "drain": "origin.drain"
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.drain",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.drain",
+        "segment": "origin",
+        "name": "origin.drain",
+        "kind": "native",
+        "description": "(items) - execute cels (segment listing) requests; result text replaces the request as the cel's value."
+      }
+    },
+    {
+      "key": "members",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "members",
+        "segment": "origin",
+        "name": "members",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(segment) - readable listing of a segment's cels (skill first; locked marked)."
+      }
+    },
+    {
+      "key": "inspect",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "inspect",
+        "segment": "origin",
+        "name": "inspect",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(key) - the cel's full definition (celType, value, formula, metadata) as readable JSON."
+      }
+    },
+    {
+      "key": "segments",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "segments",
+        "segment": "origin",
+        "name": "segments",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "() - every loaded segment with role, version, dependencies."
+      }
+    },
+    {
+      "key": "navpanel",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "navpanel",
+        "segment": "origin",
+        "name": "navpanel",
+        "kind": "native",
+        "genesis": true,
+        "description": "() - genesis: a PERSISTENT app launcher pinned to the desktop corner (the navpanel). Unlike =nav (a one-off pasted menu), this survives 元 re-renders and re-fires on viewport.mobile (☰ sidebar on phones). Ships launchers for 🛂 Consent, 🖥 Local LLM, 📁 Files, 📖 Readme, 🎹 Keyboard, 📊 Turtles, 🐢 DOOM, 🔑 Vault. =navpanel()"
+      }
+    },
+    {
+      "key": "navpanelbar",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "navpanelbar",
+        "segment": "origin",
+        "name": "navpanelbar",
+        "kind": "native",
+        "description": "([mobile]) - the navpanel's content: a mounted nav() of the app launchers. The win.navbar.frame cel calls (navpanelbar viewport.mobile) so it re-renders responsively. Usually you call =navpanel() (the genesis), not this directly."
+      }
+    },
+    {
+      "key": "origin.opennav",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.opennav",
+        "segment": "origin",
+        "name": "origin.opennav",
+        "kind": "native",
+        "description": "(state) - host helper: materialize the navpanel on boot + hide the base 元/desktop windows so the desktop starts empty (idempotent). Wired into the desktop boot."
+      }
+    },
+    {
+      "key": "origin.seedStarter",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.seedStarter",
+        "segment": "origin",
+        "name": "origin.seedStarter",
+        "kind": "native",
+        "description": "(state) - first run: read the inert #plastron-starter manifest the bundle baked into the page (a {opfsPath: source} map of the repo's starter/ files: readme, keyboard) and write each MISSING file into OPFS, so they ship as real, discoverable files in the file explorer instead of baked seed cells. Idempotent; no-op without a filesystem; host-called once in the desktop boot."
+      }
+    },
+    {
+      "key": "origin.reseed",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.reseed",
+        "segment": "origin",
+        "name": "origin.reseed",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(state) - FORCE-overwrite the OPFS starter files (/readme.f, /keyboard.f, /turtles.f) from the page's embedded manifest (even if they exist) and clear the win.geom of the worksheets they declare, so a changed geom() re-applies. Backs the desktop ↻ reseed button. Reopen the apps to see the refresh. DANGEROUS (fs)."
+      }
+    },
+    {
+      "key": "vocab",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "vocab",
+        "segment": "origin",
+        "name": "vocab",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(segment?) - the values + functions usable in formulas (callable lambdas/compilers + value cels) with descriptions; no arg = across all loaded segments."
+      }
+    },
+    {
+      "key": "viewport",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "viewport",
+        "segment": "origin",
+        "name": "viewport",
+        "kind": "native",
+        "description": "() - current page metrics {w, h, mobile, orient} as a one-shot snapshot. For REACTIVE layout reference the cels instead: viewport.w / viewport.h / viewport.mobile / viewport.orient update on window resize, so a formula re-runs to relayout — =IF(viewport.mobile, dom(\"h1\",\"phone\"), win(\"app\",\"App\",body)) or =win(\"app\",\"App\",body, viewport.w, viewport.h - 40)."
+      }
+    },
+    {
+      "key": "origin.viewportSync",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.viewportSync",
+        "segment": "origin",
+        "name": "viewportSync",
+        "kind": "native",
+        "description": "(host) writes live page metrics into the viewport.* cels so formulas that reference them re-run; the host calls it at boot and on resize."
+      }
+    },
+    {
+      "key": "origin.clockSync",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.clockSync",
+        "segment": "origin",
+        "name": "clockSync",
+        "kind": "native",
+        "description": "(host) writes the current time into the clock (HH:MM) + clock.full cels so a formula referencing them (e.g. a taskbar) re-renders; the host calls it on an interval. Reference `clock` in a formula instead of a banned NOW()."
+      }
+    },
+    {
+      "key": "item",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "item",
+        "segment": "origin",
+        "name": "item",
+        "kind": "native",
+        "description": "(label, action, ...children) - one navigation menu node for nav(). label is text/emoji; action is a window KEY (clicking focuses that window) or a '=formula' (clicking spawns a new window running it), or omit action for a pure submenu parent. children are more item()s (WordPress-style nesting). e.g. item(\"📊 Charts\", item(\"🥧 Pie\", '=cels(3,2, ...piechart...)'))."
+      }
+    },
+    {
+      "key": "nav",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "nav",
+        "segment": "origin",
+        "name": "nav",
+        "kind": "native",
+        "description": "([mobile], ...items) - a navigation menu from item() nodes. Pass viewport.mobile as the first arg so it AUTO-SWITCHES: a collapsible left sidebar (☰) on mobile, desktop icon-launchers otherwise (it re-renders on rotate/resize). Nesting collapses via native <details>. e.g. =nav(viewport.mobile, item(\"📁 Files\",\"files\"), item(\"📊 Charts\", item(\"🥧 Pie\", '=cels(3,2,at(\"A1\",\"x\"))')))."
+      }
+    },
+    {
+      "key": "origin.navOpen",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.navOpen",
+        "segment": "origin",
+        "name": "navOpen",
+        "kind": "native",
+        "description": "dispatch target for a clicked nav leaf: a '=formula' action spawns a new window (trusted, capped by the kernel); any other action is a window key and focuses that window."
+      }
+    },
+    {
+      "key": "def",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "def",
+        "segment": "origin",
+        "name": "def",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name, kind, source) - define a callable function from source in a compiler kind (\"js\" works out of the box). =def(\"double\", \"js\", \"x => x * 2\") then call it: =double(21) -> 42."
+      }
+    },
+    {
+      "key": "chat",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "chat",
+        "segment": "origin",
+        "name": "chat",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(prompt, apiKey [, model] [, url]) - a chat-completion request to an OpenAI-shaped endpoint; the reply text lands in the cell. apiKey is the value - a literal string or a cel reference holding the key."
+      }
+    },
+    {
+      "key": "grok",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "grok",
+        "segment": "origin",
+        "name": "grok",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(prompt, apiKey [, model]) - chat() pinned to xAI Grok. =grok(\"say hi\", apiKeyCel) or =grok(\"say hi\", \"xai-...\"). browser CORS may block direct calls; works from a CLI/Bun host."
+      }
+    },
+    {
+      "key": "cdn",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "cdn",
+        "segment": "origin",
+        "name": "cdn",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(url) - load an external script/library from a URL via the kernel loadScript primitive. =cdn(\"https://cdn.jsdelivr.net/npm/canvas-confetti\") then call what it exposes."
+      }
+    },
+    {
+      "key": "ls",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "ls",
+        "segment": "origin",
+        "name": "ls",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path?) - list a directory in OPFS (default /). dirs show a trailing /."
+      }
+    },
+    {
+      "key": "tree",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "tree",
+        "segment": "origin",
+        "name": "tree",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path?) - recursive directory tree in OPFS (default /)."
+      }
+    },
+    {
+      "key": "mkdir",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "mkdir",
+        "segment": "origin",
+        "name": "mkdir",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path) - make a directory in OPFS (recursive)."
+      }
+    },
+    {
+      "key": "rm",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "rm",
+        "segment": "origin",
+        "name": "rm",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path) - remove a file or directory from OPFS (auto file-vs-dir)."
+      }
+    },
+    {
+      "key": "mv",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "mv",
+        "segment": "origin",
+        "name": "mv",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(from, to) - move/rename a file or directory in OPFS."
+      }
+    },
+    {
+      "key": "cat",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "cat",
+        "segment": "origin",
+        "name": "cat",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path) - read a text file from OPFS into the cell."
+      }
+    },
+    {
+      "key": "write",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "write",
+        "segment": "origin",
+        "name": "write",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path, text) - write text to a file in OPFS (create/overwrite)."
+      }
+    },
+    {
+      "key": "touch",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "touch",
+        "segment": "origin",
+        "name": "touch",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path) - create an empty file in OPFS if it does not exist."
+      }
+    },
+    {
+      "key": "stat",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "stat",
+        "segment": "origin",
+        "name": "stat",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(path) - size / isDir / mtime of an OPFS path."
+      }
+    },
+    {
+      "key": "segs",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "segs",
+        "segment": "origin",
+        "name": "segs",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "() - list sheets saved to OPFS (=saveSeg/openSeg/delSeg manage them)."
+      }
+    },
+    {
+      "key": "saveSeg",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "saveSeg",
+        "segment": "origin",
+        "name": "saveSeg",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name) - save the whole current sheet to an OPFS file under /plastron/sheets."
+      }
+    },
+    {
+      "key": "openSeg",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "openSeg",
+        "segment": "origin",
+        "name": "openSeg",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name) - restore a sheet previously saved with saveSeg from OPFS."
+      }
+    },
+    {
+      "key": "delSeg",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "delSeg",
+        "segment": "origin",
+        "name": "delSeg",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name) - delete a saved sheet from OPFS."
+      }
+    },
+    {
+      "key": "downloadSeg",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "downloadSeg",
+        "segment": "origin",
+        "name": "downloadSeg",
+        "kind": "native",
+        "description": "(name) - a button that downloads a saved sheet (.json) from OPFS."
+      }
+    },
+    {
+      "key": "db",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "db",
+        "segment": "origin",
+        "name": "db",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name?) - open/create a sqlite database in OPFS (default main). returns a handle for sql()/tables()."
+      }
+    },
+    {
+      "key": "sql",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sql",
+        "segment": "origin",
+        "name": "sql",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(db, query) - run SQL against a db handle; SELECT returns rows, writes persist to OPFS."
+      }
+    },
+    {
+      "key": "tables",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "tables",
+        "segment": "origin",
+        "name": "tables",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(db) - list the tables in a db."
+      }
+    },
+    {
+      "key": "dbseed",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "dbseed",
+        "segment": "origin",
+        "name": "dbseed",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(db, rows, table) - bulk-load a JSON array of row objects into a table. e.g. =dbseed(mydb, A1:C9, \"turtles\")"
+      }
+    },
+    {
+      "key": "schema",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "schema",
+        "segment": "origin",
+        "name": "schema",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(db) - introspect the database: tables, columns, primary keys and foreign keys (the basis for the visual query builder)."
+      }
+    },
+    {
+      "key": "dbexport",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "dbexport",
+        "segment": "origin",
+        "name": "dbexport",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(db, path) - serialize the database to a portable .db blob and write it to a file-store path (browsable / downloadable). e.g. =dbexport(mydb, \"/exports/mydb.db\")"
+      }
+    },
+    {
+      "key": "dbimport",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "dbimport",
+        "segment": "origin",
+        "name": "dbimport",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(db, path) - load a .db file from a file-store path INTO the database, replacing its contents. e.g. =dbimport(mydb, \"/exports/mydb.db\")"
+      }
+    },
+    {
+      "key": "interlinked",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "interlinked",
+        "segment": "origin",
+        "name": "interlinked",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(seg) - force-directed graph of a grid segment's cels (nodes) + their inputMap deps (edges), drawn on canvas."
+      }
+    },
+    {
+      "key": "simulate",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "simulate",
+        "segment": "origin",
+        "name": "simulate",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(fnName, n?) - def-driven animation: run a def'd frame fn (i -> [x, y]) n times and play the trajectory on an animated canvas."
+      }
+    },
+    {
+      "key": "dragdrop",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "dragdrop",
+        "segment": "origin",
+        "name": "dragdrop",
+        "kind": "native",
+        "description": "(w?, h?) - two drop zones (A, B) + a rectangle you drag between them; it snaps to the nearest zone on release."
+      }
+    },
+    {
+      "key": "consentpanel",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "consentpanel",
+        "segment": "origin",
+        "name": "consentpanel",
+        "kind": "native",
+        "genesis": true,
+        "description": "() - open the Consent panel: the dangerous functions (I/O + code) the current page uses, each Allow/Revoke toggleable. Replaces the per-sheet trust shield. Reads consent.usage."
+      }
+    },
+    {
+      "key": "consentdom",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "consentdom",
+        "segment": "origin",
+        "name": "consentdom",
+        "kind": "native",
+        "description": "(usage) - render the consent list from the consent.usage value (each dangerous fn in use: category, reason, call-count, segments, Allow/Revoke). Buttons dispatch origin.consentToggle."
+      }
+    },
+    {
+      "key": "origin.consentToggle",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.consentToggle",
+        "segment": "origin",
+        "name": "consentToggle",
+        "kind": "native",
+        "description": "dispatch target: flip one function's consent (allow/deny) in the consent cel, then refresh consent.usage. Host/user-only (never a formula verb)."
+      }
+    },
+    {
+      "key": "origin.consentSync",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.consentSync",
+        "segment": "origin",
+        "name": "consentSync",
+        "kind": "native",
+        "description": "(host) recompute consent.usage = the dangerous functions the live graph references, so the Consent panel re-renders."
+      }
+    },
+    {
+      "key": "save",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "save",
+        "segment": "origin",
+        "name": "save",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name?) - persist your sheet (cell sources + def'd functions) to this browser's localStorage. =save() then reload and it's back; =save(\"v2\") for a named slot."
+      }
+    },
+    {
+      "key": "open",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "open",
+        "segment": "origin",
+        "name": "open",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(name?) - restore a saved sheet from localStorage. =open() loads the default slot; =open(\"v2\") a named one."
+      }
+    },
+    {
+      "key": "vaultsave",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "vaultsave",
+        "segment": "origin",
+        "name": "vaultsave",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(pass) - write the `secrets` segment as a standalone ENCRYPTED file /vault.env.enc in OPFS (aes256gcm with the passphrase; discoverable in 📁 Files, opaque without it). Independent of =save() — your keys persist as a portable file without saving the sheet. DANGEROUS (secrets)."
+      }
+    },
+    {
+      "key": "vaultload",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "vaultload",
+        "segment": "origin",
+        "name": "vaultload",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(pass) - read /vault.env.enc, decrypt with the passphrase, and restore the secrets segment. Then =unlockVault() to use the keys. DANGEROUS (secrets)."
+      }
+    },
+    {
+      "key": "link",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "link",
+        "segment": "origin",
+        "name": "link",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(target?, base?) - a shareable URL that rebuilds a plastron from the page address (#f= hash, deflate+base64url). =link() encodes the WHOLE sheet; =link(\"元\") encodes one cell's source; =link(\"\", \"\") makes a relative #f= that works from a file. Paste the URL anywhere — it survives a tweet (t.co shortens it)."
+      }
+    },
+    {
+      "key": "unlink",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "unlink",
+        "segment": "origin",
+        "name": "unlink",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(url) - decode a =link() URL (or bare #f= payload) back to its formula source, as text. The inverse of link. Does NOT run it — paste the source into a cell yourself."
+      }
+    },
+    {
+      "key": "encrypt",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "encrypt",
+        "segment": "origin",
+        "name": "encrypt",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(passphrase?, target?, base?) - like link, but AES-256-GCM the source behind a passphrase. The URL parameter names the method: https://plastron.ca/#aes256gcm=<ciphertext>. =encrypt() encrypts the WHOLE sheet; =encrypt(\"\", \"元\") one cell. Omit the passphrase to be PROMPTED (so it never lands in the sheet). Pipeline: deflate → AES-256-GCM (PBKDF2-SHA256, 600k) → base64url; AES-256 is quantum-resistant. The URL is opaque; share the passphrase out-of-band. Caveat: the decrypted formula lives in browser memory — run a local index.html offline for high stakes."
+      }
+    },
+    {
+      "key": "decrypt",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "decrypt",
+        "segment": "origin",
+        "name": "decrypt",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(url, passphrase?) - decode a =encrypt() URL (or bare #aes256gcm= payload) back to its formula source, as text. The inverse of encrypt. Omit the passphrase to be PROMPTED. Does NOT run it — paste the source into a cell yourself. A wrong passphrase or tampered link yields an error (GCM authenticates)."
+      }
+    },
+    {
+      "key": "otpEncrypt",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "otpEncrypt",
+        "segment": "origin",
+        "name": "otpEncrypt",
+        "kind": "native",
+        "description": "(target?) - ONE-TIME-PAD encrypt with UNCONDITIONAL secrecy (perfect, quantum-immune). Renders a file picker: choose a pad file of random bytes (≥ message length + 32) shared with your peer. Produces https://plastron.ca/#otp=<padName>.<ciphertext> — ciphertext = formula XOR pad, plus a one-time Carter-Wegman MAC for unconditional integrity. NO compression (would leak length info). One pad file = ONE message: DELETE it from both stacks after use; never reuse a pad. target \"\" = whole sheet; a cell key = its source."
+      }
+    },
+    {
+      "key": "otpDecrypt",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "otpDecrypt",
+        "segment": "origin",
+        "name": "otpDecrypt",
+        "kind": "native",
+        "description": "(url) - decode a =otpEncrypt() #otp= link. Renders a file picker for the matching pad (the URL names which pad). Returns the formula source as text in the formula bar; does NOT run it. A wrong pad or tampered message fails the MAC check. Delete the pad after use."
+      }
+    },
+    {
+      "key": "otpLoader",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "otpLoader",
+        "segment": "origin",
+        "name": "otpLoader",
+        "kind": "native",
+        "description": "(padId, payload) - the boot view a #otp= URL renders as 元: a file picker to load the named pad and decrypt the shared plastron (kernel stays LOCKED). Used by bootFromHash; not usually called by hand."
+      }
+    },
+    {
+      "key": "origin.otpEncrypt",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.otpEncrypt",
+        "segment": "origin",
+        "name": "origin.otpEncrypt",
+        "kind": "native",
+        "description": "(state, target, event) - dispatch target: XOR the source with the picked pad → an #otp= URL in the formula bar; warns to delete the spent pad."
+      }
+    },
+    {
+      "key": "origin.otpDecrypt",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.otpDecrypt",
+        "segment": "origin",
+        "name": "origin.otpDecrypt",
+        "kind": "native",
+        "description": "(state, url, event) - dispatch target: decrypt an #otp= payload with the picked pad → the formula source in the formula bar (does not run it)."
+      }
+    },
+    {
+      "key": "origin.otpUnlock",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.otpUnlock",
+        "segment": "origin",
+        "name": "origin.otpUnlock",
+        "kind": "native",
+        "description": "(state, payload, event) - boot dispatch target: load the pad → decrypt → the shared formula becomes 元 (still jailed/locked)."
+      }
+    },
+    {
+      "key": "kernel",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "kernel",
+        "segment": "origin",
+        "name": "kernel",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(seed, preset?) - spawn a QUARANTINED child plastron from a seed formula in a fresh segment (app1, app2, …). preset = locked (default) | compute | net | trusted, capped by THIS kernel's trust. The child's cells live under <seg>.*; gated capabilities (code/net/storage) come back #DENIED unless the preset grants them. A #f= share URL is just a locked seed."
+      }
+    },
+    {
+      "key": "jail",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "jail",
+        "segment": "origin",
+        "name": "jail",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(seed) - render a SANDBOXED iframe running the seed formula as its OWN kernel. allow-scripts but no allow-same-origin → opaque origin: it cannot touch localStorage, the parent page, or other tabs. The browser's real Layer-A jail for untrusted plastrons."
+      }
+    },
+    {
+      "key": "jailask",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "jailask",
+        "segment": "origin",
+        "name": "jailask",
+        "kind": "native",
+        "description": "(payload) - JAIL ONLY: round-trip a request to the PARENT over the postMessage bridge and return its reply. The jail has no keys/network of its own; the parent mediates (e.g. an LLM call). Outside a jail it is a no-op."
+      }
+    },
+    {
+      "key": "jail.serve",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "jail.serve",
+        "segment": "origin",
+        "name": "jail.serve",
+        "kind": "native",
+        "description": "PARENT side: mediates a jail's jailask() request (the window message listener calls it). Keys/network stay in the parent; only the reply crosses back into the jail."
+      }
+    },
+    {
+      "key": "origin.savepage",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.savepage",
+        "segment": "origin",
+        "name": "origin.savepage",
+        "kind": "native",
+        "description": "(state) - download the running plastron as a single self-contained 龜甲.html you can re-open or redeploy anywhere. Wired to the ⬇ 龜甲 button in the desktop's upper-right corner."
+      }
+    },
+    {
+      "key": "origin.tone",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.tone",
+        "segment": "origin",
+        "name": "origin.tone",
+        "kind": "native",
+        "description": "(state, freq) - play ONE Web Audio oscillator note at the given frequency (Hz). Loads the sound segment on first use. Wire it to a button: (on \"click\" \"origin.tone\" 440)."
+      }
+    },
+    {
+      "key": "origin.music",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.music",
+        "segment": "origin",
+        "name": "origin.music",
+        "kind": "native",
+        "description": "(state) - play a short melody (Ode to Joy) via the Web Audio sound segment. Browser audio is autoplay-gated, so trigger it from a click."
+      }
+    },
+    {
+      "key": "origin.compose",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.compose",
+        "segment": "origin",
+        "name": "origin.compose",
+        "kind": "native",
+        "description": "(state) - start 'Symphony of Cels', an ORIGINAL generative phase piece (pentatonic voices at incommensurate periods, evolving harmony). Web Audio autoplay-gated → start from a click. origin.composeStop ends it."
+      }
+    },
+    {
+      "key": "origin.composeStop",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.composeStop",
+        "segment": "origin",
+        "name": "origin.composeStop",
+        "kind": "native",
+        "description": "(state) - stop the generative piece started by origin.compose."
+      }
+    },
+    {
+      "key": "origin.playmelody",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.playmelody",
+        "segment": "origin",
+        "name": "origin.playmelody",
+        "kind": "native",
+        "description": "(state, seg) - read column A of sheet seg as a RANGE of note frequencies (Hz) and play them in sequence. Type numbers down a column to write a tune; wire a button: on(\"click\",\"origin.playmelody\",\"melody\")."
+      }
+    },
+    {
+      "key": "origin.tile",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.tile",
+        "segment": "origin",
+        "name": "origin.tile",
+        "kind": "native",
+        "description": "(state, segs?) - auto-layout worksheet windows: size each to its CONTENT (capped to the viewport) and PACK them non-overlapping instead of stacked. segs = a list/comma-string, or all open windows."
+      }
+    },
+    {
+      "key": "origin.autoload",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.autoload",
+        "segment": "origin",
+        "name": "origin.autoload",
+        "kind": "native",
+        "description": "(state) - restore the default saved sheet on boot; the host calls this after hydrate."
+      }
+    },
+    {
+      "key": "origin.seedWallpaper",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.seedWallpaper",
+        "segment": "origin",
+        "name": "origin.seedWallpaper",
+        "kind": "native",
+        "description": "(state) - write the shipped wallpaper (windows.wallpaper data-URI) into an OPFS file at /desktop/wallpaper.<ext> and point desktop.A2 at it, so the desktop background LOADS FROM A FILE in OPFS, not a hard-coded constant. Idempotent; preserves a user-set wallpaper path. Host-called once after boot."
+      }
+    },
+    {
+      "key": "origin.seedIndexHtml",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.seedIndexHtml",
+        "segment": "origin",
+        "name": "origin.seedIndexHtml",
+        "kind": "native",
+        "description": "(state) - seed the page's OWN served HTML (document.documentElement.outerHTML) into OPFS at /plastron/index.html so the file explorer isn't empty — it shows 'the index.html that plastron makes'. Best-effort; no-op off-DOM or when the file-store backend is none. Host-called once after boot. NOTE: only OPFS contents are reachable from the browser sandbox — the full repo tree is not."
+      }
+    },
+    {
+      "key": "view.refresh",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "view.refresh",
+        "segment": "origin",
+        "name": "view.refresh",
+        "kind": "native",
+        "description": "host hook called by settleStructural after out-of-band structure materializes — rebuilds 元.cells + repaints"
+      },
+      "locked": true
+    },
+    {
+      "key": "元.viewConfig",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "元.viewConfig",
+        "segment": "origin",
+        "name": "元.viewConfig"
+      },
+      "v": {
+        "base": "元",
+        "draftCel": "元.draft",
+        "editHandler": "origin.edit",
+        "keyHandler": "origin.key"
+      }
+    },
+    {
+      "key": "mount",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "mount",
+        "segment": "origin",
+        "name": "mount",
+        "kind": "native",
+        "description": "(target content) - pin a dom under another element of the sheet instead of in the cell that holds it. target is a selector matched against the view: \".sheet\" pins under the cells, \"div.cell\" under the first cell, \"#id\" by id; a bare word (\"top\"/\"bottom\") is a region anchor laid out around the sheet. Deleting the formula removes it."
+      }
+    },
+    {
+      "key": "win.layout",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "win.layout",
+        "segment": "origin",
+        "description": "Desktop layout argument: \"rowflow\" (default) lays WIDE windows in rows that wrap and overflow downward; \"masonry\" packs them into narrow screen-width columns; \"free\" leaves them. 元 leads top-left. Set visibly via segment(\"rowflow\"|\"masonry\"|\"free\", ...)."
+      },
+      "v": "rowflow"
+    },
+    {
+      "key": "win.geom",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "win.geom",
+        "segment": "origin",
+        "name": "win.geom",
+        "description": "per-window geometry (x/y/w/h/z) and tab relationships (host) keyed by sheet segment. readme is seeded BIG and roughly centered (x 300, y 90, w 860, h 680) so the welcome card lands front-and-centre; chat/turtlecharts carry only host so they tab into clients/turtles."
+      },
+      "v": {
+        "chat": {
+          "host": "clients"
+        }
+      }
+    },
+    {
+      "key": "winsheet.drag",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "winsheet.drag",
+        "segment": "origin",
+        "name": "winsheet.drag"
+      },
+      "v": null
+    },
+    {
+      "key": "segment",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "segment",
+        "segment": "origin",
+        "name": "segment",
+        "kind": "native",
+        "genesis": true,
+        "description": "genesis: compose a SEGMENT (document) from cels()/winapp()/chatapp()/def()/cel() parts in one formula, e.g. =segment(...). (was doc.)"
+      }
     }
-   }
-  },
-  {
-   "key": "winsheet.drag",
-   "celType": "ValueCel",
-   "metadata": {
-    "key": "winsheet.drag",
-    "segment": "origin",
-    "name": "winsheet.drag"
-   },
-   "v": null
-  },
-  {
-   "key": "segment",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "segment",
-    "segment": "origin",
-    "name": "segment",
-    "kind": "native",
-    "genesis": true,
-    "description": "genesis: compose a SEGMENT (document) from cels()/winapp()/chatapp()/def()/cel() parts in one formula, e.g. =segment(...). (was doc.)"
-   }
-  },
-  {
-   "key": "linkfx.overlay",
-   "celType": "FormulaCel",
-   "f": "(mount \".origin\" (linkoverlay win.links win.linkdrag states))",
-   "metadata": {
-    "key": "linkfx.overlay",
-    "segment": "origin",
-    "name": "linkfx.overlay",
-    "parser": "f",
-    "channel": [
-     "dom.paint"
-    ],
-    "inputMap": {
-     "states": []
-    },
-    "description": "the corner-link EDGE overlay: a transparent SVG over .origin drawing one dashed line per win.links pair (between the two windows' corners) plus the transient link-drag line. `states` is an array-inputMap rewired to the linked windows' .state cels as links form, so the edges follow the windows reactively. Seeded (not genesis) so it survives 元 re-renders."
-   }
-  }
- ]
+  ]
 }

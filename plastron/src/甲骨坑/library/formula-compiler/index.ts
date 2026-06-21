@@ -14,7 +14,7 @@ import seed from "./甲骨.json" with { type: "json" };
 //   =mylayout("grid", …)                             ; calls it like any verb
 //
 // HOW: parse the `(params) => body` header (the same header form defn already
-// uses for quickjs), compile the body once via the kernel's own compileFormula,
+// uses for js), compile the body once via the kernel's own compileFormula,
 // and return a positional Fn. On each call we bind the params to the call args
 // and resolve the body's NON-param symbols (verbs like `dom`, cel refs) from the
 // registry live, then run the body's evaluator. No re-implementation — it reuses

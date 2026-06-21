@@ -40,10 +40,16 @@
          100% floor — so anything mounted is reachable via horizontal scroll
          instead of being clipped off-screen. */
       body { margin: 0; font: 15px/1.5 system-ui, sans-serif; width: max-content; min-width: 100%; }
-      #app { min-height: 100vh; padding: 2rem; }
+      /* no padding: the .origin desktop is FLUSH to the viewport, so a window's
+         geom(x,y,w,h) maps to true viewport coordinates (geom(0,0,1,1) fills it).
+         Windows carry their own margins via geom(); fixed overlays (wallpaper /
+         navpanel) are viewport-relative regardless. */
+      #app { min-height: 100vh; padding: 0; }
       /* Everything else — the sheet, grids, cells, the readme — carries its
          OWN styling inline, produced by the origin view fn + readme formula.
-         The host keeps only this base shell (:root / * / body / #app). */
+         The host keeps only this base shell (:root / * / body / #app).
+         (The 🎹 keyboard's keycap styling — incl. the :active press colour —
+         lives in keyboard.f itself, mounted as a <style> via dom("style",…).) */
     </style>
   </head>
   <body>
@@ -165,6 +171,11 @@ FULL VERB CATALOG — =vocab(), baked at build time (current as of this deploy)
       </pre>
     </div>
     <a href="./os/" style="position:fixed;bottom:.6rem;right:.8rem;font-size:.75rem;opacity:.5;color:inherit">plastron-os ↗</a>
+    <!-- Starter kit: an INERT JSON manifest (not executed — type=application/json)
+         of the repo's starter/ files → their OPFS paths. bundle.ts bakes it from
+         starter/*; the first desktop boot (origin.seedStarter) writes each missing
+         file into OPFS, so readme/keyboard are real, discoverable files in 📁 Files. -->
+    <script type="application/json" id="plastron-starter">[[STARTER_KIT]]</script>
     <!-- No external <script> tags: the py-compiler pulls Pyodide from a CDN
          itself (via the kernel loadScript primitive) on first py use. -->
     <script type="module" src="./origin-main.ts"></script>

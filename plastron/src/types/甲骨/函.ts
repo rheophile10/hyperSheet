@@ -65,7 +65,7 @@ export interface 函Boot {
    *  roots wake. Each pair is `[key, value]` (the batch shape). A write to
    *  a cel in a segment `wake` did NOT wake throws (dormant write) — a 函
    *  author must wake what they set, or the set targets must live in an
-   *  always-awake kernel/app-host segment. */
+   *  always-awake kernel segment. */
   set?: Array<[Key, unknown]>;
 }
 

@@ -76,7 +76,7 @@ const put = (page: Page, src: string, key = "元"): Promise<unknown> =>
     const { state, resolveFn } = (globalThis as any).plastron;
     await resolveFn(state, "origin.edit")(state, k);
     await resolveFn(state, "setValue")(state, "元.draft", s);
-    await resolveFn(state, "origin.commit")(state, k);
+    await resolveFn(state, "origin.run")(state, k);
     await new Promise((r) => setTimeout(r, 60));
     return state.cels.get(k)?.v ?? null;
   }, [src, key] as [string, string]);
@@ -335,7 +335,7 @@ await withPage("=cdn(url) loads an external library (needs network)", async (pag
 await withPage("=def(py) + call works via Pyodide", async (page) => {
   const out = await page.evaluate(async () => {
     const { state, resolveFn } = (globalThis as any).plastron;
-    const put = async (s: string) => { await resolveFn(state, "origin.edit")(state, "元"); await resolveFn(state, "setValue")(state, "元.draft", s); await resolveFn(state, "origin.commit")(state, "元"); };
+    const put = async (s: string) => { await resolveFn(state, "origin.edit")(state, "元"); await resolveFn(state, "setValue")(state, "元.draft", s); await resolveFn(state, "origin.run")(state, "元"); };
     await put('=def("sq", "py", "lambda x: x * x")');
     await put("=sq(6)");
     return { cel: state.cels.get("sq")?.celType, result: state.cels.get("元")?.v };
@@ -367,7 +367,7 @@ await withPage("worksheets render as draggable windows (auto-windowing)", async 
     const { state, resolveFn } = (globalThis as any).plastron;
     await resolveFn(state, "origin.edit")(state, "\u5143");
     await resolveFn(state, "setValue")(state, "\u5143.draft", "=cels(3, 3)");
-    await resolveFn(state, "origin.commit")(state, "\u5143");
+    await resolveFn(state, "origin.run")(state, "\u5143");
     await new Promise((r) => setTimeout(r, 160));
   });
   ok(await page.$('.pl-window[data-win="\u5143"]'), "\u5143 is a window");
@@ -477,7 +477,7 @@ await withPage("=win(...) makes a draggable window in one step", async (page) =>
     const { state, resolveFn } = (globalThis as any).plastron;
     await resolveFn(state, "origin.edit")(state, "\u5143");
     await resolveFn(state, "setValue")(state, "\u5143.draft", '=win("w1", "Demo", "drag my titlebar")');
-    await resolveFn(state, "origin.commit")(state, "\u5143");
+    await resolveFn(state, "origin.run")(state, "\u5143");
     await new Promise((r) => setTimeout(r, 160));
   });
   ok(await page.$(".pl-window"), "=win rendered a window");

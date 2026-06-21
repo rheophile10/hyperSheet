@@ -19,7 +19,7 @@
 // ============================================================================
 
 // ── WebCrypto, structurally narrowed (tsconfig lib has no DOM) ──────────────
-// Same narrowing approach as unsafe-wallet: we describe only what we call so
+// Same narrowing approach as vault: we describe only what we call so
 // the library stays DOM-lib-free yet runs against the real crypto.subtle.
 export interface CryptoKeyLike { readonly type: string; readonly extractable: boolean; readonly usages: string[] }
 export interface KeyPairLike { privateKey: CryptoKeyLike; publicKey: CryptoKeyLike }

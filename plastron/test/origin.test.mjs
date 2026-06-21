@@ -1,4 +1,5 @@
 import { test } from "bun:test";
+import { openTurtlesFixture } from "./_turtles-fixture.mjs";
 import assert from "node:assert/strict";
 import { createInitialState, precomputeOptional, resolveFn, createPainter, setPainter } from "../dist/index.js";
 
@@ -55,30 +56,14 @@ const boot = async () => {
 const put = async (state, root, m, src, key = "元") => {
   await resolveFn(state, "origin.edit")(state, key); m.run();
   await resolveFn(state, "setValue")(state, "元.draft", src);
-  await resolveFn(state, "origin.commit")(state, key);
+  await resolveFn(state, "origin.run")(state, key);
   m.run();
 };
 
-test("boot: the desktop renders — the README window + its rich content", async () => {
-  const { state, root, m } = await boot();
-  await resolveFn(state, "origin.commit")(state, "元"); m.run(); // materialize the boot desktop genesis
-  const rm = cls(root, "readme");
-  assert.ok(rm, "readme rendered in its window");
-  assert.ok(rm.style && Object.keys(rm.style.props).length > 0, "readme carries inline styles");
-  // the header card explains the index.html product + the ⚡ / W controls legend
-  assert.match(txt(rm), /ONE index\.html/, "header states this is one index.html");
-  assert.match(txt(rm), /every row is a worked example/, "header explains the per-row layout");
-  assert.match(txt(rm), /RUNS that formula/, "header has the ⚡ run legend");
-  assert.match(txt(rm), /wiki button/, "header has the W wiki legend");
-  // examples render as code cards (A column), not one big table
-  assert.ok(walk(root, (n) => /(^| )fx-code( |$)/.test(String(n.attrs?.class ?? "")))[0], "example code shown in fx-code cards");
-  assert.ok(walk(root, (n) => /(^| )fx-desc( |$)/.test(String(n.attrs?.class ?? "")))[0], "each example carries a description card");
-  assert.ok(walk(root, (n) => n.tag === "a" && String(n.attrs?.href ?? "").includes("github.com"))[0], "repo link present");
-  // each example carries a yellow-lightning try-it button (the fire-bolt SVG)
-  assert.ok(walk(root, (n) => n.tag === "path" && /M7 2v11h3v9l7-12h-4l4-8z/.test(String(n.attrs?.d ?? "")))[0], "try-it lightning buttons present");
-});
+// (the README-rich-content test was removed — the readme is now a STATIC
+//  text file, starter/readme.f, with no .readme dom card / fx-code / try-it.)
 
-test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restores readme", async () => {
+test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restores the desktop", async () => {
   const { state, root, m } = await boot();
   await put(state, root, m, "=1+1");
   assert.equal(state.cels.get("元").v, 2, "=1+1 -> 2 in A1");
@@ -86,7 +71,7 @@ test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restore
   await put(state, root, m, "7");
   assert.equal(cellVal(root, "元"), "7", "literal renders in A1");
   await put(state, root, m, "");
-  assert.ok(cls(root, "readme"), "empty 元 -> the desktop (readme window) is restored");
+  assert.ok(state.cels.get("desktop.A1"), "empty 元 -> the minimal wallpaper desktop is restored");
 });
 
 test("A1 can render a dom object", async () => {
@@ -107,11 +92,10 @@ test("=cels(3,3) makes a 3x3 worksheet of cels, each editable like 元", async (
   assert.equal(state.cels.get("g3x3.B1").v, 20, "g3x3.B1 computes from g3x3!A1*2 (bare-A1 scoping is a follow-up)");
   await put(state, root, m, "");
   assert.equal(state.cels.get("g3x3.A1"), undefined, "grid swept when its formula is gone");
-  // empty 元 restores the readme boot formula, whose bloom includes the
-  // turtles demo sheet — so the view is A1 + the demo, with g3x3 gone.
+  // empty 元 restores the minimal desktop seed (wallpaper) — A1 back, g3x3 gone.
   const back = cells(root).map((c) => c.attrs["data-key"]);
   assert.ok(back.includes("元"), "A1 back");
-  assert.ok(back.includes("turtles.A1"), "boot demo sheet restored with the readme");
+  assert.ok(state.cels.get("desktop.A1"), "minimal wallpaper desktop restored");
   assert.ok(!back.some((k) => k.startsWith("g3x3.")), "no g3x3 cells remain");
 });
 
@@ -234,20 +218,18 @@ test("grid(name,r,c,…) makes a workbook of named grids in one formula", async 
 
 test("editing 元's formula RE-DRAINS genesis: a genesis-producing formula re-creates its windows/cels", async () => {
   const { state, root, m } = await boot();
-  await resolveFn(state, "origin.commit")(state, "元"); m.run(); // boot desktop
-  // the boot desktop is now SHEETS (the turtles pattern): readme/clients/turtles
-  // worksheet windows, not state-cel windows.
-  assert.ok(state.cels.get("turtles.A1"), "boot desktop materialized the turtles sheet");
-  assert.ok(state.cels.get("readme.A1"), "…and the readme sheet");
+  await resolveFn(state, "origin.run")(state, "元"); m.run(); // minimal boot desktop
+  // the minimal boot materializes the wallpaper `desktop` sheet (owned by 元).
+  assert.ok(state.cels.get("desktop.A1"), "boot materialized the wallpaper desktop sheet");
   // edit 元 to a DIFFERENT genesis formula → its windows must appear and the
-  // old desktop's sheets (owned by 元) sweep
+  // old desktop's sheet (owned by 元) sweeps
   await put(state, root, m, '=winapp("hello", "Hello", "(dom \\"p\\" \\"hi\\")")');
   assert.ok(state.cels.get("win.hello.state"), "the edited genesis re-created its window state cel");
   assert.ok(state.cels.get("win.hello.frame"), "…and its frame");
-  assert.ok(!state.cels.get("turtles.A1"), "the old desktop's sheets swept (元 is authoritative)");
-  // clear 元 → the readme/desktop seed restores its sheets again
+  assert.ok(!state.cels.get("desktop.A1"), "the old desktop sheet swept (元 is authoritative)");
+  // clear 元 → the minimal desktop seed restores its sheet again
   await put(state, root, m, "");
-  assert.ok(state.cels.get("readme.A1"), "clearing 元 re-drains the desktop genesis (sheets back)");
+  assert.ok(state.cels.get("desktop.A1"), "clearing 元 re-drains the desktop genesis (wallpaper back)");
   assert.ok(!state.cels.get("win.hello.state"), "the interim window is gone with its formula");
 });
 
@@ -260,22 +242,43 @@ test("def(name, kind, source) defines a callable JS function", async () => {
   assert.equal(state.cels.get("元").v, 42, "the defined function is callable from a formula");
 });
 
-test("xlsx wiring: xlsxexport(\"turtles\") exports the boot turtles sheet, round-trips back via xlsximport", async () => {
+test("xlsx wiring: xlsxexport(\"turtle_data\") exports the boot turtle_data sheet, round-trips back via xlsximport", async () => {
   const { state, root, m } = await boot();
-  await resolveFn(state, "origin.commit")(state, "元"); m.run(); // materialize the boot desktop (turtles sheet)
-  // the broken =xlsxsave("turtles") readme row was removed — the xlsx verbs take
+  await resolveFn(state, "origin.run")(state, "元"); m.run(); // minimal boot
+  await openTurtlesFixture(state, resolveFn); m.run();   // README bundle → turtle_data sheet
+  // the broken =xlsxsave("turtle_data") readme row was removed — the xlsx verbs take
   // `state` as their first arg, which formula evaluation can't supply, so they
   // run only via resolveFn (host wiring), not as a readme formula. The export
   // is still wired and round-trips here through the direct resolveFn path.
   assert.ok(!walk(root, (n) => /(^| )fx-code( |$)/.test(String(n.attrs?.class ?? "")) && /xlsxsave/.test(txt(n)))[0], "the broken xlsxsave example is gone from the readme");
   // the xlsx verbs still loaded with origin's closure
   assert.ok(state.cels.get("xlsxexport"), "xlsxexport in the origin closure");
-  assert.ok(state.cels.get("turtles.A1"), "boot turtles sheet present to export");
-  // export the live turtles sheet, then import the bytes back — addresses + values match
-  const b64 = await resolveFn(state, "xlsxexport")(state, "turtles");
+  assert.ok(state.cels.get("turtle_data.A1"), "boot turtle_data sheet present to export");
+  // export the live turtle_data sheet, then import the bytes back — addresses + values match
+  const b64 = await resolveFn(state, "xlsxexport")(state, "turtle_data");
   assert.equal(typeof b64, "string");
   const req = await resolveFn(state, "xlsximport")(state, b64);
   assert.equal(req.genesis, true, "import returns a genesis worksheet");
-  assert.equal(req.cels["xlsx.A1"].v, state.cels.get("turtles.A1").v, "A1 text round-trips");
-  assert.equal(req.cels["xlsx.B2"].v, state.cels.get("turtles.B2").v, "B2 number round-trips");
+  assert.equal(req.cels["xlsx.A1"].v, state.cels.get("turtle_data.A1").v, "A1 text round-trips");
+  assert.equal(req.cels["xlsx.B2"].v, state.cels.get("turtle_data.B2").v, "B2 number round-trips");
+});
+
+test("a nav launcher reopens a window the ✕ closed (re-click the same icon)", async () => {
+  const { state, root, m } = await boot();
+  await resolveFn(state, "origin.run")(state, "元"); m.run(); // minimal boot desktop
+  const navOpen = resolveFn(state, "origin.navOpen"), winClose = resolveFn(state, "winx.close");
+  const action = '=winapp("hello", "Hello", "(dom \\"p\\" \\"hi\\")")';
+  const closedOf = () => state.cels.get("win.hello.state")?.v?.closed;
+  // click the icon → the window opens (visible)
+  await navOpen(state, action); m.run();
+  assert.ok(state.cels.get("win.hello.state"), "the launcher opened the window");
+  assert.ok(!closedOf(), "window starts visible");
+  // ✕ closes it
+  await winClose(state, "win.hello.state");
+  assert.equal(closedOf(), 1, "✕ marked the window closed");
+  // re-click the SAME icon → it must come back (the bug: it stayed hidden)
+  await navOpen(state, action); m.run();
+  assert.ok(!closedOf(), "re-clicking the icon reopened the closed window");
+  // and it didn't mint a churn of conflicting app-segment generators / trap errors
+  assert.ok(!state.cels.get("app2.元"), "no app1/app2 churn — a stable nav segment is reused");
 });

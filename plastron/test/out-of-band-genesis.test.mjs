@@ -5,7 +5,7 @@ import { createInitialState, resolveFn } from "../dist/index.js";
 // unify-commit-path (settleStructural): a generator (here =grid) fired by a
 // VALUE change must materialize its cels WITHOUT any manual drain or user
 // commit. Before the fix, an out-of-band generator enqueued genesis.commit but
-// nothing drained it (the seam that hid =walletKeys). Now setValue settles it.
+// nothing drained it (the seam that hid =vaultKeys). Now setValue settles it.
 test("out-of-band genesis: a generator fired by setValue materializes (no manual drain)", async () => {
   const s = createInitialState();
   await resolveFn(s, "hydrate")(s, [{ name: "user", cels: [

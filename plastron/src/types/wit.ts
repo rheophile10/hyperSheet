@@ -2,7 +2,7 @@ import type { Key } from "./index.js";
 
 // ============================================================================
 // WIT — wasm Interface Types, the cross-language type system for cels
-// living in a wasm domain (kind: "wat", "javy", "py", …). v3 subset:
+// living in a wasm domain (kind: "wat", "py", "js", …). v3 subset:
 // primitives + list + record + variant. No tuples, options, results, or
 // resources yet; we add them as use cases land.
 //
@@ -51,7 +51,7 @@ export type WitType = WitPrimitive | WitComposite;
  *  bridge protocol (task 7) and precompute layers (task 8) know what
  *  to construct. */
 export interface WasmHandle {
-  kind: Key;      // "wat", "py", "javy" — names the kind segment that owns the table
+  kind: Key;      // "wat", "py", "js" — names the kind segment that owns the table
   type: WitType;  // the schema this handle is bound to
   ref: number;    // index into the kind segment's value table
 }

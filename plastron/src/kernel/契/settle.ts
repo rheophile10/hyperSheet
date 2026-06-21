@@ -3,9 +3,9 @@ import { resolveFn } from "../resolve-fn.js";
 
 // settleStructural — close the "out of band genesis" seam. A generator (a cel
 // whose value is a {genesis}/{defn} STRUCTURE request) enqueues its structural
-// channel when it fires. Until now only origin.commit's settle loop drained
+// channel when it fires. Until now only origin.run's settle loop drained
 // those, so a generator re-fired by a VALUE change (not a user commit) — e.g.
-// =walletKeys(walletNote) — enqueued genesis.commit but nothing materialized
+// =vaultKeys(secretsNote) — enqueued genesis.commit but nothing materialized
 // it. This runs after every data/structure mutation's cascade: drain the
 // structural channels its firing enqueued, let the materialized cels fire
 // (the drain's own setCelBatch cascades them), and loop until quiescent.

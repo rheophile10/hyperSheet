@@ -329,22 +329,23 @@ test("sleep: no sink (or autoSave:false) does NOT persist", async () => {
 // ── loader re-park ───────────────────────────────────────────────────────────
 
 test("forget a BUNDLED library, then loadSegment brings it back", async () => {
-  // Lazy-load 'sound' (a bundled library), then forget it; re-park should
-  // make it loadable again.
-  const state = createInitialState({ lazy: ["sound"] });
+  // Lazy-load 'seal' (a bundled library with NO dependents — so flush won't
+  // trip the dependents guard), then forget it; re-park should make it
+  // loadable again.
+  const state = createInitialState({ lazy: ["seal"] });
   const forget = resolveFn(state, "forget");
   const loadSegment = resolveFn(state, "loadSegment");
 
-  await loadSegment(state, "sound");
-  assert.equal(state.cels.has("sound.play-tone"), true, "sound loaded");
+  await loadSegment(state, "seal");
+  assert.equal(state.cels.has("seal.lock"), true, "seal loaded");
 
   // forget an awake bundled segment ⇒ flush ⇒ re-park.
-  await forget(state, "sound");
-  assert.equal(state.cels.has("sound.play-tone"), false, "sound cels gone");
-  assert.equal(isSegmentPending(state, "sound"), true, "loader re-parked (pending again)");
+  await forget(state, "seal");
+  assert.equal(state.cels.has("seal.lock"), false, "seal cels gone");
+  assert.equal(isSegmentPending(state, "seal"), true, "loader re-parked (pending again)");
 
-  await loadSegment(state, "sound");
-  assert.equal(state.cels.has("sound.play-tone"), true, "loadSegment brought it back");
+  await loadSegment(state, "seal");
+  assert.equal(state.cels.has("seal.lock"), true, "loadSegment brought it back");
 });
 
 // ── painter empty-spec teardown ──────────────────────────────────────────────

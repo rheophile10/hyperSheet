@@ -1,0 +1,137 @@
+{
+  "name": "file-explorer",
+  "cels": [
+    {
+      "key": "explorer",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "explorer",
+        "segment": "file-explorer",
+        "name": "explorer",
+        "kind": "native",
+        "description": "(cwd, preview, listing) - a PURE OPFS file-explorer vnode: renders the folders (📁, click→explorer.nav to descend) and files (📄, click→explorer.open to preview) from `listing` ({entries,previewText}) at cwd, plus a '..' row and an upload input. The async OPFS read lives in the nav/open handlers (which write explorer.listing); this fn is pure so the window content formula (explorer explorer.cwd explorer.preview explorer.listing) re-fires reactively."
+      },
+      "locked": true
+    },
+    {
+      "key": "explorer.nav",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "explorer.nav",
+        "segment": "file-explorer",
+        "name": "explorer.nav",
+        "kind": "native",
+        "description": "(state, path) - dispatch target: set explorer.cwd to path (descend a folder / climb via '..'); the explorer content formula references explorer.cwd so the listing re-fires."
+      },
+      "locked": true
+    },
+    {
+      "key": "explorer.open",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "explorer.open",
+        "segment": "file-explorer",
+        "name": "explorer.open",
+        "kind": "native",
+        "description": "(state, path) - dispatch target: set explorer.preview to a file path; the explorer content formula re-fires and the listing cats it into the preview pane."
+      },
+      "locked": true
+    },
+    {
+      "key": "explorer.openSheet",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "explorer.openSheet",
+        "segment": "file-explorer",
+        "name": "explorer.openSheet",
+        "kind": "native",
+        "description": "(state, path) - dispatch target on a file row's DOUBLE-click: a .csv/.xlsx/.甲 file is read from OPFS and opened as a NEW standalone sheet window via sheet-host's openAsSheet (format detected by extension: csv->values grid, xlsx->fromXlsx, 甲->rich archive with cels+formulas). Any other file falls back to the single-click text-preview behavior."
+      },
+      "locked": true
+    },
+    {
+      "key": "explorer.refresh",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "explorer.refresh",
+        "segment": "file-explorer",
+        "name": "explorer.refresh",
+        "kind": "native",
+        "description": "(state) - populate explorer.listing from the current explorer.cwd/preview (one OPFS read). Host-called once at boot so the explorer window shows its initial listing; the nav/open handlers refresh it thereafter. The listing's preview is GUARDED: a known-binary extension (.wasm/.wad/.png/.甲/.xlsx/fonts/...) OR a file over 256 KB OR bytes that aren't valid UTF-8 are NEVER read as text (that would blow out browser memory) — the preview shows a 'binary file — <ext>, <size> — download to inspect' placeholder instead; only small valid-UTF-8 text files are decoded into the preview pane."
+      },
+      "locked": true
+    },
+    {
+      "key": "explorer.delete",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "explorer.delete",
+        "segment": "file-explorer",
+        "name": "explorer.delete",
+        "kind": "native",
+        "description": "(state, path) - dispatch target for the explorer's 🗑 button: fs.delete the file, clear explorer.preview if it was showing that file, then refresh explorer.listing (reactive via the content formula — no hand-rolled repaint)."
+      },
+      "locked": true
+    },
+    {
+      "key": "explorer.rename",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "explorer.rename",
+        "segment": "file-explorer",
+        "name": "explorer.rename",
+        "kind": "native",
+        "description": "(state, path) - dispatch target for the explorer's ✎ button: prompt() for a new name in the same dir, fs.rename the file, follow explorer.preview if it moved, then refresh explorer.listing. No-op off-DOM (no prompt available)."
+      },
+      "locked": true
+    },
+    {
+      "key": "explorer.download",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "explorer.download",
+        "segment": "file-explorer",
+        "name": "explorer.download",
+        "kind": "native",
+        "description": "(state, path) - dispatch target for the explorer's ⬇ buttons (per-file + binary-preview) and the standalone download() button: read OPFS bytes → browser file save."
+      },
+      "locked": true
+    },
+    {
+      "key": "explorer.upload",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "explorer.upload",
+        "segment": "file-explorer",
+        "name": "explorer.upload",
+        "kind": "native",
+        "description": "(state, dir, event) - dispatch target for the explorer's upload input and the standalone upload() picker: write the picked file's bytes into OPFS, then refresh the explorer if open."
+      },
+      "locked": true
+    },
+    {
+      "key": "download",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "download",
+        "segment": "file-explorer",
+        "name": "download",
+        "kind": "native",
+        "description": "(path) - a button that downloads an OPFS file to your disk."
+      },
+      "locked": true
+    },
+    {
+      "key": "upload",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "upload",
+        "segment": "file-explorer",
+        "name": "upload",
+        "kind": "native",
+        "description": "(dir?) - a file picker; the chosen file is written into OPFS (default /)."
+      },
+      "locked": true
+    }
+  ]
+}

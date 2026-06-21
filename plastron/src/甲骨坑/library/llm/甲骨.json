@@ -9,7 +9,55 @@
         "segment": "llm",
         "name": "claude",
         "kind": "native",
-        "description": "(prompt, key [, model]) - ask Claude; the reply becomes the cell value (REACTIVE: edit the prompt to re-ask). key accepts a wallet SecretHandle from apiKey(\"anthropic\") (resolved at the fetch site, never stored) or a literal sk-ant-… string. Default model claude-fable-5. =claude(chat!A1, apiKey(\"anthropic\"))"
+        "description": "(prompt, key [, model]) - ask Claude; the reply becomes the cell value (REACTIVE: edit the prompt to re-ask). key accepts a vault SecretHandle from apiKey(\"anthropic\") (resolved at the fetch site, never stored) or a literal sk-ant-… string. Default model claude-fable-5. =claude(chat!A1, apiKey(\"anthropic\"))"
+      },
+      "locked": true
+    },
+    {
+      "key": "localcheck",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "localcheck",
+        "segment": "llm",
+        "name": "localcheck",
+        "kind": "native",
+        "description": "() — can this machine run a LOCAL in-browser LLM? Probes WebGPU (navigator.gpu + an adapter), navigator.deviceMemory, the GPU max buffer size, and the storage quota; downloads NOTHING. Returns {webgpu, deviceMemory, gpuMaxBufferMB, storageFreeMB, canRun, reason}. The chat UI offers the \"local\" provider only when canRun. =localcheck()"
+      },
+      "locked": true
+    },
+    {
+      "key": "localload",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "localload",
+        "segment": "llm",
+        "name": "localload",
+        "kind": "native",
+        "description": "() — download (or confirm) the local LLM model: WebLLM + Qwen2.5-0.5B (~400MB) from plastron.ca, cached for offline use. Browser-only; idempotent. BLACKLISTED (DANGEROUS net) — the big download is consent-gated in a shared/locked session. Returns a status; poll =localprogress() while it loads. =localload()"
+      },
+      "locked": true
+    },
+    {
+      "key": "localprogress",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "localprogress",
+        "segment": "llm",
+        "name": "localprogress",
+        "kind": "native",
+        "description": "() — the last WebLLM load-progress line (e.g. '[42%] Fetching param cache…'), or 'ready'/'(not loaded)'. Re-evaluate to poll a running =localload(). =localprogress()"
+      },
+      "locked": true
+    },
+    {
+      "key": "localchat",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "localchat",
+        "segment": "llm",
+        "name": "localchat",
+        "kind": "native",
+        "description": "(prompt [, system]) — ask the LOCAL in-browser LLM (WebLLM + Qwen2.5-0.5B on WebGPU); the reply becomes the cell value (REACTIVE: edit the prompt to re-ask), exactly like =claude but offline + free + private. First call triggers the consent-gated model download. BLACKLISTED (DANGEROUS net). =localchat(A1)"
       },
       "locked": true
     },
@@ -33,7 +81,7 @@
         "segment": "llm",
         "name": "makeclient",
         "kind": "native",
-        "description": "(provider, key, model?) — capture an llm client from a key (claude/grok). Returns a CLIENT HANDLE whose VALUE shows status (non-secret): status 'ready' when the resolved key is real, else status 'error' + error '✗ no key'. The key is NEVER in the value (it lives in a keystore); the grid shows e.g. 'claude ✓ ready' / 'grok ✗ no key'. =makeclient(\"claude\", apiKey(\"anthropic\"))"
+        "description": "(provider, key, model?) — capture an llm client from a key (claude/grok/chatgpt), OR a keyless LOCAL in-browser client (=makeclient(\"local\") — no key, runs Qwen2.5-0.5B on WebGPU). Returns a CLIENT HANDLE whose VALUE shows status (non-secret): status 'ready' when the resolved key is real (local is always ready), else status 'error' + error '✗ no key'. The key is NEVER in the value (it lives in a keystore). =makeclient(\"claude\", apiKey(\"anthropic\")) / =makeclient(\"local\")"
       },
       "locked": true
     },
@@ -142,7 +190,7 @@
         "name": "clientsheet",
         "kind": "native",
         "genesis": true,
-        "description": "genesis: a sheet of llm clients made from the wallet (clients.claude/clients.grok = makeclient(provider, apiKey(...))). =clientsheet()"
+        "description": "genesis: a sheet of llm clients made from the vault (clients.claude/clients.grok = makeclient(provider, apiKey(...))). =clientsheet()"
       },
       "locked": true
     }

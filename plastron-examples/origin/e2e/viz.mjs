@@ -5,7 +5,7 @@ const b = await chromium.launch({ executablePath:"/usr/bin/google-chrome", headl
 const page = await b.newPage();
 const errs=[]; page.on("pageerror",e=>errs.push(String(e)));
 await page.goto("file://"+bundle); await page.waitForFunction(()=>!!globalThis.plastron,{timeout:8000}); await page.waitForTimeout(250);
-const put=(src,key)=>page.evaluate(async([s,k])=>{const{state,resolveFn}=globalThis.plastron;await resolveFn(state,"origin.edit")(state,k);await resolveFn(state,"setValue")(state,"元.draft",s);await resolveFn(state,"origin.commit")(state,k);await new Promise(r=>setTimeout(r,140));return state.cels.get(k)?.v??null;},[src,key]);
+const put=(src,key)=>page.evaluate(async([s,k])=>{const{state,resolveFn}=globalThis.plastron;await resolveFn(state,"origin.edit")(state,k);await resolveFn(state,"setValue")(state,"元.draft",s);await resolveFn(state,"origin.run")(state,k);await new Promise(r=>setTimeout(r,140));return state.cels.get(k)?.v??null;},[src,key]);
 let pass=0,fail=0; const ok=(c,w)=>{if(c){pass++;console.log("  ✔",w);}else{fail++;console.log("  ✘",w);}};
 await put(`=cels(3, 1)`, "元");
 await put(`1`, "g3x1.A1");

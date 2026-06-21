@@ -2,7 +2,7 @@
 // SecretHandle — a kernel-level reference to a secret that NEVER enters the
 // cel graph as a value. A handle carries only the NAME; the secret itself is
 // resolved at the effect site through `resolve()` (a closure a capability —
-// e.g. the unsafe-wallet segment — provides). The kernel guarantees a handle
+// e.g. the vault segment — provides). The kernel guarantees a handle
 // can never persist more than its name: `dehydrateValue` sanitizes it, so a
 // .甲 archive or a seed can hold "🔑 anthropic" but never the key.
 //

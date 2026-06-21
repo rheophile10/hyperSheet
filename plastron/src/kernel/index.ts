@@ -92,7 +92,7 @@ export {
   registerSegmentLoader, loadSegment, ensureSegments, isSegmentPending,
   assertOneDirection, specTouchesEdges,
   currentAccessor, withAccessor,
-  DANGEROUS, isDangerous, isConsented, requireConsent, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
+  DANGEROUS, isDangerous, isConsented, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
   isDenied, DENIED,
   installDormant, dormantSegmentOf, dormantView, assertNotDormant,
   flush, wake, sleep, forget,

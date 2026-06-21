@@ -3,8 +3,8 @@ import type {
 } from "../../../types/index.js";
 import {
   bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, retireCel,
-  dangerousUsage, setConsent, DANGEROUS, requireConsent, lockConsent,
-  getSegmentManifest, isSegmentPending,
+  dangerousUsage, setConsent, DANGEROUS, lockConsent,
+  isSegmentPending,
 } from "../../../kernel/index.js";
 import {
   dumpArchive, dumpSegments, loadArchive, documentSegments, isSubstrateSegment, archiveSegmentNames,
@@ -13,7 +13,6 @@ import {
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
 // `memo` attaches the diff's O(changed) short-circuit hint (see dom).
 import { el as makeEl, text as T } from "../../library/dom/index.js";
-import { openAsSheet } from "../../library/sheet-host/index.js";
 import { BUILTIN_DOCS } from "../../library/sheet/utils/infix.js";
 import { encodeLink, decodeLink, encodeEncLink, decodeEncLink, ENC_METHOD,
   encryptPayload, decryptPayload,
@@ -134,19 +133,45 @@ const gridShape = (rows: unknown, cols: unknown, name: string, values?: Record<s
   return { layer: name, cels };
 };
 
+type WGeom = { x?: number; y?: number; w?: number; h?: number; minW?: number; minH?: number };
 const isAt = (x: unknown): x is { __at: string; content: unknown } => !!x && typeof x === "object" && typeof (x as { __at?: unknown }).__at === "string";
-const isValues = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x) && !isAt(x);
+const isGeom = (x: unknown): x is { __geom: WGeom } => !!x && typeof x === "object" && !!(x as { __geom?: unknown }).__geom && typeof (x as { __geom?: unknown }).__geom === "object";
+const isValues = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x) && !isAt(x) && !isGeom(x);
 
 // at(addr, content) — one cell's initial content for a cels() grid. A plain
 // function call (no new parser syntax). cels collects trailing at() markers.
 const at: Fn = (addr?: unknown, content?: unknown) => ({ __at: String(addr ?? ""), content: content == null ? "" : String(content) });
 
-// gather a values map from an optional {object} and/or trailing at() markers.
-const collectValues = (args: unknown[], i: number): [Record<string, unknown> | undefined, number] => {
+// geom(x, y, w, h [, minW, minH]) — a cels() grid's WINDOW geometry, CSS-style:
+// x/y = left/top, w/h = the (proportional) width/height, minW/minH = min-width/
+// min-height FLOORS (the window never renders or resizes below them). A value in
+// (0,1] is a PROPORTION of the viewport; >1 is absolute pixels (minW/minH are
+// typically pixels, like CSS min-width:340px). cels collects it (like at()) and
+// the genesis writes it into win.geom[name] the FIRST time the window
+// materializes (a later user drag/resize is preserved). Each arg is optional.
+const geomFn: Fn = (x?: unknown, y?: unknown, w?: unknown, h?: unknown, minW?: unknown, minH?: unknown): unknown => {
+  const num = (v: unknown): number | undefined => { const n = Number(v); return v != null && v !== "" && !Number.isNaN(n) ? n : undefined; };
+  const g: WGeom = {};
+  if (num(x) !== undefined) g.x = num(x);
+  if (num(y) !== undefined) g.y = num(y);
+  if (num(w) !== undefined) g.w = num(w);
+  if (num(h) !== undefined) g.h = num(h);
+  if (num(minW) !== undefined) g.minW = num(minW);
+  if (num(minH) !== undefined) g.minH = num(minH);
+  return { __geom: g };
+};
+
+// gather a values map (+ an optional geom) from an optional {object} and trailing
+// at()/geom() markers.
+const collectValues = (args: unknown[], i: number): [Record<string, unknown> | undefined, WGeom | undefined, number] => {
   const values: Record<string, unknown> = {};
+  let geom: WGeom | undefined;
   if (isValues(args[i])) { Object.assign(values, args[i]); i++; }
-  while (isAt(args[i])) { const a = args[i] as { __at: string; content: unknown }; values[a.__at] = a.content; i++; }
-  return [Object.keys(values).length ? values : undefined, i];
+  while (isAt(args[i]) || isGeom(args[i])) {
+    if (isGeom(args[i])) { geom = (args[i] as { __geom: WGeom }).__geom; i++; }
+    else { const a = args[i] as { __at: string; content: unknown }; values[a.__at] = a.content; i++; }
+  }
+  return [Object.keys(values).length ? values : undefined, geom, i];
 };
 
 /** cels — a genesis vocabulary that adds worksheets of editable cels, each
@@ -157,37 +182,30 @@ const collectValues = (args: unknown[], i: number): [Record<string, unknown> | u
  *    cels("in", 4, 3, at("a1","apple"), at("b2","=1+1"))  → a sheet
  *      with initial cell contents (a value, or a formula like =1+1).
  *  Delete the formula → swept. */
-// SHEET_CLOSURE — every cels() worksheet mints a CLOSURE: only the host view
-// (`origin`, which aggregates every cell's value to render the grid) may read it;
-// a formula in ANOTHER sheet/window can't, so cross-sheet reads are denied unless
-// the two sheets are tabbed together (tabbing → bundleSegments, the one opener —
-// the turtles pattern). set stays private (only the sheet itself writes). Listing
-// `origin` rather than going fully `private` keeps the renderer working while
-// still closing the sheet to every peer formula.
-const SHEET_CLOSURE = { get: ["origin"], set: "private" } as const;
 const celsGen: Fn = (...args: unknown[]): unknown => {
   if (typeof args[0] === "string") {
     // workbook: (name, rows, cols [, at()…])+ — at() markers belong to the
     // preceding grid; the next string starts the next grid. A workbook's sheets
     // all land in the generator's own segment (one closure), so they share memory.
     const cels: Record<string, unknown> = {};
+    const geoms: Record<string, WGeom> = {};
     let i = 0, n = 0;
     while (i < args.length && typeof args[i] === "string") {
       const nm = String(args[i]).trim() || `s${++n}`;
-      const [values, ni] = collectValues(args, i + 3);
+      const [values, geom, ni] = collectValues(args, i + 3);
       Object.assign(cels, gridShape(args[i + 1], args[i + 2], nm, values).cels);
+      if (geom) geoms[nm] = geom;
       i = ni;
     }
-    return { genesis: true, cels };
+    return { genesis: true, cels, ...(Object.keys(geoms).length ? { geoms } : {}) };
   }
-  // numbers → one sheet: (rows, cols [, name] [, at()…]).
+  // numbers → one sheet: (rows, cols [, name] [, geom()] [, at()…]).
   const [rows, cols] = args;
   const named = typeof args[2] === "string" && args[2] !== "";
   const name = named ? String(args[2])
     : `g${Math.max(1, Math.min(100, Math.floor(Number(rows) || 1)))}x${Math.max(1, Math.min(50, Math.floor(Number(cols) || 1)))}`;
-  const [values] = collectValues(args, named ? 3 : 2);
-  // each standalone named sheet is its OWN private closure.
-  return { genesis: true, ...gridShape(rows, cols, name, values), access: SHEET_CLOSURE };
+  const [values, geom] = collectValues(args, named ? 3 : 2);
+  return { genesis: true, kind: "workbook", ...gridShape(rows, cols, name, values), ...(geom ? { geoms: { [name]: geom } } : {}) };
 };
 
 /** doc(…parts) — compose an ENTIRE document from cels()/def() parts into
@@ -200,6 +218,7 @@ const celsGen: Fn = (...args: unknown[]): unknown => {
 const doc: Fn = (...parts: unknown[]): unknown => {
   const cels: Record<string, unknown> = {};
   const mints: Record<string, unknown> = {};
+  const geoms: Record<string, WGeom> = {};
   const stamp = (partCels: Record<string, unknown>, layer: string, access: unknown): void => {
     for (const spec of Object.values(partCels)) {
       const sp = spec as { metadata?: Record<string, unknown> };
@@ -220,8 +239,9 @@ const doc: Fn = (...parts: unknown[]): unknown => {
       stamp(o.cels as Record<string, unknown>, String(o.layer), o.access);
       Object.assign(cels, o.cels as Record<string, unknown>);
     } else if (o.originDef === true) cels[String(o.name)] = { celType: "EditableLambdaCel", f: String(o.source ?? ""), metadata: { kind: String(o.kind ?? "js"), name: String(o.name) } };
+    if (o.geoms && typeof o.geoms === "object") Object.assign(geoms, o.geoms);            // per-window geometry (cels(…, geom(x,y,w,h)))
   }
-  return { genesis: true, cels, mints };
+  return { genesis: true, cels, mints, ...(Object.keys(geoms).length ? { geoms } : {}) };
 };
 
 // seed() — ask the drain (which has state) to serialize the whole document to a
@@ -260,12 +280,10 @@ const cellKeys = (state: State): string[] => {
     if (k === "元") continue;
     if (c.celType !== "ValueCel" && c.celType !== "FormulaCel") continue;
     const md = c.metadata as { generatedBy?: Key; segment?: string };
-    // grid cels (genesis-owned). win.* layer cels (state/content/frame) are
-    // first-class desktop cells even when handler-created (no generatedBy) —
-    // e.g. the wiki window. The link-edge overlay (linkfx.overlay) is a
-    // desktop-wide mount too, so it survives 元 re-renders and keeps drawing
-    // the corner-link edges.
-    if (md.generatedBy || /^win\.[\w-]+\.(state|content|frame)$/.test(k) || k === "linkfx.overlay") out.push(k);
+    // grid cels (genesis-owned). win.* AND wasm.* layer cels (state/content/frame)
+    // are first-class desktop cells even when handler-created (no generatedBy) —
+    // e.g. the wiki window, and the wasm-window canvas frame (=doom()).
+    if (md.generatedBy || /^(?:win|wasm)\.[\w-]+\.(state|content|frame)$/.test(k)) out.push(k);
   }
   return [out[0]!, ...out.slice(1).sort()];
 };
@@ -286,7 +304,7 @@ const rewireView = async (state: State, keys: string[]): Promise<void> => {
 // a user commit). Origin renders a fixed cell list (元.view's vals), so a
 // structural change elsewhere must rebuild that list + repaint. commit still
 // rewires for the user-edit path; this closes the gap for everything else
-// (#17 render half — the abandoned walletKeys worksheet, future windows).
+// (#17 render half — the abandoned vaultKeys worksheet, future windows).
 const viewRefreshFn: Fn = (async (state: State): Promise<void> => {
   await rewireView(state, cellKeys(state));
   const sync = resolveFn(state, "winsheet.syncBundles") as Fn | undefined;
@@ -349,7 +367,7 @@ const formatFormula = (src: string): string => {
 };
 
 // A click that lands on a form control a formula rendered INSIDE a cell (a
-// password box from =unlockWallet(), a file picker from =upload(), a button)
+// password box from =unlockVault(), a file picker from =upload(), a button)
 // must reach the control — not hijack into editing the cell's formula. The
 // cell-value wrapper carries the click→edit binding, so without this guard
 // every click on the input bubbles up and swaps the input out for the editor
@@ -408,63 +426,52 @@ const select: Fn = async (state: State, payload?: unknown, event?: unknown) => {
 // its own value (a harmless re-cascade that repaints dependents). The 🔫 button
 // on the formula bar dispatches this.
 const fire: Fn = async (state: State, payload?: unknown) => {
+  // ⚡ runs what's in the formula bar against the selected cell: commit the draft
+  // (sniffs the type/parser, recompiles, re-cascades) — so editing the bar then
+  // hitting ⚡ runs the NEW formula. With nothing edited the draft is the cell's
+  // own source (seeded on select), so ⚡ just re-evaluates it. commit's own
+  // settle loop re-materializes a GENESIS (e.g. firing 元 rebuilds the desktop).
   const key = typeof payload === "string" && payload ? payload
     : String(state.cels.get("元.selected")?.v ?? "");
   if (!key) return state;
-  // ⚡ runs what's in the formula bar: commit the draft to this cell (sniffs the
-  // type/parser, recompiles, re-cascades) — so editing the bar then hitting ⚡
-  // runs the NEW formula, not the saved source. With nothing edited the draft is
-  // the cell's own source (seeded on select), so ⚡ just re-evaluates it.
-  await commit(state, key);
-  // drain whatever it produces: a GENESIS (e.g. 元) re-materializes its windows +
-  // cels, so firing 元 rebuilds the desktop (recovery). Mirrors commit's loop.
-  const drain = resolveFn(state, "drain") as Fn;
-  const gd = resolveFn(state, "genesis.drain") as Fn | undefined;
-  const dd = resolveFn(state, "defn.drain") as Fn | undefined;
-  for (let pass = 0; pass < 8; pass++) {
-    const before = state.cels.size;
-    await (resolveFn(state, "runCycle") as Fn)(state);
-    for (const ch of ["genesis.commit", "defn.commit", "checkpoint.commit", "origin.effects"]) {
-      if (state.cels.get(ch)) await drain(state, ch);
-    }
-    if (gd) await gd([], state);
-    if (dd) await dd([], state);
-    if (state.cels.size === before) break;
+  return commit(state, key);
+};
+
+// (ex / tryexample removed: the readme is now static copyable text — type an
+//  example into a cell and press ⚡ — so there are no per-row "try it" buttons.)
+
+// window geometry a genesis declared (cels(…, geom(x,y,w,h[,minW,minH]))) → win.geom.
+// `key` holds the genesis result {…, geoms}. A value in (0,1] is a PROPORTION of the
+// viewport (x/w of viewport.w, y/h of viewport.h); >1 is absolute pixels. Only set a
+// window with NO geom yet, so a user's later drag/resize is preserved. Shared by
+// origin.run AND the navOpen "=formula" launcher (both spawn geom-bearing windows).
+const applyDeclaredGeom = async (state: State, key: string): Promise<void> => {
+  const declared = (state.cels.get(key)?.v as { geoms?: Record<string, WGeom> } | undefined)?.geoms;
+  if (!declared || !Object.keys(declared).length) return;
+  const vw = Number(state.cels.get("viewport.w")?.v) || 1200, vh = Number(state.cels.get("viewport.h")?.v) || 800;
+  const px = (v: number | undefined, dim: number): number | undefined => v == null ? undefined : (v > 0 && v <= 1 ? Math.round(v * dim) : v);
+  const cur = { ...((state.cels.get("win.geom")?.v as Record<string, WGeom>) ?? {}) };
+  let touched = false;
+  for (const [seg, g] of Object.entries(declared)) {
+    if (cur[seg]) continue;
+    const r: WGeom = {};
+    if (g.x != null) r.x = px(g.x, vw); if (g.y != null) r.y = px(g.y, vh);
+    if (g.w != null) r.w = px(g.w, vw); if (g.h != null) r.h = px(g.h, vh);
+    if (g.minW != null) r.minW = px(g.minW, vw); if (g.minH != null) r.minH = px(g.minH, vh);
+    cur[seg] = r; touched = true;
   }
-  await rewireView(state, cellKeys(state));
-  await (resolveFn(state, "runCycle") as Fn)(state);
-  await drain(state, "dom.paint");
-  return state;
+  if (touched) await (resolveFn(state, "setValue") as Fn)(state, "win.geom", cur);
 };
 
-// ex(formula, target) — a try-it payload: the formula to run and the cell key
-// it should land in. Authored in each readme ROW's ⚡ button, where target is
-// that ROW's OWN B cell: (on "click" "tryexample" (ex "=1+1" "readme.B2")).
-// Per-row targets keep the def/use examples from clobbering each other.
-// Returns a marker the painter hands to tryexample verbatim (no serialization).
-const ex: Fn = (formula?: unknown, target?: unknown) =>
-  ({ __ex: { formula: String(formula ?? ""), target: String(target ?? "") } });
-
-// tryexample — the readme "try it" handler. Copies an example's formula into a
-// scratch cell beside the readme and evaluates it, so clicking the ⚡ shows the
-// result. Reuses commit (seed 元.draft → commit(target)): commit sniffs the
-// source into a FormulaCel, writes it to the target, re-evaluates and repaints.
-const tryexample: Fn = async (state: State, payload?: unknown) => {
-  const p = payload as { __ex?: { formula?: unknown; target?: unknown } } | undefined;
-  const formula = p && typeof p === "object" && p.__ex ? String(p.__ex.formula ?? "") : "";
-  const target = p && typeof p === "object" && p.__ex ? String(p.__ex.target ?? "") : "";
-  if (!target) return state;
-  await (resolveFn(state, "setValue") as Fn)(state, "元.draft", formula);
-  await commit(state, target);
-  return state;
-};
-
-/** commit — set the edited cell's content from the draft and re-evaluate.
- *  Every cell (元 included) executes its formula/value like A1. 元 is
- *  un-deletable: clearing it restores the readme. A structure formula
- *  (=grid …) makes more cels; the post-drain rebuild adds them. */
-const commit: Fn = async (state: State, payload?: unknown) => {
+/** commit (origin.run) — run a cell: set its content from the draft and
+ *  re-evaluate. Every cell (元 included) executes its formula/value like A1. 元
+ *  is un-deletable: clearing it restores the readme. A structure formula
+ *  (=grid …) makes more cels; the post-drain rebuild adds them.
+ *  Optional `source`: seed 元.draft with it first, so a caller can run a given
+ *  formula into `key` in one call (subsumes the setValue(元.draft)+run pattern). */
+const commit: Fn = async (state: State, payload?: unknown, source?: unknown) => {
   const key = typeof payload === "string" ? payload : "元";
+  if (source !== undefined) await (resolveFn(state, "setValue") as Fn)(state, "元.draft", String(source));
   const draft = String(state.cels.get("元.draft")?.v ?? "").trim();
   const setCel = resolveFn(state, "setCel") as Fn;
 
@@ -516,6 +523,7 @@ const commit: Fn = async (state: State, payload?: unknown) => {
     if (dd) await dd([], state);
     if (state.cels.size === before) break; // no new cels this pass → settled
   }
+  await applyDeclaredGeom(state, key as string);
   // …rebuild the cell list (new grids in, swept cels out), re-fire, paint.
   await rewireView(state, cellKeys(state));
   // a SEEDED tab (win.geom[seg].host) must grant shared memory like a runtime
@@ -560,14 +568,11 @@ const key: Fn = async (state: State, payload: unknown, event: unknown) => {
   return state;
 };
 
-// ── persistence — save the sheet to localStorage; auto-load it on boot ───────
+// ── persistence — save the sheet as a FILE in OPFS (no localStorage) ─────────
 // A "sheet archive" is just the cell SOURCES (元.cells) + any def'd functions.
 // Replaying them reconstructs the sheet (grids regenerate, values + formulas
-// come back). The full .甲 graph archive is the eventual path; this round-trips
-// the origin's own data today without a user-space-segment refactor.
-
-const LS = (): Storage | undefined => (globalThis as { localStorage?: Storage }).localStorage;
-const slot = (name?: unknown): string => `plastron.sheet.${String(name || "default") || "default"}`;
+// come back). =save()/=open() round-trip it through /plastron/sheets/<name>.json
+// so saved sheets are real, discoverable files; =link() is the no-filesystem path.
 
 const collectArchive = (state: State): { v: number; cells: [string, string][]; defs: [string, string, string][] } => {
   const keys = (state.cels.get("元.cells")?.v as string[] | undefined) ?? ["元"];
@@ -654,6 +659,12 @@ const restoreArchive = async (state: State, arch: { cells?: [string, string][]; 
 
 const saveFn: Fn = (name?: unknown) => ({ originSave: true, name: name == null ? "" : String(name) });
 const openFn: Fn = (name?: unknown) => ({ originOpen: true, name: name == null ? "" : String(name) });
+// vaultsave(pass)/vaultload(pass) — persist the `secrets` segment as a standalone
+// ENCRYPTED file /vault.env.enc in OPFS (discoverable in 📁 Files, opaque without
+// the passphrase). Independent of =save — your keys survive without saving the
+// sheet, and the vault is a portable file.
+const vaultSaveFn: Fn = (pass?: unknown) => ({ originVaultSave: true, pass: pass == null ? "" : String(pass) });
+const vaultLoadFn: Fn = (pass?: unknown) => ({ originVaultLoad: true, pass: pass == null ? "" : String(pass) });
 // link(target?, base?, codec?) — a shareable URL that rebuilds a plastron from the
 // page address. target "" → the whole sheet (buildSeed); a cell key → its source.
 const linkFn: Fn = (target?: unknown, base?: unknown, codec?: unknown) =>
@@ -819,7 +830,7 @@ export const bootFromHash = async (state: State, hash: string): Promise<string |
     let verdict: string;
     try {
       await (resolveFn(state, "setValue") as Fn)(state, "元.draft", f);
-      await (resolveFn(state, "origin.commit") as Fn)(state, "元");
+      await (resolveFn(state, "origin.run") as Fn)(state, "元");
       const err = String(state.cels.get("元.error")?.v ?? "").trim();
       const v = state.cels.get("元")?.v;
       if (err && err !== "null") verdict = "❌ INVALID\n\n" + err.replace(/^#/, "");
@@ -849,20 +860,63 @@ export const bootFromHash = async (state: State, hash: string): Promise<string |
   if (!formula) return null;
   lockConsent(state);                                                   // provenance = url → CONSENT-lock (dangerous fns need Allow)
   await (resolveFn(state, "setValue") as Fn)(state, "元.draft", formula);
-  await (resolveFn(state, "origin.commit") as Fn)(state, "元");         // the shared formula IS the view, jailed
+  await (resolveFn(state, "origin.run") as Fn)(state, "元");         // the shared formula IS the view, jailed
   return formula;
 };
 // jail(seed) renders a SANDBOXED iframe running seed as its own kernel (the
 // browser's real Layer-A jail — the boundary for untrusted code).
 const jailFn: Fn = (seed?: unknown) => ({ originJail: true, seed: String(seed ?? "") });
-// winsize(seg, w, h) — set a worksheet window's size (so a sheet can lay itself out).
-const winsizeFn: Fn = (seg?: unknown, w?: unknown, h?: unknown) =>
-  // winsize(seg, "max"|"full"|"fullscreen") maximizes the window to the viewport;
-  // winsize(seg, w, h) sets explicit pixels.
-  (typeof w === "string" && /^(max|full|fullscreen)$/i.test(w.trim())
-    ? ({ originWinsize: true, seg: String(seg ?? ""), max: true })
-    : ({ originWinsize: true, seg: String(seg ?? ""), w: Number(w) || 0, h: Number(h) || 0 }));
-// origin.download — drop the running plastron out as a single self-contained
+
+// jailask(payload) — JAIL side: round-trip a request to the PARENT over the
+// postMessage bridge (origin-main installs globalThis.__plastronJailAsk in a jail
+// iframe). Returns the parent's reply. Outside a jail it's a no-op string.
+const jailAskFn: Fn = (async (payload: unknown): Promise<unknown> => {
+  const ask = (globalThis as { __plastronJailAsk?: (p: unknown) => Promise<unknown> }).__plastronJailAsk;
+  if (!ask) return "(jailask: not running inside a jail)";
+  try { return await ask(payload); } catch (e) { return "⚠ " + String((e as { message?: unknown })?.message ?? e); }
+}) as Fn;
+
+// jail.serve(state, payload) — PARENT side: mediates a jail's ask. The ONLY thing
+// it does is run an LLM call on the jail's behalf, with the parent's key (read from
+// the vault — never crossed into the jail) and a system prompt = jail framing +
+// llms.txt. The reply (the bot's text + `set A1 = …` cell commands) crosses back in;
+// the jail applies them in its OWN sandboxed kernel.
+const JAIL_FRAMING =
+  "You are an LLM living INSIDE a plastron jail() — a sandboxed iframe that is its " +
+  "OWN spreadsheet kernel. You cannot reach the parent page, its keys, its files, or " +
+  "the network directly, so experiment freely and BE IMPRESSIVE. You talk to the human " +
+  "through a 50×50 cel grid: write values or =formulas into cells and they render LIVE " +
+  "in place (a cell holding =dom(…)/=canvas(…)/=barchart(…)/=sqlitedemo() becomes real " +
+  "UI). To write a cell, put a line `set <ADDR> = <value-or-=formula>` (ADDR like B2 or " +
+  "A1:C3); a body starting with ( or = is a formula. Reply in prose AND emit set-lines " +
+  "for anything you want to build. The current grid is given below.";
+let _llmsGuide: string | null = null;
+const fetchGuide = async (): Promise<string> => {
+  if (_llmsGuide !== null) return _llmsGuide;
+  try {
+    const href = (globalThis as { location?: { href?: string } }).location?.href ?? "";
+    const url = href.split("#")[0]!.replace(/[^/]*$/, "") + "llms.txt";
+    const res = await fetch(url);
+    _llmsGuide = res.ok ? await res.text() : "";
+  } catch { _llmsGuide = ""; }
+  return _llmsGuide;
+};
+const jailServeFn: Fn = (async (state: State, payload: unknown): Promise<unknown> => {
+  (globalThis as { __lastJailServe?: unknown }).__lastJailServe = payload;   // observability for tests
+  const p = (payload && typeof payload === "object") ? payload as Record<string, unknown> : { message: String(payload ?? "") };
+  const provider = String(p.provider ?? "grok");
+  const message = String(p.grid ?? p.message ?? "");
+  if (!message) return "(nothing to send)";
+  const key = await (resolveFn(state, "apiKey") as Fn)(provider);            // parent vault, consent-gated
+  const client = (resolveFn(state, "makeclient") as Fn)(provider, key, p.model);
+  const guide = await fetchGuide();
+  const system = JAIL_FRAMING + (guide ? "\n\n=== plastron vocabulary (llms.txt) ===\n" + guide : "") + (p.system ? "\n\n=== extra system ===\n" + String(p.system) : "");
+  return String(await (resolveFn(state, "client.send") as Fn)(client, message, system));
+}) as Fn;
+// (winsize removed: a sheet declares its window geometry with cels(…, geom(x,y,w,h))
+//  now — see geomFn — instead of side-effecting win.geom from a formula in a cell.
+//  Maximize lives on the ⛶ titlebar button (winsheet.maximize).)
+// origin.savepage — drop the running plastron out as a single self-contained
 // 龜甲.html (the pristine served bundle; falls back to the live DOM). Wired to
 // the ⬇ 龜甲 button in the desktop's upper-right.
 const download: Fn = async (state: State): Promise<State> => {
@@ -1076,13 +1130,31 @@ const navNode = (it: NavItem, depth: number): VNode => {
 /** nav([mobile], item, …) — a navigation menu. Pass viewport.mobile as the first
  *  arg to auto-switch (mobile = collapsible ☰ sidebar; else desktop launchers).
  *  =nav(viewport.mobile, item("📁 Files","files"), item("📊 Charts", item("🥧 Pie", '=…'))). */
+// a desktop ICON tile — the leaf's label split into a big glyph + a caption
+// below, the way app icons sit on a desktop. Over the wallpaper, so the caption
+// gets a shadow for legibility and the tile lifts on hover.
+const navIcon = (it: NavItem): VNode => {
+  const sp = it.label.indexOf(" ");
+  const glyph = sp > 0 ? it.label.slice(0, sp) : it.label;
+  const caption = sp > 0 ? it.label.slice(sp + 1) : "";
+  return makeEl("button", { class: "pl-nav-icon", style: "display:flex;flex-direction:column;align-items:center;gap:.15rem;width:5.2rem;padding:.25rem .25rem;border:0;background:transparent;cursor:pointer;border-radius:.6rem;text-align:center" },
+    // color:#fff so a MONOCHROME/text-presentation glyph (▦, a text-style 🖥) is
+    // visible on the dark wallpaper; color emoji (🐢, 📁) ignore `color` and stay
+    // colorful. The dark pill behind it gives any glyph contrast on a light wallpaper.
+    [makeEl("div", { class: "pl-nav-glyph", style: "font-size:1.7rem;line-height:1;width:2.6rem;height:2.6rem;display:flex;align-items:center;justify-content:center;color:#fff;background:rgba(20,22,30,.45);border:1px solid #ffffff22;border-radius:.7rem;box-shadow:0 2px 6px #0006;filter:drop-shadow(0 1px 2px #0007)" }, [T(glyph)]),
+     ...(caption ? [makeEl("div", { class: "pl-nav-cap", style: "font:600 .72rem ui-monospace,monospace;color:#fff;text-shadow:0 1px 3px #000c,0 0 2px #000a;white-space:nowrap" }, [T(caption)])] : [])],
+    { click: { dispatch: "origin.navOpen", payload: it.action } });
+};
 const navFn: Fn = ((...args: unknown[]): VNode => {
   const mobile = typeof args[0] === "boolean" ? (args[0] as boolean) : false;
   const items = args.filter(isNavItem);
-  const list = makeEl("div", { class: "pl-nav-list", style: "display:flex;flex-direction:column;gap:.15rem;padding:.3rem;min-width:11rem" }, items.map((it) => navNode(it, 0)));
-  if (mobile) return makeEl("details", { class: "pl-nav pl-nav-mobile", style: "position:fixed;left:0;top:0;z-index:90;background:Canvas;border:1px solid #8884;border-radius:0 0 .6rem 0;max-width:84vw;max-height:92vh;overflow:auto;box-shadow:2px 2px 14px #0004" },
-    [makeEl("summary", { style: "padding:.45rem .7rem;cursor:pointer;font:600 1.4rem ui-monospace,monospace" }, [T("☰")]), list]);
-  return makeEl("div", { class: "pl-nav pl-nav-desktop", style: "position:fixed;left:.6rem;top:.6rem;z-index:40;background:#8881;border:1px solid #8883;border-radius:.6rem;backdrop-filter:blur(4px)" }, [list]);
+  if (mobile) {
+    const list = makeEl("div", { class: "pl-nav-list", style: "display:flex;flex-direction:column;gap:.15rem;padding:.3rem;min-width:11rem" }, items.map((it) => navNode(it, 0)));
+    return makeEl("details", { class: "pl-nav pl-nav-mobile", style: "position:fixed;left:0;top:0;z-index:90;background:Canvas;border:1px solid #8884;border-radius:0 0 .6rem 0;max-width:84vw;max-height:92vh;overflow:auto;box-shadow:2px 2px 14px #0004" },
+      [makeEl("summary", { style: "padding:.45rem .7rem;cursor:pointer;font:600 1.4rem ui-monospace,monospace" }, [T("☰")]), list]);
+  }
+  // desktop: floating app icons down the left edge (no panel chrome).
+  return makeEl("div", { class: "pl-nav pl-nav-desktop", style: "position:fixed;left:.5rem;top:.6rem;z-index:40;display:flex;flex-direction:column;gap:.35rem" }, items.map(navIcon));
 }) as Fn;
 /** origin.navOpen — a nav leaf was clicked. A "=formula" spawns a new window
  *  (trusted preset, capped by the kernel); anything else is a window key → focus it. */
@@ -1096,119 +1168,190 @@ const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> =
     const seg = action.slice(4);
     if (isSegmentPending(state, seg)) await (resolveFn(state, "wake") as Fn)(state, seg);
     try { await (resolveFn(state, "winsheet.raise") as Fn)(state, `${seg}.state`); } catch { /* not a windowed segment */ }
-  } else if (/^[=(]/.test(action)) await spawnQuarantined(state, action, "trusted");
-  else await (resolveFn(state, "winsheet.raise") as Fn)(state, action);
+  } else if (action.startsWith("do:")) {
+    // a HOST-VERB launcher (e.g. do:origin.savepage) — the verb materializes +
+    // paints its own windows, so just dispatch it.
+    const fn = resolveFn(state, action.slice(3)) as Fn | undefined;
+    if (fn) await fn(state);
+  } else if (action.startsWith("open:")) {
+    // a FILE launcher (e.g. open:/readme.f) — read the formula-source file from
+    // OPFS and run it into windows. One action for readme/keyboard/turtles/…
+    await openFile(state, action.slice(5));
+  } else if (/^[=(]/.test(action)) {
+    // A "=formula" launcher (=winapp/=chatapp/=consentpanel/=doom/…). Spawn it into
+    // a STABLE segment keyed by the action so re-clicking the icon reuses the SAME
+    // generator rather than minting app1/app2/… — a fresh owner would trap on the
+    // window's already-owned win.<id>.* cels. First click materializes the window;
+    // a repeat is an idempotent genesis (geometry preserved), then winx.show below
+    // un-hides it (genesis never resets a closed/min flag — that's a user edit, so
+    // without this an icon couldn't reopen a window the ✕ had closed).
+    let hsh = 0; for (const ch of action) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+    const seg = `nav${hsh.toString(36)}`;
+    if (!state.cels.get(`${seg}.元`)) {
+      const parser = action.trim().startsWith("=") ? "infix" : "f";
+      await (resolveFn(state, "setCel") as Fn)(state, `${seg}.元`, { celType: "FormulaCel", f: action, metadata: { key: `${seg}.元`, segment: seg, parser } });
+    }
+    // materialize the spawned genesis — the dispatch path only drains dom.paint,
+    // so a window-spawning leaf needs the commit/drain cycle the boot uses (else
+    // the nav.元 formula cell is created but its genesis never opens a window).
+    const drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
+    for (let i = 0; i < 6; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
+    // un-hide the window this genesis owns: a repeat click reopens a window the ✕
+    // had closed (or the – had minimized). The state cel survived regeneration, so
+    // reset closed/min + raise it via winx.show (a no-op for an already-open one).
+    const req = state.cels.get(`${seg}.元`)?.v as { layer?: string } | undefined;
+    const sref = req?.layer ? `${req.layer}.state` : undefined;
+    if (sref && state.cels.get(sref)) await (resolveFn(state, "winx.show") as Fn)(state, sref);
+    // if the consent app was just opened, populate its usage list FIRST (before the
+    // view rewire) — running consentSync's cascade AFTER the rewire re-fired 元.view
+    // against a stale cell list and dropped the just-mounted window.
+    if (state.cels.get("win.consent.state")) await (resolveFn(state, "origin.consentSync") as Fn)(state);
+    // apply any geom() the genesis declared (=cels("sheet",…,geom(…)) etc.) — this
+    // branch has its own settle loop, so it needs the same geom-application run does.
+    await applyDeclaredGeom(state, `${seg}.元`);
+    // refresh the view's cell list so the new window's frame cel enters the scan
+    // (cellKeys whitelists win.*.frame), then fire + paint so it actually renders.
+    await (resolveFn(state, "view.refresh") as Fn)(state);
+    await runCycle(state);
+    await drain(state, "dom.paint");
+  } else {
+    // a window KEY (e.g. "元") — restore it (clears closed/min + raises + repaints),
+    // so a launcher reopens a window the desktop boots hidden.
+    await (resolveFn(state, "winsheet.restore") as Fn)(state, action);
+  }
   return state;
 }) as Fn;
-// segnav([mobile]) — an AUTO navbar built from the live document segments (each a
-// =item that switches to it). The engine-agnostic switcher; beside the hand-authored
-// =nav(=item(...)). A snapshot (re-eval to refresh); a seg-list cel for reactivity is
-// the follow-up. Effect (the drain has state; a formula verb can't read the registry).
-const segnavFn: Fn = ((mobile?: unknown) => ({ originSegnav: true, mobile: !!mobile })) as Fn;
 
-// origin.demoMusic — open the Symphony-of-Cels example (score + keyboard +
-// melody worksheets) from the stored 音.demo formula, so it loads with one
-// click instead of a fragile copy-pasted URL.
-const demoMusic: Fn = async (state: State): Promise<State> => {
-  const f = String(state.cels.get("音.demo")?.v ?? "");
-  if (!f) return state;
-  const setValue = resolveFn(state, "setValue") as Fn, commit = resolveFn(state, "origin.commit") as Fn, drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
-  await setValue(state, "元.draft", f);
-  await commit(state, "音.run"); // the segment(...) genesis spawns the worksheets
-  for (let i = 0; i < 8; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
-  await drain(state, "dom.paint"); // render once so tile() can measure content
-  return state;
-};
-// origin.demoMidi — a MIDI demo: a worksheet that IS a table of note cells
-// (track, channel, pitch, notename, start, dur, velocity) plus a `=miditrack(…)`
-// player cell that plays the range. The tune is Ode to Joy (Beethoven, 1824 —
-// public domain), so it ships as a sample track with nothing to paste.
-const demoMidi: Fn = async (state: State): Promise<State> => {
-  // [MIDI pitch, notename, start beat, duration beats] — first phrase, C major.
-  const notes: [number, string, number, number][] = [
-    [64, "E4", 0, 1], [64, "E4", 1, 1], [65, "F4", 2, 1], [67, "G4", 3, 1],
-    [67, "G4", 4, 1], [65, "F4", 5, 1], [64, "E4", 6, 1], [62, "D4", 7, 1],
-    [60, "C4", 8, 1], [60, "C4", 9, 1], [62, "D4", 10, 1], [64, "E4", 11, 1],
-    [64, "E4", 12, 1.5], [62, "D4", 13.5, 0.5], [62, "D4", 14, 2],
-  ];
-  const rows = notes.length + 1; // + the header row
-  // one readable line per row (the formula bar shows newlines + tabs fine).
-  const rowLines: string[] = [`at("a1","track"), at("b1","channel"), at("c1","pitch"), at("d1","note"), at("e1","start"), at("f1","dur"), at("g1","vel")`];
-  notes.forEach(([pitch, nm, start, dur], i) => {
-    const r = i + 2;
-    rowLines.push(`at("a${r}","1"), at("b${r}","0"), at("c${r}","${pitch}"), at("d${r}","${nm}"), at("e${r}","${start}"), at("f${r}","${dur}"), at("g${r}","90")`);
-  });
-  const f =
-`=segment("rowflow",
-	cels("midi", ${rows}, 7,
-		${rowLines.join(",\n\t\t")}
-	),
-	cels("play", 2, 1,
-		at("a1","♫ Ode to Joy — a track made of cells"),
-		at("a2","=miditrack(midi!A2:G${rows}, 100)")
-	)
-)`;
-  const setValue = resolveFn(state, "setValue") as Fn, commit = resolveFn(state, "origin.commit") as Fn, drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
-  await setValue(state, "元.draft", f);
-  await commit(state, "音乐.run");
-  for (let i = 0; i < 8; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
+// ── navpanel — a PERSISTENT app launcher pinned to the desktop (the "navpanel").
+// Unlike =nav (a one-off vnode you paste) this is a genesis whose win.navbar.frame
+// cel survives 元 re-renders (cellKeys whitelists win.*.frame) and re-fires on
+// viewport.mobile (a ☰ sidebar on phones, corner launchers on desktop). The bar is
+// built in TS by navpanelbar so each item's action can carry nested quotes
+// (=chatapp("local","🖥 Local")) without formula-string escaping — the action is a
+// plain string handed to origin.navOpen, parsed only when the leaf is clicked.
+const NAV_ITEMS: [string, string][] = [
+  ["🧮 Origin", "元"],                                                                       // restore the base 元 spreadsheet
+  ["▦ Sheet", '=cels("sheet", 20, 12, geom(0.18, 0.12, 0.6, 0.66))'],                       // a fresh blank 20×12 worksheet
+  ["🛂 Consent", "=consentpanel()"],
+  ["🤖 Local LLM", '=chatapp("local","🤖 Local")'],
+  ["📁 Files", "=explorerwin()"],
+  ["📖 Readme", "open:/readme.f"],
+  ["🎹 Keyboard", "open:/keyboard.f"],
+  ["📊 Turtles", "open:/turtles.f"],
+  ["🐢 DOOM", "=doom()"],
+  ["🔑 Vault", '=winapp("secrets","🔑 Vault","(secrets (locked secretsNote) (apiKeys))")'],
+];
+const navpanelbarFn: Fn = ((mobile?: unknown): unknown =>
+  (mount as Fn)(".origin", (navFn as Fn)(!!mobile, ...NAV_ITEMS.map(([l, a]) => (itemFn as Fn)(l, a))))) as Fn;
+const navpanelFn: Fn = ((): unknown => ({
+  genesis: true, layer: "win.navbar",
+  cels: { "win.navbar.frame": { celType: "FormulaCel", f: "(navpanelbar viewport.mobile)", metadata: { name: "frame", parser: "f", segment: "win.navbar" } } },
+})) as Fn;
+// origin.opennav — host helper: materialize the navpanel on boot (set the
+// draft, commit it to a holding cell, drain genesis + paint).
+const opennav: Fn = async (state: State): Promise<State> => {
+  const setValue = resolveFn(state, "setValue") as Fn, commit = resolveFn(state, "origin.run") as Fn, drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
+  if (state.cels.get("win.navbar.frame")) return state;   // idempotent — already up
+  await setValue(state, "元.draft", "=navpanel()");
+  await commit(state, "navbar.run");
+  for (let i = 0; i < 6; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
+  // clean desktop: nothing opens by default. Hide the base 元 sheet + the wallpaper
+  // worksheet windows (the wallpaper still paints — it's a .origin mount, not the
+  // window). The 🧮 Origin launcher restores 元; the wallpaper has no launcher.
+  const geom = (state.cels.get("win.geom")?.v ?? {}) as Record<string, { closed?: number }>;
+  const hidden = { ...geom, ["元"]: { ...(geom["元"] ?? {}), closed: 1 }, desktop: { ...(geom.desktop ?? {}), closed: 1 } };
+  await setValue(state, "win.geom", hidden);
+  await runCycle(state);
   await drain(state, "dom.paint");
   return state;
 };
-/** origin.autoload — restore the default slot on boot (the host calls this). */
-const autoload: Fn = async (state: State): Promise<State> => {
-  const raw = LS()?.getItem(slot());
-  if (raw) { try { await restoreArchive(state, JSON.parse(raw)); } catch { /* corrupt save — ignore */ } }
-  return state;
-};
 
-// decode a data:<mime>;base64,<payload> URI into [bytes, extension].
-const dataUriToBytes = (uri: string): { bytes: Uint8Array; ext: string } | null => {
-  const m = /^data:([^;,]*)(;base64)?,(.*)$/s.exec(uri);
-  if (!m) return null;
-  const mime = m[1] ?? "", isB64 = !!m[2], payload = m[3] ?? "";
-  const ext = mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : mime === "image/svg+xml" ? "svg" : (mime.split("/")[1] || "bin");
-  let bytes: Uint8Array;
-  if (isB64) {
-    const bin = (globalThis as { atob?: (s: string) => string }).atob?.(payload) ?? Buffer.from(payload, "base64").toString("binary");
-    bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  } else {
-    bytes = new TextEncoder().encode(decodeURIComponent(payload));
-  }
-  return { bytes, ext };
-};
-
-/** origin.seedWallpaper — write the shipped wallpaper (windows.wallpaper, a
- *  data-URI) into an OPFS FILE and point desktop.A2 (the wallpaper-path cell)
- *  at it, so the desktop background now LOADS FROM A FILE in OPFS instead of a
- *  hard-coded constant. Idempotent: writes only if the file is missing, and
- *  only re-points A2 when it still holds the empty default (a user's own
- *  uploaded path is preserved). Host-called once after boot. */
-const seedWallpaper: Fn = async (state: State): Promise<State> => {
-  const backend = state.cels.get("file-store.backend")?.v;
-  if (backend === "none" || backend === undefined) return state;       // no fs here — keep the constant fallback
-  const uri = String(state.cels.get("windows.wallpaper")?.v ?? "");
-  if (!uri.startsWith("data:")) return state;
-  const decoded = dataUriToBytes(uri);
-  if (!decoded) return state;
-  const path = `/desktop/wallpaper.${decoded.ext}`;
+// openFile(state, opfsPath) — read a stored formula-source FILE from OPFS and run
+// it into windows (origin.run sniffs the parser, so an s-expr readme and an infix
+// keyboard both work). Backs the navpanel's `open:/<path>.f` launchers (📖 Readme,
+// 🎹 Keyboard, 📊 Turtles — one parameterized action, not a verb per file). The
+// source is a REAL file (seedStarter materialized it from the bundle's starter/),
+// so it's discoverable + editable in 📁 Files. Commits into a `launch.<file>`
+// holding cell — UNIQUE per file (so opening readme doesn't sweep keyboard) and in
+// the `launch` namespace (outside every worksheet, so the formula bar stays empty
+// until a cell is clicked) — then RAISES the worksheet windows it created so the
+// opened app comes to the top / active.
+const openFile = async (state: State, opfsPath: string): Promise<State> => {
   await ensureSegments(state, ["file-store"]);
-  const exists = (await ((resolveFn(state, "fs.exists") as Fn)(path) as Promise<boolean>).catch(() => false)) as boolean;
-  if (!exists) {
-    await (resolveFn(state, "fs.mkdir") as Fn)("/desktop");
-    await (resolveFn(state, "fs.write") as Fn)(path, decoded.bytes);
-  }
-  // point the desktop's wallpaper-path cell at the OPFS file (only if it still
-  // holds the empty default — don't clobber a user-set path).
-  const a2 = state.cels.get("desktop.A2");
-  if (a2 && (a2.v === "" || a2.v == null)) {
-    await (resolveFn(state, "setValue") as Fn)(state, "desktop.A2", path);
-    await (resolveFn(state, "runCycle") as Fn)(state);
-    await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  const f = String(await ((resolveFn(state, "fs.readText") as Fn)(opfsPath) as Promise<string>).catch(() => ""));
+  if (!f) return state;
+  const base = (opfsPath.split("/").pop() || opfsPath).replace(/\.[^.]*$/, "");
+  await (resolveFn(state, "origin.run") as Fn)(state, `launch.${base}`, f);   // source-arg form (commits + settles)
+  // RESTORE each worksheet the formula created (clear closed/min + raise) so a
+  // re-clicked launcher REOPENS a window the ✕ had closed. Its NAME is the first
+  // quoted string after `cels` in BOTH the infix `cels("name", …)` and s-expr
+  // `(cels R C "name" …)` forms. Last one restored wins focus.
+  const restore = resolveFn(state, "winsheet.restore") as Fn | undefined;
+  if (restore) for (const m of f.matchAll(/\bcels\b[^"]*?"([^"]+)"/g)) { try { await restore(state, m[1]); } catch { /* not windowed */ } }
+  await (resolveFn(state, "view.refresh") as Fn)(state);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+};
+
+// origin.seedStarter — first-run: read the inert #plastron-starter manifest the
+// bundle baked into the page (a {opfsPath: source} map of the repo's starter/
+// files: readme, keyboard) and write each MISSING file into OPFS, so they ship as
+// real, discoverable files in 📁 Files instead of baked seed cells. Idempotent
+// (skips files that already exist — a user edit is preserved). No-op off-DOM /
+// without a filesystem (file://, sandbox); host-called once in the desktop boot.
+const seedStarter: Fn = async (state: State): Promise<State> => {
+  const backend = state.cels.get("file-store.backend")?.v;
+  if (backend === "none" || backend === undefined) return state;
+  const g = globalThis as { document?: { getElementById?: (id: string) => { textContent?: string | null } | null } };
+  const raw = g.document?.getElementById?.("plastron-starter")?.textContent;
+  if (!raw) return state;
+  let manifest: Record<string, unknown>;
+  try { manifest = JSON.parse(raw) as Record<string, unknown>; } catch { return state; }
+  await ensureSegments(state, ["file-store"]);
+  const exists = resolveFn(state, "fs.exists") as Fn, writeText = resolveFn(state, "fs.writeText") as Fn;
+  for (const [path, content] of Object.entries(manifest)) {
+    const there = await (exists(path) as Promise<boolean>).catch(() => false);
+    if (!there) await (writeText(path, String(content)) as Promise<unknown>).catch(() => {});
   }
   return state;
 };
+
+// origin.reseed — the dev/refresh twin of seedStarter: FORCE-overwrite the OPFS
+// starter files (/readme.f, /keyboard.f, /turtles.f) from the embedded manifest,
+// even if they exist, AND clear the win.geom of the worksheets they declare so a
+// changed geom() re-applies on the next open. Backs the desktop's ↻ reseed button
+// (in 元's formula). Reopen the apps to see the refreshed files.
+const reseed: Fn = async (state: State): Promise<State> => {
+  const backend = state.cels.get("file-store.backend")?.v;
+  if (backend === "none" || backend === undefined) return state;
+  const g = globalThis as { document?: { getElementById?: (id: string) => { textContent?: string | null } | null } };
+  const raw = g.document?.getElementById?.("plastron-starter")?.textContent;
+  if (!raw) return state;
+  let manifest: Record<string, unknown>;
+  try { manifest = JSON.parse(raw) as Record<string, unknown>; } catch { return state; }
+  await ensureSegments(state, ["file-store"]);
+  const writeText = resolveFn(state, "fs.writeText") as Fn;
+  const segs = new Set<string>();
+  for (const [path, content] of Object.entries(manifest)) {
+    await (writeText(path, String(content)) as Promise<unknown>).catch(() => {});          // OVERWRITE
+    for (const m of String(content).matchAll(/\bcels\b[^"]*?"([^"]+)"/g)) segs.add(m[1]);  // worksheet names → clear their geom
+  }
+  const geom = { ...((state.cels.get("win.geom")?.v as Record<string, unknown>) ?? {}) };
+  for (const s of segs) delete geom[s];
+  await (resolveFn(state, "setValue") as Fn)(state, "win.geom", geom);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+};
+
+// (origin.autoload removed: no boot auto-restore. =save() writes a real OPFS file;
+//  reopen it from 📁 Files or with =open(). Reload = a clean desktop.)
+
+// (origin.seedWallpaper removed: the desktop background is rendered by a FORMULA
+//  — 元.f's `(img desktop.A2 windows.wallpaper …)` mount — straight from the
+//  shipped windows.wallpaper data-URI, so no boot-time OPFS write is needed. Set
+//  a custom background by editing the cell, e.g. desktop.A2 → a path/url.)
 
 // ── inspect rendering — a tiny YAML-ish doc, easiest for a human to read ─────
 
@@ -1327,321 +1470,24 @@ const fsWriteFn: Fn = (path: unknown, text?: unknown) => ({ originFs: "write", p
 const touchFn:   Fn = (path: unknown)  => ({ originFs: "touch", path: String(path ?? "") });
 const statFn:    Fn = (path: unknown)  => ({ originFs: "stat",  path: String(path ?? "") });
 
-// --- explorer(cwd, preview, listing) — a PURE OPFS file-browser render. It
-//     takes the navigation state (cwd / preview path) plus a `listing`
-//     ({ entries: {name,isDir}[], previewText }) and builds the folders-then-
-//     files vnode. The async OPFS reads live in the nav/open handlers (which
-//     write explorer.listing); this fn is pure so the WINDOW's content formula
-//     `(explorer explorer.cwd explorer.preview explorer.listing)` re-fires
-//     reactively when any of those cels change (inputMap doctrine). ---
-const parentPath = (p: string): string => {
-  const norm = "/" + p.split("/").filter(Boolean).join("/");
-  if (norm === "/") return "/";
-  const i = norm.lastIndexOf("/");
-  return i <= 0 ? "/" : norm.slice(0, i);
-};
-// --- binary-preview guard. Never text-preview a binary/huge file (decoding
-//     megabytes of bytes into a string blows out browser memory). A file is
-//     "previewable text" only when its extension isn't a known binary one AND
-//     it's under PREVIEW_MAX_BYTES AND its bytes are valid UTF-8.
-const PREVIEW_MAX_BYTES = 256 * 1024;
-const BINARY_EXTS = new Set([
-  "wasm", "wad", "png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "avif",
-  "zip", "甲", "xlsx", "xls", "pdf", "gz", "tar", "br", "db", "sqlite",
-  "woff", "woff2", "ttf", "otf", "eot", "mp3", "mp4", "wav", "ogg", "mov", "webm",
-]);
-const fileExt = (path: string): string => {
-  const base = path.split("/").pop() || path;
-  const i = base.lastIndexOf(".");
-  return i <= 0 ? "" : base.slice(i + 1).toLowerCase();
-};
-const fmtBytes = (n: number): string =>
-  n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / (1024 * 1024)).toFixed(1)} MB`;
-// strict UTF-8 validity probe (TextDecoder with fatal:true throws on invalid bytes)
-const isValidUtf8 = (bytes: Uint8Array): boolean => {
-  try { new TextDecoder("utf-8", { fatal: true }).decode(bytes); return true; }
-  catch { return false; }
-};
-const joinPath = (dir: string, name: string): string =>
-  (dir === "/" ? "" : dir.replace(/\/+$/, "")) + "/" + name;
-// per-file action button (🗑 / ✎ / ⬇) — a small dispatch control beside a file
-const feAction = (icon: string, title: string, dispatch: string, payload: string): V =>
-  el("button", { class: "fe-act", type: "button", title, style: "border:0;background:transparent;cursor:pointer;font-size:.8rem;padding:0 .15rem;line-height:1" },
-    [T(icon)], { click: { dispatch, payload } });
-const renderExplorer = (cwd: string, entries: { name: string; isDir: boolean }[], preview: string, previewText: string, previewBinary: boolean): V => {
-  const rowStyle = "display:flex;align-items:center;gap:.4rem;padding:.25rem .4rem;border-radius:.3rem;cursor:pointer;font:.82rem ui-monospace,monospace";
-  const rows: V[] = [];
-  if (cwd !== "/") {
-    rows.push(el("div", { class: "fe-row fe-up", style: rowStyle + ";opacity:.8" },
-      [T("📁 ..")], { click: { dispatch: "origin.explorerNav", payload: parentPath(cwd) } }));
-  }
-  for (const e of entries) {
-    const full = joinPath(cwd, e.name);
-    if (e.isDir) {
-      rows.push(el("div", { class: "fe-row fe-dir", style: rowStyle },
-        [T(`📁 ${e.name}/`)], { click: { dispatch: "origin.explorerNav", payload: full } }));
-    } else {
-      // file row: clickable name (preview) + per-file actions (delete/rename/download)
-      rows.push(el("div", { class: "fe-row fe-file" + (full === preview ? " fe-sel" : ""), style: rowStyle + (full === preview ? ";background:#4a90d955" : "") },
-        [el("span", { class: "fe-name", style: "flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" },
-           [T(`📄 ${e.name}`)], { click: { dispatch: "origin.explorerOpen", payload: full }, dblclick: { dispatch: "origin.explorerOpenSheet", payload: full } }),
-         el("span", { class: "fe-acts", style: "display:flex;gap:.1rem;flex:0 0 auto" }, [
-           feAction("🗑", `delete ${e.name}`, "origin.explorerDelete", full),
-           feAction("✎", `rename ${e.name}`, "origin.explorerRename", full),
-           feAction("⬇", `download ${e.name}`, "origin.explorerDownload", full),
-         ])]));
-    }
-  }
-  if (!entries.length) rows.push(el("div", { style: "opacity:.6;padding:.3rem;font:.8rem ui-monospace,monospace" }, [T("(empty)")]));
-  const left: V[] = [
-    el("div", { class: "fe-bar", style: "display:flex;align-items:center;gap:.4rem;padding:.25rem .4rem;border-bottom:1px solid #8884;font:600 .8rem ui-monospace,monospace" },
-      [T(`📂 ${cwd}`)]),
-    el("div", { class: "fe-list", style: "flex:1 1 auto;overflow:auto;padding:.2rem" }, rows),
-    el("div", { class: "fe-upload", style: "padding:.3rem .4rem;border-top:1px solid #8884;font:.75rem system-ui" },
-      [T("upload here: "), el("input", { class: "opfs-upload", type: "file", title: `upload into ${cwd}` }, [], { change: { dispatch: "origin.upload", payload: cwd } })]),
-  ];
-  // preview body: a binary/oversize file shows a placeholder + download button
-  // (never the bytes); a text file shows its content in a <pre>.
-  const previewBody: V[] = previewBinary
-    ? [el("div", { class: "fe-binary", style: "flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;padding:1rem;text-align:center;font:.8rem system-ui;opacity:.85" },
-        [T(previewText), el("button", { class: "opfs-btn fe-dl", type: "button", title: `download ${preview}` },
-           [T(`⬇ download ${preview.split("/").pop() || preview}`)], { click: { dispatch: "origin.explorerDownload", payload: preview } })])]
-    : [el("pre", { style: "flex:1 1 auto;overflow:auto;margin:0;padding:.4rem;font:.78rem ui-monospace,monospace;white-space:pre-wrap;word-break:break-word" }, [T(previewText)])];
-  const right: V[] = preview
-    ? [el("div", { class: "fe-preview", style: "flex:1 1 50%;min-width:0;border-left:1px solid #8884;display:flex;flex-direction:column" },
-        [el("div", { style: "padding:.25rem .4rem;border-bottom:1px solid #8884;font:600 .78rem ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, [T(preview.split("/").pop() || preview)]),
-         ...previewBody])]
-    : [];
-  return el("div", { class: "file-explorer", style: "display:flex;height:100%;min-height:0" },
-    [el("div", { class: "fe-pane", style: "flex:1 1 50%;min-width:0;display:flex;flex-direction:column" }, left), ...right]);
-};
-const explorerFn: Fn = (cwd?: unknown, preview?: unknown, listing?: unknown): V => {
-  const c = cwd == null || cwd === "" ? "/" : String(cwd);
-  const pv = preview == null ? "" : String(preview);
-  const lst = (listing && typeof listing === "object") ? listing as { entries?: { name: string; isDir: boolean }[]; previewText?: string; previewBinary?: boolean } : {};
-  return renderExplorer(c, Array.isArray(lst.entries) ? lst.entries : [], pv, String(lst.previewText ?? ""), !!lst.previewBinary);
-};
-
-// explorerListing — the async OPFS read the nav/open handlers share: list the
-// cwd (fs.list + fs.stat), sort folders-first, and cat the preview file. Lands
-// as explorer.listing, which the content formula references → reactive repaint.
-const explorerListing = async (state: State, cwd: string, preview: string): Promise<{ entries: { name: string; isDir: boolean }[]; previewText: string; previewBinary: boolean }> => {
-  await ensureSegments(state, ["file-store"]);
-  const list = resolveFn(state, "fs.list") as Fn, fstat = resolveFn(state, "fs.stat") as Fn;
-  const names = ((await (list(cwd) as Promise<string[]>).catch(() => [])) as string[]).slice();
-  const entries: { name: string; isDir: boolean }[] = [];
-  for (const n of names) {
-    const st = (await (fstat(joinPath(cwd, n)) as Promise<{ isDir?: boolean }>).catch(() => null)) as { isDir?: boolean } | null;
-    entries.push({ name: n, isDir: !!st?.isDir });
-  }
-  entries.sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1));
-  let previewText = "", previewBinary = false;
-  if (preview) {
-    const ext = fileExt(preview);
-    const st = (await ((fstat(preview)) as Promise<{ size?: number; isDir?: boolean }>).catch(() => null)) as { size?: number; isDir?: boolean } | null;
-    const size = Number(st?.size ?? 0);
-    if (BINARY_EXTS.has(ext) || size > PREVIEW_MAX_BYTES) {
-      // known-binary extension or oversize → never read it as text (memory).
-      previewBinary = true;
-      previewText = `binary file — ${ext || "no ext"}, ${fmtBytes(size)} — ⬇ download to inspect`;
-    } else {
-      // small + non-binary-ext: read RAW bytes and only decode if valid UTF-8.
-      const bytes = (await ((resolveFn(state, "fs.read") as Fn)(preview) as Promise<Uint8Array>).catch(() => null)) as Uint8Array | null;
-      if (bytes == null) { previewBinary = true; previewText = "(cannot read file)"; }
-      else if (!isValidUtf8(bytes)) { previewBinary = true; previewText = `binary file — ${ext || "no ext"}, ${fmtBytes(bytes.byteLength)} — ⬇ download to inspect`; }
-      else previewText = new TextDecoder("utf-8").decode(bytes);
-    }
-  }
-  return { entries, previewText, previewBinary };
-};
-
-// --- segment/sheet manager — persist the WHOLE sheet (the collectArchive
-//     form save()/open() use) to OPFS files under /plastron/sheets, so work
-//     survives across machines as real files (vs save()'s localStorage). ---
+// --- segment/sheet manager — list/delete the named sheet FILES that =save()/
+//     =open() round-trip through /plastron/sheets (the collectArchive form).
+//     =segs() lists them; =saveSeg/=openSeg are name-equivalent to =save/=open. ---
 const segsFn:    Fn = () => ({ originSeg: "list" });
 const saveSegFn: Fn = (name: unknown) => ({ originSeg: "save", name: String(name ?? "") });
 const openSegFn: Fn = (name: unknown) => ({ originSeg: "open", name: String(name ?? "") });
 const delSegFn:  Fn = (name: unknown) => ({ originSeg: "del",  name: String(name ?? "") });
 
-// --- upload / download — a cel becomes a button / file input that moves bytes
-//     between OPFS and the user's disk. The formula returns a vnode VALUE (like
-//     dom()); its dispatch handler runs in the browser (click/change), where
-//     Blob/File/URL exist. The genuinely new plumbing for opfs-formulas. ---
-const downloadFn: Fn = (path: unknown): V => {
-  const p = String(path ?? "");
+// downloadSeg(name) — a ⬇ button for a saved sheet archive under /plastron/sheets.
+const downloadSegFn: Fn = (name: unknown): V => {
+  const p = `/plastron/sheets/${String(name ?? "")}.json`;
   return el("button", { class: "opfs-btn", type: "button", title: `download ${p}` },
-    [T(`⬇ ${p.split("/").pop() || p}`)], { click: { dispatch: "origin.download", payload: p } });
+    [T(`⬇ ${p.split("/").pop() || p}`)], { click: { dispatch: "explorer.download", payload: p } });
 };
-const downloadSegFn: Fn = (name: unknown): V => downloadFn(`/plastron/sheets/${String(name ?? "")}.json`) as V;
-const uploadFn: Fn = (path?: unknown): V => {
-  const dir = path == null || path === "" ? "/" : String(path);
-  return el("input", { class: "opfs-upload", type: "file", title: `upload into ${dir}` },
-    [], { change: { dispatch: "origin.upload", payload: dir } });
-};
-
-// dispatch targets — called (state, payload, event) on click/change.
-type DomDownload = {
-  document?: { createElement(t: string): { href: string; download: string; click(): void; remove(): void }; body: { appendChild(n: unknown): void } };
-  URL?: { createObjectURL(b: unknown): string; revokeObjectURL(u: string): void };
-  Blob?: new (parts: unknown[]) => unknown;
-};
-const downloadHandler: Fn = async (stateArg: unknown, path: unknown) => {
-  const state = stateArg as State;
-  const g = globalThis as DomDownload;
-  if (!g.document || !g.URL || !g.Blob) return state;
-  await ensureSegments(state, ["file-store"]);
-  const p = String(path ?? "");
-  const bytes = (await (resolveFn(state, "fs.read") as Fn)(p)) as Uint8Array;
-  const url = g.URL.createObjectURL(new g.Blob([bytes]));
-  const a = g.document.createElement("a");
-  a.href = url; a.download = p.split("/").pop() || "download";
-  g.document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => g.URL!.revokeObjectURL(url), 1000);
-  return state;
-};
-const uploadHandler: Fn = async (stateArg: unknown, dir: unknown, event: unknown) => {
-  const state = stateArg as State;
-  await ensureSegments(state, ["file-store"]);
-  const file = (event as { target?: { files?: ArrayLike<{ name: string; arrayBuffer(): Promise<ArrayBuffer> }> } })?.target?.files?.[0];
-  if (!file) return state;
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const d = String(dir ?? "/");
-  const dest = (d === "/" ? "" : d.replace(/\/+$/, "")) + "/" + file.name;
-  await (resolveFn(state, "fs.write") as Fn)(dest, bytes);
-  // refresh the explorer (if open) so the freshly-uploaded file shows up.
-  if (state.cels.get("explorer.cwd")) await refreshExplorer(state);
-  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
-  return state;
-};
-
-// setOrCreate — write a value cel (used by the explorer nav state cels). Creates
-// it under the explorer's window segment if the explorer window isn't seeded.
-const setOrCreate = async (state: State, key: string, v: unknown): Promise<void> => {
-  if (state.cels.get(key)) await (resolveFn(state, "setValue") as Fn)(state, key, v);
-  else await (resolveFn(state, "setCel") as Fn)(state, key, { celType: "ValueCel", v, metadata: { key, segment: "win.explorer" } });
-};
-
-// refreshExplorer — recompute explorer.listing from the current cwd/preview and
-// write it back. The content formula `(explorer explorer.cwd explorer.preview
-// explorer.listing)` references explorer.listing, so this write re-fires the
-// render through the graph (no hand-rolled repaint of the formula itself).
-const refreshExplorer = async (state: State): Promise<void> => {
-  const cwd = String(state.cels.get("explorer.cwd")?.v ?? "/") || "/";
-  const preview = String(state.cels.get("explorer.preview")?.v ?? "");
-  const listing = await explorerListing(state, cwd, preview);
-  await setOrCreate(state, "explorer.listing", listing);
-  await (resolveFn(state, "runCycle") as Fn)(state);
-  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
-};
-
-// explorerNav — descend into a folder (or climb via a "/parent" payload). Sets
-// explorer.cwd, clears the preview, recomputes the listing. The explorer window
-// content formula references explorer.cwd/listing, so it re-fires reactively.
-const explorerNav: Fn = async (stateArg: unknown, path: unknown) => {
-  const state = stateArg as State;
-  const p = String(path ?? "/") || "/";
-  await setOrCreate(state, "explorer.cwd", p);
-  await setOrCreate(state, "explorer.preview", "");
-  await refreshExplorer(state);
-  return state;
-};
-
-// explorerOpen — preview a file: set explorer.preview and recompute the listing
-// (which cats the file into previewText). Reactive via explorer.listing.
-const explorerOpen: Fn = async (stateArg: unknown, path: unknown) => {
-  const state = stateArg as State;
-  await setOrCreate(state, "explorer.preview", String(path ?? ""));
-  await refreshExplorer(state);
-  return state;
-};
-
-// explorerOpenSheet — double-click a file in the explorer: a .csv/.xlsx/.甲 file
-// OPENS as a new sheet WINDOW (read its OPFS bytes → openAsSheet, which detects
-// the format by extension and materializes a standalone sheet window). Any other
-// file falls back to the text-preview behavior.
-const SHEET_EXTS = new Set(["csv", "xlsx", "xls", "甲"]);
-const explorerOpenSheet: Fn = async (stateArg: unknown, path: unknown) => {
-  const state = stateArg as State;
-  const p = String(path ?? "");
-  if (!SHEET_EXTS.has(fileExt(p))) return explorerOpen(state, p);   // not a sheet → preview
-  await ensureSegments(state, ["file-store"]);
-  const bytes = (await ((resolveFn(state, "fs.read") as Fn)(p) as Promise<Uint8Array>).catch(() => null)) as Uint8Array | null;
-  if (!bytes) return state;
-  await openAsSheet(state, bytes, p.split("/").pop() || p);
-  return state;
-};
-
-// origin.explorerRefresh — populate explorer.listing for the current cwd. The
-// host calls it once at boot so the explorer window shows its initial listing
-// (the nav/open handlers refresh it thereafter).
-const explorerRefresh: Fn = async (stateArg: unknown) => {
-  const state = stateArg as State;
-  if (state.cels.get("explorer.cwd")) await refreshExplorer(state);
-  return state;
-};
-
-// explorerDelete — fs.delete a file, clear the preview if it was showing, then
-// refresh the listing (reactive via explorer.listing).
-const explorerDelete: Fn = async (stateArg: unknown, path: unknown) => {
-  const state = stateArg as State;
-  const p = String(path ?? "");
-  if (!p) return state;
-  await ensureSegments(state, ["file-store"]);
-  await ((resolveFn(state, "fs.delete") as Fn)(p) as Promise<unknown>).catch(() => {});
-  if (String(state.cels.get("explorer.preview")?.v ?? "") === p) await setOrCreate(state, "explorer.preview", "");
-  await refreshExplorer(state);
-  return state;
-};
-
-// explorerRename — prompt for a new NAME (same dir), fs.rename, follow the
-// preview if it moved, then refresh. No-op off-DOM (no prompt available).
-type DomPrompt = { prompt?: (msg: string, def?: string) => string | null };
-const explorerRename: Fn = async (stateArg: unknown, path: unknown) => {
-  const state = stateArg as State;
-  const p = String(path ?? "");
-  if (!p) return state;
-  const g = globalThis as DomPrompt;
-  if (typeof g.prompt !== "function") return state;
-  const old = p.split("/").pop() || p;
-  const next = g.prompt(`Rename "${old}" to:`, old);
-  if (next == null || next === "" || next === old) return state;
-  await ensureSegments(state, ["file-store"]);
-  const dest = joinPath(parentPath(p), String(next).replace(/^\/+/, ""));
-  await ((resolveFn(state, "fs.rename") as Fn)(p, dest) as Promise<unknown>).catch(() => {});
-  if (String(state.cels.get("explorer.preview")?.v ?? "") === p) await setOrCreate(state, "explorer.preview", dest);
-  await refreshExplorer(state);
-  return state;
-};
-
-// explorerDownload — per-file download from the explorer; reuses the existing
-// download dispatch (read OPFS bytes → browser save).
-const explorerDownload: Fn = async (stateArg: unknown, path: unknown) =>
-  downloadHandler(stateArg, path);
-
-// origin.seedIndexHtml — seed the page's own served HTML into OPFS at
-// /plastron/index.html so the explorer isn't empty: it shows "the index.html
-// that plastron makes". Best-effort; no-op off-DOM. Idempotent-ish: overwrites
-// /plastron/index.html each boot with the current document.
-type DomHtml = { document?: { documentElement?: { outerHTML?: string } } };
-const seedIndexHtml: Fn = async (state: State): Promise<State> => {
-  const backend = state.cels.get("file-store.backend")?.v;
-  if (backend === "none" || backend === undefined) return state;
-  const g = globalThis as DomHtml;
-  const html = g.document?.documentElement?.outerHTML;
-  if (typeof html !== "string" || html.length === 0) return state;
-  await ensureSegments(state, ["file-store"]);
-  await ((resolveFn(state, "fs.mkdir") as Fn)("/plastron") as Promise<unknown>).catch(() => {});
-  await ((resolveFn(state, "fs.write") as Fn)("/plastron/index.html", `<!doctype html>\n${html}`) as Promise<unknown>).catch(() => {});
-  return state;
-};
-
-// join a dir path and an entry name into an absolute OPFS path.
-
-
-// --- sqlite — lazy sql.js (CDN, like pyodide) + in-memory dbs persisted to
-//     OPFS bytes at /plastron/dbs/<name>.db. db()/sql()/tables() vocabulary.
-//     (A dedicated `sqlite` segment is the cleaner long-term host; the MVP
-//     lives here alongside opfs, lazy-loading sql.js on first db() use.) ---
+// --- sqlite — db()/sql()/tables() vocabulary. These verbs just emit originDb
+//     descriptors; the drain (below) delegates to the `sqlite` library's
+//     sqlite.command, which runs @sqlite.org/sqlite-wasm over the opfs-sahpool
+//     VFS in a Worker (persistent, incremental, no COOP/COEP). ---
 const dbHandleName = (h: unknown): string =>
   (h && typeof h === "object" && typeof (h as { __db?: unknown }).__db === "string")
     ? (h as { __db: string }).__db : String(h ?? "main");
@@ -1655,6 +1501,14 @@ const dbSeedFn: Fn = (handle: unknown, rows: unknown, table: unknown) =>
   ({ originDb: "seed", name: dbHandleName(handle), query: JSON.stringify({ table: String(table ?? ""), rows: rows ?? [] }) });
 // =schema(db) — introspect tables/columns/PK/FK (groundwork for the visual query builder).
 const schemaFn: Fn = (handle: unknown) => ({ originDb: "schema", name: dbHandleName(handle) });
+// =dbexport(db, path) — serialize the db to a portable .db blob and write it to a
+// file-store path (browsable / downloadable). =dbimport(db, path) loads such a
+// file back into the db. The bridge between SQLite's opaque SAH pool and the
+// browsable filesystem; both go through file-store.
+const dbExportFn: Fn = (handle: unknown, path: unknown) =>
+  ({ originDb: "export", name: dbHandleName(handle), query: String(path ?? "") });
+const dbImportFn: Fn = (handle: unknown, path: unknown) =>
+  ({ originDb: "import", name: dbHandleName(handle), query: String(path ?? "") });
 
 // --- interlinked(seg) — the cel graph as a force-directed canvas. Nodes = the
 //     segment's coordinate cels; edges = their inputMap deps. The layout is
@@ -1719,18 +1573,11 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
     // the next runCycle can't re-evaluate the formula over the result.
     let result: unknown;
     try {
-      // Consent gate: an effect that reaches the network / storage / DB is a
-      // DANGEROUS verb — in a LOCKED (shared/URL) session it runs only if the
-      // user consented. The formula already ran; only the EFFECT is refused.
-      // (Own/unlocked session → requireConsent is always true.)
-      const verbOf = req.originChat ? (req.provider === "grok" ? "grok" : "chat")
-        : req.originSave ? "save" : req.originOpen ? "open"
-        : req.originDb ? "sql" : req.originFs ? "write" : req.originSeg ? "saveSeg"
-        : req.originCdn ? "cdn"
-        : null;
-      if (verbOf && !requireConsent(state, verbOf, cel.metadata.segment)) {
-        result = `#BLACKLISTED(${verbOf} — not consented; open =consentpanel() to allow it)`;
-      } else if (req.originCels && req.segment) {
+      // Consent gate lives upstream now: the central runCycle gate #BLACKLISTs a
+      // locked-session formula that references a DANGEROUS verb BEFORE it can emit
+      // an effect descriptor, so an un-consented save/cdn/sql/fs/chat never
+      // reaches this drain. No per-verb hand-map here.
+      if (req.originCels && req.segment) {
         const lines: string[] = [];
         const skill = state.cels.get(`${req.segment}.skill`);
         if (skill && typeof skill.v === "string") lines.push(skill.v, "");
@@ -1789,13 +1636,6 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
           segs.push(`${m.name}  [${m.role ?? "?"}] v${m.version ?? "?"}${m.dependencies?.length ? `  ← ${m.dependencies.join(", ")}` : ""}`);
         }
         result = segs.sort().join("\n") || "(no segments)";
-      } else if (req.originSegnav) {
-        // build the auto navbar from the live document segments — each a switcher item.
-        const items = documentSegments(state).map((seg) => {
-          const k = String((getSegmentManifest(state, seg) as { kind?: string } | undefined)?.kind ?? "segment");
-          return (itemFn as Fn)(`${seg}  ·${k}`, `seg:${seg}`);
-        });
-        result = items.length ? (navFn as Fn)(!!req.mobile, ...items) : "(no document segments — mint one with =cels/=winapp/=doom or =import one)";
       } else if (req.originVocab) {
         result = vocabText(state, String(req.segment ?? ""));
       } else if (req.originDef && req.name) {
@@ -1873,13 +1713,58 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
           }
         }
       } else if (req.originSave) {
-        const ls = LS();
-        if (!ls) result = "(no localStorage here)";
-        else { ls.setItem(slot(req.name), JSON.stringify(collectArchive(state))); result = `saved — reload and your sheet is back (slot "${String(req.name || "default")}")`; }
+        // save the sheet as a real FILE in OPFS (discoverable in 📁 Files), not
+        // localStorage. No filesystem here (file://, sandbox, old browser)? fall
+        // back to a share link — =link() rebuilds the sheet from a URL anywhere.
+        await ensureSegments(state, ["file-store"]);
+        const backend = state.cels.get("file-store.backend")?.v;
+        const nm = String(req.name || "default") || "default";
+        if (backend === "none" || backend === undefined) {
+          result = `(no filesystem here to save to — share this sheet with =link() instead; it rebuilds from the URL anywhere)`;
+        } else {
+          const DIR = "/plastron/sheets", file = `${DIR}/${nm}.json`;
+          await (resolveFn(state, "fs.mkdir") as Fn)(DIR);
+          await (resolveFn(state, "fs.writeText") as Fn)(file, JSON.stringify(collectArchive(state)));
+          result = `saved "${nm}" → ${file} (reopen from 📁 Files, or =open("${nm}"))`;
+        }
       } else if (req.originOpen) {
-        const raw = LS()?.getItem(slot(req.name));
-        if (!raw) result = `(nothing saved as "${String(req.name || "default")}")`;
-        else { await restoreArchive(state, JSON.parse(raw)); result = `opened "${String(req.name || "default")}"`; }
+        await ensureSegments(state, ["file-store"]);
+        const nm = String(req.name || "default") || "default";
+        const file = `/plastron/sheets/${nm}.json`;
+        const raw = await ((resolveFn(state, "fs.readText") as Fn)(file) as Promise<string>).catch(() => null) as string | null;
+        if (!raw) result = `(no saved sheet "${nm}" — =save("${nm}") first, or =segs() to list)`;
+        else { await restoreArchive(state, JSON.parse(raw)); result = `opened "${nm}"`; }
+      } else if (req.originVaultSave) {
+        // the `secrets` segment, encrypted with the passphrase, → /vault.env.enc.
+        await ensureSegments(state, ["file-store"]);
+        const backend = state.cels.get("file-store.backend")?.v;
+        if (backend === "none" || backend === undefined) result = "(no filesystem here — the vault can't be written to a file; use =export(\"secrets\",\"encrypt\",pass) for a blob)";
+        else {
+          const pass = passOf(req.pass, "passphrase to encrypt the vault with");
+          if (!pass) result = "#DENIED(vaultsave: a passphrase is required — =vaultsave(\"secret\"))";
+          else {
+            const archive = dumpArchive(state, "secrets");
+            const blob = `${ENC_METHOD}:${await encryptPayload(archive, pass)}`;
+            await (resolveFn(state, "fs.writeText") as Fn)("/vault.env.enc", blob);
+            result = "saved the vault → /vault.env.enc (encrypted; find it in 📁 Files)";
+          }
+        }
+      } else if (req.originVaultLoad) {
+        await ensureSegments(state, ["file-store"]);
+        const raw = await ((resolveFn(state, "fs.readText") as Fn)("/vault.env.enc") as Promise<string>).catch(() => null) as string | null;
+        if (!raw) result = "(no /vault.env.enc — =vaultsave(\"secret\") first)";
+        else {
+          const pass = passOf(req.pass, "passphrase to decrypt the vault with");
+          if (!pass) result = "#DENIED(vaultload: a passphrase is required — =vaultload(\"secret\"))";
+          else {
+            try {
+              const json = raw.startsWith(`${ENC_METHOD}:`) ? await decryptPayload(raw.slice(ENC_METHOD.length + 1), pass) : raw;
+              await loadArchive(state, json);
+              await (resolveFn(state, "runCycle") as Fn)(state);
+              result = "loaded the vault from /vault.env.enc — =unlockVault() to use the keys";
+            } catch { result = "#DENIED(vaultload: wrong passphrase or corrupt /vault.env.enc)"; }
+          }
+        }
       } else if (req.originLink) {
         const t = String(req.target ?? "");
         const src = t ? cellSource(state, t) : buildSeed(state);
@@ -1909,21 +1794,6 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const preset = String(req.preset ?? "locked");
         const seg = await spawnQuarantined(state, String(req.seed ?? ""), preset);
         result = `spawned "${seg}" (${preset}) — a quarantined plastron; its cells live under ${seg}.*`;
-      } else if (req.originWinsize) {
-        const gm = { ...((state.cels.get("win.geom")?.v as Record<string, Record<string, unknown>>) ?? {}) };
-        const seg = String(req.seg);
-        if (req.max) {
-          // maximize to the live viewport (same as the ⛶ button's wsMax): store
-          // explicit viewport w/h + max:1, pinned top-left. globalThis.innerWidth
-          // is available — the effects drain runs in the browser.
-          const g = globalThis as { innerWidth?: number; innerHeight?: number };
-          gm[seg] = { ...(gm[seg] ?? {}), x: 0, y: 0, w: Number(g.innerWidth) || 1200, h: Math.max(160, (Number(g.innerHeight) || 800) - 46), min: 0, max: 1 };
-          result = `maximized "${seg}"`;
-        } else {
-          gm[seg] = { ...(gm[seg] ?? {}), ...(Number(req.w) ? { w: Number(req.w) } : {}), ...(Number(req.h) ? { h: Number(req.h) } : {}) };
-          result = `sized "${seg}" → ${req.w}×${req.h}`;
-        }
-        await setCel(state, "win.geom", { celType: "ValueCel", v: gm, metadata: { key: "win.geom", segment: "win" } });
       } else if (req.originJail) {
         // a sandboxed iframe running the seed as its own kernel. allow-scripts
         // WITHOUT allow-same-origin → opaque origin: storage throws, no parent
@@ -2037,15 +1907,14 @@ export const name = "origin" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["view.refresh",   viewRefreshFn],
   ["mount",          mount],
-  ["origin.commit",  commit],
+  ["origin.run",  commit],
   ["origin.edit",    edit],
   ["origin.select",  select],
   ["origin.fire",    fire],
   ["origin.key",     key],
-  ["ex",             ex],
-  ["tryexample",     tryexample],
   ["cels",           celsGen],
   ["at",             at],
+  ["geom",           geomFn],
   ["segment",        doc],   // primary (was doc — composes a SEGMENT)
   ["doc",            doc],   // deprecated legacy alias
   ["seed",           seedFn],
@@ -2061,8 +1930,12 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.clockSync", clockSync],
   ["nav",            navFn],
   ["item",           itemFn],
-  ["segnav",         segnavFn],
+  ["navpanel",       navpanelFn],
+  ["navpanelbar",    navpanelbarFn],
   ["origin.navOpen", navOpenFn],
+  ["origin.opennav", opennav],
+  ["origin.seedStarter", seedStarter],
+  ["origin.reseed",   reseed],
   ["def",            defFn],
   ["chat",           chatFn],
   ["grok",           grokFn],
@@ -2078,7 +1951,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.otpUnlock",  otpUnlockHandler],
   ["kernel",         kernelFn],
   ["jail",           jailFn],
-  ["winsize",        winsizeFn],
+  ["jailask",        jailAskFn],
+  ["jail.serve",     jailServeFn],
   ["consentdom", consentdomFn],
   ["consentpanel", consentpanelFn],
   ["origin.consentToggle", consentToggle],
@@ -2089,8 +1963,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.compose", compose],
   ["origin.composeStop", composeStop],
   ["origin.playmelody", playmelody],
-  ["origin.demoMusic", demoMusic],
-  ["origin.demoMidi", demoMidi],
   ["cdn",            cdnFn],
   ["ls",             lsFn],
   ["tree",           treeFn],
@@ -2101,34 +1973,23 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["write",          fsWriteFn],
   ["touch",          touchFn],
   ["stat",           statFn],
-  ["explorer",       explorerFn],
-  ["origin.explorerNav",  explorerNav],
-  ["origin.explorerOpen", explorerOpen],
-  ["origin.explorerOpenSheet", explorerOpenSheet],
-  ["origin.explorerRefresh", explorerRefresh],
-  ["origin.explorerDelete", explorerDelete],
-  ["origin.explorerRename", explorerRename],
-  ["origin.explorerDownload", explorerDownload],
   ["segs",           segsFn],
   ["saveSeg",        saveSegFn],
   ["openSeg",        openSegFn],
   ["delSeg",         delSegFn],
-  ["download",       downloadFn],
   ["downloadSeg",    downloadSegFn],
-  ["upload",         uploadFn],
-  ["origin.download", downloadHandler],
-  ["origin.upload",   uploadHandler],
   ["db",             dbFn],
   ["sql",            sqlFn],
   ["tables",         tablesFn],
   ["dbseed",         dbSeedFn],
   ["schema",         schemaFn],
+  ["dbexport",       dbExportFn],
+  ["dbimport",       dbImportFn],
   ["interlinked",    interlinkedFn],
   ["simulate",       simulateFn],
   ["dragdrop",       dragdropFn],
   ["save",           saveFn],
   ["open",           openFn],
-  ["origin.autoload", autoload],
-  ["origin.seedWallpaper", seedWallpaper],
-  ["origin.seedIndexHtml", seedIndexHtml],
+  ["vaultsave",      vaultSaveFn],
+  ["vaultload",      vaultLoadFn],
 ]));

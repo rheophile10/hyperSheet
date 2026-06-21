@@ -144,7 +144,7 @@ const sheetView: Fn = ((
   const SELH = c.selectHandler ?? "origin.select", FIREH = c.fireHandler ?? "origin.fire";
   const selectedKey = typeof selected === "string" ? selected : null;   // the SELECTED cell key (Excel single-click; value stays in the grid)
   type Rect = { x?: number; y?: number; w?: number; h?: number };
-  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number; savemenu?: number; mobile?: Rect; desktop?: Rect }> : {};
+  const GM = (geom && typeof geom === "object" && !Array.isArray(geom)) ? geom as Record<string, { x?: number; y?: number; w?: number; h?: number; minW?: number; minH?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number; savemenu?: number; mobile?: Rect; desktop?: Rect }> : {};
   // the tab chip currently being dragged (winsheet.tabdrag = {host, tab}); its
   // chip lights up in the SAME blue as a window's drop-target glow.
   const draggedTab = (tabdrag && typeof tabdrag === "object" && !Array.isArray(tabdrag)) ? (tabdrag as { tab?: unknown }).tab : undefined;
@@ -248,9 +248,12 @@ const sheetView: Fn = ((
       // geom-less desktop windows CASCADE by index (no auto-tile/layout pass any
       // more) so multiple opens don't pile on one spot; drag to rearrange.
       const cx = 8 + (i % 8) * 30, cy = 8 + (i % 8) * 30;
+      // geom() min-width/min-height (CSS floors — the window never renders or
+      // resizes below them, like `min-width:340px`).
+      const mins = `${d.minW != null ? `;min-width:${gnum(d.minW, 0)}px` : ""}${d.minH != null ? `;min-height:${gnum(d.minH, 0)}px` : ""}`;
       box = (d.w != null || d.h != null)
-        ? `position:absolute;left:${gnum(d.x, 0)}px;top:${gnum(d.y, 0)}px;width:${gnum(d.w, 480)}px;height:${gnum(d.h, 320)}px`
-        : `position:absolute;left:${gnum(d.x, cx)}px;top:${gnum(d.y, cy)}px;width:max-content;min-width:340px;max-width:calc(100vw - 24px);height:max-content;max-height:calc(100vh - ${TASKBAR + 16}px)`;
+        ? `position:absolute;left:${gnum(d.x, 0)}px;top:${gnum(d.y, 0)}px;width:${gnum(d.w, 480)}px;height:${gnum(d.h, 320)}px${mins}`
+        : `position:absolute;left:${gnum(d.x, cx)}px;top:${gnum(d.y, cy)}px;width:max-content;min-width:${d.minW != null ? gnum(d.minW, 340) : 340}px;max-width:calc(100vw - 24px);height:max-content;max-height:calc(100vh - ${TASKBAR + 16}px)${d.minH != null ? `;min-height:${gnum(d.minH, 0)}px` : ""}`;
     }
     // the tab strip — a "+" that genesis-creates a new blank sheet tabbed into
     // THIS window (winsheet.newtab), plus one chip per sheet WHEN tabbed (>1). A
@@ -407,52 +410,10 @@ const sheetView: Fn = ((
   const placements: { sel: string; vnode: V }[] = [];
   for (const k of ks) { const p = asPlacement(valOf.get(k)); if (p) placements.push(p); }
 
-  // taskbar — worksheet windows (winsheet.restore) AND state-cel windows
-  // (winapp/chatapp/winframe → winx.show). (A lineage TREE replaces this flat
-  // strip — see window-lineage-launcher.md.)
-  // Worksheet windows: TABBED ones (win.geom[seg].host pointing at another
-  // window) ride INSIDE their host's tab strip — they must NOT get their own
-  // taskbar entry. Only top-level (un-hosted) worksheet windows show.
-  const allWins = [...(base.length ? [BASE] : []), ...[...layers.keys()].filter((seg) => layers.get(seg)!.some((k) => addrOf(k)))]
-    .filter((seg) => { const h = GM[seg]?.host; return !(typeof h === "string" && h !== seg); });
-  // State-cel windows: collected with their `linked` membership so a LINKED
-  // group collapses to one entry. `linked` holds SEGMENT names (segOf(ref));
-  // a window's own segment is `ref` minus ".state".
-  interface SW { ref: string; seg: string; title: string; off: boolean; linked: string[] }
-  const stateWins: SW[] = [];
-  for (const k of ks) {
-    if (!k.endsWith(".state")) continue;
-    const v = valOf.get(k) as { ref?: string; title?: string; closed?: number; min?: number; linked?: string[] } | undefined;
-    if (v && typeof v === "object" && typeof v.ref === "string") {
-      const seg = v.ref.replace(/\.state$/, "");
-      stateWins.push({ ref: v.ref, seg, title: String(v.title ?? k), off: !!(v.closed || v.min), linked: Array.isArray(v.linked) ? v.linked.map(String) : [] });
-    }
-  }
-  // Union-find over windows whose `linked` sets intersect (connected components).
-  // Each window unions its own segment with every segment it links to; windows
-  // sharing any linked member land in one group. Robust to chains (a↔b, b↔c).
-  const parent = new Map<string, string>();
-  const find = (x: string): string => { let r = x; while (parent.get(r) !== undefined && parent.get(r) !== r) r = parent.get(r)!; parent.set(x, r); return r; };
-  const union = (a: string, b: string): void => { parent.set(find(a), find(b)); };
-  for (const w of stateWins) { if (parent.get(w.seg) === undefined) parent.set(w.seg, w.seg); for (const l of w.linked) { if (parent.get(l) === undefined) parent.set(l, l); union(w.seg, l); } }
-  // collapse to one entry per component (only present windows; a `linked` name
-  // with no live window just merges the components it bridges). First member in
-  // ks order is the representative the entry shows + acts on.
-  const groups = new Map<string, SW[]>();
-  for (const w of stateWins) { const root = find(w.seg); (groups.get(root) ?? groups.set(root, []).get(root)!).push(w); }
-  const stateEntries = [...groups.values()].map((members) => {
-    const rep = members[0]!;
-    const off = members.every((m) => m.off);                 // grey only if EVERY member is hidden
-    const label = members.length > 1 ? `🔗 ${rep.title}` : rep.title;
-    return { ref: rep.ref, title: label, off };
-  });
-  const taskItem = (label: string, ref: string, off: boolean, handler: string): V => el("button", { class: "pl-task" + (off ? " off" : ""), "data-win": ref, style: `flex:0 0 auto;padding:.2rem .6rem;border:1px solid #8884;border-radius:.3rem;background:${off ? "#8882" : "Canvas"};cursor:pointer;font:600 .76rem ui-monospace,monospace;opacity:${off ? ".55" : "1"};white-space:nowrap` }, [T(label)], { click: { dispatch: handler, payload: ref } });
-  const taskbar = el("div", { class: "pl-taskbar", style: "position:fixed;left:0;right:0;bottom:0;display:flex;gap:.4rem;padding:.3rem .5rem;background:#8881;border-top:1px solid #8883;z-index:99999;overflow-x:auto;align-items:center" },
-    [el("span", { style: "font:600 .72rem ui-monospace,monospace;color:#888;flex:0 0 auto;margin-right:.2rem" }, [T("windows:")]),
-     ...allWins.map((seg) => taskItem(seg, seg, !!(GM[seg]?.min || GM[seg]?.closed), "winsheet.restore")),
-     ...stateEntries.map((w) => taskItem(w.title, w.ref, w.off, "winx.show"))]);
-  // .origin is the positioned desktop the windows float on; the taskbar pins to the bottom.
-  const originNode = el("div", { class: "origin", style: "position:relative;min-height:90vh;width:100%;padding-bottom:3rem" }, [...sections, taskbar]);
+  // .origin is the positioned desktop the windows float on. (The bottom taskbar
+  // was removed — the navpanel is the launcher; minimized/closed windows restore
+  // by re-clicking their nav launcher.)
+  const originNode = el("div", { class: "origin", style: "position:relative;min-height:90vh;width:100%;padding-bottom:1rem" }, [...sections]);
 
   // Splice each placement into the FIRST view node matching its selector.
   // No magic regions: the target must be an element the view actually renders
@@ -473,7 +434,7 @@ const sheetView: Fn = ((
 // {x,y,w,h,z,min} } — so the cell set isn't cluttered with per-axis cels and
 // sheetView gets it as one input. The handlers update that map; the cells inside
 // a window are unchanged, so editing/selection still work as before.
-interface WGeom { x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number; savemenu?: number }
+interface WGeom { x?: number; y?: number; w?: number; h?: number; minW?: number; minH?: number; z?: number; min?: number; closed?: number; host?: string; tab?: string; max?: number; order?: number; glow?: number; savemenu?: number }
 interface WWinEl { offsetLeft?: number; offsetTop?: number; offsetWidth?: number; offsetHeight?: number }
 interface WEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void; closest?: (s: string) => WWinEl | null }; stopPropagation?: () => void }
 // win.geom is in 元.view's inputMap, so a geom change re-fires the view — but
@@ -656,13 +617,11 @@ const wsMax: Fn = (async (state: State, seg: unknown): Promise<void> => { const 
 const wsMid: Fn = (async (state: State, seg: unknown): Promise<void> => { const z = await nextZ(state); const m = geomMap(state); m[String(seg)] = { x: 90, y: 70, w: 540, h: 380, z, min: 0, max: 0 }; await setGeom(state, m); }) as Fn;
 const wsStop: Fn = ((_state: State, _p: unknown, event?: WEvt): void => { try { event?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
 
-// winsheet.syncBundles — make a SEEDED tab relationship grant shared memory, the
-// same way a runtime drop (wsDrop) does. A sheet minted private-get is a closure;
-// when win.geom seeds seg.host = other (e.g. the boot tabs turtlecharts INTO
-// turtles), the two are visually tabbed but still isolated until bundled. This
-// scans win.geom and bundles every {host, tabs…} clique so a tabbed sheet can read
-// its host's cels (turtlecharts reads turtles!). The host (boot/commit) calls it
-// after the desktop genesis materializes; idempotent (re-bundling is harmless).
+// winsheet.syncBundles — vestigial since 访 access-control was removed. It used
+// to grant a SEEDED tab relationship shared memory (a sheet minted private-get
+// was a closure until bundled); now all cels are mutually readable, so seeded
+// tabs need no bundling. Kept as a near-no-op the host (boot/commit) still calls
+// after the desktop genesis materializes; idempotent (safe to drop later).
 const wsSyncBundles: Fn = (async (state: State): Promise<void> => {
   const m = geomMap(state);
   const hosts = new Map<string, Set<string>>();
@@ -672,11 +631,9 @@ const wsSyncBundles: Fn = (async (state: State): Promise<void> => {
   }
   let bundled = false;
   for (const members of hosts.values()) if (members.size > 1) { bundled = true; }
-  // a tabbed sheet's formula captured the #DENIED sentinel at first eval (before
-  // the bundle existed). precompute re-resolves each inputMap ref through the now-
-  // open gate; the real cel has a different object identity than the deniedCel, so
-  // the incremental check invalidates the formula → it re-fires (with the value)
-  // on the caller's next runCycle. Without this the chart stays #DENIED.
+  // a tabbed sheet seeded after first eval may still carry a stale resolution;
+  // re-running precompute re-resolves each inputMap ref so the formula re-fires
+  // on the caller's next runCycle. Harmless when nothing changed.
   if (bundled) precompute(state);
 }) as Fn;
 
@@ -924,7 +881,7 @@ const wsSaveas: Fn = (async (state: State, payload: unknown): Promise<void> => {
   triggerDownload(out.bytes, out.filename);
   // refresh the explorer (if open) so the new file shows, and close the chooser.
   const m = geomMap(state); m[seg] = { ...(m[seg] ?? {}), savemenu: 0 }; await setGeom(state, m);
-  const refresh = resolveFn(state, "origin.explorerRefresh") as Fn | undefined;
+  const refresh = resolveFn(state, "explorer.refresh") as Fn | undefined;
   if (refresh && state.cels.get("explorer.cwd")) await Promise.resolve(refresh(state));
   await wrepaint(state);
 }) as Fn;

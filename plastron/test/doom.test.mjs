@@ -1,7 +1,7 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, precomputeOptional, resolveFn } from "../dist/index.js";
-import { lockConsent, setConsent, requireConsent } from "../dist/kernel/index.js";
+import { lockConsent, setConsent, isConsented, isDangerous } from "../dist/kernel/index.js";
 
 // doom — =doom() opens a wasm-window running Doom (wasm-window kind, first user).
 // The engine boot (fetch assets + canvas RAF) is browser-bound (covered by the
@@ -56,9 +56,21 @@ test("the kind:\"wasm\" doom engine hydrates against the real doom.wasm + _initi
 
 test("=doom is consent-gated: blocked in a LOCKED session until consented", async () => {
   const state = await boot();
-  assert.equal(requireConsent(state, "doom", "doom"), true, "own session is trusted");
+  assert.equal(isConsented(state, "doom", "doom"), true, "own session is trusted");
   lockConsent(state); // what a #f= / #raw= shared sheet does
-  assert.equal(requireConsent(state, "doom", "doom"), false, "a shared sheet can't boot Doom (download engine+WAD) without consent");
+  assert.equal(isConsented(state, "doom", "doom"), false, "a shared sheet can't boot Doom (download engine+WAD) without consent");
   setConsent(state, "doom", { allow: true, category: "net" });
-  assert.equal(requireConsent(state, "doom", "doom"), true, "after consent, Doom may boot");
+  assert.equal(isConsented(state, "doom", "doom"), true, "after consent, Doom may boot");
+});
+
+test("the ASSET LOADERS (doom.arm/doom.boot) are gated — a shared sheet embedding a doom window can't auto-fetch the engine+WAD", async () => {
+  const state = await boot();
+  for (const k of ["doom.arm", "doom.boot"]) assert.ok(isDangerous(k), `${k} loads engine/WAD bytes → must be DANGEROUS`);
+  lockConsent(state);
+  // the persisted `wasm.doom.armboot` formula references doom.arm — gating it
+  // makes that formula #BLACKLISTED on a locked sheet, so boot never fetches.
+  assert.equal(isConsented(state, "doom.arm", "wasm.doom"), false, "embedded doom can't arm the boot without consent");
+  assert.equal(isConsented(state, "doom.boot", "wasm.doom"), false, "embedded doom can't boot without consent");
+  setConsent(state, "doom.arm", { allow: true, category: "net" });
+  assert.equal(isConsented(state, "doom.arm", "wasm.doom"), true, "after consent, the boot may arm");
 });

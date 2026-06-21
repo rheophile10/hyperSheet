@@ -813,12 +813,12 @@ const lookupFromInputs = (inputs: ResolvedInputs): Lookup => (key) => {
   if (c === undefined || Array.isArray(c)) return undefined;
   // Head rule: lambda cels contribute their callable; FormulaCels their
   // computed value (which may itself be a function — the unnamed
-  // `=QUICKJS(A1)` cell is callable through this branch).
+  // `=JS(A1)` cell is callable through this branch).
   if (c.celType === "FormulaCel") return c.v;
   return (c as { _fn?: unknown })._fn ?? c.v;
 };
 
-// ── binder form: =QUICKJS(A1, "name" [, TRUE]) ──────────────────────────────
+// ── binder form: =JS(A1, "name" [, TRUE]) ──────────────────────────────
 // Root-level call whose name (lowercased) resolves to a CompilerCel and
 // whose second argument is a string literal. The cell's VALUE becomes
 // the definition request; the envelope declares the defn.commit channel

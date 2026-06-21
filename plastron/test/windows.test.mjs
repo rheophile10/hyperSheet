@@ -62,15 +62,15 @@ test("z-unify: winx.raise and winsheet.raise share win.topz — the later raise 
   // a state-cel window (winx.*) and a worksheet window (winsheet.*) raise
   // against the SAME win.topz fountain (seeded 100), so the second wins.
   await resolveFn(s, "setCel")(s, "win.a.state", { celType: "ValueCel", v: { ref: "win.a.state", x: 0, y: 0, w: 200, h: 200, z: 1 }, metadata: { segment: "win.a", name: "state" } });
-  await resolveFn(s, "setCel")(s, "win.geom", { celType: "ValueCel", v: { turtles: { x: 0, y: 0 } }, metadata: { segment: "sheet-host", name: "geom" } });
+  await resolveFn(s, "setCel")(s, "win.geom", { celType: "ValueCel", v: { turtle_data: { x: 0, y: 0 } }, metadata: { segment: "sheet-host", name: "geom" } });
   assert.equal(val(s, "win.topz"), 100, "seeded fountain default");
   await resolveFn(s, "winx.raise")(s, "win.a.state");
   const zX = s.cels.get("win.a.state").v.z;
   assert.equal(zX, 101, "winx.raise bumped win.topz to 101 and used it");
   assert.equal(val(s, "win.topz"), 101, "shared fountain advanced");
   // now a worksheet window raises — must beat the state-cel window
-  await resolveFn(s, "winsheet.raise")(s, "turtles");
-  const zSheet = s.cels.get("win.geom").v.turtles.z;
+  await resolveFn(s, "winsheet.raise")(s, "turtle_data");
+  const zSheet = s.cels.get("win.geom").v.turtle_data.z;
   assert.equal(zSheet, 102, "winsheet.raise read the SAME fountain → 102 (above the state-cel window)");
   assert.ok(zSheet > zX, "the later worksheet raise sits above the earlier state-cel raise");
   // and back the other way: a state-cel raise now tops the worksheet

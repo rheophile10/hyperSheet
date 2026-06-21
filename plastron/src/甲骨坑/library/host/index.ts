@@ -5,7 +5,7 @@ import seed from "./甲骨.json" with { type: "json" };
 // ============================================================================
 // host — capability surface for wasm-backed kinds.
 //
-// Lambdas in any kind segment (wat, py, javy, …) need access to a small
+// Lambdas in any kind segment (wat, py, js, …) need access to a small
 // set of host-provided fns: console.log/warn/error for diagnostics, now
 // for timestamps, random for entropy, fetch for network (deferred until
 // the async-call worker model in Phase 3 — sync fetch isn't viable
@@ -18,8 +18,8 @@ import seed from "./甲骨.json" with { type: "json" };
 //     User WAT declares (import "host" "log" (func $log ...)).
 //   • py:  pyodide.globals.set("host", { log, warn, … }) once at boot;
 //     user Python calls host.log(...) directly.
-//   • javy (future): registered as JS-callable fns inside QuickJS, so
-//     `host.log(...)` works inside compiled JS lambdas.
+//   • js: registered as JS-callable fns inside the QuickJS
+//     sandbox, so `host.log(...)` works inside compiled JS lambdas.
 //
 // Security gating is segment-shaped: an app that wants lambdas not to
 // log replaces the cel's _fn with a noop after install. An app running

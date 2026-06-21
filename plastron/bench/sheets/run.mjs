@@ -7,9 +7,8 @@
 // sizes:  S (8×5/13 used)  M (40×26/~500)  L (200×26/~2600)  XL (synthetic 10k)
 // phases: boot | edit | noop | commit | range-edit | save-open | xl-precompute
 //
-// View-side phases (select / diff / paint) live in plastron-os's
-// bench-fragments.mjs until the shared helper migration — this runner
-// measures the GRAPH: fires, suppression, precompute count/ms.
+// This runner measures the GRAPH: fires, suppression, precompute count/ms
+// (view-side phases — select / diff / paint — are out of scope here).
 // Wall-clock is reported but counters are the trustworthy signal.
 // ============================================================================
 import { createInitialState, precomputeOptional, resolveFn, buildSheet } from "../../dist/index.js";

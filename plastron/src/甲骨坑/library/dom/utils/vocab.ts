@@ -6,7 +6,7 @@ import { text as T } from "./build.js";
 // Moved here from origin (application) per the tier-boundary doctrine: building
 // a vnode is a reusable capability, not an app-specific choice. Now ANY segment
 // that depends on `dom` can author UI as a (dom …) formula — including library
-// capabilities like unsafe-wallet. Output shape is preserved exactly (the
+// capabilities like vault. Output shape is preserved exactly (the
 // painter reads a top-level `style` object and an `events` bag).
 // ============================================================================
 
@@ -66,7 +66,7 @@ export const attr: Fn = (...pairs: unknown[]): { __attr: Record<string, unknown>
 };
 
 /** on(event, handlerKey [, payload]) — bind a dom event to a handler cel. Pass
- *  as a child of dom(): (dom "button" (on "click" "wallet.lock") "lock"). The
+ *  as a child of dom(): (dom "button" (on "click" "vault.lock") "lock"). The
  *  handler runs (state, payload, event). This is what makes interactive UI —
  *  buttons, inputs — authorable as a formula. */
 /** img(src… [, style()/attr()/on() children]) — an image element. String

@@ -1,6 +1,7 @@
 import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
 import { bindNativeFns, isSecretHandle, resolveFn, withAccessor, parseA1 } from "../../../kernel/index.js";
 import { el, text as T } from "../dom/index.js";
+import { localCheck, localComplete, localProgress, localReady } from "./local.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 type V = { type: "el" | "text"; tag?: string; attrs?: Record<string, unknown>; events?: Record<string, unknown>; children?: V[]; text?: string };
@@ -14,7 +15,7 @@ const elx = el as unknown as (tag: string, attrs?: Record<string, unknown>, chil
 //
 // claude() is REACTIVE: the kernel awaits the Promise, the reply becomes the
 // cell's value, the formula survives, and editing the prompt re-asks. It
-// accepts a SecretHandle (from the wallet's apiKey("…")) so the key is resolved
+// accepts a SecretHandle (from the vault's apiKey("…")) so the key is resolved
 // at the effect site and never enters the graph.
 // ============================================================================
 
@@ -40,16 +41,17 @@ const readReply = async (res: Response, label: string): Promise<string> => {
   return j?.choices?.[0]?.message?.content ?? JSON.stringify(j).slice(0, 500);
 };
 
-const claudeFn: Fn = async (prompt: unknown, key: unknown, model: unknown): Promise<string> => {
+const claudeFn: Fn = async (prompt: unknown, key: unknown, model: unknown, system?: unknown): Promise<string> => {
   const p = String(prompt ?? "").trim();
+  const sys = String(system ?? "").trim();
   // accept a kernel SecretHandle (from apiKey("…")) OR a literal key string /
   // cel value. The handle keeps the secret out of the graph — resolution
   // happens HERE, at the effect site, and the secret is never stored.
   const isHandle = isSecretHandle(key);
   const k = (isHandle ? String(key.resolve() ?? "") : String(key ?? "")).trim();
   if (!p) return "(ask something — the reply lands here when the prompt cel has text)";
-  if (isHandle && !k) return `(wallet has no usable "${key.name}" — =unlockWallet(), then =apiKeys())`;
-  if (!k) return "(no api key — put an sk-ant-… key in the key cel, or use key(\"anthropic\") with the wallet)";
+  if (isHandle && !k) return `(vault has no usable "${key.name}" — =unlockVault(), then =apiKeys())`;
+  if (!k) return "(no api key — put an sk-ant-… key in the key cel, or use key(\"anthropic\") with the vault)";
   let res: Response;
   try {
     res = await fetch("https://api.anthropic.com/v1/chat/completions", {
@@ -61,20 +63,53 @@ const claudeFn: Fn = async (prompt: unknown, key: unknown, model: unknown): Prom
       },
       body: JSON.stringify({
         model: model == null || model === "" ? "claude-fable-5" : String(model),
-        messages: [{ role: "user", content: p }],
+        messages: sys ? [{ role: "system", content: sys }, { role: "user", content: p }] : [{ role: "user", content: p }],
       }),
     });
   } catch { return "(claude unreachable — the fetch was blocked: a network error or a genuine CORS rejection; check the Network tab for the real status)"; }
   return readReply(res, "claude");
 };
 
+// ── local — an in-browser LLM (WebLLM + Qwen2.5-0.5B on WebGPU), selected the
+// SAME way as claude/grok (a "local" provider). After one consent-gated download
+// it runs offline. These verbs mirror claudeFn: reactive formula fns returning
+// the reply directly. The heavy runtime lives in ./local.ts (lazy WebLLM import).
+// localload/localchat are in the DANGEROUS registry — the blacklist PROPERTY gates
+// the ~400MB download centrally; nothing here calls requireConsent.
+
+// =localcheck() — can this machine run a local model? Probes WebGPU + memory +
+// storage; downloads nothing. The UI offers "local" only when canRun.
+const localCheckFn: Fn = (async (): Promise<unknown> => localCheck()) as Fn;
+
+// =localload() — trigger (or confirm) the one-time model download. Browser-only.
+// Returns a status string; poll =localprogress() while it loads. Idempotent.
+const localLoadFn: Fn = (async (): Promise<string> => {
+  if (!(globalThis as { navigator?: unknown }).navigator) return "(local LLM needs a browser)";
+  if (localReady()) return "ready (model already loaded)";
+  try { await localComplete("hi"); return "ready"; }   // first completion forces the load
+  catch (e) { return `#ERROR(local: ${(e as Error).message})`; }
+}) as Fn;
+
+// =localprogress() — the last WebLLM load-progress line (poll during a download).
+const localProgressFn: Fn = ((): string => localProgress() || (localReady() ? "ready" : "(not loaded — =localload())")) as Fn;
+
+// =localchat(prompt [, system]) — ask the LOCAL model; the reply becomes the cell
+// value (REACTIVE: edit the prompt to re-ask), exactly like =claude. First call
+// triggers the consent-gated download.
+const localChatFn: Fn = (async (prompt: unknown, system?: unknown): Promise<string> => {
+  if (!(globalThis as { navigator?: unknown }).navigator) return "(local LLM needs a browser)";
+  try { return await localComplete(String(prompt ?? ""), system == null ? undefined : String(system)); }
+  catch (e) { return `#ERROR(local: ${(e as Error).message})`; }
+}) as Fn;
+
 // llm.chat — a generic OpenAI-shaped chat completion (POST messages, return the
 // reply text). The host's chat()/grok() verbs emit a descriptor whose drain
 // delegates here. Stateless (just fetch, over the net gate).
-const chatFn: Fn = (async (prompt: unknown, key: unknown, model: unknown, url: unknown): Promise<string> => {
+const chatFn: Fn = (async (prompt: unknown, key: unknown, model: unknown, url: unknown, system?: unknown): Promise<string> => {
   const u = String(url || "https://api.x.ai/v1/chat/completions");
   const m = String(model ?? "grok-3-mini");
-  const k = String(key ?? "");
+  const sys = String(system ?? "").trim();
+  const k = isSecretHandle(key) ? String((key as { resolve: () => string }).resolve() ?? "").trim() : String(key ?? "");
   if (!k) return `(no api key — pass one: =claude("hi", "sk-ant-…") / =grok("hi", "xai-…") or a cel holding it)`;
   const headers: Record<string, string> = { "content-type": "application/json", authorization: `Bearer ${k}` };
   if (u.includes("api.anthropic.com")) headers["anthropic-dangerous-direct-browser-access"] = "true";
@@ -83,7 +118,7 @@ const chatFn: Fn = (async (prompt: unknown, key: unknown, model: unknown, url: u
   try {
     res = await fetch(u, {
       method: "POST", headers,
-      body: JSON.stringify({ model: m, messages: [{ role: "user", content: String(prompt ?? "") }] }),
+      body: JSON.stringify({ model: m, messages: sys ? [{ role: "system", content: sys }, { role: "user", content: String(prompt ?? "") }] : [{ role: "user", content: String(prompt ?? "") }] }),
     });
   } catch { return `(${label} unreachable — the fetch was blocked: a network error or a genuine CORS rejection; check the Network tab for the real status)`; }
   return readReply(res, label);
@@ -93,18 +128,25 @@ const chatFn: Fn = (async (prompt: unknown, key: unknown, model: unknown, url: u
 // model?) returns a CLIENT HANDLE that captured the key in a module-scope
 // keystore — NEVER in the cel value (mirrors SecretHandle/CryptoKeyHandle).
 // client.send(handle, msg) resolves the key at the effect site. So a chat uses
-// the CLIENT cel, never the key, and the wallet (the key's segment) stays sealed:
-// only the client-maker reads the wallet; downstream sees only the client.
+// the CLIENT cel, never the key, and the vault (the key's segment) stays sealed:
+// only the client-maker reads the vault; downstream sees only the client.
 interface ClientHandle { __client: true; id: string; provider: string; model?: string; status: "ready" | "error"; error?: string }
 const clientKeys = new Map<string, unknown>();   // id → key (SecretHandle or literal) — out of the graph
 // a resolved key is REAL when it's a non-empty string that is not one of the
-// wallet's refusal sentinels (#DENIED / #NOKEY / a ✗ marker). The handle keeps
+// vault's refusal sentinels (#DENIED / #NOKEY / a ✗ marker). The handle keeps
 // only the non-secret status; the key itself stays in the keystore, never the value.
 const keyIsReal = (k: string): boolean => k !== "" && !/^#DENIED|^#NOKEY|^✗/.test(k);
 const makeClientFn: Fn = ((provider: unknown, key: unknown, model: unknown): ClientHandle => {
   const prov = String(provider ?? "claude");
+  // local is keyless — it runs in-browser. Always "ready" (the model downloads on
+  // first send); no vault key to resolve.
+  if (prov === "local") {
+    const h: ClientHandle = { __client: true, id: "local", provider: "local", status: "ready" };
+    if (model != null && model !== "") h.model = String(model);
+    return h;
+  }
   const keyName = isSecretHandle(key) ? (key as { name: string }).name : "key";
-  const id = `${prov}:${keyName}`;                // deterministic — same wallet key → same client id (no re-render churn)
+  const id = `${prov}:${keyName}`;                // deterministic — same vault key → same client id (no re-render churn)
   clientKeys.set(id, key);
   const resolved = (isSecretHandle(key) ? String((key as { resolve: () => string }).resolve() ?? "") : String(key ?? "")).trim();
   const ready = keyIsReal(resolved);
@@ -137,13 +179,14 @@ const chatHistoryFn: Fn = ((messages: unknown): V => {
   const starter = elx("div", { class: "chat-empty", style: "align-self:center;opacity:.5;font-size:.8rem;padding:.6rem" }, [T("ask the bots anything…")]);
   return elx("div", { class: "chat-history", style: "display:flex;flex-direction:column;gap:.35rem;overflow:auto;max-height:18rem;padding:.2rem" }, rows.length ? rows : [starter]);
 }) as Fn;
-const clientSendFn: Fn = (async (client: unknown, message: unknown): Promise<string> => {
+const clientSendFn: Fn = (async (client: unknown, message: unknown, system?: unknown): Promise<string> => {
   const c = client as ClientHandle | undefined;
   if (!c || c.__client !== true) return "(not a client — make one with makeclient(provider, key))";
+  if (c.provider === "local")   return String(await localChatFn(message, system));   // in-browser; no key
   const key = clientKeys.get(c.id);
-  return c.provider === "grok"
-    ? String(await chatFn(message, key, c.model, ""))
-    : String(await claudeFn(message, key, c.model));
+  if (c.provider === "grok")    return String(await chatFn(message, key, c.model, "", system));
+  if (c.provider === "chatgpt") return String(await chatFn(message, key, c.model, "https://api.openai.com/v1/chat/completions", system));
+  return String(await claudeFn(message, key, c.model, system));
 }) as Fn;
 
 // messages(from1, text1, …) — build a message LIST [{from, text}, …] as a
@@ -290,10 +333,11 @@ const parseChatCommands = (body: string): { commands: ChatCmd[]; prose: string }
   return { commands, prose: kept.join("\n").trim() };
 };
 
-// runChatCommands — execute parsed commands CONFINED to the chat's worksheet.
-// Every setCel runs under withAccessor(state, seg, …); a target outside the
-// segment's set-policy is refused by the kernel (canSet false → throw / no
-// write), so a command can't escape the closure. Returns a per-command log.
+// runChatCommands — execute parsed commands against the chat's worksheet. Each
+// setCel runs under withAccessor(state, seg, …) for provenance. NOTE: 访 access-
+// control was removed, so cross-segment writes are NO LONGER refused in-process —
+// an UNTRUSTED bot must run inside the jail (sandbox iframe), the real boundary.
+// Returns a per-command log.
 const runChatCommands: Fn = (async (state: State, seg: unknown, commands: unknown): Promise<string[]> => {
   const chatSeg = String(seg ?? SHEET);
   const setCel = resolveFn(state, "setCel") as Fn;
@@ -309,8 +353,8 @@ const runChatCommands: Fn = (async (state: State, seg: unknown, commands: unknow
           ? { celType: "FormulaCel", f: c.formula, metadata: { key, segment: targetSeg, name, parser: "f" } }
           : { celType: "ValueCel", v: c.value, metadata: { key, segment: targetSeg, name } };
         try {
-          // ALWAYS confined to the CHAT's segment — a foreign targetSeg is
-          // refused by canSet (Layer 1), proving the sealed closure.
+          // runs under the chat's accessor (provenance); cross-segment writes are
+          // open now (访 removed) — untrusted bots are confined by the jail.
           await withAccessor(state, chatSeg, () => Promise.resolve(setCel(state, key, spec)));
           applied.push(targetSeg === chatSeg ? name : `${targetSeg}.${name}`);
         } catch { applied.push(`#DENIED ${targetSeg}.${name}`); }
@@ -363,15 +407,15 @@ const chatCellKey: Fn = (async (state: State, _p: unknown, event?: { key?: strin
   if (event?.key === "Enter") { try { event.preventDefault?.(); } catch { /* */ } await (chatCellSend as unknown as (s: State) => Promise<void>)(state); }
 }) as Fn;
 
-// clientsheet() — GENESIS: a "sheet of clients" minted from the wallet. Each cel
-// reactively makes a client from a wallet apiKey handle (the key is captured, not
-// stored). The trailing secretsGen ref inside apiKey wires a dep on the wallet's
+// clientsheet() — GENESIS: a "sheet of clients" minted from the vault. Each cel
+// reactively makes a client from a vault apiKey handle (the key is captured, not
+// stored). The trailing secretsGen ref inside apiKey wires a dep on the vault's
 // version cel so a key add/del re-fires the client cel (error↔ready) through the
-// graph — apiKey reads secrets internally, so without it nothing re-fires. This segment READS the wallet (apiKey) but never writes it; the chat
+// graph — apiKey reads secrets internally, so without it nothing re-fires. This segment READS the vault (apiKey) but never writes it; the chat
 // reads these client cels. =clientsheet() then =chatapp("claude","Claude") talks
 // to Claude through clients.claude — the key never in the chat's reach.
 // The `clients` segment is minted with a STATIC get-whitelist: itself (so its
-// makeclient formulas can read the wallet's apiKey via the secrets gate) PLUS
+// makeclient formulas can read the vault's apiKey via the secrets gate) PLUS
 // `win.chat-claude` (the Claude chat's segment), so a chat formula may read
 // clients.* — but NOT secrets.* (the secrets segment is sealed; bundling never
 // opens a seal, and the chat is not in secrets.get). Claude gets the safe
@@ -382,6 +426,7 @@ const clientsheetFn: Fn = ((): unknown => ({
   cels: {
     "clients.claude": { celType: "FormulaCel", f: '(makeclient "claude" (apiKey "anthropic" secretsGen))', metadata: { name: "claude", parser: "f" } },
     "clients.grok": { celType: "FormulaCel", f: '(makeclient "grok" (apiKey "xai" secretsGen))', metadata: { name: "grok", parser: "f" } },
+    "clients.local": { celType: "FormulaCel", f: '(makeclient "local")', metadata: { name: "local", parser: "f" } },
   },
 })) as Fn;
 
@@ -389,6 +434,10 @@ export const name = "llm" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["claude", claudeFn],
+  ["localcheck", localCheckFn],
+  ["localload", localLoadFn],
+  ["localprogress", localProgressFn],
+  ["localchat", localChatFn],
   ["llm.chat", chatFn],
   ["makeclient", makeClientFn],
   ["client.send", clientSendFn],

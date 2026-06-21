@@ -12,7 +12,7 @@ export const COMPILE_CACHE_KEY = "compile.cache" as const;
 // Resolve a cel's metadata.outputSchema → WitType, when the schema is
 // wasm-kind. Returns undefined for missing schema, non-wasm schema
 // (Zod), or a wasm-kind schema with no wit type set. Compilers that
-// honor composite WIT output schemas (py-compiler, future quickjs/wat)
+// honor composite WIT output schemas (py-compiler, future js/wat)
 // read this through CompileContext to decide handle-vs-marshal.
 const resolveOutputWitType = (cel: FireableCel, state: State): WitType | undefined => {
   const md = cel.metadata as { outputSchema?: Key };
@@ -53,7 +53,7 @@ export const compileCelBody = async (
 
   // Consent gate: compiling a USER lambda (EditableLambdaCel — js/wat/py source)
   // RUNS code, the highest-trust capability. In a LOCKED session it needs consent
-  // for that compiler kind (js/wat/py/quickjs are in the standing blacklist).
+  // for that compiler kind (js/wat/py are in the standing blacklist).
   // FormulaCels (the declarative language) and the safe `formula` kind are always
   // allowed. Refuse as a value, don't abort hydrate.
   const kind = String((cel.metadata as { kind?: unknown }).kind ?? "");
@@ -71,7 +71,7 @@ export const compileCelBody = async (
   // buildEvaluate are intentionally unavailable on this path; the
   // editor owns those concerns itself if it cares. Stays sync — the
   // async story is for registry-path compilers that need lazy-loaded
-  // runtimes (Javy, wabt.js, Pyodide); those don't fit Recompile.
+  // runtimes (QuickJS, wabt.js, Pyodide); those don't fit Recompile.
   if (cel.celType === "EditableLambdaCel" && cel._compiler) {
     cel._fn = cel._compiler(cel.f);
     return;
@@ -199,7 +199,7 @@ export const compileCelBody = async (
   }
   writeBackCompilerKey(cel, compilerKey);
   // Auto-populate inputMap only for compilers that supply extractDeps
-  // (formula parsers). Lambda compilers (js, py, wat, quickjs) have
+  // (formula parsers). Lambda compilers (js, py, wat) have
   // no source-level introspection — leaving inputMap undefined keeps
   // the lambda out of the cascade unless the author explicitly opts
   // in via metadata.inputMap or dynamic. Otherwise empty-inputMap

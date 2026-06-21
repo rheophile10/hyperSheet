@@ -1,0 +1,59 @@
+{
+  "name": "sqlite-client",
+  "cels": [
+    {
+      "key": "sqlclient",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sqlclient", "segment": "sqlite-client", "name": "sqlclient", "kind": "native", "genesis": true,
+        "description": "(db [, title]) - open a SQLite client WINDOW on db: a query editor, a tables sidebar, and the result rows below (rendered as a grid + materialized into real sqlres.* cels). e.g. =sqlclient(\"demo\")"
+      },
+      "locked": true
+    },
+    {
+      "key": "sqlclientui",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sqlclientui", "segment": "sqlite-client", "name": "sqlclientui", "kind": "native",
+        "description": "(db, query, tablesData, results, error) - the client panel vnode: query textarea + Run, tables sidebar, results grid. Pure render; state lives in sqlc.<db>.* cels."
+      },
+      "locked": true
+    },
+    {
+      "key": "sqlc.run",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sqlc.run", "segment": "sqlite-client", "name": "sqlc.run", "kind": "native",
+        "description": "Handler: run sqlc.<db>.query, store rows in sqlc.<db>.results, materialize them into sqlres.* cels, refresh the table list, surface errors."
+      },
+      "locked": true
+    },
+    {
+      "key": "sqlc.refresh",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sqlc.refresh", "segment": "sqlite-client", "name": "sqlc.refresh", "kind": "native",
+        "description": "Handler: repopulate the sidebar's table list from the live schema (on window open or on demand)."
+      },
+      "locked": true
+    },
+    {
+      "key": "sqlc.selectTable",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sqlc.selectTable", "segment": "sqlite-client", "name": "sqlc.selectTable", "kind": "native",
+        "description": "Handler: a sidebar table click (payload \"db::table\") fills the editor with SELECT * FROM table LIMIT 100 and runs it."
+      },
+      "locked": true
+    },
+    {
+      "key": "sqlc.key",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sqlc.key", "segment": "sqlite-client", "name": "sqlc.key", "kind": "native",
+        "description": "Handler: ⌘/Ctrl+Enter in the query editor runs the query."
+      },
+      "locked": true
+    }
+  ]
+}

@@ -19,8 +19,8 @@ export interface CompiledEnvelope {
     inputs: ResolvedInputs,
     cspEvalAvailable: boolean,
   ) => (() => unknown) | Promise<() => unknown>;
-  /** Optional wasm bytes produced by the compiler (wat today; javy/rust
-   *  later). Stored on cel._wasm at hydrate for diagnostics and future
+  /** Optional wasm bytes produced by the compiler (wat today; rust/other
+   *  wasm langs later). Stored on cel._wasm at hydrate for diagnostics and future
    *  worker dispatch. */
   wasm?: Uint8Array;
   /** Channels the compiled body participates in. compileCelBody merges

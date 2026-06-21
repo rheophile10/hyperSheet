@@ -70,7 +70,7 @@
       "celType": "LockedLambdaCel",
       "metadata": {
         "key": "wasm-to-wat", "segment": "wat-compiler", "name": "wasm-to-wat", "kind": "native",
-        "description": "Show-WAT diagnostic: takes a wasm binary (Uint8Array) and returns its WAT text via wabt.readWasm + toText. Use on cel._wasm to inspect any wasm module — most useful for kinds whose source isn't WAT (Javy / Rust). Wat lambdas can pass their own bytes for canonical round-trip."
+        "description": "Show-WAT diagnostic: takes a wasm binary (Uint8Array) and returns its WAT text via wabt.readWasm + toText. Use on cel._wasm to inspect any wasm module — most useful for kinds whose source isn't WAT (Rust / other wasm langs). Wat lambdas can pass their own bytes for canonical round-trip."
       },
       "locked": true
     }

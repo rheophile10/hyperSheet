@@ -18,7 +18,7 @@ export {
   currentAccessor, withAccessor, isDenied, DENIED,
 } from "./access.js";
 export {
-  DANGEROUS, isDangerous, isConsented, requireConsent, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
+  DANGEROUS, isDangerous, isConsented, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
 } from "./consent.js";
 export type { DangerCategory, DangerSpec, ConsentGrant, DangerUse } from "./consent.js";
 export {

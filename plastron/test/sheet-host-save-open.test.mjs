@@ -1,4 +1,5 @@
 import { test } from "bun:test";
+import { openTurtlesFixture } from "./_turtles-fixture.mjs";
 import assert from "node:assert/strict";
 import { createInitialState, precomputeOptional, resolveFn, createPainter, setPainter } from "../dist/index.js";
 import { saveSheet, openAsSheet } from "../dist/甲骨坑/library/sheet-host/index.js";
@@ -52,7 +53,8 @@ const boot = async () => {
   await resolveFn(state, "hydrate")(state, [], []);
   await precomputeOptional(state);
   await resolveFn(state, "runCycle")(state);
-  await resolveFn(state, "origin.commit")(state, "元");
+  await resolveFn(state, "origin.run")(state, "元"); // minimal boot
+  await openTurtlesFixture(state, resolveFn);   // README bundle → the turtle_data window fixture
   await resolveFn(state, "drain")(state, "dom.paint");
   m.run();
   return { state, root, m };
@@ -71,8 +73,8 @@ const seedSheet = async (state, seg, cells) => {
 
 test("titlebar: every worksheet window carries 💾 save / 📁 open / 🆕 new buttons", async () => {
   const { root } = await boot();
-  const w = windowOf(root, "turtles");
-  assert.ok(w, "the turtles window exists");
+  const w = windowOf(root, "turtle_data");
+  assert.ok(w, "the turtle_data window exists");
   const glyphs = byClass(w, "pl-titlebar")[0];
   const save = byClass(glyphs, "pl-save-btn")[0];
   const open = byClass(glyphs, "pl-open-btn")[0];
@@ -173,7 +175,7 @@ test("explorer double-click: a .csv file opens as a new sheet window", async () 
   const csv = "x,y\n1,2\n3,4";
   await resolveFn(state, "fs.write")("/grid.csv", new TextEncoder().encode(csv));
   const before = Object.keys(state.cels.get("win.geom")?.v ?? {});
-  await resolveFn(state, "origin.explorerOpenSheet")(state, "/grid.csv"); m.run();
+  await resolveFn(state, "explorer.openSheet")(state, "/grid.csv"); m.run();
   const geom = state.cels.get("win.geom").v;
   const seg = Object.keys(geom).find((k) => k.startsWith("sheet") && !before.includes(k));
   assert.ok(seg, "double-clicking the .csv opened a new sheet window");
@@ -187,7 +189,7 @@ test("explorer double-click: a non-sheet file falls back to text preview (no new
   await resolveFn(state, "ensureSegments")(state, ["file-store"]);
   await resolveFn(state, "fs.write")("/note.txt", new TextEncoder().encode("hello"));
   const before = Object.keys(state.cels.get("win.geom")?.v ?? {});
-  await resolveFn(state, "origin.explorerOpenSheet")(state, "/note.txt"); m.run();
+  await resolveFn(state, "explorer.openSheet")(state, "/note.txt"); m.run();
   const after = Object.keys(state.cels.get("win.geom")?.v ?? {});
   assert.deepEqual(after.filter((k) => k.startsWith("sheet")), before.filter((k) => k.startsWith("sheet")), "no new sheet window for a .txt");
 });

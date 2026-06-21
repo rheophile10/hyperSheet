@@ -11,6 +11,30 @@ import { resolveFn } from "../resolve-fn.js";
 import { appendError, makeCelError } from "../cel-error.js";
 import { deriveCacheKeysFromInputMap, hasHooksOrCache, runHookedExecution } from "./hooks.js";
 import { withAccessor } from "../segments/access.js";
+import { isConsentLocked, isConsented, isDangerous } from "../segments/consent.js";
+
+// Consent gate — the ONE central, tag-driven enforcement point. In a LOCKED
+// session (a shared #f=/#raw= sheet), a cel whose formula REFERENCES a DANGEROUS
+// fn it isn't consented for must not fire that effect: it takes a #BLACKLISTED
+// value instead, which propagates downstream like any error. Because every
+// IO/code verb is a cel and a formula's inputMap lists the cels it calls, the
+// DANGEROUS membership (the blacklist TAG) is the whole policy — no per-verb hand
+// map, no per-fn requireConsent self-check. Returns the offending dep key, or
+// undefined when the cel may fire (the common case: unlocked → instant out).
+const blockedDangerousDep = (state: State, cel: FireableCel): Key | undefined => {
+  if (!isConsentLocked(state)) return undefined;       // own session → full trust
+  const im = cel.metadata.inputMap;
+  if (!im) return undefined;
+  const seg = cel.metadata.segment;
+  for (const ref of Object.values(im)) {
+    if (Array.isArray(ref)) {
+      for (const k of ref) if (isDangerous(k) && !isConsented(state, k, seg)) return k;
+    } else if (isDangerous(ref) && !isConsented(state, ref, seg)) {
+      return ref;
+    }
+  }
+  return undefined;
+};
 
 // Route a changed compute cel onto every channel handler. Fast path
 // reads cel._channelHandlers; fallback resolves channels via the
@@ -181,6 +205,17 @@ const fireCel = (
     }
     if (!shouldFire) return;
   }
+
+  // Central consent gate: a locked session refuses a cel that calls an
+  // un-consented DANGEROUS fn. Commit a stable #BLACKLISTED string (value
+  // equality dedups it in suppression mode, so it never re-cascades) and skip
+  // the effect. Subsumes the old drain verb-map + the doom/apiKey self-checks.
+  const blocked = blockedDangerousDep(state, cel);
+  if (blocked !== undefined) {
+    finishFireSync(state, cel, `#BLACKLISTED(${blocked} — not consented; open =consentpanel() to allow it)`, suppression, changed);
+    return;
+  }
+
   bump("fires"); // counts cels that proceed to EVALUATION (post-suppression-gate)
 
   // Hooked path: when the cel has _memoCache or pre/post-fns, all
@@ -341,12 +376,11 @@ const runCascadeInner = async (
       let promises: Promise<void>[] | null = null;
       for (const key of level) {
         if (!affected.has(key)) continue;
-        _currentCel = key;                  // provenance (net gate reads it)
+        _currentCel = key;                  // provenance (consent/net gate reads it)
         // Accessor context — the firing cel's segment is the accessor for
-        // any setValue/setCel its evaluation triggers (a handler dispatch).
-        // Sync window only, like _currentCel; an async cel initiates its IO
-        // here. resolveInputCel attributes ITS reads statically per cel, so
-        // the gate doesn't depend on this stack.
+        // any setValue/setCel its evaluation triggers (a handler dispatch), and
+        // for the consent check on dangerous verbs. Sync window only, like
+        // _currentCel; an async cel initiates its IO here.
         const seg = state.cels.get(key)?.metadata.segment;
         const r = withAccessor(state, seg, () =>
           fireCel(state, key, suppression, changed, recompiled));

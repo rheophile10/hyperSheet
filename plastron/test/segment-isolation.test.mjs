@@ -70,7 +70,6 @@ const KEY_RE = /resolveFn\([^,]+,\s*"([^"]+)"\)|\.cels\.get\(\s*"([^"]+)"\s*\)/g
 // Keys that are legitimately absent in a bare boot (host/app supplied,
 // or written later at runtime).
 const DYNAMIC_OK = new Set([
-  "os.active", "os.apps", "os.doc",     // app-host's host-written cels
 ]);
 
 test("derive-don't-declare: every literal consumed key resolves in a booted state", () => {

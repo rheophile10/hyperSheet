@@ -12,6 +12,12 @@
     "dependencies": []
   },
   {
+    "name": "js-common-schema",
+    "version": "0.0.1",
+    "description": "protocol implementations for the 12 base JavaScript types: one SchemaCel per type (JSON Schema + protocol fn refs) plus isChanged/hydrate/dehydrate lambdas, bound by key. The declarative catalog lives in 甲骨.json; this segment owns the runtime side.",
+    "dependencies": []
+  },
+  {
     "name": "host",
     "version": "1.0.0",
     "description": "Host-capability cells: console.log/warn/error, now, random. Read by each kind segment's compiler layer (wat as wasm imports; py via pyodide globals binding). Apps replace _fn entries to gate or sandbox capabilities at install time.",
@@ -32,10 +38,9 @@
   {
     "name": "js-compiler",
     "version": "1.0.0",
-    "description": "The 'js' compiler cel — `new Function`-backed JS source → Fn. Gated on csp.eval-available.",
+    "description": "The 'js' compiler cel — JS source (last expression a callable) → callable Fn via QuickJS-emscripten (a JS-in-wasm sandbox). new Function removed (wasm-only-functions): no DOM, no eval, no host APIs unless granted via the host segment. Gated on csp.wasm-available; the ~1MB runtime lazy-loads on first compile (singlefile variant — embedded wasm, bundles inline).",
     "dependencies": [
-      "csp",
-      "quickjs-compiler"
+      "csp"
     ]
   },
   {
@@ -55,7 +60,7 @@
   {
     "name": "wasm-bytes",
     "version": "1.0.0",
-    "description": "The 'wasm' loader cel — precompiled .wasm bytes (base64 inline, or a 'file-store:<path>' reference) + a WIT descriptor → callable Fn via WebAssembly.instantiate. The sibling to wat/py/quickjs that takes bytes instead of source; unlocks importing any language precompiled to wasm (Rust/C/Zig/…). Export chosen by metadata.wasmExport; imports default to { host } with a metadata.imports provider cel for WASI/env shims; composite outputSchema → WasmHandle. Gated on csp.wasm-available. Plus wasm-to-js / js-to-wasm bridges. See plastron/docs/4-current/07-wasm/11-wasm-bytes-kind.md.",
+    "description": "The 'wasm' loader cel — precompiled .wasm bytes (base64 inline, or a 'file-store:<path>' reference) + a WIT descriptor → callable Fn via WebAssembly.instantiate. The sibling to wat/py/js that takes bytes instead of source; unlocks importing any language precompiled to wasm (Rust/C/Zig/…). Export chosen by metadata.wasmExport; imports default to { host } with a metadata.imports provider cel for WASI/env shims; composite outputSchema → WasmHandle. Gated on csp.wasm-available. Plus wasm-to-js / js-to-wasm bridges. See plastron/docs/4-current/07-wasm/11-wasm-bytes-kind.md.",
     "dependencies": [
       "csp",
       "host",
@@ -67,14 +72,6 @@
     "name": "py-compiler",
     "version": "1.0.0",
     "description": "The 'py' compiler cel — Python source → callable Fn via Pyodide. Plus py-to-js and js-to-py bridge cels using Pyodide's built-in conversion. Pyodide is dynamic-imported only on first compile; main-thread in v1.",
-    "dependencies": [
-      "csp"
-    ]
-  },
-  {
-    "name": "quickjs-compiler",
-    "version": "1.0.0",
-    "description": "The 'quickjs' compiler cel — JS source → callable Fn via QuickJS-emscripten (JS-in-wasm sandbox). Plus quickjs-to-js and js-to-quickjs bridge cels. Substitutes for Javy with the same QuickJS interpreter, npm-native distribution. Lazy-loaded on first compile; main-thread in v1.",
     "dependencies": [
       "csp"
     ]
@@ -150,14 +147,6 @@
     "dependencies": []
   },
   {
-    "name": "app-host",
-    "version": "1.0.0",
-    "description": "plastron-OS launcher mechanism (rendering-agnostic). Cels os.active / os.apps / os.doc + native ops os.launch / os.switch / os.exit / os.register-app, composed over user-space-ops (newUserSpace / loadUserSpace / saveUserSpace). os.launch with a docName ensures the document's user-space is loaded; without one it just activates. The desktop application renders this state; the kernel stays the headless substrate. See plastron/docs/1-design/1-under-consideration/plastron-os.md.",
-    "dependencies": [
-      "user-space-ops"
-    ]
-  },
-  {
     "name": "sound",
     "version": "1.0.0",
     "description": "Web Audio capability segment. Cels sound.play-tone (oscillator), sound.play-pcm (Float32 samples), sound.stop-all, plus sound.master-gain and sound.context-state. Browser-only — off-browser every fn is a silent no-op so app code is portable. Lazy AudioContext creation on first play (browser autoplay policy). Module-scoped runtime state (the context + active source set) is shared across States — matches the host/file-store singleton pattern.",
@@ -207,20 +196,12 @@
     "role": "library"
   },
   {
-    "name": "unsafe-wallet",
+    "name": "vault",
     "version": "1.0.0",
-    "description": "API keys out of the graph: module-held Map once unlocked, PBKDF2-SHA-256(600k)+AES-256-GCM encrypted file at /plastron/wallet.json otherwise (WebCrypto, no deps). key(name) returns a resolver HANDLE — consumers call resolve() at the effect site, so cel values / saves / seeds / LLM-bound ranges only carry the name. Secrets and the password enter via password-input dispatch handlers (wallet.*), never formula source. UNSAFE is honest: after unlock, same-page code can resolve handles — protects at-rest + accidental graph leakage; active malice is the review gate's job (agent-bridge Q3/Q4).",
+    "description": "api keys as SEALED cels — runtime-gated by the consent model (apiKey is DANGEROUS), encrypted at rest by the seal Layer-2 hooks (seal.lock on unlock); the secrets panel + apiKey/apiKeys/setKey verbs + vault.* handlers. No bespoke crypto, no wallet.json. Identity keypair via crypto.",
     "dependencies": [
-      "genesis"
-    ]
-  },
-  {
-    "name": "dom-wallet",
-    "version": "1.0.0",
-    "description": "The unsafe-wallet panel authored as dom() formulas — a showcase that interactive UI can be a formula. domWallet(lock, names?) returns a vnode tree built through the dom()/style()/attr()/on() vocabulary instead of hand-rolled el()/t() vnodes, wiring buttons/inputs to the SAME unsafe-wallet dispatch handlers (wallet.unlock/.lock/.setNamed/.del). Compose from the wallet's own readers: =domWallet(locked(walletNote), apiKeys()). Pure render — owns no secrets, no IO, no module state.",
-    "dependencies": [
-      "dom",
-      "unsafe-wallet"
+      "genesis",
+      "dom"
     ]
   },
   {
@@ -252,15 +233,23 @@
       "plastron-canvas",
       "charts",
       "checkpoint",
-      "unsafe-wallet",
-      "dom-wallet",
+      "vault",
       "llm",
       "sqlite",
       "sheet-host",
       "docgraph",
       "xlsx",
       "music",
-      "formula-compiler"
+      "formula-compiler",
+      "sqlite-client",
+      "sqlite-demo",
+      "botsheet",
+      "file-explorer",
+      "windows",
+      "defn",
+      "sheet",
+      "sound",
+      "builtins"
     ],
     "role": "application"
   },
@@ -285,7 +274,7 @@
   {
     "name": "llm",
     "version": "0.0.1",
-    "description": "talk to an LLM from a formula — claude() (reactive, wallet-handle keys), over the net gate",
+    "description": "talk to an LLM from a formula — claude() (reactive, vault-handle keys), over the net gate",
     "dependencies": [
       "net"
     ]
@@ -293,9 +282,35 @@
   {
     "name": "sqlite",
     "version": "0.0.1",
-    "description": "in-browser SQLite (sql.js) over OPFS — sqlite.command (open/query, persisted under /plastron/dbs)",
+    "description": "in-browser SQLite via @sqlite.org/sqlite-wasm over the opfs-sahpool VFS, in a Worker (persistent, incremental writes, no COOP/COEP — Pages-safe). sqlite.command (open/sql/seed/schema): seed bulk-loads a JSON array into a table; schema introspects tables/columns/PK/FK; every write bumps a sqlite.<db>.rev cel so SELECT formulas re-fire. Browser-only (the sahpool VFS needs a Worker); the engine ships as sidecar files next to index.html.",
+    "dependencies": []
+  },
+  {
+    "name": "sqlite-client",
+    "version": "0.0.1",
+    "description": "a SQLite client WINDOW (=sqlclient(db)) — query editor + tables sidebar + result rows rendered as a grid and materialized into real sqlres.* cels. Authored as a native-fn panel inside a winframe, the windows/chat pattern.",
     "dependencies": [
-      "file-store"
+      "sqlite",
+      "dom",
+      "windows"
+    ]
+  },
+  {
+    "name": "sqlite-demo",
+    "version": "0.0.1",
+    "description": "one verb =sqlitedemo() that lays down a worked SQLite example (db handle, CREATE-TABLE schema, JSON seed, get/aggregate queries) and opens the client window on it. Dormant at boot; runs only when called.",
+    "dependencies": [
+      "sqlite",
+      "sqlite-client"
+    ]
+  },
+  {
+    "name": "botsheet",
+    "version": "0.0.1",
+    "description": "=botsheet([provider]) — an 'ask a bot' (grok/chatgpt/claude) whose conversation surface is a cel GRID inside a jail() (sandboxed iframe). The parent mediates the LLM call with its own vault key (never crossed into the jail, via the jailask/jail.serve postMessage bridge); the bot replies by writing formulas/values into cells that render live. The consent blacklist stays parent-side.",
+    "dependencies": [
+      "dom",
+      "windows"
     ]
   },
   {
@@ -311,7 +326,18 @@
     "version": "0.0.1",
     "description": "cels as draggable/resizable windows — frame render verb + drag/resize handlers + geometry-as-cels",
     "dependencies": [
-      "dom"
+      "dom",
+      "file-explorer"
+    ]
+  },
+  {
+    "name": "file-explorer",
+    "version": "0.0.1",
+    "description": "the OPFS file UI as a library capability: the explorer render verb (=explorer / explorerwin window content) + its nav/open/openSheet/refresh/delete/rename dispatch handlers + the upload()/download() verbs and their handlers. Pure render + handler-side OPFS reads write explorer.cwd/.preview/.listing so the content formula re-fires (inputMap doctrine). Extracted from origin so windows' explorerwin() no longer reaches up into the application.",
+    "dependencies": [
+      "dom",
+      "file-store",
+      "sheet-host"
     ]
   },
   {

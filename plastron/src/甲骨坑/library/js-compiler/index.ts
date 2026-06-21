@@ -1,29 +1,205 @@
 import type { 甲骨, Cel, Compiler, Fn, State } from "../../../types/index.js";
-import { bindNativeFns, resolveFn } from "../../../kernel/index.js";
+import { resolveFn, bindNativeFns } from "../../../kernel/index.js";
+import { CSP_WASM_AVAILABLE_KEY } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
-// js-compiler — kind "js" is now an ALIAS for QuickJS (wasm sandbox). The
-// `new Function` path is REMOVED (wasm-only-functions, 2026-06-10): user
-// functions compile inside a QuickJS-wasm VM with no ambient globals — a def'd
-// function cannot `fetch`, touch the DOM, or hook anything at the effect site.
-// Network/effects exist ONLY through trusted native verbs.
+// js-compiler — the "js" CompilerCel whose _fn compiles JS source into a
+// runtime Fn via quickjs-emscripten (a JS-in-wasm sandbox). The `new Function`
+// path is GONE (wasm-only-functions, 2026-06-10): user functions run inside the
+// VM with no ambient globals — a def'd function cannot `fetch`, touch the DOM,
+// or hook anything at the effect site. Network/effects exist ONLY through
+// trusted native verbs. CSP: the VM needs `wasm`, not `unsafe-eval`, so a
+// strict-CSP page that blocks eval still runs "js" lambdas.
 //
-// Kept as a thin segment so the "js" kind and its four status cels keep
-// working (kind-status); the compiler body DELEGATES to the `quickjs` compiler
-// through the cel registry (cels are the only interface — no cross-segment TS
-// import). CSP: quickjs needs `wasm`, not `unsafe-eval`, so a strict-CSP page
-// that blocks eval now runs "js" lambdas fine (the old eval-availability gate
-// is gone). Async: quickjs lazy-loads its wasm on first use, so "js" compiles
-// are now async too (the def/defn flow already awaits compiler Promises).
-const jsCompiler: Compiler = ((source: string, state?: State) => {
-  if (!state) throw new Error("js-compiler: state required to delegate to quickjs");
-  const quickjs = resolveFn(state, "quickjs") as Compiler | undefined;
-  if (!quickjs) throw new Error("js-compiler: the quickjs compiler is not loaded (kind \"js\" aliases quickjs)");
-  return quickjs(source, state);
+// Other cels reference it as LambdaCel.metadata.kind = "js".
+//
+// Source convention: the source's last expression must evaluate to a callable:
+//
+//   ((a, b) => a + b)
+//
+// or with `function`:
+//
+//   function add(a, b) { return a + b }
+//   add
+//
+// We evaluate the source in the shared VM and hold the resulting function
+// handle for the lifetime of the cel. The runtime is dynamic-imported on first
+// compile (~1MB wasm) and reused across all js cels — same shared-runtime
+// pattern as py-compiler + Pyodide.
+//
+// v1 — main-thread, no dispose. fnHandles leak when cel.f changes; memory is
+// freed when the process exits. v2 with worker isolation owns proper teardown.
+
+// host capability namespace, read through the cel registry (isolation:
+// the host segment owns the fn; we own only the key).
+const readHostImports = (st: State): Record<string, Fn> =>
+  ((resolveFn(st, "host.imports") as Fn | undefined)?.(st) ?? {}) as Record<string, Fn>;
+
+// Minimal subset of the quickjs-emscripten API we touch. The full types pull in
+// extensive QuickJS-related declarations; structural narrowing keeps plastron
+// lean. Maps to the actual shape of QuickJSContext / QuickJSHandle /
+// QuickJSWASMModule.
+interface QuickJSHandle {
+  dispose: () => void;
+}
+interface QuickJSContext {
+  evalCode: (code: string, filename?: string) => { value?: QuickJSHandle; error?: QuickJSHandle };
+  unwrapResult: (r: { value?: QuickJSHandle; error?: QuickJSHandle }) => QuickJSHandle;
+  callFunction: (
+    fn: QuickJSHandle, thisVal: QuickJSHandle, ...args: QuickJSHandle[]
+  ) => { value?: QuickJSHandle; error?: QuickJSHandle };
+  newNumber: (n: number) => QuickJSHandle;
+  newString: (s: string) => QuickJSHandle;
+  newObject: () => QuickJSHandle;
+  newFunction: (
+    name: string,
+    impl: (...args: QuickJSHandle[]) => QuickJSHandle | void,
+  ) => QuickJSHandle;
+  setProp: (target: QuickJSHandle, key: string, value: QuickJSHandle) => void;
+  dump: (handle: QuickJSHandle) => unknown;
+  typeof: (handle: QuickJSHandle) => string;
+  global: QuickJSHandle;
+  undefined: QuickJSHandle;
+  null: QuickJSHandle;
+  true: QuickJSHandle;
+  false: QuickJSHandle;
+}
+interface QuickJSModule {
+  newContext: () => QuickJSContext;
+}
+
+// Lazy-init the runtime + a shared context. One context across all js cels —
+// same model as Pyodide's single interpreter, same sandbox guarantees (no DOM,
+// no eval, no host APIs unless the host segment grants them). Distinct cels'
+// functions live in the same global namespace; we don't bother with
+// module-style isolation in v1.
+let _ctx: Promise<QuickJSContext> | undefined;
+const getCtx = (): Promise<QuickJSContext> => {
+  if (!_ctx) {
+    // The SINGLEFILE variant embeds the wasm as base64 in the JS, so when
+    // origin bundles to one index.html the wasm rides inline — no separate
+    // .wasm fetch (the 404 that broke wasm-only's first attempt). Works
+    // identically under Bun (CLI), no network. newQuickJSWASMModuleFromVariant
+    // builds the module from the embedded bytes.
+    _ctx = Promise.all([
+      import("quickjs-emscripten-core"),
+      import("@jitl/quickjs-singlefile-cjs-release-sync"),
+    ]).then(async ([core, variant]) => {
+      const newModule = (core as unknown as {
+        newQuickJSWASMModuleFromVariant: (v: unknown) => Promise<QuickJSModule>;
+      }).newQuickJSWASMModuleFromVariant;
+      const QuickJS = await newModule((variant as { default: unknown }).default);
+      return QuickJS.newContext();
+    });
+  }
+  return _ctx;
+};
+
+// Marshal a JS value into a QuickJSHandle. v1 supports scalars +
+// null/undefined; composites (arrays, plain objects) fall through to
+// JSON-serialize → newString → JSON.parse inside the VM, which is
+// lossy for functions / Dates / typed arrays but covers everyday cases.
+const marshalToHandle = (vm: QuickJSContext, v: unknown): QuickJSHandle => {
+  if (v === null) return vm.null;
+  if (v === undefined) return vm.undefined;
+  switch (typeof v) {
+    case "number":  return vm.newNumber(v);
+    case "string":  return vm.newString(v);
+    case "boolean": return v ? vm.true : vm.false;
+    default: {
+      // Composite fallback. Stringify on the JS side, evaluate
+      // JSON.parse inside the VM to get a native QuickJS object.
+      const json = JSON.stringify(v);
+      const parseResult = vm.evalCode(`JSON.parse(${JSON.stringify(json)})`);
+      return vm.unwrapResult(parseResult);
+    }
+  }
+};
+
+// Bind host capabilities (console.log, now, …) into the VM's global
+// scope under a `host` object. The VM is a module-level singleton, so
+// host bindings persist across compiles; re-binding every compile is
+// the simplest way to honor the current state's host swaps (testing,
+// per-app capability scoping). Bindings are cheap relative to the
+// actual compile work.
+const bindHost = (vm: QuickJSContext, state: State): void => {
+  const host = readHostImports(state);
+  const hostHandle = vm.newObject();
+  for (const [name, hostFn] of Object.entries(host)) {
+    const wrapped = vm.newFunction(name, (...handles): QuickJSHandle => {
+      const args = handles.map((h) => vm.dump(h));
+      const result = (hostFn as (...a: unknown[]) => unknown)(...args);
+      return marshalToHandle(vm, result);
+    });
+    vm.setProp(hostHandle, name, wrapped);
+    wrapped.dispose();
+  }
+  vm.setProp(vm.global, "host", hostHandle);
+  hostHandle.dispose();
+};
+
+const jsCompiler: Compiler = (async (source: string, state?: State): Promise<Fn> => {
+  if (state) {
+    const wasmAvailable =
+      state.cels.get(CSP_WASM_AVAILABLE_KEY)?.v as boolean | undefined;
+    if (wasmAvailable === false) {
+      throw new Error(
+        `js-compiler: WebAssembly is unavailable in this environment ` +
+        `(csp.wasm-available = false). The QuickJS sandbox cannot run.`,
+      );
+    }
+  }
+
+  const vm = await getCtx();
+  if (state) bindHost(vm, state);
+
+  const evalResult = vm.evalCode(source);
+  if (evalResult.error) {
+    const errStr = JSON.stringify(vm.dump(evalResult.error));
+    evalResult.error.dispose();
+    throw new Error(`js-compiler: source evaluation failed: ${errStr}`);
+  }
+  const fnHandle = vm.unwrapResult(evalResult);
+  const t = vm.typeof(fnHandle);
+  if (t !== "function") {
+    fnHandle.dispose();
+    throw new Error(
+      `js-compiler: source's last expression evaluated to ${t}, not a function.`,
+    );
+  }
+
+  // Hold fnHandle for the cel's lifetime. v1 leaks on cel.f change;
+  // v2 worker isolation handles teardown via worker termination.
+  return ((...args: unknown[]) => {
+    const argHandles = args.map((a) => marshalToHandle(vm, a));
+    try {
+      const callRes = vm.callFunction(fnHandle, vm.undefined, ...argHandles);
+      if (callRes.error) {
+        const errStr = JSON.stringify(vm.dump(callRes.error));
+        callRes.error.dispose();
+        throw new Error(`js runtime error: ${errStr}`);
+      }
+      const resultHandle = vm.unwrapResult(callRes);
+      try {
+        return vm.dump(resultHandle);
+      } finally {
+        resultHandle.dispose();
+      }
+    } finally {
+      // Only dispose handles we allocated (newNumber/newString return
+      // fresh handles; vm.undefined/null/true/false are shared singletons
+      // — disposing them is a runtime-side no-op but be defensive).
+      for (const h of argHandles) {
+        if (h !== vm.undefined && h !== vm.null && h !== vm.true && h !== vm.false) {
+          h.dispose();
+        }
+      }
+    }
+  }) as Fn;
 }) as Compiler;
 
 export const name = "js-compiler" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
-  ["js", jsCompiler],
+  ["js", jsCompiler as Fn],
 ]));

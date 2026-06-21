@@ -6,7 +6,7 @@
 // Each emitted cel is Model A with a different trailing callable: f = the whole
 // source + "\n" + the function name. The runtime evaluates the source (defining
 // every helper) and the last expression IS that function — verified for kind "js"
-// (quickjs), and the same convention for "py" / "php".
+// (js), and the same convention for "py" / "php".
 //
 // Pure (source in, genesis-batch out): the names are PARSED, not executed, so the
 // generator needs no runtime. A `module(src, kind)` verb wraps this once a host

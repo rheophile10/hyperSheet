@@ -50,3 +50,6 @@ CLAUDE.md
 .env
 graphify-out/
 /Spreadshit.html
+
+# e2e test screenshots (regenerated each run)
+plastron-examples/origin/e2e/*.png

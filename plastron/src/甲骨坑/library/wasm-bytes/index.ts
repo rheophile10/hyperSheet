@@ -12,7 +12,7 @@ const readHostImports = (st: State): Record<string, Fn> =>
   ((resolveFn(st, "host.imports") as Fn | undefined)?.(st) ?? {}) as Record<string, Fn>;
 
 // wasm-bytes — the "wasm" LockedLambdaCel whose _fn loads a *precompiled*
-// WebAssembly module. The sibling to wat/py/quickjs that accepts bytes
+// WebAssembly module. The sibling to wat/py/js that accepts bytes
 // instead of source. Cels reference it as LambdaCel.metadata.kind = "wasm".
 //
 // Source flow: cel.f (the "source") holds either
