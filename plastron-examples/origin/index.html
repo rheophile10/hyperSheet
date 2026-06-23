@@ -70,6 +70,10 @@
          starter/*; the first desktop boot (origin.seedStarter) writes each missing
          file into OPFS, so readme/keyboard are real, discoverable files in 📁 Files. -->
     <script type="application/json" id="plastron-starter">[[STARTER_KIT]]</script>
+    <!-- The baked origin-application archives (apps/*.json): a { name: segment-archive }
+         map the first boot's boot.run installs into OPFS (store.put, NOT state); the
+         desktop shell is then hydrated on demand. The install source of truth. -->
+    <script type="application/json" id="plastron-apps">[[APP_ARCHIVES]]</script>
     <!-- No external <script> tags: the py-compiler pulls Pyodide from a CDN
          itself (via the kernel loadScript primitive) on first py use. -->
     <script type="module" src="./origin-main.ts"></script>

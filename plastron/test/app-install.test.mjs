@@ -94,3 +94,49 @@ test("boot.run installs the baked manifest, then launches the open target", asyn
   await fn(state, "boot.run")(state, { manifest, open: "widget" });
   assert.equal(state.cels.get("widget.X")?.v, 7, "boot.run launched + hydrated the open target");
 });
+
+// --- integration: the REAL baked archives (plastron-examples/origin/apps/*.json) ---
+const loadBakedManifest = async () => {
+  const appsDir = path.resolve(import.meta.dir, "../../plastron-examples/origin/apps");
+  const manifest = {};
+  for (const f of await fs.readdir(appsDir)) {
+    if (!f.endsWith(".json")) continue;
+    manifest[f.replace(/\.json$/, "")] = JSON.parse(await fs.readFile(path.join(appsDir, f), "utf8"));
+  }
+  return manifest;
+};
+
+test("boot.run installs the real desktop + sheetapp archives WITHOUT hydrating them", async () => {
+  const state = await boot();
+  const manifest = await loadBakedManifest();
+  await fn(state, "boot.run")(state, { manifest, open: false });
+  assert.equal(await fn(state, "store.has")(state, "desktop"), true, "desktop installed to OPFS");
+  assert.equal(await fn(state, "store.has")(state, "sheetapp"), true, "sheetapp installed to OPFS");
+  assert.equal(state.cels.has("desktop.iconbar.frame"), false, "install did not hydrate the desktop chrome");
+});
+
+test("boot.run open:desktop hydrates the desktop shell + materializes the taskbar", async () => {
+  const state = await boot();
+  const manifest = await loadBakedManifest();
+  await fn(state, "boot.run")(state, { manifest, open: "desktop" });
+
+  for (const k of ["desktop.entry", "desktop.bg.frame", "desktop.iconbar.frame", "desktop.graph.frame", "desktop.taskbar.sync"]) {
+    assert.equal(state.cels.has(k), true, `${k} hydrated`);
+  }
+  // the taskbar.sync genesis ran in the settle loop → frame minted
+  assert.equal(state.cels.has("desktop.taskbar.frame"), true, "taskbar genesis materialized desktop.taskbar.frame");
+  // the chrome formulas evaluated without error
+  for (const k of ["desktop.bg.frame", "desktop.iconbar.frame", "desktop.graph.frame"]) {
+    assert.equal(state.cels.get(k)?.metadata?.error ?? null, null, `${k} evaluated cleanly`);
+  }
+});
+
+test("the Sheet icon (app:sheetapp) launches the sheetapp origin-application", async () => {
+  const state = await boot();
+  const manifest = await loadBakedManifest();
+  await fn(state, "boot.run")(state, { manifest, open: "desktop" });
+  assert.equal(state.cels.has("sheetapp.entry"), false, "sheetapp not loaded until launched");
+
+  await fn(state, "origin.navOpen")(state, "app:sheetapp");
+  assert.equal(state.cels.has("sheetapp.entry"), true, "app: launched sheetapp (hydrated from the store)");
+});

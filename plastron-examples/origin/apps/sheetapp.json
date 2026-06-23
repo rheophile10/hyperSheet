@@ -1,0 +1,19 @@
+{
+  "formatVersion": 1,
+  "segments": [
+    {
+      "name": "sheetapp",
+      "cels": [
+        {
+          "key": "sheetapp.entry",
+          "celType": "FormulaCel",
+          "metadata": { "key": "sheetapp.entry", "segment": "sheetapp", "name": "entry", "parser": "infix", "description": "launch entry: open a blank 20x12 worksheet window. origin.launch hydrates this segment from the store then runs this cel through the genesis settle loop." },
+          "f": "=cels('sheet', 20, 12, geom(0.18, 0.12, 0.6, 0.66))"
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    { "name": "sheetapp", "version": "1.0.0", "description": "a blank worksheet, as an installable origin-application", "role": "application", "dependencies": [] }
+  ]
+}

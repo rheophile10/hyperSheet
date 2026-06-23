@@ -1,0 +1,43 @@
+{
+  "formatVersion": 1,
+  "segments": [
+    {
+      "name": "desktop",
+      "cels": [
+        {
+          "key": "desktop.entry",
+          "celType": "ValueCel",
+          "metadata": { "key": "desktop.entry", "segment": "desktop", "name": "entry", "description": "marker cel: its presence makes origin.launch run the settle loop that materializes the desktop chrome + taskbar genesis." },
+          "v": 1
+        },
+        {
+          "key": "desktop.bg.frame",
+          "celType": "FormulaCel",
+          "metadata": { "key": "desktop.bg.frame", "segment": "desktop", "name": "bg.frame", "parser": "f", "description": "self-mounting wallpaper; right-click opens display settings. Falls back to the shipped windows.wallpaper when desktop.wallpaper is unset." },
+          "f": "(mount '.origin' (desktop.bg desktop.wallpaper windows.wallpaper))"
+        },
+        {
+          "key": "desktop.iconbar.frame",
+          "celType": "FormulaCel",
+          "metadata": { "key": "desktop.iconbar.frame", "segment": "desktop", "name": "iconbar.frame", "parser": "f", "description": "self-mounting app launcher: draggable desktop icons (non-mobile) or the collapsible nav (mobile). Sheet launches the sheetapp origin-application via app:; the rest are still legacy actions until increment 2." },
+          "f": "(mount '.origin' (desktop.icons desktop.iconpos viewport.mobile (item '🧮 Origin' '元') (item '▦ Sheet' 'app:sheetapp') (item '📁 Files' '=explorerwin()') (item '📖 Readme' 'open:/readme.f') (item '🎹 Keyboard' 'open:/keyboard.f') (item '📊 Turtles' 'open:/turtles.f') (item '🐢 DOOM' '=doom()')))"
+        },
+        {
+          "key": "desktop.graph.frame",
+          "celType": "FormulaCel",
+          "metadata": { "key": "desktop.graph.frame", "segment": "desktop", "name": "graph.frame", "parser": "f", "description": "self-mounting round lower-left button → the state force-graph." },
+          "f": "(mount '.origin' (desktop.graphbtn))"
+        },
+        {
+          "key": "desktop.taskbar.sync",
+          "celType": "FormulaCel",
+          "metadata": { "key": "desktop.taskbar.sync", "segment": "desktop", "name": "taskbar.sync", "parser": "f", "description": "genesis-from-formula: re-derives desktop.taskbar.frame from win.list/win.active so the bottom taskbar tracks open/active/minimized windows reactively." },
+          "f": "(desktop.taskbarGenesis win.list win.active)"
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    { "name": "desktop", "version": "1.0.0", "description": "the origin desktop shell (wallpaper, icons, taskbar, state graph)", "role": "application", "dependencies": [] }
+  ]
+}

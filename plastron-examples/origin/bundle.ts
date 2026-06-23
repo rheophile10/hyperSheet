@@ -110,6 +110,26 @@ const sqlInline =
   console.log(`✔ starter kit — ${Object.keys(manifest).length} files (${(json.length / 1024).toFixed(1)} KB)`);
 }
 
+// Bake the APP ARCHIVES ([[APP_ARCHIVES]] sentinel): an inert JSON map of
+// { <name>: <segment-archive> } from apps/*.json. The first boot's boot.run /
+// installBakedApps reads this and store.put each app into OPFS (no state); the
+// desktop is then hydrated on demand by origin.launch. This is the install
+// source of truth — baked into the single index.html (no network install).
+{
+  const appsDir = join(import.meta.dir, "apps");
+  const apps: Record<string, unknown> = {};
+  for (const f of (await readdir(appsDir)).sort()) {
+    if (!f.endsWith(".json")) continue;
+    apps[f.replace(/\.json$/, "")] = JSON.parse(await Bun.file(join(appsDir, f)).text());
+  }
+  const json = JSON.stringify(apps).replace(/<\/script>/g, "<\\/script>");
+  let html = await Bun.file(HTML).text();
+  if (!html.includes("[[APP_ARCHIVES]]")) throw new Error("bundle: [[APP_ARCHIVES]] sentinel missing from index.html");
+  html = html.replace("[[APP_ARCHIVES]]", () => json);   // function form — json has $ patterns
+  await Bun.write(HTML, html);
+  console.log(`✔ app archives — ${Object.keys(apps).length} apps (${(json.length / 1024).toFixed(1)} KB)`);
+}
+
 // Bake the WORKED OTP DEMO ([[OTP_DEMO]] sentinel) using the SHIPPED card.png as
 // the pad — the deploy serves the identical card at /card.png, so the URL is
 // always byte-consistent with what visitors download. The pad is PUBLIC, so this

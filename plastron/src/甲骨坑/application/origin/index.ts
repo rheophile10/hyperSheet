@@ -1077,6 +1077,10 @@ const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> =
     const seg = action.slice(4);
     if (isSegmentPending(state, seg)) await (resolveFn(state, "wake") as Fn)(state, seg);
     try { await (resolveFn(state, "winsheet.raise") as Fn)(state, `${seg}.state`); } catch { /* not a windowed segment */ }
+  } else if (action.startsWith("app:")) {
+    // an ORIGIN-APPLICATION launcher: hydrate the app's segment from the store
+    // (idempotent) and run its entry cel. "load the segment, then open it".
+    await (resolveFn(state, "origin.launch") as Fn)(state, action.slice(4));
   } else if (action.startsWith("do:")) {
     // a HOST-VERB launcher (e.g. do:origin.savepage) — the verb materializes +
     // paints its own windows, so just dispatch it.
@@ -1359,7 +1363,17 @@ const bootRun: Fn = (async (state: State, optsArg?: unknown): Promise<State> => 
   if (openName) {
     await ensureSegments(state, ["segment-store"]);
     const has = resolveFn(state, "store.has") as Fn;
-    if (await (has(state, openName) as Promise<boolean>)) await (launch as Fn)(state, openName);
+    if (await (has(state, openName) as Promise<boolean>)) {
+      // Seed the window registry so the desktop's taskbar.sync FormulaCel wires
+      // to win.list/win.active reactively — window's putV creates them lazily on
+      // first window, which would be too late for the taskbar's inputMap edges.
+      await ensureSegments(state, ["window"]);
+      const setC = resolveFn(state, "setCel") as Fn;
+      for (const [k, v] of [["win.list", []], ["win.active", ""], ["win.topz", 100]] as Array<[string, unknown]>) {
+        if (!state.cels.get(k)) await setC(state, k, { celType: "ValueCel", v, metadata: { key: k, segment: "window", name: k.split(".").pop() } });
+      }
+      await (launch as Fn)(state, openName);
+    }
   }
   return state;
 }) as Fn;
