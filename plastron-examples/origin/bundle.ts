@@ -122,6 +122,13 @@ const sqlInline =
     if (!f.endsWith(".json")) continue;
     apps[f.replace(/\.json$/, "")] = JSON.parse(await Bun.file(join(appsDir, f)).text());
   }
+  // origin-user DOCUMENT archives (apps/docs/*.json) install alongside the apps —
+  // boot.run store.put's every entry; docs open on demand via doc:<name>.
+  const docsDir = join(appsDir, "docs");
+  for (const f of (await readdir(docsDir).catch(() => [])).sort()) {
+    if (!f.endsWith(".json")) continue;
+    apps[`doc:${f.replace(/\.json$/, "")}`] = JSON.parse(await Bun.file(join(docsDir, f)).text());
+  }
   const json = JSON.stringify(apps).replace(/<\/script>/g, "<\\/script>");
   let html = await Bun.file(HTML).text();
   if (!html.includes("[[APP_ARCHIVES]]")) throw new Error("bundle: [[APP_ARCHIVES]] sentinel missing from index.html");

@@ -679,6 +679,18 @@
       }
     },
     {
+      "key": "origin.newsheet",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.newsheet",
+        "segment": "origin",
+        "name": "origin.newsheet",
+        "kind": "native",
+        "description": "(state) - the Sheet app: create a fresh blank worksheet DOCUMENT (a new origin-user segment of sheetapp), seed an empty grid, and render it. Save with origin.savedoc."
+      }
+    },
+    {
       "key": "vocab",
       "celType": "LockedLambdaCel",
       "locked": true,

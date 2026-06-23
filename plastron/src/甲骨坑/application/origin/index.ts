@@ -1707,6 +1707,23 @@ const opendocFn: Fn = (async (state: State, nameArg?: unknown): Promise<State> =
   return state;
 }) as Fn;
 
+// origin.newsheet(state) — the Sheet app: create a fresh blank worksheet DOCUMENT
+// (a new origin-user segment of sheetapp), seed an empty grid, and render it. Save
+// it later with origin.savedoc; close flushes it.
+const newsheetFn: Fn = (async (state: State): Promise<State> => {
+  await ensureSegments(state, ["segment-store", "opfs-seeding", "user-space-ops", "sheets", "window"]);
+  if (!hasSegment(state, "sheetapp")) await (resolveFn(state, "hydrate-closure") as Fn)(state, "sheetapp");
+  const has = resolveFn(state, "store.has") as Fn;
+  let n = 1, name = "sheet1";
+  while (state.cels.has(`${name}.A1`) || (await (has(state, name) as Promise<boolean>))) name = `sheet${++n}`;
+  await (resolveFn(state, "newUserSpace") as Fn)(state, name, "sheetapp", { autoSave: false });
+  const specs: Record<string, unknown> = {};
+  for (let r = 1; r <= 12; r++) for (let c = 0; c < 7; c++) { const k = `${name}.${String.fromCharCode(65 + c)}${r}`; specs[k] = { celType: "ValueCel", v: "", metadata: { key: k, segment: name } }; }
+  await (resolveFn(state, "setCelBatch") as Fn)(state, specs);
+  await (sheetdocFn as Fn)(state, name);
+  return state;
+}) as Fn;
+
 // origin.savedoc(state, name) — record the document's cel states: saveUserSpace
 // dehydrates the origin-user segment's private closure and store.put's it (under
 // the app's documents/ subfolder). The window-close <seg>.flush hook does the
@@ -2274,6 +2291,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["sheetdoc",        sheetdocFn],
   ["origin.opendoc",  opendocFn],
   ["origin.savedoc",  savedocFn],
+  ["origin.newsheet", newsheetFn],
   ["def",            defFn],
   ["link",           linkFn],
   ["unlink",         unlinkFn],

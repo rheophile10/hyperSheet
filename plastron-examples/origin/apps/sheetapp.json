@@ -5,15 +5,15 @@
       "name": "sheetapp",
       "cels": [
         {
-          "key": "sheetapp.entry",
-          "celType": "FormulaCel",
-          "metadata": { "key": "sheetapp.entry", "segment": "sheetapp", "name": "entry", "parser": "infix", "description": "launch entry: open a blank 20x12 worksheet window. origin.launch hydrates this segment from the store then runs this cel through the genesis settle loop." },
-          "f": "=cels('sheet', 20, 12, geom(0.18, 0.12, 0.6, 0.66))"
+          "key": "sheetapp.program",
+          "celType": "ValueCel",
+          "metadata": { "key": "sheetapp.program", "segment": "sheetapp", "name": "program", "description": "the worksheet program marker. sheetapp is the origin-application its documents (origin-user segments) render against; it renders a doc's cels as a worksheet window (sheetdoc) and owns the new/save/load/close lifecycle. role:application (no origin-rendered entry → clears the one-direction rule)." },
+          "v": "worksheet"
         }
       ]
     }
   ],
   "manifests": [
-    { "name": "sheetapp", "version": "1.0.0", "description": "a blank worksheet, as an installable origin-application", "role": "user", "kind": "origin-application", "dependencies": [] }
+    { "name": "sheetapp", "version": "1.0.0", "description": "the worksheet program — its documents are origin-user segments", "role": "application", "kind": "origin-application", "dependencies": [] }
   ]
 }

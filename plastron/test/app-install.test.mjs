@@ -131,12 +131,15 @@ test("boot.run open:desktop hydrates the desktop shell + materializes the taskba
   }
 });
 
-test("the Sheet icon (app:sheetapp) launches the sheetapp origin-application", async () => {
+test("the Sheet icon (do:origin.newsheet) creates a new worksheet document", async () => {
   const state = await boot();
   const manifest = await loadBakedManifest();
   await fn(state, "boot.run")(state, { manifest, open: "desktop" });
-  assert.equal(state.cels.has("sheetapp.entry"), false, "sheetapp not loaded until launched");
+  assert.equal(state.cels.has("sheetapp.program"), false, "the sheet program isn't loaded until used");
 
-  await fn(state, "origin.navOpen")(state, "app:sheetapp");
-  assert.equal(state.cels.has("sheetapp.entry"), true, "app: launched sheetapp (hydrated from the store)");
+  await fn(state, "origin.navOpen")(state, "do:origin.newsheet");
+  // newsheet auto-starts the sheetapp program (from the store) + opens a fresh
+  // worksheet doc window
+  assert.equal(state.cels.has("sheetapp.program"), true, "newsheet auto-started the sheetapp program");
+  assert.ok([...state.cels.keys()].some((k) => /^win\.sheet\d+\.state$/.test(k)), "a new worksheet window opened");
 });
