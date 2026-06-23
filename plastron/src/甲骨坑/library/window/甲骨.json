@@ -121,6 +121,48 @@
    "celType": "LockedLambdaCel",
    "locked": true,
    "metadata": { "key": "window.tabGrab", "segment": "window", "name": "window.tabGrab", "kind": "native", "description": "pointerdown on a tab chip: record the grab (window.tabdrag) so a later move can reorder or a release outside can tear off." }
+  },
+  {
+   "key": "wbframe",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "wbframe", "segment": "window", "name": "wbframe", "kind": "native", "description": "(state, active, ...contents) - render a WORKBOOK window: two tab stacks at once - worksheets (left pane, tabs at bottom) and dom views (right pane, tabs on top) - split by a draggable divider, with per-pane fullscreen. state = { x,y,w,h,z,min,max,closed,title, sheets:[{ref,title,icon}], asheet, views:[{ref,title,icon}], aview, split:0..1, full:'L'|'R'|'' }. contents are one value per tab, sheets first then views (sliced by sheets.length)." }
+  },
+  {
+   "key": "wbopen",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "wbopen", "segment": "window", "name": "wbopen", "kind": "native", "genesis": true, "description": "(id, title, sheetTabs, viewTabs, where?) - genesis a SELF-MOUNTING workbook window: a state cel holding the two tab stacks + a frame cel `(mount '.origin' (wbframe <state> win.active <sheetRefs...> <viewRefs...>))`. sheetTabs/viewTabs are [{ref,title,icon}] over existing content cels. where = geom(x,y,w,h)." }
+  },
+  {
+   "key": "window.sheetTab",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.sheetTab", "segment": "window", "name": "window.sheetTab", "kind": "native", "description": "({ref, index}) select a worksheet tab in a workbook: set the state cel's asheet index." }
+  },
+  {
+   "key": "window.viewTab",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.viewTab", "segment": "window", "name": "window.viewTab", "kind": "native", "description": "({ref, index}) select a dom-view tab in a workbook: set the state cel's aview index." }
+  },
+  {
+   "key": "window.paneFull",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.paneFull", "segment": "window", "name": "window.paneFull", "kind": "native", "description": "({ref, pane}) toggle fullscreen for a workbook pane ('L' sheets / 'R' views): set state.full to pane, or '' (see both) if already fullscreen." }
+  },
+  {
+   "key": "window.splitGrab",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.splitGrab", "segment": "window", "name": "window.splitGrab", "kind": "native", "description": "(ref) pointerdown on a workbook divider: seed window.drag {ref, split:true} so the move resizes the split." }
+  },
+  {
+   "key": "window.splitMove",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.splitMove", "segment": "window", "name": "window.splitMove", "kind": "native", "description": "(_, event) drag a workbook divider: set state.split to the pointer's fraction across the window (clamped 0.15..0.85)." }
   }
  ]
 }

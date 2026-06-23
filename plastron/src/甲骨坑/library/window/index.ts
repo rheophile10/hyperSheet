@@ -288,10 +288,108 @@ const wopen: Fn = ((id: unknown, title: unknown, body: unknown, where?: unknown)
   } };
 }) as Fn;
 
+// ── the WORKBOOK frame: two tabbed panes (sheets ‖ dom-views) + per-pane fullscreen ──
+// A workbook window hosts TWO tab stacks at once: worksheets (left, Excel-style tabs
+// at the bottom) and dom views (right, tabs on top) — both visible, split by a
+// draggable divider. `wb.full` fullscreens one pane ("L"/"R"); "" shows both.
+// State (on the window's state cel): { …geom…, sheets:[Tab], asheet, views:[Tab],
+// aview, split:0..1, full:"L"|"R"|"" }. The frame formula references every sheet AND
+// view content cel; wbframe slices `contents` by sheets.length (lead = sheets, rest
+// = views). Realizes the sheetapp workbook DoD (cross-sheet refs + dom views +
+// fullscreen toggle).
+interface WbState extends WinState { sheets?: Tab[]; asheet?: number; views?: Tab[]; aview?: number; split?: number; full?: string }
+const wbStateOf = (s: State, ref: string): WbState => stateOf(s, ref) as WbState;
+const wbFrameFormula = (ref: string, sheets: Tab[], views: Tab[]): string =>
+  `(mount ".origin" (wbframe ${ref} win.active ${[...sheets, ...views].map((t) => t.ref).join(" ")}))`;
+
+const TABBTN = (on: boolean, top: boolean): string =>
+  `flex:0 0 auto;border:1px solid #8884;border-${top ? "bottom" : "top"}:0;border-radius:${top ? ".3rem .3rem 0 0" : "0 0 .3rem .3rem"};background:${on ? "Canvas" : "#8882"};color:CanvasText;cursor:pointer;font:600 .72rem ui-monospace,monospace;padding:.16rem .5rem;white-space:nowrap;opacity:${on ? "1" : ".7"}`;
+const tabRow = (tabs: Tab[], active: number, dispatch: string, ref: string, top: boolean, fullBtn: V): V =>
+  el("div", { class: top ? "pl-wb-vtabs" : "pl-wb-stabs", style: `flex:0 0 auto;display:flex;gap:.15rem;padding:${top ? "0 .3rem .15rem" : ".15rem .3rem 0"};background:#8881;overflow-x:auto;align-items:center` },
+    [...tabs.map((tb, i) => el("button", { class: "pl-wb-tab" + (i === active ? " active" : ""), "data-idx": String(i), style: TABBTN(i === active, top) },
+      [T((tb.icon ? tb.icon + " " : "") + (tb.title ?? tb.ref))], { click: { dispatch, payload: { ref, index: i } } })), fullBtn]);
+
+// wbframe(state, active, …contents) — render one workbook window.
+const wbframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V => {
+  const s = (st && typeof st === "object" && !Array.isArray(st)) ? st as WbState : {};
+  const ref = s.ref ?? "win";
+  if (s.dockedIn) return el("div", { class: "pl-win-docked", "data-win": ref, style: "display:none" }, []);
+  if (s.closed) return el("div", { class: "pl-win-closed", "data-win": ref, style: "display:none" }, []);
+  if (s.min) return el("div", { class: "pl-window-min", "data-win": ref, style: "display:none" }, []);
+  const isActive = ref === active;
+  const gg = globalThis as { innerWidth?: number; innerHeight?: number };
+  const x = s.max ? 0 : num(s.x, 80), y = s.max ? 0 : num(s.y, 80);
+  const w = s.max ? num(gg.innerWidth, 1200) : num(s.w, 640);
+  const h = s.max ? num(gg.innerHeight, 800) - 46 : num(s.h, 440);
+  const z = num(s.z, 1);
+  const sheets = Array.isArray(s.sheets) ? s.sheets : [];
+  const views = Array.isArray(s.views) ? s.views : [];
+  const asheet = sheets.length ? Math.max(0, Math.min(sheets.length - 1, num(s.asheet, 0))) : 0;
+  const aview = views.length ? Math.max(0, Math.min(views.length - 1, num(s.aview, 0))) : 0;
+  const sheetBodies = contents.slice(0, sheets.length);
+  const viewBodies = contents.slice(sheets.length);
+  const full = s.full === "L" || s.full === "R" ? s.full : "";
+  const split = Math.max(0.15, Math.min(0.85, num(s.split, 0.6)));
+  const bodyOf = (v: unknown): V => isVnode(v) ? v as V : T(v == null ? "" : String(v));
+
+  const fullBtn = (pane: string): V => el("button", { class: "pl-wb-full", title: "fullscreen this pane", style: "margin-left:auto;border:0;background:transparent;cursor:pointer;font:.8rem ui-monospace,monospace;padding:0 .35rem;opacity:.7" },
+    [T(full === pane ? "🗗" : "⛶")], { pointerdown: { dispatch: "window.stop" }, click: { dispatch: "window.paneFull", payload: { ref, pane } } });
+
+  const leftPane = el("div", { class: "pl-wb-left", style: `display:flex;flex-direction:column;min-width:0;min-height:0;${full === "L" ? "flex:1 1 100%" : full === "R" ? "display:none" : `flex:0 0 ${(split * 100).toFixed(1)}%`}` }, [
+    el("div", { class: "pl-wb-sbody", style: "flex:1 1 auto;overflow:auto;min-height:0;padding:.3rem" }, [bodyOf(sheetBodies[asheet])]),
+    tabRow(sheets, asheet, "window.sheetTab", ref, false, fullBtn("L")),
+  ]);
+  const divider = el("div", { class: "pl-wb-divider", style: "flex:0 0 6px;cursor:col-resize;background:#8883;touch-action:none" }, [],
+    { pointerdown: { dispatch: "window.splitGrab", payload: ref }, pointermove: { dispatch: "window.splitMove" }, pointerup: { dispatch: "window.drop" } });
+  const rightPane = el("div", { class: "pl-wb-right", style: `display:flex;flex-direction:column;min-width:0;min-height:0;${full === "R" ? "flex:1 1 100%" : full === "L" ? "display:none" : "flex:1 1 auto"}` }, [
+    tabRow(views, aview, "window.viewTab", ref, true, fullBtn("R")),
+    el("div", { class: "pl-wb-vbody", style: "flex:1 1 auto;overflow:auto;min-height:0;padding:.3rem;background:#0000000a" }, [bodyOf(viewBodies[aview])]),
+  ]);
+
+  const ctrlBtn = (cls: string, glyph: string, ttl: string, dispatch: string, color?: string): V =>
+    el("button", { class: cls, title: ttl, style: BTN + (color ? `;color:${color}` : "") }, [T(glyph)], { pointerdown: { dispatch: "window.stop" }, click: { dispatch, payload: ref } });
+  const titlebar = el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
+    el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto" }, [T((s.icon ? s.icon + " " : "📚 ") + (s.title ?? ref))]),
+    el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
+      ctrlBtn("pl-min-btn", "–", "minimize", "window.min"),
+      s.max ? ctrlBtn("pl-win-btn", "◱", "mid size", "window.max") : ctrlBtn("pl-win-btn", "⛶", "fullscreen", "window.max"),
+      ctrlBtn("pl-close-btn", "✕", "close", "window.close", "#d4453e"),
+    ]),
+  ], { pointerdown: { dispatch: "window.grab", payload: ref }, pointermove: { dispatch: "window.move" }, pointerup: { dispatch: "window.drop" } });
+
+  const row = el("div", { class: "pl-wb-row", style: "flex:1 1 auto;display:flex;min-height:0;overflow:hidden" },
+    [leftPane, ...(full === "" ? [divider] : []), rightPane]);
+  const children: V[] = [titlebar, row];
+  if (!s.max) children.push(el("div", { class: "pl-resize", style: "position:absolute;right:0;bottom:0;width:15px;height:15px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" }, [], { pointerdown: { dispatch: "window.grabResize", payload: { ref, dir: "se" } }, pointermove: { dispatch: "window.resizeMove" }, pointerup: { dispatch: "window.drop" } }));
+  return el("div", { class: "pl-window pl-workbook" + (isActive ? " active" : ""), "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:${isActive ? "2px solid #4a90d9" : "1px solid #8886"};border-radius:6px;background:Canvas;box-shadow:${isActive ? "0 6px 22px #4a90d966" : "0 4px 16px #0004"};overflow:hidden` }, children, { pointerdown: { dispatch: "window.raise", payload: ref } });
+}) as Fn;
+
+// workbook tab / pane handlers (upstream writes to the state cel → re-render)
+const sheetTab: Fn = (async (s: State, payload: unknown): Promise<void> => { const p = payload as { ref?: string; index?: number }; if (!p?.ref) return; await setState(s, p.ref, { asheet: num(p.index, 0) } as WinState); }) as Fn;
+const viewTab: Fn = (async (s: State, payload: unknown): Promise<void> => { const p = payload as { ref?: string; index?: number }; if (!p?.ref) return; await setState(s, p.ref, { aview: num(p.index, 0) } as WinState); }) as Fn;
+const paneFull: Fn = (async (s: State, payload: unknown): Promise<void> => { const p = payload as { ref?: string; pane?: string }; if (!p?.ref) return; const cur = wbStateOf(s, p.ref).full ?? ""; await setState(s, p.ref, { full: cur === p.pane ? "" : String(p.pane ?? "") } as WinState); }) as Fn;
+const splitGrab: Fn = (async (s: State, ref: unknown, e?: DomEvt): Promise<void> => { capture(e); await putV(s, "window.drag", { ref: String(ref), ox: 0, oy: 0, split: true }); }) as Fn;
+const splitMove: Fn = (async (s: State, _p: unknown, e?: DomEvt): Promise<void> => { const d = s.cels.get("window.drag")?.v as { ref?: string; split?: boolean } | undefined; if (!d?.split || !d.ref) return; const st = wbStateOf(s, d.ref); const x = num(st.x, 80), w = Math.max(1, num(st.w, 640)); const frac = (num(e?.clientX) - x) / w; await setState(s, d.ref, { split: Math.max(0.15, Math.min(0.85, frac)) } as WinState); }) as Fn;
+
+// wbopen(id, title, sheetTabs, viewTabs, where?) — genesis a SELF-MOUNTING workbook
+// window. sheetTabs/viewTabs are [{ref, title, icon}] over existing content cels.
+const wbopen: Fn = ((id: unknown, title: unknown, sheetTabsArg: unknown, viewTabsArg: unknown, where?: unknown): unknown => {
+  const lay = `win.${String(id ?? "wb")}`; const sref = `${lay}.state`;
+  const t = String(title ?? id ?? "workbook");
+  const asTabs = (a: unknown): Tab[] => Array.isArray(a) ? a.filter((x) => x && typeof x === "object" && (x as Tab).ref).map((x) => x as Tab) : [];
+  const sheets = asTabs(sheetTabsArg), views = asTabs(viewTabsArg);
+  const g: WGeom = (where && typeof where === "object" && "__geom" in (where as object)) ? (where as { __geom: WGeom }).__geom : {};
+  return { genesis: true, kind: "window", layer: lay, cels: {
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: g.x ?? 100, y: g.y ?? 70, w: g.w ?? 760, h: g.h ?? 500, z: 1, min: 0, max: 0, closed: 0, title: t, sheets, asheet: 0, views, aview: 0, split: 0.58, full: "" }, metadata: { name: "state" } },
+    [`${lay}.frame`]: { celType: "FormulaCel", f: wbFrameFormula(sref, sheets, views), metadata: { name: "frame", parser: "f" } },
+  } };
+}) as Fn;
+
 export const name = "window" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
-  ["wframe", wframeFn], ["wopen", wopen],
+  ["wframe", wframeFn], ["wopen", wopen], ["wbframe", wbframeFn], ["wbopen", wbopen],
   ["window.grab", grab], ["window.move", move], ["window.grabResize", grabResize], ["window.resizeMove", resizeMove], ["window.drop", drop],
   ["window.raise", raise], ["window.min", minimize], ["window.max", maximize], ["window.close", close], ["window.stop", stop],
   ["window.tab", tabSelect], ["window.tabClose", tabClose], ["window.dock", dock], ["window.reorder", reorder], ["window.undock", undock], ["window.tabGrab", tabGrab],
+  ["window.sheetTab", sheetTab], ["window.viewTab", viewTab], ["window.paneFull", paneFull], ["window.splitGrab", splitGrab], ["window.splitMove", splitMove],
 ]));
