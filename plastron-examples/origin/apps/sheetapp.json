@@ -14,6 +14,6 @@
     }
   ],
   "manifests": [
-    { "name": "sheetapp", "version": "1.0.0", "description": "a blank worksheet, as an installable origin-application", "role": "application", "dependencies": [] }
+    { "name": "sheetapp", "version": "1.0.0", "description": "a blank worksheet, as an installable origin-application", "role": "user", "kind": "origin-application", "dependencies": [] }
   ]
 }

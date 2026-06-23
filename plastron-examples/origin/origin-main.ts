@@ -62,6 +62,12 @@ if (shared) {
   // 元-genesis desktop so the page is never blank.
   if (!state.cels.get("desktop.iconbar.frame")) {
     await (resolve(state, "origin.run"))(state, "元");
+  }
+  // Hide the base 元 spreadsheet grid (and the legacy "desktop" worksheet) — the
+  // desktop chrome is rendered by the .origin mounts, which paint independently
+  // of the grid window. Without this the grid shows the chrome cels' formula
+  // sources as rows on top of the wallpaper.
+  {
     const geom = (state.cels.get("win.geom")?.v ?? {}) as Record<string, { closed?: number }>;
     await (resolve(state, "setValue"))(state, "win.geom",
       { ...geom, ["元"]: { ...(geom["元"] ?? {}), closed: 1 }, desktop: { ...(geom.desktop ?? {}), closed: 1 } });

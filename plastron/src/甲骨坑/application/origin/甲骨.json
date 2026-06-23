@@ -533,7 +533,31 @@
         "segment": "origin",
         "name": "desktop.stategraph",
         "kind": "native",
-        "description": "(state) - open/refresh a force-graph of the whole state in a window: one node per segment, sized by how much memory it uses, origin-application segments tinted distinctly. Reuses the forcegraph segment (fg.set + fgview); idempotent (re-open refreshes + raises)."
+        "description": "(state) - toggle a force-graph of the whole state in a floating panel: one node per segment, sized by how much memory it uses, origin-application segments tinted distinctly. Reuses the forcegraph segment (fg.set + fgview) rendered through a self-mounting .origin panel."
+      }
+    },
+    {
+      "key": "desktop.graphpanel",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.graphpanel",
+        "segment": "origin",
+        "name": "desktop.graphpanel",
+        "kind": "native",
+        "description": "(open, content) - frame the state force-graph (the fgview vnode, composed by the frame formula) as a floating centered panel with a close button; hidden when open is falsy."
+      }
+    },
+    {
+      "key": "desktop.graphClose",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.graphClose",
+        "segment": "origin",
+        "name": "desktop.graphClose",
+        "kind": "native",
+        "description": "(state) - close the state-graph panel (desktop.graph.open := 0)."
       }
     },
     {

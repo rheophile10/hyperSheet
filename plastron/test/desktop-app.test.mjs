@@ -146,3 +146,16 @@ test("desktop icon drag updates desktop.iconpos; a drag past threshold suppresse
   await resolveFn(s, "desktop.iconClick")(s, "=doom()");
   assert.equal(s.cels.get("desktop.iconLastMoved").v, 0, "the drag guard is consumed; no launch fired");
 });
+
+test("desktop.graphpanel renders hidden when closed and a framed panel (with fgview + close) when open", async () => {
+  const s = await boot();
+  const hidden = resolveFn(s, "desktop.graphpanel")(0, null);
+  assert.match(String(hidden.attrs.style), /display:none/, "closed → hidden");
+
+  const fakeFgview = { type: "el", tag: "div", attrs: { class: "fg-box" }, children: [] };
+  const open = resolveFn(s, "desktop.graphpanel")(1, fakeFgview);
+  const flat = JSON.stringify(open);
+  assert.match(flat, /desktop\.graphClose/, "open panel has a close button");
+  assert.match(flat, /fg-box/, "open panel embeds the passed fgview vnode");
+  assert.match(flat, /segments sized by memory/, "panel title");
+});

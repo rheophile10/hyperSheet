@@ -38,6 +38,6 @@
     }
   ],
   "manifests": [
-    { "name": "desktop", "version": "1.0.0", "description": "the origin desktop shell (wallpaper, icons, taskbar, state graph)", "role": "application", "dependencies": [] }
+    { "name": "desktop", "version": "1.0.0", "description": "the origin desktop shell (wallpaper, icons, taskbar, state graph)", "role": "user", "kind": "origin-application", "dependencies": [] }
   ]
 }
