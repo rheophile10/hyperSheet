@@ -447,6 +447,7 @@ functions (call as (name …) or =name(…)), grouped by segment:
   geom  — geom(x, y, w, h [, minW, minH]) - a cels() grid's WINDOW geometry, CSS-style: x/y = left/top, w/h = the (proportional) width/height, minW/minH = min-width/min-height FLOORS the window never renders or resizes below (like CSS width:50%; min-width:340px). A value in (0,1] is a PROPORTION of the viewport (→ viewport.w/.h); >1 is absolute pixels. e.g. cels("app", 4, 4, geom(0.1, 0.1, 0.5, 0.4, 340, 200), at("a1", …)). Written into win.geom[name] the first time the window materializes; a later user drag/resize is preserved.
   import  — (src) - load an archive json string (or a =formula) into the document stack: ADD a new segment, or wholesale-REPLACE a same-named one. Refuses a boot-set name (net/dom/origin/…). =import("{...}")
   inspect  — (key) - the cel's full definition (celType, value, formula, metadata) as readable JSON.
+  installBakedApps  — (state, manifest?) - first-run twin of seedStarter for APPLICATION segments: read the inert #plastron-apps manifest the bundle baked into the page (a { name: archive } map) and app.install each entry (OPFS only, never state). Pass `manifest` to bypass the DOM read (tests/headless). No-op off-DOM or without a filesystem. A broken baked app is logged, not thrown.
   interlinked  — (seg) - force-directed graph of a grid segment's cels (nodes) + their inputMap deps (edges), drawn on canvas.
   item  — (label, action, ...children) - one navigation menu node for nav(). label is text/emoji; action is a window KEY (clicking focuses that window) or a '=formula' (clicking spawns a new window running it), or omit action for a pure submenu parent. children are more item()s (WordPress-style nesting). e.g. item("📊 Charts", item("🥧 Pie", '=cels(3,2, ...piechart...)')).
   jail  — (seed) - render a SANDBOXED iframe running the seed formula as its OWN kernel. allow-scripts but no allow-same-origin → opaque origin: it cannot touch localStorage, the parent page, or other tabs. The browser's real Layer-A jail for untrusted plastrons.
@@ -459,8 +460,6 @@ functions (call as (name …) or =name(…)), grouped by segment:
   mount  — (target content) - pin a dom under another element of the sheet instead of in the cell that holds it. target is a selector matched against the view: ".sheet" pins under the cells, "div.cell" under the first cell, "#id" by id; a bare word ("top"/"bottom") is a region anchor laid out around the sheet. Deleting the formula removes it.
   mv  — (from, to) - move/rename a file or directory in OPFS.
   nav  — ([mobile], ...items) - a navigation menu from item() nodes. Pass viewport.mobile as the first arg so it AUTO-SWITCHES: a collapsible left sidebar (☰) on mobile, desktop icon-launchers otherwise (it re-renders on rotate/resize). Nesting collapses via native <details>. e.g. =nav(viewport.mobile, item("📁 Files","files"), item("📊 Charts", item("🥧 Pie", '=cels(3,2,at("A1","x"))'))).
-  navpanel  — () - genesis: a PERSISTENT app launcher pinned to the desktop corner (the navpanel). Unlike =nav (a one-off pasted menu), this survives 元 re-renders and re-fires on viewport.mobile (☰ sidebar on phones). Ships launchers for 🛂 Consent, 🖥 Local LLM, 📁 Files, 📖 Readme, 🎹 Keyboard, 📊 Turtles, 🐢 DOOM, 🔑 Vault. =navpanel()
-  navpanelbar  — ([mobile]) - the navpanel's content: a mounted nav() of the app launchers. The win.navbar.frame cel calls (navpanelbar viewport.mobile) so it re-renders responsively. Usually you call =navpanel() (the genesis), not this directly.
   open  — (name?) - restore a saved sheet from localStorage. =open() loads the default slot; =open("v2") a named one.
   openSeg  — (name) - restore a sheet previously saved with saveSeg from OPFS.
   otpDecrypt  — (url) - decode a =otpEncrypt() #otp= link. Renders a file picker for the matching pad (the URL names which pad). Returns the formula source as text in the formula bar; does NOT run it. A wrong pad or tampered message fails the MAC check. Delete the pad after use.
@@ -474,10 +473,13 @@ functions (call as (name …) or =name(…)), grouped by segment:
   segment  — genesis: compose a SEGMENT (document) from cels()/winapp()/chatapp()/def()/cel() parts in one formula, e.g. =segment(...). (was doc.)
   segments  — () - every loaded segment with role, version, dependencies.
   segs  — () - list sheets saved to OPFS (=saveSeg/openSeg/delSeg manage them).
+  sheetcells  — (keys, vals) - zip a key list + value list into sheetgrid entries {key,col,row,value}, deriving col/row from each key's A1 suffix. The host formula passes the keys (strings) + the cel values (a list referencing each cel, so the grid is reactive).
+  sheetdoc  — (state, seg, title?) - open a worksheet window over the cels of document segment `seg`, rendered via the sheets segment's sheetgrid (reactive: the content formula references each grid cel). The window (program) is win.<seg>; the data stays in segment <seg>, so dumpSegments([seg]) exports just the document. Idempotent.
   simulate  — (fnName, n?) - def-driven animation: run a def'd frame fn (i -> [x, y]) n times and play the trajectory on an animated canvas.
   sql  — (db, query) - run SQL against a db handle; SELECT returns rows, writes persist to OPFS.
   stat  — (path) - size / isDir / mtime of an OPFS path.
   tables  — (db) - list the tables in a db.
+  taskbarBar  — (active, ...states) - render the desktop bottom taskbar: one chip per non-closed, non-docked window, the active one bordered, a minimized one dimmed. Receives each window's state VALUE; click → desktop.taskClick. Built reactively by desktop.taskbarGenesis.
   touch  — (path) - create an empty file in OPFS if it does not exist.
   tree  — (path?) - recursive directory tree in OPFS (default /).
   tryexample  — (state, exPayload) - the readme 'try it' handler. Clicking a yellow ⚡ next to an example copies that example's formula into a scratch cell beside the readme (its B-column target) and evaluates it, so the result appears. Implemented by seeding 元.draft with the formula then running origin.run on the target cell, which sniffs the source into a FormulaCel, writes it, re-evaluates, and repaints.
@@ -494,6 +496,9 @@ functions (call as (name …) or =name(…)), grouped by segment:
   peerjoin  — (room, relayUrl) - automatic signaling via a relay: join a room, the existing member offers + the newcomer answers, all brokered over WebSocket (no SDP copy/paste). Browser-only, 2-peer rooms.
   peerlog  — () - the peer wiretap: inbound/outbound messages + the gate's decision for each.
   peersend  — (key, value) - explicit share: setValue locally + broadcast to the peer. Demo shim until automatic sync rides the post-cascade seam.
+
+[php-compiler]
+  php  — kind "php" — PHP source defining named functions; the trailing line names the callable (use the := php.<fn>{ … } selector). Compiled via php-wasm: each compile defines its source in a fresh PHP namespace so a recompile never "Cannot redeclare". The runtime call is async (returns a Promise — fireCel awaits it), so a php verb works as a whole-formula value. Dynamic-imported on first compile.
 
 [plastron-canvas]
   canvas  — (width, height, ...ops) - a <canvas> drawn from rect/text/line/circle/wedge ops; the painter replays them onto the 2d context. use as a cell value or inside mount/dom. op LISTS flatten in, so chart fns compose: =canvas(420, 260, barchart(t!A2:A8, t!B2:B8)).
@@ -514,6 +519,10 @@ functions (call as (name …) or =name(…)), grouped by segment:
 
 [sheet-host]
   sheetView  — (cfg editing draft mount error keys vals srcs geom selected tabdrag) - spreadsheet RenderSpec producer: each worksheet table wrapped in a draggable window frame. Single-click SELECTS a cell (origin.select sets 元.selected) and the cell KEEPS rendering its value; the window's formula bar shows the SELECTED cell's source (bound to 元.draft) and commits on Enter (origin.key) to 元.selected. Double-click opens the inline editor. Formula bar order is left-to-right [W wiki][lightning-bolt fire][textarea]: the fire button is an inline SVG lightning bolt (origin.fire — re-evaluate the selected cell), the W opens the wiki. The bar textarea defaults to a tall multi-line box (min-height ~7.5rem) and wraps (pre-wrap, no horizontal scrollbar); resize:vertical lets the user grow it further. Tabs render by win.geom[seg].order; dragging a tab chip reorders it among siblings (winsheet.tabMove) or, released off the window, tears it into its own window (winsheet.tabDrop -> tearoff). While a tab is being dragged (winsheet.tabdrag), its chip highlights in the SAME blue as a window's drop-target glow. Dragging a window/tab over another window glows the target (win.geom[seg].glow) to show where it will land. The formula bar's W wiki + fire buttons are sized for a comfortable hit target (glyphBtn ~1.1rem, bolt svg ~22px). Cells render clean (no per-cell glyphs). The titlebar shows exactly one of ◱ (mid/restore, when maximized) and ⛶ (maximize, when not), plus – minimize and ✕ close.
+
+[sheets]
+  sheetcell  — (value) - render ONE spreadsheet cell value to a vnode: a number/string as text, a vnode (a formula that built dom/canvas/a chart) in place, a cel error as its code. The leaf of the grid.
+  sheetgrid  — (label, cells, opts?) - render a worksheet's cells as an editable Excel grid CONTENT vnode (corner label + column letters + row numbers + cells). `cells` is the host-aggregated list [{key,col,row,value,src}]; `opts` = {active, selected, draft, edit, select, fire, commit} (handler keys default to origin.*). The active cell shows an inline editor; others dispatch select/edit. SHEET-UNIQUE native renderer (the perf fast path); a window tab hosts the result so a sheet tabs next to any app.
 
 [sqlite-client]
   sqlclient  — (db [, title]) - open a SQLite client WINDOW on db: a query editor, a tables sidebar, and the result rows below (rendered as a grid + materialized into real sqlres.* cels). e.g. =sqlclient("demo")
@@ -549,6 +558,17 @@ functions (call as (name …) or =name(…)), grouped by segment:
   wasm-to-wat  — Show-WAT diagnostic: takes a wasm binary (Uint8Array) and returns its WAT text via wabt.readWasm + toText. Use on cel._wasm to inspect any wasm module — most useful for kinds whose source isn't WAT (Rust / other wasm langs). Wat lambdas can pass their own bytes for canonical round-trip.
   wat  — WAT compiler. Compiles WebAssembly text-format source to a runtime Fn via wabt.js + WebAssembly.instantiate. Wraps the module's main export (or its single function export) as a callable Fn. Gated on csp.wasm-available.
   wat-to-js  — Bridge: convert a wat-domain value to a JS-domain value. v1 scalars (i32/u32/f32/f64) are JS-equivalent on the wire, so this is identity. When composites (string, list, record, variant) and workers arrive, this becomes a real marshalling call into the wat worker's toJs protocol. Authors invoke via formula syntax: (wat-to-js someCel).
+
+[winapps]
+  toolbar  — (...children) - a horizontal toolbar row an app places above its content. Arrays flatten and non-vnodes drop, so MAP(...) of toolbtn()s works. App-agnostic chrome; sheet-specific UI lives in the sheets segment.
+  toolbtn  — (glyph, title, handler, payload?) - a generic toolbar/titlebar button for any windowed app: shows `glyph`, stops pointerdown (so it doesn't start a window drag), and dispatches handler(state, payload, event) on click. Compose several inside toolbar().
+
+[winapps-wasm]
+  wasmapp  — (id, title, engineCel, opts?) - genesis a wasm app as a SELF-MOUNTING window on the new tabbable frame: the graph<->engine bridge cels (wasm.<id>.in/.out/.active), a <canvas> content cel (wasmcanvas id), a window state cel (one tab = the canvas), and a (mount '.origin' (wframe …)) frame. So a wasm window (DOOM) tabs next to a sheet. opts = geom {x,y,w,h,icon}. The engine instance is grabbed by canvas id at boot; pair with winapps app.install (assets → OPFS) + a harness provider to keep the app mostly formula-cells.
+
+[window]
+  wframe  — (state, active, ...contents) - render ONE window's chrome around the ACTIVE tab's content (contents[active]): titlebar (icon + name + minimize/fullscreen/close), a tab strip when the window has >=2 tabs, the body, and a resize grip. `state` is the window state object { x,y,w,h,z,min,max,closed,title,icon,tabs:[{ref,title,icon}],active,dockedIn }; `active` is win.active; `contents` is one value per tab (the frame formula passes each tab's content cel). A window whose state has dockedIn set self-hides (its host renders it). Content-AGNOSTIC: a tab's content may be a sheet grid, a wasmcanvas, or any winapp body, so heterogeneous windows tab together.
+  wopen  — (id, title, body, where?) - genesis a SELF-MOUNTING window: a content cel (= body, the app render), a state cel (one tab = its own content), and a frame cel `(mount '.origin' (wframe <state> win.active <content>))` that mounts itself into the desktop. `where` = geom(x,y,w,h) sizes it. There is NO separate desktop renderer - each top-level window draws itself; dock one into another with window.dock to tab them together.
 
 [windows]
   chatapp  — (channel, title) — a chat WINDOW: seeds log/input + a winframe of (chat …). =chatapp("claude","Claude")
