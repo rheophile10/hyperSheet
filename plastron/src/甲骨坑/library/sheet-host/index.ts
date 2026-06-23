@@ -44,6 +44,18 @@ const genesisSummary = (cels: Record<string, unknown> | undefined): string => {
 const isVnode = (v: unknown): v is V =>
   !!v && typeof v === "object" && ((v as V).type === "el" || (v as V).type === "text");
 
+// a SIZED visual widget as a cell value — a chart/canvas (=canvas(…)/=barchart(…)),
+// an svg, an img/video/iframe, or any el carrying explicit width/height. These
+// must NOT go through the one-line value-clamp box (which crops them to the grid
+// cell); they render in a block, overflow-visible wrapper that lets the cell grow.
+const WIDGET_TAGS = new Set(["canvas", "svg", "img", "video", "iframe", "picture"]);
+const isWidgetVnode = (v: V): boolean => {
+  if (v.type !== "el") return false;
+  if (WIDGET_TAGS.has(String(v.tag))) return true;
+  const a = v.attrs as Record<string, unknown> | undefined;
+  return !!a && (a.width != null || a.height != null);
+};
+
 const SX = {
   origin: "display:flex;flex-direction:column;gap:1.25rem;align-items:center;margin:0 auto",
   sheet: "display:flex;flex-direction:column;gap:1.25rem;align-items:center",
@@ -53,6 +65,11 @@ const SX = {
   corner: "border:1px solid #8883;background:#8881;text-align:center;color:#aaa;font-weight:700;font-size:.8rem;font-family:ui-monospace,monospace;padding:0 .35rem;height:1.9rem",
   td: "border:1px solid #8883;padding:0;height:1.9rem;text-align:left;vertical-align:top;cursor:cell",
   cellValue: "display:flex;align-items:flex-start;gap:.25rem;padding:.15rem .4rem;min-height:1.6rem;max-width:min(56rem,88vw);font-family:ui-monospace,monospace;font-size:.85rem;resize:both;overflow:auto;cursor:text",
+  // a SIZED visual widget (a chart/canvas, svg, img, …): the value-clamp box
+  // above (flex-shrink, max-width, overflow:auto, resize) crops it to the grid
+  // cell. Give it a block, overflow-visible, un-clamped wrapper so the cell
+  // (and its td/row) grows to the widget's natural footprint instead.
+  cellWidget: "display:block;padding:.15rem .35rem;overflow:visible;max-width:none;cursor:pointer",
   valFirst: "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
   pre: "margin:0;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:.8rem;line-height:1.4;flex:1;min-width:0;overflow:visible",
   src: "margin:0;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:.8rem;line-height:1.4;color:CanvasText;max-height:16rem;overflow:auto;flex:1;min-width:0",
@@ -82,11 +99,8 @@ const displayCell = (v: unknown): V => {
   if (isVnode(v)) return v as V;
   if (v === null || v === undefined || v === "") return T("");
   if (typeof v === "object") {
-    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; cels?: unknown; defn?: unknown; name?: unknown; __mount?: unknown; __client?: unknown; provider?: unknown; status?: unknown; error?: unknown };
+    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; cels?: unknown; defn?: unknown; name?: unknown; __mount?: unknown };
     if (o.kind === "error") return T(/undefined symbol|not a function/.test(String(o.message)) ? "#NAME?" : "#ERR!");
-    // a captured llm CLIENT handle (makeclient) — show provider + status, never
-    // the key: "claude ✓ ready" when armed, "grok ✗ no key" on error.
-    if (o.__client === true) return T(`${String(o.provider ?? "client")} ${o.status === "ready" ? "✓ ready" : String(o.error ?? "✗ error")}`);
     if (o.genesis === true) return el("pre", { class: "cell-pre", style: SX.pre }, [T(genesisSummary(o.cels as Record<string, unknown> | undefined))]);
     if (o.defn === true) return T(`ƒ ${String(o.name ?? "")}`);
     if (isSecretHandleRef(v)) return T(`🔑 ${(v as { name: string }).name}`); // wallet handle (or persisted ref) — never the secret
@@ -326,6 +340,11 @@ const sheetView: Fn = ((
   const body = (key: string, value: unknown): V => {
     if (active === key) return editor(key);
     const shown = isMountVal(value) ? el("pre", { class: "cell-pre cell-src", style: SX.src }, [T(srcOf.get(key) ?? "")]) : displayCell(value);
+    // a sized widget (chart/canvas/svg/…) renders un-clamped so the cell grows to
+    // it; everything else keeps the one-line clamp box (text/pre wrap + scroll).
+    if (isWidgetVnode(shown))
+      return el("div", { class: "cell-value cell-widget", title: "click to select; double-click to edit", style: SX.cellWidget }, [shown],
+        { click: { dispatch: SELH, payload: key }, dblclick: { dispatch: EDIT, payload: key } });
     const valEl = shown.type === "text" ? el("span", { class: "cell-val-text", style: SX.valFirst }, [shown]) : shown;
     return el("div", { class: "cell-value", title: "click to select; double-click to edit", style: SX.cellValue }, [valEl],
       { click: { dispatch: SELH, payload: key }, dblclick: { dispatch: EDIT, payload: key } });

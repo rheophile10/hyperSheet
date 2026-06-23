@@ -8,7 +8,7 @@
         "key": "元",
         "segment": "origin",
         "name": "元",
-        "description": "cell A1 — the origin cell. its formula IS the desktop genesis: a wallpaper mount (.origin) plus the navpanel app launcher; editing it rebuilds the desktop, clearing it restores this seed. a cell whose output renders elsewhere shows its SOURCE here. type a formula to grow an app; the navpanel icons open the readme, keyboard, consent, segments, files, vault and DOOM.",
+        "description": "cell A1 — the origin cell. its formula IS the desktop genesis: a wallpaper mount (.origin) plus the navpanel app launcher; editing it rebuilds the desktop, clearing it restores this seed. a cell whose output renders elsewhere shows its SOURCE here. type a formula to grow an app; the navpanel icons open the readme, keyboard, a blank sheet, files, turtles and DOOM.",
         "parser": "f"
       },
       "f": "(segment \"rowflow\"\n\t(cels 3 1 \"desktop\"\n\t\t(at \"A1\" '(mount \".origin\" (img desktop.A2 windows.wallpaper (attr \"class\" \"desktop-bg\") (style \"position\" \"fixed\" \"inset\" \"0\" \"width\" \"100vw\" \"height\" \"100vh\" \"object-fit\" \"cover\" \"z-index\" \"-1\")))')\n\t\t(at \"A2\" \"\")\n\t\t(at \"A3\" '(mount \".origin\" (dom \"button.pl-reseed\" (style \"position\" \"fixed\" \"bottom\" \".6rem\" \"right\" \".8rem\" \"z-index\" \"60\" \"padding\" \".3rem .6rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".4rem\" \"background\" \"Canvas\" \"color\" \"CanvasText\" \"cursor\" \"pointer\" \"font\" \".72rem ui-monospace,monospace\" \"opacity\" \".55\") (on \"click\" \"origin.reseed\") \"↻ reseed\"))'))\n\t(navpanel))"
@@ -526,32 +526,6 @@
       }
     },
     {
-      "key": "chat",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "chat",
-        "segment": "origin",
-        "name": "chat",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(prompt, apiKey [, model] [, url]) - a chat-completion request to an OpenAI-shaped endpoint; the reply text lands in the cell. apiKey is the value - a literal string or a cel reference holding the key."
-      }
-    },
-    {
-      "key": "grok",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "grok",
-        "segment": "origin",
-        "name": "grok",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(prompt, apiKey [, model]) - chat() pinned to xAI Grok. =grok(\"say hi\", apiKeyCel) or =grok(\"say hi\", \"xai-...\"). browser CORS may block direct calls; works from a CLI/Bun host."
-      }
-    },
-    {
       "key": "cdn",
       "celType": "LockedLambdaCel",
       "locked": true,
@@ -875,55 +849,6 @@
       }
     },
     {
-      "key": "consentpanel",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "consentpanel",
-        "segment": "origin",
-        "name": "consentpanel",
-        "kind": "native",
-        "genesis": true,
-        "description": "() - open the Consent panel: the dangerous functions (I/O + code) the current page uses, each Allow/Revoke toggleable. Replaces the per-sheet trust shield. Reads consent.usage."
-      }
-    },
-    {
-      "key": "consentdom",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "consentdom",
-        "segment": "origin",
-        "name": "consentdom",
-        "kind": "native",
-        "description": "(usage) - render the consent list from the consent.usage value (each dangerous fn in use: category, reason, call-count, segments, Allow/Revoke). Buttons dispatch origin.consentToggle."
-      }
-    },
-    {
-      "key": "origin.consentToggle",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.consentToggle",
-        "segment": "origin",
-        "name": "consentToggle",
-        "kind": "native",
-        "description": "dispatch target: flip one function's consent (allow/deny) in the consent cel, then refresh consent.usage. Host/user-only (never a formula verb)."
-      }
-    },
-    {
-      "key": "origin.consentSync",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.consentSync",
-        "segment": "origin",
-        "name": "consentSync",
-        "kind": "native",
-        "description": "(host) recompute consent.usage = the dangerous functions the live graph references, so the Consent panel re-renders."
-      }
-    },
-    {
       "key": "save",
       "celType": "LockedLambdaCel",
       "locked": true,
@@ -947,32 +872,6 @@
         "kind": "native",
         "emitsTo": "origin.effects",
         "description": "(name?) - restore a saved sheet from localStorage. =open() loads the default slot; =open(\"v2\") a named one."
-      }
-    },
-    {
-      "key": "vaultsave",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "vaultsave",
-        "segment": "origin",
-        "name": "vaultsave",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(pass) - write the `secrets` segment as a standalone ENCRYPTED file /vault.env.enc in OPFS (aes256gcm with the passphrase; discoverable in 📁 Files, opaque without it). Independent of =save() — your keys persist as a portable file without saving the sheet. DANGEROUS (secrets)."
-      }
-    },
-    {
-      "key": "vaultload",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "vaultload",
-        "segment": "origin",
-        "name": "vaultload",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(pass) - read /vault.env.enc, decrypt with the passphrase, and restore the secrets segment. Then =unlockVault() to use the keys. DANGEROUS (secrets)."
       }
     },
     {
@@ -1135,18 +1034,6 @@
         "name": "jailask",
         "kind": "native",
         "description": "(payload) - JAIL ONLY: round-trip a request to the PARENT over the postMessage bridge and return its reply. The jail has no keys/network of its own; the parent mediates (e.g. an LLM call). Outside a jail it is a no-op."
-      }
-    },
-    {
-      "key": "jail.serve",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "jail.serve",
-        "segment": "origin",
-        "name": "jail.serve",
-        "kind": "native",
-        "description": "PARENT side: mediates a jail's jailask() request (the window message listener calls it). Keys/network stay in the parent; only the reply crosses back into the jail."
       }
     },
     {
@@ -1327,11 +1214,7 @@
         "name": "win.geom",
         "description": "per-window geometry (x/y/w/h/z) and tab relationships (host) keyed by sheet segment. readme is seeded BIG and roughly centered (x 300, y 90, w 860, h 680) so the welcome card lands front-and-centre; chat/turtlecharts carry only host so they tab into clients/turtles."
       },
-      "v": {
-        "chat": {
-          "host": "clients"
-        }
-      }
+      "v": {}
     },
     {
       "key": "winsheet.drag",

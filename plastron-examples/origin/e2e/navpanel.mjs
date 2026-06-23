@@ -1,7 +1,7 @@
 // e2e: the minimal app-desktop — wallpaper + a navpanel of app icons, NOTHING
 // auto-open. Each icon launches its app window. Real headless chromium against
 // the bundled dist. (navOpen must materialize a spawned genesis AND refresh the
-// view; consentSync must run before the rewire or it drops the just-opened window.)
+// view, or it drops the just-opened window.)
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 const PORT = 8807, dist = "/home/ian/projects/plastron/plastron-examples/origin/dist";
@@ -25,13 +25,13 @@ try {
     appWindows: document.querySelectorAll('.pl-window:not([data-win="元"])').length,
     wallpaper: !!document.querySelector(".desktop-bg"),
   }));
-  ok(boot.icons.length === 10, `navpanel shows 10 app icons (${boot.icons.length})`);
+  ok(boot.icons.length === 7, `navpanel shows 7 app icons (${boot.icons.length})`);
   ok(boot.appWindows === 0, `nothing auto-opens — 0 app windows on boot (${boot.appWindows})`);
   ok(boot.wallpaper, "wallpaper is painted");
-  ok(/Origin/.test(boot.icons.join("|")) && /Consent/.test(boot.icons.join("|")) && /DOOM/.test(boot.icons.join("|")), "icons include Origin, Consent, …, DOOM");
+  ok(/Origin/.test(boot.icons.join("|")) && /Files/.test(boot.icons.join("|")) && /DOOM/.test(boot.icons.join("|")), "icons include Origin, Files, …, DOOM");
 
   // 2. every icon launches its app window (reload per icon → clean desktop each time).
-  const caps = ["Origin", "Consent", "Local LLM", "Files", "Readme", "Keyboard", "Turtles", "DOOM", "Vault"];
+  const caps = ["Origin", "Files", "Readme", "Keyboard", "Turtles", "DOOM"];
   for (const cap of caps) {
     await p.goto(URL);
     await p.waitForFunction(() => !!globalThis.plastron, { timeout: 10000 });
@@ -42,10 +42,7 @@ try {
     ok(n >= 1, `🖱  ${cap} → opens ${n} window(s)`);
   }
 
-  // 3. spot-check two apps actually render their content (not just a frame).
-  await p.goto(URL); await p.waitForFunction(() => !!globalThis.plastron); await p.waitForTimeout(2200);
-  await (await p.$(`button.pl-nav-icon:has-text("Consent")`)).click(); await p.waitForTimeout(2000);
-  ok(await p.evaluate(() => /only these functions|No dangerous functions/.test(document.body.innerText)), "Consent app renders the consent panel");
+  // 3. spot-check an app actually renders its content (not just a frame).
   await p.goto(URL); await p.waitForFunction(() => !!globalThis.plastron); await p.waitForTimeout(2200);
   await (await p.$(`button.pl-nav-icon:has-text("Files")`)).click(); await p.waitForTimeout(2000);
   ok(await p.evaluate(() => !!document.querySelector(".file-explorer")), "Files app renders the OPFS explorer");

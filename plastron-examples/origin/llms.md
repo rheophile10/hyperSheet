@@ -38,9 +38,19 @@ They are equivalent in power. Infix is the Excel-compatible surface; S-expr is t
 homoiconic one. Don't mix them inside one formula. Cell references are `A1`,
 ranges are `A1:B3` or `seg!A1:B3`. Cel keys in formulas are ASCII `[\w.-]+`.
 
+FORMAT BIG FORMULAS MULTI-LINE: newlines and tabs are IGNORED by the parser, so indent a
+large nested formula and put one argument per line — a single long line is the #1 cause of
+`expected ")"` (a miscounted paren). Indentation makes every `(` line up with its `)`.
+
 STRINGS: use `"…"` or `'…'`. A second delimiter means a nested formula needs **no
 escaping**, one level deep:
     `at("A1", '=dom("h1", "Tasks")')`   ✅   (not  `at("A1","=dom(\"h1\",\"Tasks\")")`)
+  A cell whose content is itself a `=formula` MUST be quoted with the alternate
+  delimiter — `at("B2", '=SCAN(0,A2:A6,LAMBDA(a,v,a+v))')` ✅; a BARE `at("B2", =SCAN(…))`
+  is a parse error ("unexpected token ="). Only TWO string levels exist (`"` outside,
+  `'` inside) — do NOT go a third level deep and NEVER use backticks. If you need depth
+  (e.g. a chart inside a menu-spawned sheet), build that sheet as its OWN top-level
+  `=cels(…)` and reference it, rather than inlining a third nested formula.
 
 ────────────────────────────────────────────────────────────────────────────
 CORE FORMULAS (the high-frequency ones — full catalog at the bottom)
@@ -75,8 +85,56 @@ LOGIC / DATA
   =1+1   =A1*2   =SUM(A1:A10)   =IF(A1>0,"yes","no")
   =LET(x, A1*2, x + x*x)                  name a sub-expression, reuse it (readability)
   =SUM(MAP(A1:A9, LAMBDA(v, v*v)))        LAMBDA + MAP/REDUCE/SCAN/BYROW over a range
-  =claude(chat!A1, apiKey("anthropic"))                    ask an LLM (reactive)
-  =chat(prompt, apiKey("grok"))                            OpenAI-shaped endpoint
+  NO ARRAY SPILL INTO CELLS: MAP/FILTER/SCAN/BYROW return ONE array VALUE. Put it in a single
+  cell and it shows as a JSON dump ([100,250,…]) — it does NOT fill the cells below/beside it.
+  (EXCEPTION — a DOM container flattens an array child, so MAP→dom IS how you render a list;
+  see RENDER A LIST. The rule below is only about a raw array sitting in a sheet cell.) So:
+    • collapse it to one value with an aggregate:  =SUM(MAP(A2:A9, LAMBDA(v, v*v)))  ✅
+    • to DISPLAY a per-row column (running totals, row totals) write an EXPLICIT formula
+      in EACH target cell with its own range — there is no fill-down and no `$`:
+        running total:  at("B2",'=SUM(A2:A2)'), at("B3",'=SUM(A2:A3)'), at("B4",'=SUM(A2:A4)')
+        row totals:     at("D2",'=SUM(A2:C2)'), at("D3",'=SUM(A3:C3)'), at("D4",'=SUM(A4:C4)')
+    • if a task REQUIRES SCAN/BYROW for that column, each cell must STILL resolve to ONE
+      number — extract it with INDEX(array, position); never leave the raw array in a cell:
+        at("C2",'=INDEX(SCAN(0,B2:B2,LAMBDA(a,v,a+v)),1)'), at("C3",'=INDEX(SCAN(0,B2:B3,LAMBDA(a,v,a+v)),2)') …
+        at("D2",'=INDEX(BYROW(A2:C4,LAMBDA(r,SUM(r))),1)'), at("D3",'=INDEX(BYROW(A2:C4,LAMBDA(r,SUM(r))),2)') …
+  A lone =SCAN(…)/=BYROW(…) sitting in one cell is the #1 way these tasks render wrong — don't.
+  SEED YOUR INPUTS + LABEL THE OUTPUT: a formula over empty cells shows 0/blank, and a
+  bare scalar answer is nothing to look at. If a task says "price in A1, qty in A2",
+  build a LABELED sheet that seeds the inputs so the result is visible:
+    =cels("inv",4,2, at("A1","Price"), at("B1",12), at("A2","Qty"), at("B2",3),
+      at("A3","Subtotal"), at("B3",'=B1*B2'),
+      at("A4","Grand total"), at("B4",'=LET(s, B1*B2, s + s*0.13)'))
+
+RENDER A LIST (a collection → repeated DOM — this is how data becomes UI)
+  dom() FLATTENS an array child, so turn a range into repeated elements by MAPping it:
+    =dom("ul", MAP(todo!A1:A5, LAMBDA(t, dom("li", t))))            one <li> per row
+  FILTER(range, LAMBDA(x, pred)) keeps only matching values — render a SUBSET:
+    =dom("ul", MAP(FILTER(nums!A1:A9, LAMBDA(x, x>0)), LAMBDA(x, dom("li", x))))
+  null/""/false items in the array are dropped (so a MAP that yields "" omits that child).
+  To carry per-row IDENTITY (so a click/drag knows WHICH row it is), MAP over an ID column
+  (seed col A = 1..N) and use the id to BUILD the cel key + READ the fields with INDEX:
+    =dom("div",
+      MAP(todo!A1:A5, LAMBDA(id,
+        dom("div.row",
+          on("click", "some.handler", CONCAT("todo.B", id)),     ← payload NAMES this row's cel
+          INDEX(todo!B1:B5, id)))))                               ← INDEX reads this row's field
+  MAP is for iterating a DATA RANGE. For a FIXED, small set of sections (e.g. a few columns
+  or tabs), there is NO inline list literal — do NOT invent ARRAY(…)/[…]. Instead define the
+  section once as a LAMBDA (via LET) and CALL it per section:
+    =LET(section, LAMBDA(name, dom("div.col", dom("h3", name), …use name…)),
+      dom("div", section("Left"), section("Middle"), section("Right")))
+  A LET-bound LAMBDA can call EARLIER LET names and see the calling LAMBDA's params, so a
+  section can reuse a shared "card"/"row" LAMBDA and the section's own name together.
+
+DRAG & DROP — "a drop writes a cel" (reusable: boards, buckets, file moves, assignment)
+  Make an item DRAGGABLE and have it NAME a cel; make a drop ZONE carry a VALUE:
+    item: =dom("div", attr("draggable","true"), on("dragstart","drag.grab","todo.B2"), "a task")
+    zone: =dom("div", on("dragover","drag.over"), on("drop","drag.drop","Done"), "Done")
+  Dropping the item runs drag.drop → sets todo.B2 := "Done". (on("dragover","drag.over") is
+  REQUIRED on the zone — without it the browser fires no drop.) Movement is REACTIVE: if a
+  view FILTERs/reads that cel, the item RE-RENDERS in its new place automatically — you never
+  move it by hand. drag.active remembers the grabbed cel between grab and drop.
 
 DATABASE (browser SQLite — persistent, runs in a Worker; the db NAME is the handle)
   =sqlitedemo()                           one formula: makes a table, seeds it, opens the client
@@ -91,13 +149,25 @@ FILES (OPFS, in-browser)
   =write("/a.txt","hi")  =cat("/a.txt")  =ls("/")  =mkdir("/d")  =upload("/")
 
 WINDOWS / LAYOUT
-  =win(key,"title","body")     =winsize("keys","max")  (maximize)     =jail(seed)
-  =doom()                      Doom in a wasm window (consent-gated asset load)
+  =win(key,"title","body")     =jail(seed)     =doom()  (Doom in a wasm window, consent-gated)
+  =cels("app",5,2, geom(40,40,520,360))   geom(x,y,w,h[,minW,minH]) sizes a sheet's own window
+
+APP = DATA SHEET + WINDOW (one pasteable, shareable formula)
+  =winapp(id, "Title", '=<formula>')   a draggable WINDOW whose body is a REACTIVE formula
+  =segment(part, part, …)              compose cels()/winapp()/def() parts into ONE formula
+  The idiomatic app is a data sheet + a window that reads it — one formula in, one link out:
+    =segment(
+      cels("todo", 4, 2, at("A1","Task"), at("B1","Status"),
+        at("A2","Email Bob"), at("B2","To Do"), at("A3","Ship"), at("B3","Done")),
+      winapp("todo", "To Do",
+        "=dom('div', MAP(todo!A2:A3, LAMBDA(t, dom('div.card', t))))"))
+  The window body reads the sheet by GLOBAL ref (todo!A2:A3) even though it is a different
+  segment. Two string levels: top-level args are "…", the nested window body is '…'.
 
 SEGMENTS — every workbook / window / app you make is a SEGMENT (a named layer)
   =segments()                  list the loaded segments
   =members("seg")              the cels in a segment
-  =segnav()                    an auto navbar that switches between your segments
+  =nav(viewport.mobile, item(…))  a navbar that switches between your segments/windows (see NAVBAR below)
   Each =cels/=winapp/=doom/=jail MINTS a document segment (kind workbook/winapp/
   wasm/jail); the substrate (net/dom/origin/…) is reserved and not exported.
 
@@ -111,9 +181,13 @@ NAVBAR / MENUS (a pasteable menu; one formula, mobile + desktop)
     =nav(viewport.mobile,
       item("📁 Files", "files"),
       item("📊 Charts",
-        item("🥧 Pie", '=cels("p",3,2, at("A1","Apples"), at("B1",10), at("A2","Pears"), at("B2",20))'),
-        item("📈 Bar", '=cels("b",3,2, at("A1","Q1"), at("B1",30))')),
+        item("🥧 Pie", '=cels("pie",5,2, at("A1","Item"), at("B1","Value"), at("A2","Apples"), at("B2",10), at("A3","Pears"), at("B3",20), at("A4","Plums"), at("B4",15), at("A5", "=canvas(360,200, piechart(pie!A2:A4, pie!B2:B4))"))'),
+        item("📈 Bar", '=cels("bar",5,2, at("A1","Item"), at("B1","Value"), at("A2","Q1"), at("B2",30), at("A3","Q2"), at("B3",45), at("A4","Q3"), at("B4",25), at("A5", "=canvas(360,200, barchart(bar!A2:A4, bar!B2:B4))"))')),
       item("元 Origin", "元"))
+  A chart INSIDE a submenu sheet works WITHOUT a third quote level: a chart formula has
+  no inner string quotes, so wrap the sheet action in '…' and the chart in "…" —
+  `at("A5", "=canvas(360,200, barchart(bar!A2:A4, bar!B2:B4))")`. NEVER reach for
+  backticks to get depth (`infix: unexpected character` — a hard parse error).
 
 RESPONSIVE LAYOUT (the page is the product — use the whole viewport, don't cram)
   The result is a full plastron.ca PAGE, not just a cell. An app-like formula
@@ -156,8 +230,7 @@ ENCRYPTED links — the URL param NAMES the method (a self-describing booter):
       = ONE message; never reuse a pad. `=otpDecrypt(url)` decodes it (file picker for the pad).
 
 Opening any `#f= / #raw= / #aes256gcm= / #otp=` link is safe: it boots locked — every
-dangerous fn (net/storage/db/code/secrets) is blocked until a human Allows it in the
-Consent panel (`=consentpanel()` lists exactly what the page wants to use).
+dangerous fn (net/storage/db/code/secrets) is blocked until a human Allows it.
 
 SEGMENT ARCHIVES — the lossless complement to formula-share (=link/=seed):
 - `=export("seg")`            → a 甲骨 archive json string of one document segment

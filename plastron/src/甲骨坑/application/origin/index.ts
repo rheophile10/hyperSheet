@@ -3,7 +3,6 @@ import type {
 } from "../../../types/index.js";
 import {
   bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, retireCel,
-  dangerousUsage, setConsent, DANGEROUS, lockConsent,
   isSegmentPending,
 } from "../../../kernel/index.js";
 import {
@@ -533,9 +532,6 @@ const commit: Fn = async (state: State, payload?: unknown, source?: unknown) => 
   if (sync) await sync(state);
   await (resolveFn(state, "runCycle") as Fn)(state);
   await drain(state, "dom.paint");
-  // keep the consent panel's usage list fresh while it's open (cheap-guarded so a
-  // normal commit doesn't walk every cel unless the panel exists).
-  if (state.cels.get("win.consent.state")) { await consentSync(state); await drain(state, "dom.paint"); }
   return state;
 };
 
@@ -659,12 +655,6 @@ const restoreArchive = async (state: State, arch: { cells?: [string, string][]; 
 
 const saveFn: Fn = (name?: unknown) => ({ originSave: true, name: name == null ? "" : String(name) });
 const openFn: Fn = (name?: unknown) => ({ originOpen: true, name: name == null ? "" : String(name) });
-// vaultsave(pass)/vaultload(pass) — persist the `secrets` segment as a standalone
-// ENCRYPTED file /vault.env.enc in OPFS (discoverable in 📁 Files, opaque without
-// the passphrase). Independent of =save — your keys survive without saving the
-// sheet, and the vault is a portable file.
-const vaultSaveFn: Fn = (pass?: unknown) => ({ originVaultSave: true, pass: pass == null ? "" : String(pass) });
-const vaultLoadFn: Fn = (pass?: unknown) => ({ originVaultLoad: true, pass: pass == null ? "" : String(pass) });
 // link(target?, base?, codec?) — a shareable URL that rebuilds a plastron from the
 // page address. target "" → the whole sheet (buildSeed); a cell key → its source.
 const linkFn: Fn = (target?: unknown, base?: unknown, codec?: unknown) =>
@@ -798,9 +788,8 @@ const otpUnlockHandler: Fn = async (state: State, payload: unknown, event: unkno
   return state;
 };
 // kernel(seed, preset?) — spawn a child plastron from a seed formula in a fresh
-// segment. Under the consent model a spawned child runs under the SESSION's
-// consent (dangerous verbs gated when the session is locked); the preset arg is
-// kept for compatibility but no longer maps to a per-segment capability grant.
+// segment. The preset arg is kept for compatibility but is inert (there is no
+// per-segment capability grant — the consent/blacklist model was removed).
 const kernelFn: Fn = (seed?: unknown, preset?: unknown) =>
   ({ originKernel: true, seed: String(seed ?? ""), preset: preset == null ? "locked" : String(preset) });
 // Spawn a child: fresh `appN` segment, seed formula in <seg>.元. Returns the segment.
@@ -858,7 +847,6 @@ export const bootFromHash = async (state: State, hash: string): Promise<string |
   } else if (/[#?&]f=/.test(h)) formula = await decodeLink(h);
   else { const m = /[#?&]raw=([^#?&]+)/.exec(h); if (m) formula = decodeURIComponent(m[1]!); }
   if (!formula) return null;
-  lockConsent(state);                                                   // provenance = url → CONSENT-lock (dangerous fns need Allow)
   await (resolveFn(state, "setValue") as Fn)(state, "元.draft", formula);
   await (resolveFn(state, "origin.run") as Fn)(state, "元");         // the shared formula IS the view, jailed
   return formula;
@@ -876,43 +864,6 @@ const jailAskFn: Fn = (async (payload: unknown): Promise<unknown> => {
   try { return await ask(payload); } catch (e) { return "⚠ " + String((e as { message?: unknown })?.message ?? e); }
 }) as Fn;
 
-// jail.serve(state, payload) — PARENT side: mediates a jail's ask. The ONLY thing
-// it does is run an LLM call on the jail's behalf, with the parent's key (read from
-// the vault — never crossed into the jail) and a system prompt = jail framing +
-// llms.txt. The reply (the bot's text + `set A1 = …` cell commands) crosses back in;
-// the jail applies them in its OWN sandboxed kernel.
-const JAIL_FRAMING =
-  "You are an LLM living INSIDE a plastron jail() — a sandboxed iframe that is its " +
-  "OWN spreadsheet kernel. You cannot reach the parent page, its keys, its files, or " +
-  "the network directly, so experiment freely and BE IMPRESSIVE. You talk to the human " +
-  "through a 50×50 cel grid: write values or =formulas into cells and they render LIVE " +
-  "in place (a cell holding =dom(…)/=canvas(…)/=barchart(…)/=sqlitedemo() becomes real " +
-  "UI). To write a cell, put a line `set <ADDR> = <value-or-=formula>` (ADDR like B2 or " +
-  "A1:C3); a body starting with ( or = is a formula. Reply in prose AND emit set-lines " +
-  "for anything you want to build. The current grid is given below.";
-let _llmsGuide: string | null = null;
-const fetchGuide = async (): Promise<string> => {
-  if (_llmsGuide !== null) return _llmsGuide;
-  try {
-    const href = (globalThis as { location?: { href?: string } }).location?.href ?? "";
-    const url = href.split("#")[0]!.replace(/[^/]*$/, "") + "llms.txt";
-    const res = await fetch(url);
-    _llmsGuide = res.ok ? await res.text() : "";
-  } catch { _llmsGuide = ""; }
-  return _llmsGuide;
-};
-const jailServeFn: Fn = (async (state: State, payload: unknown): Promise<unknown> => {
-  (globalThis as { __lastJailServe?: unknown }).__lastJailServe = payload;   // observability for tests
-  const p = (payload && typeof payload === "object") ? payload as Record<string, unknown> : { message: String(payload ?? "") };
-  const provider = String(p.provider ?? "grok");
-  const message = String(p.grid ?? p.message ?? "");
-  if (!message) return "(nothing to send)";
-  const key = await (resolveFn(state, "apiKey") as Fn)(provider);            // parent vault, consent-gated
-  const client = (resolveFn(state, "makeclient") as Fn)(provider, key, p.model);
-  const guide = await fetchGuide();
-  const system = JAIL_FRAMING + (guide ? "\n\n=== plastron vocabulary (llms.txt) ===\n" + guide : "") + (p.system ? "\n\n=== extra system ===\n" + String(p.system) : "");
-  return String(await (resolveFn(state, "client.send") as Fn)(client, message, system));
-}) as Fn;
 // (winsize removed: a sheet declares its window geometry with cels(…, geom(x,y,w,h))
 //  now — see geomFn — instead of side-effecting win.geom from a formula in a cell.
 //  Maximize lives on the ⛶ titlebar button (winsheet.maximize).)
@@ -1014,53 +965,6 @@ const playmelody: Fn = async (state: State, payload?: unknown): Promise<State> =
   notes.forEach((freq, i) => g.setTimeout?.(() => play(state, { freq, duration: 260, type: "triangle", gain: 0.32 }), i * 260));
   return state;
 };
-// ── consent panel — the UI for the consent model (will replace the 🛡 trust
-// panel). Lists the dangerous fns the live graph references, each toggleable.
-// origin.consentSync recomputes the usage cel the panel renders from.
-const consentSync: Fn = (async (state: State): Promise<State> => {
-  const usage = dangerousUsage(state);
-  if (state.cels.has("consent.usage")) await (resolveFn(state, "setValue") as Fn)(state, "consent.usage", usage);
-  else await (resolveFn(state, "setCel") as Fn)(state, "consent.usage", { celType: "ValueCel", v: usage, metadata: { key: "consent.usage", segment: "origin", name: "usage" } });
-  return state;
-}) as Fn;
-const CAT_ICON: Record<string, string> = { net: "🌐", fs: "📁", storage: "💾", db: "🗄", code: "⚙", secrets: "🔑", control: "🛂" };
-/** consentdom(usage) — render the consent list from the consent.usage value. */
-const consentdomFn: Fn = ((usage: unknown): V => {
-  const rows = (Array.isArray(usage) ? usage : []) as Array<{ fn: string; category: string; reason: string; consented: boolean; callCount: number; segments: string[] }>;
-  if (!rows.length) return el("div", { style: "font:13px system-ui;padding:.6rem;opacity:.75" }, [T("No dangerous functions in use — everything here is safe (dom / cels / math / charts).")]);
-  const row = (u: typeof rows[number]): V => el("div", { style: "display:flex;gap:.5rem;align-items:flex-start;padding:.5rem .35rem;border-bottom:1px solid #8882" }, [
-    el("div", { style: "font-size:1.1rem;width:1.5rem;text-align:center;flex:0 0 auto" }, [T(CAT_ICON[u.category] ?? "⚠")]),
-    el("div", { style: "flex:1 1 auto;min-width:0" }, [
-      el("div", { style: "font:600 .85rem ui-monospace,monospace" }, [T(`${u.fn}  `), el("span", { style: `color:${u.consented ? "#1a9c4e" : "#b1442f"}` }, [T(u.consented ? "ALLOWED" : "blocked")])]),
-      el("div", { style: "font:12px/1.4 system-ui;opacity:.8;margin-top:.1rem" }, [T(`${u.reason} · used ${u.callCount}× · ${u.segments.join(", ") || "—"}`)]),
-    ]),
-    el("button", { class: "consent-toggle", "data-fn": u.fn, style: `flex:0 0 auto;align-self:center;padding:.3rem .6rem;border:1px solid ${u.consented ? "#b1442f88" : "#1a9c4e88"};border-radius:.4rem;background:Canvas;color:CanvasText;cursor:pointer;font:600 .72rem ui-monospace,monospace` }, [T(u.consented ? "Revoke" : "Allow")], { click: { dispatch: "origin.consentToggle", payload: u.fn } }),
-  ]);
-  return el("div", { class: "consent-panel", style: "font:13px system-ui;padding:.1rem .25rem" }, [
-    el("p", { style: "margin:.2rem;opacity:.85" }, [T("Consent — only these functions do I/O or run code. Allow only what you trust this page to do.")]),
-    ...rows.map(row),
-  ]);
-}) as Fn;
-// origin.consentToggle — flip one fn's consent (host/user only), re-sync, repaint.
-const consentToggle: Fn = (async (state: State, payload?: unknown): Promise<State> => {
-  const fn = String(payload ?? ""); if (!fn) return state;
-  const consent = (state.cels.get("consent")?.v ?? {}) as Record<string, { allow?: boolean }>;
-  const cur = !!consent[fn]?.allow;
-  setConsent(state, fn, { allow: !cur, category: DANGEROUS[fn]?.category });
-  await consentSync(state);
-  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", `🛂 ${fn}: ${!cur ? "allowed" : "blocked"}`]]);
-  return state;
-}) as Fn;
-// consentpanel() — open the consent list as a draggable window (reads consent.usage).
-const consentpanelFn: Fn = (((): unknown => {
-  const lay = "win.consent", sref = `${lay}.state`, cref = `${lay}.content`;
-  return { genesis: true, layer: lay, cels: {
-    [sref]: { celType: "ValueCel", v: { ref: sref, x: 110, y: 96, w: 470, h: 430, z: 1, min: 0, max: 0, closed: 0, title: "🛂 Consent" }, metadata: { name: "state" } },
-    [cref]: { celType: "FormulaCel", f: "(consentdom consent.usage)", metadata: { name: "content", parser: "f" } },
-    [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (winframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f" } },
-  } };
-})) as Fn;
-
 // ── viewport — reactive page metrics. Formulas reference the cels (viewport.w /
 // viewport.h / viewport.mobile / viewport.orient) and re-run on resize, so a
 // sheet lays itself out responsively:
@@ -1150,7 +1054,7 @@ const navFn: Fn = ((...args: unknown[]): VNode => {
   const items = args.filter(isNavItem);
   if (mobile) {
     const list = makeEl("div", { class: "pl-nav-list", style: "display:flex;flex-direction:column;gap:.15rem;padding:.3rem;min-width:11rem" }, items.map((it) => navNode(it, 0)));
-    return makeEl("details", { class: "pl-nav pl-nav-mobile", style: "position:fixed;left:0;top:0;z-index:90;background:Canvas;border:1px solid #8884;border-radius:0 0 .6rem 0;max-width:84vw;max-height:92vh;overflow:auto;box-shadow:2px 2px 14px #0004" },
+    return makeEl("details", { class: "pl-nav pl-nav-mobile", open: "", style: "position:fixed;left:0;top:0;z-index:90;background:Canvas;border:1px solid #8884;border-radius:0 0 .6rem 0;max-width:84vw;max-height:92vh;overflow:auto;box-shadow:2px 2px 14px #0004" },
       [makeEl("summary", { style: "padding:.45rem .7rem;cursor:pointer;font:600 1.4rem ui-monospace,monospace" }, [T("☰")]), list]);
   }
   // desktop: floating app icons down the left edge (no panel chrome).
@@ -1202,16 +1106,20 @@ const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> =
     const req = state.cels.get(`${seg}.元`)?.v as { layer?: string } | undefined;
     const sref = req?.layer ? `${req.layer}.state` : undefined;
     if (sref && state.cels.get(sref)) await (resolveFn(state, "winx.show") as Fn)(state, sref);
-    // if the consent app was just opened, populate its usage list FIRST (before the
-    // view rewire) — running consentSync's cascade AFTER the rewire re-fired 元.view
-    // against a stale cell list and dropped the just-mounted window.
-    if (state.cels.get("win.consent.state")) await (resolveFn(state, "origin.consentSync") as Fn)(state);
     // apply any geom() the genesis declared (=cels("sheet",…,geom(…)) etc.) — this
     // branch has its own settle loop, so it needs the same geom-application run does.
     await applyDeclaredGeom(state, `${seg}.元`);
     // refresh the view's cell list so the new window's frame cel enters the scan
     // (cellKeys whitelists win.*.frame), then fire + paint so it actually renders.
     await (resolveFn(state, "view.refresh") as Fn)(state);
+    // a freshly-opened file-explorer starts with an EMPTY listing (its genesis
+    // seeds explorer.listing empty); explorer.refresh does the initial OPFS read
+    // of the cwd so EXISTING files show on open — without waiting for a nav or an
+    // upload. Mirrors the consentSync post-open populate above.
+    if (/\bexplorerwin\b/.test(action)) {
+      const exRefresh = resolveFn(state, "explorer.refresh") as Fn | undefined;
+      if (exRefresh) await exRefresh(state);
+    }
     await runCycle(state);
     await drain(state, "dom.paint");
   } else {
@@ -1232,14 +1140,11 @@ const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> =
 const NAV_ITEMS: [string, string][] = [
   ["🧮 Origin", "元"],                                                                       // restore the base 元 spreadsheet
   ["▦ Sheet", '=cels("sheet", 20, 12, geom(0.18, 0.12, 0.6, 0.66))'],                       // a fresh blank 20×12 worksheet
-  ["🛂 Consent", "=consentpanel()"],
-  ["🤖 Local LLM", '=chatapp("local","🤖 Local")'],
   ["📁 Files", "=explorerwin()"],
   ["📖 Readme", "open:/readme.f"],
   ["🎹 Keyboard", "open:/keyboard.f"],
   ["📊 Turtles", "open:/turtles.f"],
   ["🐢 DOOM", "=doom()"],
-  ["🔑 Vault", '=winapp("secrets","🔑 Vault","(secrets (locked secretsNote) (apiKeys))")'],
 ];
 const navpanelbarFn: Fn = ((mobile?: unknown): unknown =>
   (mount as Fn)(".origin", (navFn as Fn)(!!mobile, ...NAV_ITEMS.map(([l, a]) => (itemFn as Fn)(l, a))))) as Fn;
@@ -1432,26 +1337,6 @@ const vocabFn: Fn = (seg?: unknown) => ({ originVocab: true, segment: seg == nul
  *  any formula: `=double(21)` → 42. */
 const defFn: Fn = (name: unknown, kind: unknown, source: unknown) =>
   ({ originDef: true, name: String(name ?? ""), kind: String(kind ?? "js"), source: String(source ?? "") });
-/** chat(prompt, apiKey [, model] [, url]) — a chat-completion request to an
- *  OpenAI-shaped endpoint. The effects drain does the fetch and drops the
- *  reply text in the cell. apiKey is the value: pass a literal "xai-…" or a
- *  cel reference holding the key (the formula resolves it before calling). */
-const chatFn: Fn = (prompt: unknown, key: unknown, model: unknown, url: unknown) =>
-  ({ originChat: true, prompt: String(prompt ?? ""), key: String(key ?? ""),
-     model: model == null || model === "" ? undefined : String(model),
-     url: url == null || url === "" ? undefined : String(url) });
-/** grok(prompt, apiKey [, model]) — chat() pinned to xAI's Grok endpoint. */
-const grokFn: Fn = (prompt: unknown, key: unknown, model: unknown) =>
-  ({ originChat: true, provider: "grok", prompt: String(prompt ?? ""), key: String(key ?? ""),
-     model: model == null || model === "" ? "grok-3-mini" : String(model),
-     url: "https://api.x.ai/v1/chat/completions" });
-/** claude(prompt, apiKey [, model]) — ask Anthropic Claude, reactively.
- *  Unlike chat()/grok() (drain requests — the cell becomes a one-shot
- *  confirmation), this is a direct async fn: the kernel awaits the
- *  Promise and the reply becomes the cell's VALUE while the formula
- *  stays put — edit the prompt cel and it asks again. Works straight
- *  from the browser via Anthropic's OpenAI-compatible endpoint + the
- *  CORS opt-in header. Empty prompt/key short-circuit without fetching. */
 /** cdn(url) — load an external script/library from a URL via the kernel's
  *  loadScript primitive. The explicit way external resources enter the page
  *  (e.g. a charting lib, or a self-hosted Pyodide build). */
@@ -1573,10 +1458,6 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
     // the next runCycle can't re-evaluate the formula over the result.
     let result: unknown;
     try {
-      // Consent gate lives upstream now: the central runCycle gate #BLACKLISTs a
-      // locked-session formula that references a DANGEROUS verb BEFORE it can emit
-      // an effect descriptor, so an un-consented save/cdn/sql/fs/chat never
-      // reaches this drain. No per-verb hand-map here.
       if (req.originCels && req.segment) {
         const lines: string[] = [];
         const skill = state.cels.get(`${req.segment}.skill`);
@@ -1734,37 +1615,6 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const raw = await ((resolveFn(state, "fs.readText") as Fn)(file) as Promise<string>).catch(() => null) as string | null;
         if (!raw) result = `(no saved sheet "${nm}" — =save("${nm}") first, or =segs() to list)`;
         else { await restoreArchive(state, JSON.parse(raw)); result = `opened "${nm}"`; }
-      } else if (req.originVaultSave) {
-        // the `secrets` segment, encrypted with the passphrase, → /vault.env.enc.
-        await ensureSegments(state, ["file-store"]);
-        const backend = state.cels.get("file-store.backend")?.v;
-        if (backend === "none" || backend === undefined) result = "(no filesystem here — the vault can't be written to a file; use =export(\"secrets\",\"encrypt\",pass) for a blob)";
-        else {
-          const pass = passOf(req.pass, "passphrase to encrypt the vault with");
-          if (!pass) result = "#DENIED(vaultsave: a passphrase is required — =vaultsave(\"secret\"))";
-          else {
-            const archive = dumpArchive(state, "secrets");
-            const blob = `${ENC_METHOD}:${await encryptPayload(archive, pass)}`;
-            await (resolveFn(state, "fs.writeText") as Fn)("/vault.env.enc", blob);
-            result = "saved the vault → /vault.env.enc (encrypted; find it in 📁 Files)";
-          }
-        }
-      } else if (req.originVaultLoad) {
-        await ensureSegments(state, ["file-store"]);
-        const raw = await ((resolveFn(state, "fs.readText") as Fn)("/vault.env.enc") as Promise<string>).catch(() => null) as string | null;
-        if (!raw) result = "(no /vault.env.enc — =vaultsave(\"secret\") first)";
-        else {
-          const pass = passOf(req.pass, "passphrase to decrypt the vault with");
-          if (!pass) result = "#DENIED(vaultload: a passphrase is required — =vaultload(\"secret\"))";
-          else {
-            try {
-              const json = raw.startsWith(`${ENC_METHOD}:`) ? await decryptPayload(raw.slice(ENC_METHOD.length + 1), pass) : raw;
-              await loadArchive(state, json);
-              await (resolveFn(state, "runCycle") as Fn)(state);
-              result = "loaded the vault from /vault.env.enc — =unlockVault() to use the keys";
-            } catch { result = "#DENIED(vaultload: wrong passphrase or corrupt /vault.env.enc)"; }
-          }
-        }
       } else if (req.originLink) {
         const t = String(req.target ?? "");
         const src = t ? cellSource(state, t) : buildSeed(state);
@@ -1802,8 +1652,6 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         const base = loc?.href ? String(loc.href).split("#")[0] : "./";
         const src = `${base}#raw=${encodeURIComponent(String(req.seed ?? ""))}`;
         result = { type: "el", tag: "iframe", attrs: { sandbox: "allow-scripts", src, class: "pl-jail", style: "width:100%;height:100%;min-height:240px;border:0;border-radius:.4rem;background:Canvas" }, children: [] };
-      } else if (req.originChat) {
-        result = String(await (resolveFn(state, "llm.chat") as Fn)(req.prompt, req.key, req.model, req.url));
       } else if (req.originFs) {
         await ensureSegments(state, ["file-store"]);
         result = String(await (resolveFn(state, "fs.command") as Fn)(String(req.originFs), String(req.path ?? ""), req.to, req.text));
@@ -1937,8 +1785,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.seedStarter", seedStarter],
   ["origin.reseed",   reseed],
   ["def",            defFn],
-  ["chat",           chatFn],
-  ["grok",           grokFn],
   ["link",           linkFn],
   ["unlink",         unlinkFn],
   ["encrypt",        encryptFn],
@@ -1952,11 +1798,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["kernel",         kernelFn],
   ["jail",           jailFn],
   ["jailask",        jailAskFn],
-  ["jail.serve",     jailServeFn],
-  ["consentdom", consentdomFn],
-  ["consentpanel", consentpanelFn],
-  ["origin.consentToggle", consentToggle],
-  ["origin.consentSync", consentSync],
   ["origin.savepage", download],
   ["origin.tone",    tone],
   ["origin.music",   music],
@@ -1990,6 +1831,4 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["dragdrop",       dragdropFn],
   ["save",           saveFn],
   ["open",           openFn],
-  ["vaultsave",      vaultSaveFn],
-  ["vaultload",      vaultLoadFn],
 ]));

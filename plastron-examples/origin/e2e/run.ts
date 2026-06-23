@@ -246,7 +246,7 @@ await withPage("=segments() lists origin", async (page) => ok(String(await put(p
 
 await withPage("=vocab(\"origin\") lists the vocabulary", async (page) => {
   const v = String(await put(page, '=vocab("origin")'));
-  ok(/\bgrid\b/.test(v) && /\bdom\b/.test(v) && /\bdef\b/.test(v) && /\bgrok\b/.test(v), "grid/dom/def/grok listed");
+  ok(/\bgrid\b/.test(v) && /\bdom\b/.test(v) && /\bdef\b/.test(v), "grid/dom/def listed");
 });
 
 await withPage("=checkpoint(\"safe\") does not error", async (page) => {
@@ -255,23 +255,6 @@ await withPage("=checkpoint(\"safe\") does not error", async (page) => {
 });
 
 await withPage("=segments() lists loaded libraries", async (page) => ok(String(await put(page, "=segments()")).includes("origin"), "segments lists origin"));
-
-await withPage("=grok no-key path is friendly (no network)", async (page) => {
-  const v = String(await put(page, '=grok("hi", "")'));
-  ok(/no api key/.test(v), "helpful no-key message");
-  // request shape is correct (used when a key is present)
-  const req = await page.evaluate(() => (globalThis as any).plastron.resolveFn((globalThis as any).plastron.state, "grok")("say hi", "xai-KEY"));
-  eq((req as any).url, "https://api.x.ai/v1/chat/completions", "grok targets xAI");
-  eq((req as any).prompt, "say hi", "prompt carried");
-});
-
-await withPage("=chat no-key path is friendly; request shape correct", async (page) => {
-  const v = String(await put(page, '=chat("hi", "")'));
-  ok(/no api key|key/i.test(v) || v.length > 0, "no-key handled gracefully (no crash)");
-  const req = await page.evaluate(() => (globalThis as any).plastron.resolveFn((globalThis as any).plastron.state, "chat")("say hi", "KEY", "gpt-4o", "https://example.com/v1/chat"));
-  eq((req as any).url, "https://example.com/v1/chat", "chat targets the custom url");
-  eq((req as any).prompt, "say hi", "prompt carried");
-});
 
 await withPage("=attr sets a dom attribute", async (page) => {
   await put(page, '=dom("a", attr("href", "https://plastron.ca/"), "go")');

@@ -92,12 +92,10 @@ export {
   registerSegmentLoader, loadSegment, ensureSegments, isSegmentPending,
   assertOneDirection, specTouchesEdges,
   currentAccessor, withAccessor,
-  DANGEROUS, isDangerous, isConsented, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
   isDenied, DENIED,
   installDormant, dormantSegmentOf, dormantView, assertNotDormant,
   flush, wake, sleep, forget,
 } from "./segments/index.js";
-export type { DangerCategory, DangerSpec, ConsentGrant, DangerUse } from "./segments/index.js";
 export type { SegmentSink, SleepOptions, ForgetOptions } from "./segments/index.js";
 
 // ── reserved cel keys + range notation ── kernel-owned constants,

@@ -46,15 +46,12 @@ import * as genesis         from "./甲骨坑/library/genesis/index.js";
 import * as checkpoint      from "./甲骨坑/library/checkpoint/index.js";
 import * as plastronCanvas  from "./甲骨坑/library/plastron-canvas/index.js";
 import * as charts          from "./甲骨坑/library/charts/index.js";
-import * as vault           from "./甲骨坑/library/vault/index.js";
 import * as net             from "./甲骨坑/library/net/index.js";
 import * as cryptoLib       from "./甲骨坑/library/crypto/index.js";
 import * as seal            from "./甲骨坑/library/seal/index.js";
-import * as llm             from "./甲骨坑/library/llm/index.js";
 import * as sqlite          from "./甲骨坑/library/sqlite/index.js";
 import * as sqliteClient    from "./甲骨坑/library/sqlite-client/index.js";
 import * as sqliteDemo      from "./甲骨坑/library/sqlite-demo/index.js";
-import * as botsheet        from "./甲骨坑/library/botsheet/index.js";
 import * as docgraph        from "./甲骨坑/library/docgraph/index.js";
 import * as forcegraph      from "./甲骨坑/library/forcegraph/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
@@ -121,15 +118,12 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "checkpoint":       () => [...checkpoint.cels],
   "plastron-canvas":  () => [...plastronCanvas.cels],
   "charts":           () => [...charts.cels],
-  "vault":            () => [...vault.cels],
   "net":              () => [...net.cels],
   "crypto":           () => [...cryptoLib.cels],
   "seal":             () => [...seal.cels],
-  "llm":              () => [...llm.cels],
   "sqlite":           () => [...sqlite.cels],
   "sqlite-client":    () => [...sqliteClient.cels],
   "sqlite-demo":      () => [...sqliteDemo.cels],
-  "botsheet":         () => [...botsheet.cels],
   "docgraph":         () => [...docgraph.cels],
   "forcegraph":       () => [...forcegraph.cels],
 };
@@ -317,7 +311,6 @@ export {
   hydrate函, dehydrate函,
   wake, sleep, forget,
   registerSegmentLoader, loadSegment, ensureSegments, isSegmentPending,
-  DANGEROUS, isDangerous, isConsented, setConsent, dangerousUsage, BLACKLISTED, lockConsent, isConsentLocked, CONSENT_KEY,
   currentAccessor, withAccessor, isDenied, DENIED,
   validateManifests,
   celDependencies, dependentsOf, downstreamOf, upstreamOf,

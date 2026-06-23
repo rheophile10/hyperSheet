@@ -49,7 +49,7 @@ test("encodeLink frames a URL; default base is plastron.ca, base:'' is relative"
 });
 
 test("decodeLink accepts a full URL, a bare #f= fragment, or a raw payload", async () => {
-  const f = `=claude("hi")`;
+  const f = `=dom("h2", "hi")`;
   const payload = await encodePayload(f);
   assert.equal(await decodeLink(`https://plastron.ca/#f=${payload}`), f, "full URL");
   assert.equal(await decodeLink(`#f=${payload}`), f, "bare fragment");

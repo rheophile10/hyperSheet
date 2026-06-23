@@ -36,10 +36,10 @@ const arm: Fn = (async (state: State): Promise<string> => {
   return "armed";
 }) as Fn;
 
-// doom.boot — the browser boot: consent-gate the asset load, fetch doom.wasm +
-// the WAD, createDoomHarness, register the provider cel, hydrate the kind:"wasm"
-// engine cel (the wasm-host-instance hook captures the live instance), start the
-// RAF tick loop. Idempotent. Status streams to wasm.doom.out (engine→graph).
+// doom.boot — the browser boot: fetch doom.wasm + the WAD, createDoomHarness,
+// register the provider cel, hydrate the kind:"wasm" engine cel (the
+// wasm-host-instance hook captures the live instance), start the RAF tick loop.
+// Idempotent. Status streams to wasm.doom.out (engine→graph).
 export const boot = async (stateArg: State): Promise<void> => {
   // The armboot FORMULA `(doom.arm wasm.doom.state)` hands arm/boot the window
   // STATE-CEL VALUE (formula verbs get evaluated args, not the kernel State), so a
@@ -59,12 +59,6 @@ export const boot = async (stateArg: State): Promise<void> => {
   // early-return so an early fire doesn't leak the guard and block the real boot.
   _booting = true;
 
-  // CONSENT: no self-check here — the asset load is gated by the DANGEROUS tags
-  // on `doom.arm`/`doom.boot` (this fn) + the `doom` genesis verb. In a locked
-  // session the persisted `wasm.doom.armboot` formula `(doom.arm …)` is
-  // #BLACKLISTED before doom.arm fires, so boot never runs (and the loaders show
-  // up in the consent window via that formula's dep). Gating the LOADER, not just
-  // the `=doom()` genesis, also covers a shared sheet that embeds a doom window.
 
   const fetchBytes = async (name: string): Promise<Uint8Array> => {
     setOut(state, `fetching ${name}…`);

@@ -316,19 +316,10 @@ const pushMsg = async (state: State, ch: string, m: Msg): Promise<void> => {
   const log = Array.isArray(cur) ? [...cur as Msg[], m] : [m];
   await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, k, log)); await repaint(state);
 };
-// ── agentic loop (capability D) — the LLM may edit ITS chat's segment ─────────
-// The bot can return COMMANDS in a fenced ```plastron block; each runs under
-// withAccessor(<chat segment>), so Layer 1 CONFINES every write to that segment
-// (refused by the kernel, not by trusting the model). The cel KEY is also forced
-// into the chat's prefix — double-confined. Same executor a peer/game would feed.
-const AGENT_PROMPT = "You are in a plastron chat workspace. You MAY edit THIS chat's cels: end your reply with a fenced ```plastron block holding a JSON array of commands — {\"op\":\"cel\",\"key\":\"<name>\",\"value\":<v>} to set a value, {\"op\":\"cel\",\"key\":\"<name>\",\"formula\":\"(+ 1 2)\"} for a formula cel (s-expression: + - * /, cel refs), or {\"op\":\"msg\",\"text\":\"…\"}. Cels are scoped to this chat ONLY. Include the block ONLY when you actually want to change something.\n\n";
-const parseCommands = (reply: string): { clean: string; commands: unknown[] } => {
-  const m = reply.match(/```(?:plastron|cmds|json)?\s*(\[[\s\S]*?\])\s*```/);
-  if (!m) return { clean: reply, commands: [] };
-  let commands: unknown[] = [];
-  try { const j = JSON.parse(m[1]!); if (Array.isArray(j)) commands = j; } catch { /* malformed → ignore */ }
-  return { clean: reply.replace(m[0], "").trim(), commands };
-};
+// ── agentic loop (capability D) — a peer/game may edit a chat's segment ────────
+// COMMANDS run under withAccessor(<chat segment>), so Layer 1 CONFINES every write
+// to that segment (refused by the kernel, not by trusting the caller). The cel KEY
+// is also forced into the chat's prefix — double-confined.
 const chatSegOf = (state: State, ch: string): string => (state.cels.get(`chat.${ch}.log`)?.metadata as { segment?: string } | undefined)?.segment ?? `win.chat-${ch}`;
 const runCommands: Fn = (async (state: State, ch: unknown, commands: unknown): Promise<string[]> => {
   const channel = String(ch); const seg = chatSegOf(state, channel);
@@ -357,27 +348,8 @@ const chatSend: Fn = (async (state: State, channel: unknown): Promise<void> => {
   if (!text) return;
   await Promise.resolve((resolveFn(state, "setValueBatch") as Fn)(state, [[`chat.${ch}.input`, ""]]));
   await pushMsg(state, ch, { from: "me", text });
-  if (ch === "claude" || ch === "grok" || ch === "local") {  // LLM channels — the bot is a user (local = in-browser)
-    const client = (state.cels.get(`chat.${ch}.client`)?.v ?? state.cels.get(`clients.${ch}`)?.v) as { __client?: boolean } | undefined;  // explicit, else the clients sheet
-    const agentic = !!(state.cels.get(`chat.${ch}.agentic`)?.v);   // opt-in: lets the bot edit this chat's cels
-    const prompt = agentic ? AGENT_PROMPT + text : text;
-    let reply = "";
-    try {
-      if (client && client.__client) {                    // a captured CLIENT cel — the chat never touches the key
-        reply = String(await (resolveFn(state, "client.send") as Fn)(client, prompt));
-      } else {                                            // fallback: a raw key cel (pre-client path)
-        const key = state.cels.get("chat.key")?.v ?? state.cels.get(`chat.${ch}.key`)?.v ?? "";
-        reply = ch === "claude"
-          ? String(await (resolveFn(state, "claude") as Fn)(prompt, key, ""))
-          : String(await (resolveFn(state, "llm.chat") as Fn)("", prompt, key, ""));
-      }
-    } catch (e) { reply = "⚠ " + String((e as { message?: unknown })?.message ?? e); }
-    const { clean, commands } = agentic ? parseCommands(reply) : { clean: reply, commands: [] };
-    await pushMsg(state, ch, { from: ch, text: clean });
-    if (commands.length) { const applied = await (runCommands as unknown as (s: State, c: unknown, cmds: unknown) => Promise<string[]>)(state, ch, commands); if (applied.length) await pushMsg(state, ch, { from: "system", text: "✎ " + applied.join("; ") }); }
-  } else {                                                // a peer channel — broadcast over shared.*
-    try { await (resolveFn(state, "peersend") as Fn)(state, `shared.chat.${ch}`, { from: "me", text }); } catch { /* offline */ }
-  }
+  // a peer channel — broadcast over shared.*
+  try { await (resolveFn(state, "peersend") as Fn)(state, `shared.chat.${ch}`, { from: "me", text }); } catch { /* offline */ }
 }) as Fn;
 const chatKey: Fn = (async (state: State, channel: unknown, event?: { key?: string; preventDefault?: () => void }): Promise<void> => {
   if (event?.key === "Enter") { try { event.preventDefault?.(); } catch { /* */ } await (chatSend as unknown as (s: State, c: unknown) => Promise<void>)(state, channel); }
@@ -432,9 +404,9 @@ const explorerwinFn: Fn = ((): unknown => {
 // readme() — the plastron readme as a vnode, for a readme WINDOW.
 const readmeFn: Fn = ((): V => el("div", { class: "readme", style: "font:13px/1.6 ui-monospace,monospace;padding:.2rem .35rem" }, [
   el("h2", { style: "margin:.15rem 0;font-size:1.1rem" }, [T("元 · plastron")]),
-  el("p", { style: "margin:.3rem 0;opacity:.85" }, [T("A reactive cel substrate. Every worksheet is a window; formulas build apps; chat treats claude / grok / peers as users.")]),
+  el("p", { style: "margin:.3rem 0;opacity:.85" }, [T("A reactive cel substrate. Every worksheet is a window; formulas build apps; chat treats peers as users.")]),
   el("p", { style: "margin:.3rem 0 .15rem" }, [T("Type a formula in any cell:")]),
-  el("pre", { style: "background:#8881;padding:.45rem;border-radius:.35rem;white-space:pre-wrap;margin:.15rem 0" }, [T('=cels(3, 3)                              a sheet, in its own window\n=chatapp("claude", "Claude")             a chat window\n=winapp("secrets", "Secrets", "(secrets (locked secretsNote) (apiKeys))")   the secrets panel\n=desktop()                               the wallpaper')]),
+  el("pre", { style: "background:#8881;padding:.45rem;border-radius:.35rem;white-space:pre-wrap;margin:.15rem 0" }, [T('=cels(3, 3)                              a sheet, in its own window\n=chatapp("room", "Room")                 a peer chat window\n=desktop()                               the wallpaper')]),
   el("p", { style: "margin:.35rem 0;opacity:.85" }, [T("Drag a titlebar to move; drag the corner to resize. ◱ mid · ⛶ max · – min · ✕ close.")]),
 ]) ) as Fn;
 

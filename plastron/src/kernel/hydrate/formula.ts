@@ -4,7 +4,6 @@ import type {
 } from "../../types/index.js";
 import { resolveFn } from "../resolve-fn.js";
 import { appendError, makeCelError } from "../cel-error.js";
-import { isConsented } from "../segments/consent.js";
 /** Reserved cel key: locked ValueCel whose v is the compile cache —
  *  Map<`${kindKey}:${source}${ctx}`, Promise<CompiledLambda>>. */
 export const COMPILE_CACHE_KEY = "compile.cache" as const;
@@ -50,20 +49,6 @@ export const compileCelBody = async (
   cel: FireableCel, state: State, opts?: CompileCelBodyOpts,
 ): Promise<void> => {
   if (cel.f === undefined) return;
-
-  // Consent gate: compiling a USER lambda (EditableLambdaCel — js/wat/py source)
-  // RUNS code, the highest-trust capability. In a LOCKED session it needs consent
-  // for that compiler kind (js/wat/py are in the standing blacklist).
-  // FormulaCels (the declarative language) and the safe `formula` kind are always
-  // allowed. Refuse as a value, don't abort hydrate.
-  const kind = String((cel.metadata as { kind?: unknown }).kind ?? "");
-  if (cel.celType === "EditableLambdaCel" && !isConsented(state, kind, cel.metadata.segment)) {
-    const ce = makeCelError([cel.metadata.key], "CapabilityDeniedError",
-      new Error(`Cel "${cel.metadata.key}" runs ${kind} code — not consented (open =consentpanel() to allow it)`));
-    appendError(state, ce);
-    cel.v = ce;
-    return;
-  }
 
   // EditableLambdaCel._compiler is a bound Recompile fn — an editor
   // surface installs it to skip the cel-registry lookup on source

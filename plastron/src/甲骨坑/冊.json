@@ -196,15 +196,6 @@
     "role": "library"
   },
   {
-    "name": "vault",
-    "version": "1.0.0",
-    "description": "api keys as SEALED cels — runtime-gated by the consent model (apiKey is DANGEROUS), encrypted at rest by the seal Layer-2 hooks (seal.lock on unlock); the secrets panel + apiKey/apiKeys/setKey verbs + vault.* handlers. No bespoke crypto, no wallet.json. Identity keypair via crypto.",
-    "dependencies": [
-      "genesis",
-      "dom"
-    ]
-  },
-  {
     "name": "docgraph",
     "version": "0.0.1",
     "description": "The documentation graph rendered as a wiki window (unified-metadata-model). wiki.open assembles an article for any cel/segment/layer — summary + doc metadata, formula source, links to called functions and input cels (inputMap = the resolved AST edges), backlinks, a force-directed neighborhood graph, an editable note saved to metadata.note. The W titlebar button on every window opens its layer's article; =wiki(name) opens from a formula. Navigation is handler re-entry; the article is a snapshot built at open time.",
@@ -233,8 +224,6 @@
       "plastron-canvas",
       "charts",
       "checkpoint",
-      "vault",
-      "llm",
       "sqlite",
       "sheet-host",
       "docgraph",
@@ -243,7 +232,6 @@
       "formula-compiler",
       "sqlite-client",
       "sqlite-demo",
-      "botsheet",
       "file-explorer",
       "windows",
       "defn",
@@ -272,14 +260,6 @@
     "dependencies": []
   },
   {
-    "name": "llm",
-    "version": "0.0.1",
-    "description": "talk to an LLM from a formula — claude() (reactive, vault-handle keys), over the net gate",
-    "dependencies": [
-      "net"
-    ]
-  },
-  {
     "name": "sqlite",
     "version": "0.0.1",
     "description": "in-browser SQLite via @sqlite.org/sqlite-wasm over the opfs-sahpool VFS, in a Worker (persistent, incremental writes, no COOP/COEP — Pages-safe). sqlite.command (open/sql/seed/schema): seed bulk-loads a JSON array into a table; schema introspects tables/columns/PK/FK; every write bumps a sqlite.<db>.rev cel so SELECT formulas re-fire. Browser-only (the sahpool VFS needs a Worker); the engine ships as sidecar files next to index.html.",
@@ -302,15 +282,6 @@
     "dependencies": [
       "sqlite",
       "sqlite-client"
-    ]
-  },
-  {
-    "name": "botsheet",
-    "version": "0.0.1",
-    "description": "=botsheet([provider]) — an 'ask a bot' (grok/chatgpt/claude) whose conversation surface is a cel GRID inside a jail() (sandboxed iframe). The parent mediates the LLM call with its own vault key (never crossed into the jail, via the jailask/jail.serve postMessage bridge); the bot replies by writing formulas/values into cells that render live. The consent blacklist stays parent-side.",
-    "dependencies": [
-      "dom",
-      "windows"
     ]
   },
   {
