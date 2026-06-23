@@ -57,20 +57,15 @@ if (shared) {
   // — the cutover from the legacy 元-genesis desktop. The old 元.f seed stays for
   // the 🧮 Origin launcher (which reopens the base spreadsheet).
   await (resolve(state, "boot.run"))(state, { open: "desktop" });
-  // Safety net: if the desktop archive didn't hydrate (apps not baked — e.g. a
-  // raw `bun index.html` without `bun bundle.ts`), fall back to the legacy
-  // 元-genesis desktop so the page is never blank.
-  if (!state.cels.get("desktop.iconbar.frame")) {
-    await (resolve(state, "origin.run"))(state, "元");
-  }
-  // Hide the base 元 spreadsheet grid (and the legacy "desktop" worksheet) — the
-  // desktop chrome is rendered by the .origin mounts, which paint independently
-  // of the grid window. Without this the grid shows the chrome cels' formula
-  // sources as rows on top of the wallpaper.
-  {
+  // Once the desktop shell is up, hide the base 元 grid — the desktop chrome is
+  // rendered by .origin mounts that paint independently of the grid window, and
+  // the 🧮 Origin launcher restores 元 on demand. If the desktop didn't hydrate
+  // (apps not baked — a raw `bun index.html` without `bun bundle.ts`), leave 元
+  // visible so the page isn't blank.
+  if (state.cels.get("desktop.iconbar.frame")) {
     const geom = (state.cels.get("win.geom")?.v ?? {}) as Record<string, { closed?: number }>;
     await (resolve(state, "setValue"))(state, "win.geom",
-      { ...geom, ["元"]: { ...(geom["元"] ?? {}), closed: 1 }, desktop: { ...(geom.desktop ?? {}), closed: 1 } });
+      { ...geom, ["元"]: { ...(geom["元"] ?? {}), closed: 1 } });
     await (resolve(state, "runCycle"))(state);
   }
   // first run: materialize the starter kit (readme/keyboard/turtles) into OPFS as

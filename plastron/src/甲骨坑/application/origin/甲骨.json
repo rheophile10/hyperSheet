@@ -8,10 +8,10 @@
         "key": "元",
         "segment": "origin",
         "name": "元",
-        "description": "cell A1 — the origin cell. its formula IS the desktop genesis: a wallpaper mount (.origin) plus the navpanel app launcher; editing it rebuilds the desktop, clearing it restores this seed. a cell whose output renders elsewhere shows its SOURCE here. type a formula to grow an app; the navpanel icons open the readme, keyboard, a blank sheet, files, turtles and DOOM.",
+        "description": "cell A1 — the origin cell. the desktop itself is now the `desktop` origin-application (wallpaper, icons, taskbar, state graph); 元 is the base spreadsheet cell the 🧮 Origin launcher restores. a cell whose output renders elsewhere shows its SOURCE here. type a formula in any cell to grow an app. (kept the default `f` parser — 元 is boot substrate, so it must not depend on the infix compiler which ships in the sheet segment.)",
         "parser": "f"
       },
-      "f": "(segment \"rowflow\"\n\t(cels 3 1 \"desktop\"\n\t\t(at \"A1\" '(mount \".origin\" (img desktop.A2 windows.wallpaper (attr \"class\" \"desktop-bg\") (style \"position\" \"fixed\" \"inset\" \"0\" \"width\" \"100vw\" \"height\" \"100vh\" \"object-fit\" \"cover\" \"z-index\" \"-1\")))')\n\t\t(at \"A2\" \"\")\n\t\t(at \"A3\" '(mount \".origin\" (dom \"button.pl-reseed\" (style \"position\" \"fixed\" \"bottom\" \".6rem\" \"right\" \".8rem\" \"z-index\" \"60\" \"padding\" \".3rem .6rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".4rem\" \"background\" \"Canvas\" \"color\" \"CanvasText\" \"cursor\" \"pointer\" \"font\" \".72rem ui-monospace,monospace\" \"opacity\" \".55\") (on \"click\" \"origin.reseed\") \"↻ reseed\"))'))\n\t(navpanel))"
+      "f": "(dom \"div\" (style \"padding\" \"1.2rem\" \"font\" \".92rem ui-monospace,monospace\" \"max-width\" \"42rem\" \"line-height\" \"1.5\") (dom \"h2\" \"🧮 origin\") \"a reactive spreadsheet that is also a desktop. type a formula in any cell to grow an app. the desktop icons launch apps, right-click the background for display settings, and the round 🕸 button opens the live state graph.\")"
     },
     {
       "key": "元.mount",
@@ -366,43 +366,6 @@
       }
     },
     {
-      "key": "navpanel",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "navpanel",
-        "segment": "origin",
-        "name": "navpanel",
-        "kind": "native",
-        "genesis": true,
-        "description": "() - genesis: a PERSISTENT app launcher pinned to the desktop corner (the navpanel). Unlike =nav (a one-off pasted menu), this survives 元 re-renders and re-fires on viewport.mobile (☰ sidebar on phones). Ships launchers for 🛂 Consent, 🖥 Local LLM, 📁 Files, 📖 Readme, 🎹 Keyboard, 📊 Turtles, 🐢 DOOM, 🔑 Vault. =navpanel()"
-      }
-    },
-    {
-      "key": "navpanelbar",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "navpanelbar",
-        "segment": "origin",
-        "name": "navpanelbar",
-        "kind": "native",
-        "description": "([mobile]) - the navpanel's content: a mounted nav() of the app launchers. The win.navbar.frame cel calls (navpanelbar viewport.mobile) so it re-renders responsively. Usually you call =navpanel() (the genesis), not this directly."
-      }
-    },
-    {
-      "key": "origin.opennav",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.opennav",
-        "segment": "origin",
-        "name": "origin.opennav",
-        "kind": "native",
-        "description": "(state) - host helper: materialize the navpanel on boot + hide the base 元/desktop windows so the desktop starts empty (idempotent). Wired into the desktop boot."
-      }
-    },
-    {
       "key": "origin.seedStarter",
       "celType": "LockedLambdaCel",
       "locked": true,
@@ -412,19 +375,6 @@
         "name": "origin.seedStarter",
         "kind": "native",
         "description": "(state) - first run: read the inert #plastron-starter manifest the bundle baked into the page (a {opfsPath: source} map of the repo's starter/ files: readme, keyboard) and write each MISSING file into OPFS, so they ship as real, discoverable files in the file explorer instead of baked seed cells. Idempotent; no-op without a filesystem; host-called once in the desktop boot."
-      }
-    },
-    {
-      "key": "origin.reseed",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.reseed",
-        "segment": "origin",
-        "name": "origin.reseed",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(state) - FORCE-overwrite the OPFS starter files (/readme.f, /keyboard.f, /turtles.f) from the page's embedded manifest (even if they exist) and clear the win.geom of the worksheets they declare, so a changed geom() re-applies. Backs the desktop ↻ reseed button. Reopen the apps to see the refresh. DANGEROUS (fs)."
       }
     },
     {

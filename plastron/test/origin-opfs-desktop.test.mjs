@@ -81,17 +81,15 @@ const put = async (state, m, src, key) => {
 
 // ── 1. wallpaper loads FROM an OPFS file ─────────────────────────────────────
 
-test("desktop bg renders from the wallpaper data-URI (no OPFS seeding)", async () => {
+test("desktop bg renders the shipped wallpaper data-URI as the fallback (no OPFS seeding)", async () => {
   const { state } = await boot();
-  // the desktop bg is a formula: an img over the wallpaper-path cell, then the
-  // shipped windows.wallpaper data-URI constant as the fallback.
-  const bg = state.cels.get("desktop.A1");
-  assert.match(String(bg?.f ?? ""), /\(img desktop\.A2 windows\.wallpaper/, "bg img reads the wallpaper-path cell, then the data-URI fallback");
-  assert.equal(state.cels.get("desktop.A2")?.v, "", "wallpaper-path cell ships empty → falls through to the data-URI");
-  // empty path → the img falls through to the data-URI, which paints straight
-  // through (no "/path" → no OPFS hydration needed). seedWallpaper is gone.
-  const img = resolveFn(state, "img")(state.cels.get("desktop.A2").v, state.cels.get("windows.wallpaper").v);
-  assert.ok(String(img.attrs?.src ?? "").startsWith("data:"), "wallpaper img src is the data-URI, painted without OPFS");
+  // The wallpaper is now rendered by the desktop origin-application's desktop.bg
+  // verb (a surface div over an img): a "/path" src loads from OPFS, an empty one
+  // falls through to the shipped windows.wallpaper data-URI, painted straight.
+  const surface = resolveFn(state, "desktop.bg")("", state.cels.get("windows.wallpaper").v);
+  const img = surface.children[0];
+  assert.equal(img.tag, "img");
+  assert.ok(String(img.attrs?.src ?? "").startsWith("data:"), "empty wallpaper → the shipped data-URI, painted without OPFS");
 });
 
 // ── 2. upload + download cels render their controls ──────────────────────────

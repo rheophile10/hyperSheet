@@ -1142,46 +1142,10 @@ const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> =
   return state;
 }) as Fn;
 
-// ── navpanel — a PERSISTENT app launcher pinned to the desktop (the "navpanel").
-// Unlike =nav (a one-off vnode you paste) this is a genesis whose win.navbar.frame
-// cel survives 元 re-renders (cellKeys whitelists win.*.frame) and re-fires on
-// viewport.mobile (a ☰ sidebar on phones, corner launchers on desktop). The bar is
-// built in TS by navpanelbar so each item's action can carry nested quotes
-// (=chatapp("local","🖥 Local")) without formula-string escaping — the action is a
-// plain string handed to origin.navOpen, parsed only when the leaf is clicked.
-const NAV_ITEMS: [string, string][] = [
-  ["🧮 Origin", "元"],                                                                       // restore the base 元 spreadsheet
-  ["▦ Sheet", '=cels("sheet", 20, 12, geom(0.18, 0.12, 0.6, 0.66))'],                       // a fresh blank 20×12 worksheet
-  ["📁 Files", "=explorerwin()"],
-  ["📖 Readme", "open:/readme.f"],
-  ["🎹 Keyboard", "open:/keyboard.f"],
-  ["📊 Turtles", "open:/turtles.f"],
-  ["🐢 DOOM", "=doom()"],
-];
-const navpanelbarFn: Fn = ((mobile?: unknown): unknown =>
-  (mount as Fn)(".origin", (navFn as Fn)(!!mobile, ...NAV_ITEMS.map(([l, a]) => (itemFn as Fn)(l, a))))) as Fn;
-const navpanelFn: Fn = ((): unknown => ({
-  genesis: true, layer: "win.navbar",
-  cels: { "win.navbar.frame": { celType: "FormulaCel", f: "(navpanelbar viewport.mobile)", metadata: { name: "frame", parser: "f", segment: "win.navbar" } } },
-})) as Fn;
-// origin.opennav — host helper: materialize the navpanel on boot (set the
-// draft, commit it to a holding cell, drain genesis + paint).
-const opennav: Fn = async (state: State): Promise<State> => {
-  const setValue = resolveFn(state, "setValue") as Fn, commit = resolveFn(state, "origin.run") as Fn, drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
-  if (state.cels.get("win.navbar.frame")) return state;   // idempotent — already up
-  await setValue(state, "元.draft", "=navpanel()");
-  await commit(state, "navbar.run");
-  for (let i = 0; i < 6; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
-  // clean desktop: nothing opens by default. Hide the base 元 sheet + the wallpaper
-  // worksheet windows (the wallpaper still paints — it's a .origin mount, not the
-  // window). The 🧮 Origin launcher restores 元; the wallpaper has no launcher.
-  const geom = (state.cels.get("win.geom")?.v ?? {}) as Record<string, { closed?: number }>;
-  const hidden = { ...geom, ["元"]: { ...(geom["元"] ?? {}), closed: 1 }, desktop: { ...(geom.desktop ?? {}), closed: 1 } };
-  await setValue(state, "win.geom", hidden);
-  await runCycle(state);
-  await drain(state, "dom.paint");
-  return state;
-};
+// (Legacy navpanel/navpanelbar/opennav + NAV_ITEMS removed — the desktop launcher
+//  is now the desktop origin-application's desktop.icons / desktop.taskbar, and the
+//  app list lives in apps/desktop.json. nav/item/navIcon stay — desktop.icons uses
+//  navFn for its mobile branch; origin.navOpen stays — icons dispatch through it.)
 
 // openFile(state, opfsPath) — read a stored formula-source FILE from OPFS and run
 // it into windows (origin.run sniffs the parser, so an s-expr readme and an infix
@@ -1234,33 +1198,9 @@ const seedStarter: Fn = async (state: State): Promise<State> => {
   return state;
 };
 
-// origin.reseed — the dev/refresh twin of seedStarter: FORCE-overwrite the OPFS
-// starter files (/readme.f, /keyboard.f, /turtles.f) from the embedded manifest,
-// even if they exist, AND clear the win.geom of the worksheets they declare so a
-// changed geom() re-applies on the next open. Backs the desktop's ↻ reseed button
-// (in 元's formula). Reopen the apps to see the refreshed files.
-const reseed: Fn = async (state: State): Promise<State> => {
-  const backend = state.cels.get("file-store.backend")?.v;
-  if (backend === "none" || backend === undefined) return state;
-  const g = globalThis as { document?: { getElementById?: (id: string) => { textContent?: string | null } | null } };
-  const raw = g.document?.getElementById?.("plastron-starter")?.textContent;
-  if (!raw) return state;
-  let manifest: Record<string, unknown>;
-  try { manifest = JSON.parse(raw) as Record<string, unknown>; } catch { return state; }
-  await ensureSegments(state, ["file-store"]);
-  const writeText = resolveFn(state, "fs.writeText") as Fn;
-  const segs = new Set<string>();
-  for (const [path, content] of Object.entries(manifest)) {
-    await (writeText(path, String(content)) as Promise<unknown>).catch(() => {});          // OVERWRITE
-    for (const m of String(content).matchAll(/\bcels\b[^"]*?"([^"]+)"/g)) segs.add(m[1]);  // worksheet names → clear their geom
-  }
-  const geom = { ...((state.cels.get("win.geom")?.v as Record<string, unknown>) ?? {}) };
-  for (const s of segs) delete geom[s];
-  await (resolveFn(state, "setValue") as Fn)(state, "win.geom", geom);
-  await (resolveFn(state, "runCycle") as Fn)(state);
-  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
-  return state;
-};
+// (Legacy origin.reseed removed — it backed the old 元.f "↻ reseed" button, which
+//  is gone with the old desktop genesis. Re-importing starter files is a dev concern;
+//  the apps now live in the segment-store and reinstall on boot.)
 
 // ── INSTALL + boot (origin-application machinery) ───────────────────────────
 // The desktop and every app is an origin-application SEGMENT. Three tiers keep
@@ -2219,12 +2159,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.clockSync", clockSync],
   ["nav",            navFn],
   ["item",           itemFn],
-  ["navpanel",       navpanelFn],
-  ["navpanelbar",    navpanelbarFn],
   ["origin.navOpen", navOpenFn],
-  ["origin.opennav", opennav],
   ["origin.seedStarter", seedStarter],
-  ["origin.reseed",   reseed],
   ["origin.install",  appInstall],
   ["installBakedApps", installBakedApps],
   ["origin.launch",   launch],

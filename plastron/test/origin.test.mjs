@@ -63,7 +63,7 @@ const put = async (state, root, m, src, key = "元") => {
 // (the README-rich-content test was removed — the readme is now a STATIC
 //  text file, starter/readme.f, with no .readme dom card / fx-code / try-it.)
 
-test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restores the desktop", async () => {
+test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restores the welcome cell", async () => {
   const { state, root, m } = await boot();
   await put(state, root, m, "=1+1");
   assert.equal(state.cels.get("元").v, 2, "=1+1 -> 2 in A1");
@@ -71,7 +71,9 @@ test("A1 executes a formula: =1+1 shows 2; a literal 7 shows 7; clearing restore
   await put(state, root, m, "7");
   assert.equal(cellVal(root, "元"), "7", "literal renders in A1");
   await put(state, root, m, "");
-  assert.ok(state.cels.get("desktop.A1"), "empty 元 -> the minimal wallpaper desktop is restored");
+  // empty 元 -> the seed welcome cell is restored (the desktop is now its own
+  // origin-application, not 元's genesis).
+  assert.equal(state.cels.get("元").v?.tag, "div", "empty 元 -> the welcome cell restores");
 });
 
 test("A1 can render a dom object", async () => {
@@ -92,10 +94,10 @@ test("=cels(3,3) makes a 3x3 worksheet of cels, each editable like 元", async (
   assert.equal(state.cels.get("g3x3.B1").v, 20, "g3x3.B1 computes from g3x3!A1*2 (bare-A1 scoping is a follow-up)");
   await put(state, root, m, "");
   assert.equal(state.cels.get("g3x3.A1"), undefined, "grid swept when its formula is gone");
-  // empty 元 restores the minimal desktop seed (wallpaper) — A1 back, g3x3 gone.
+  // empty 元 restores the seed welcome cell — A1 back, g3x3 gone.
   const back = cells(root).map((c) => c.attrs["data-key"]);
   assert.ok(back.includes("元"), "A1 back");
-  assert.ok(state.cels.get("desktop.A1"), "minimal wallpaper desktop restored");
+  assert.equal(state.cels.get("元").v?.tag, "div", "welcome cell restored");
   assert.ok(!back.some((k) => k.startsWith("g3x3.")), "no g3x3 cells remain");
 });
 
@@ -240,19 +242,14 @@ test("grid(name,r,c,…) makes a workbook of named grids in one formula", async 
 
 test("editing 元's formula RE-DRAINS genesis: a genesis-producing formula re-creates its windows/cels", async () => {
   const { state, root, m } = await boot();
-  await resolveFn(state, "origin.run")(state, "元"); m.run(); // minimal boot desktop
-  // the minimal boot materializes the wallpaper `desktop` sheet (owned by 元).
-  assert.ok(state.cels.get("desktop.A1"), "boot materialized the wallpaper desktop sheet");
-  // edit 元 to a DIFFERENT genesis formula → its windows must appear and the
-  // old desktop's sheet (owned by 元) sweeps
+  // edit 元 to a genesis formula → its windows must appear
   await put(state, root, m, '=winapp("hello", "Hello", "(dom \\"p\\" \\"hi\\")")');
-  assert.ok(state.cels.get("win.hello.state"), "the edited genesis re-created its window state cel");
+  assert.ok(state.cels.get("win.hello.state"), "the genesis re-created its window state cel");
   assert.ok(state.cels.get("win.hello.frame"), "…and its frame");
-  assert.ok(!state.cels.get("desktop.A1"), "the old desktop sheet swept (元 is authoritative)");
-  // clear 元 → the minimal desktop seed restores its sheet again
+  // clear 元 → the genesis windows sweep, the seed welcome cell restores
   await put(state, root, m, "");
-  assert.ok(state.cels.get("desktop.A1"), "clearing 元 re-drains the desktop genesis (wallpaper back)");
-  assert.ok(!state.cels.get("win.hello.state"), "the interim window is gone with its formula");
+  assert.ok(!state.cels.get("win.hello.state"), "the window is gone with its formula");
+  assert.equal(state.cels.get("元").v?.tag, "div", "clearing 元 restores the welcome cell");
 });
 
 test("def(name, kind, source) defines a callable JS function", async () => {
