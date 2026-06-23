@@ -114,3 +114,20 @@ test("origin.editapp edits another segment's cels — the source commits back to
   assert.equal(s.cels.get("myapp.greet").f, "=10*5", "the edited source committed to the cel");
   assert.equal(s.cels.get("myapp.greet").v, 50, "and recomputed");
 });
+
+test("closing a doc window flushes it — saves the edits then evicts the doc", async () => {
+  const s = await boot();
+  await resolveFn(s, "origin.install")(s, sheetappArchive);
+  await resolveFn(s, "origin.install")(s, turtlesDoc);
+  await resolveFn(s, "origin.opendoc")(s, "turtles");
+  assert.equal(s.cels.has("win.turtles.flush"), true, "the window has a doc-flush lambda");
+
+  await resolveFn(s, "setValue")(s, "turtles.B1", 77);
+  await resolveFn(s, "runCycle")(s);
+  await resolveFn(s, "window.close")(s, "win.turtles.state");
+
+  assert.equal(s.cels.has("turtles.B1"), false, "the doc cels were evicted on close");
+  const rec = await resolveFn(s, "store.get")(s, "turtles");
+  const b1 = rec.segment.cels.find((c) => c.key === "turtles.B1");
+  assert.equal(b1?.v ?? b1?.metadata?.v, 77, "the edit was saved before eviction");
+});

@@ -1631,35 +1631,58 @@ const wsCol = (addr: string): number => { const m = addr.match(/^([A-Z]+)/); if 
 const wsRow = (addr: string): number => Number((addr.match(/(\d+)$/) ?? [])[1] ?? 1) - 1;
 const addrOf = (key: string): string => key.slice(key.lastIndexOf(".") + 1);
 
-// sheetcells(keys, vals) — zip a key list + value list into sheetgrid entries
-// {key,col,row,value}, deriving col/row from each key's A1 suffix. Pure; the host
-// formula passes the keys (string list) + the cel VALUES (a list that references
-// each cel, so the grid re-renders reactively when any cel changes).
-const sheetcellsFn: Fn = ((keys?: unknown, vals?: unknown): unknown => {
-  const K = Array.isArray(keys) ? keys.map(String) : [];
-  const V = Array.isArray(vals) ? vals : [];
-  return K.map((key, i) => { const a = addrOf(key); return { key, col: wsCol(a), row: wsRow(a), value: (V as unknown[])[i] }; });
+// sheetcells(key, val, key, val, …) — build sheetgrid entries {key,col,row,value}
+// from alternating key/value VARARGS (col/row from each key's A1 suffix). Variadic
+// because infix has no array literal: the content formula lists each cel as
+// 'seg.A1', seg.A1 so the grid is reactive. Also accepts the (keys[], vals[]) form.
+const sheetcellsFn: Fn = ((...args: unknown[]): unknown => {
+  let pairs = args;
+  if (args.length === 2 && Array.isArray(args[0]) && Array.isArray(args[1])) {
+    const K = (args[0] as unknown[]).map(String), V = args[1] as unknown[];
+    pairs = K.flatMap((k, i) => [k, V[i]]);
+  }
+  const out: Array<{ key: string; col: number; row: number; value: unknown }> = [];
+  for (let i = 0; i + 1 < pairs.length; i += 2) { const key = String(pairs[i]); const a = addrOf(key); out.push({ key, col: wsCol(a), row: wsRow(a), value: pairs[i + 1] }); }
+  return out;
 }) as Fn;
 
-// sheetdoc(state, seg, title?) — open a worksheet window over the cels of document
-// segment `seg`. Builds a content formula that references each grid cel (reactive)
-// and renders via sheetgrid, then wopen's a window around it. Idempotent (re-open
-// un-hides + raises). The window (program) is win.<seg>; the data stays in <seg>.
-const sheetdocFn: Fn = (async (state: State, segArg?: unknown, titleArg?: unknown): Promise<State> => {
+// the user-space segments that make up a document: the primary + its loaded
+// user-space deps (e.g. turtle_charts pulls in turtle_data), so a multi-segment
+// doc renders all its sheets stacked in one window. Deps first (the data), then
+// the primary (e.g. the charts that read it).
+const docRenderSegs = (state: State, primary: string): string[] => {
+  const m = getSegmentManifest(state, primary) as { dependencies?: string[] } | undefined;
+  const deps = (m?.dependencies ?? []).filter((d) => {
+    const dm = getSegmentManifest(state, d) as { role?: string } | undefined;
+    return dm?.role === "user-space" && [...state.cels.keys()].some((k) => k.startsWith(d + "."));
+  });
+  return [...deps, primary];
+};
+const gridKeysOf = (state: State, seg: string): string[] =>
+  [...state.cels.keys()].filter((k) => k.startsWith(seg + ".") && /^[A-Z]+\d+$/.test(addrOf(k)))
+    .sort((a, b) => wsRow(addrOf(a)) - wsRow(addrOf(b)) || wsCol(addrOf(a)) - wsCol(addrOf(b)));
+const singleGrid = (state: State, seg: string): string => {
+  const keys = gridKeysOf(state, seg);
+  // variadic 'seg.A1', seg.A1, … — infix has no array literal, and each ref makes
+  // the grid reactive to that cel.
+  return `sheetgrid('${seg}', sheetcells(${keys.map((k) => `'${k}', ${k}`).join(", ")}))`;
+};
+
+// sheetdoc(state, seg, title?, offset?) — open a worksheet window over the cels of
+// document segment `seg`. The content formula references each grid cel (reactive).
+// `offset` cascades the window position (a multi-sheet doc opens one per segment).
+// Idempotent (re-open un-hides + raises). Window (program) is win.<seg>.
+const sheetdocFn: Fn = (async (state: State, segArg?: unknown, titleArg?: unknown, offsetArg?: unknown): Promise<State> => {
   const seg = String(segArg ?? "");
   if (!seg) return state;
   await ensureSegments(state, ["sheets", "window"]);
   const sref = `win.${seg}.state`;
   if (!state.cels.get(sref)) {
-    const keys = [...state.cels.keys()]
-      .filter((k) => k.startsWith(seg + ".") && /^[A-Z]+\d+$/.test(addrOf(k)))
-      .sort((a, b) => wsRow(addrOf(a)) - wsRow(addrOf(b)) || wsCol(addrOf(a)) - wsCol(addrOf(b)));
-    const keyList = keys.map((k) => `'${k}'`).join(", ");
-    const refList = keys.join(", ");
+    const off = (Number(offsetArg) || 0) * 38;
     const title = String(titleArg ?? seg);
-    const content = `=sheetgrid('${seg}', sheetcells(list(${keyList}), list(${refList})))`;
+    const content = `=${singleGrid(state, seg)}`;
     await (resolveFn(state, "origin.run") as Fn)(state, `${seg}.docwin.元`,
-      `=wopen('${seg}', '${title}', "${content}", geom(140, 90, 640, 440))`);
+      `=wopen('${seg}', '${title}', "${content}", geom(${140 + off}, ${88 + off}, 600, 420))`);
   } else {
     const cur = (state.cels.get(sref)?.v ?? {}) as WinChip;
     await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0 });
@@ -1742,6 +1765,20 @@ const editAppCelFn: Fn = (async (state: State, payload?: unknown, event?: unknow
   return state;
 }) as Fn;
 
+// wireDocFlush — make a doc worksheet window SAVE + EVICT its document on close.
+// The window segment's close runs each tab's flush cel; sheetdoc's tab content is
+// win.<doc>.content, so its flush key is win.<doc>.flush. Install a lambda there
+// that saveUserSpace's (records edits) then closeUserSpace's (evicts the closure).
+const wireDocFlush = async (state: State, doc: string): Promise<void> => {
+  const key = `win.${doc}.flush`;
+  if (state.cels.get(key)) return;
+  const fn = (async (s: State): Promise<void> => {
+    try { const save = resolveFn(s, "saveUserSpace") as Fn | undefined; if (save) await save(s, doc); } catch { /* unsaved beats a thrown close */ }
+    try { const close = resolveFn(s, "closeUserSpace") as Fn | undefined; if (close) await close(s, doc); } catch { /* evict best-effort */ }
+  }) as Fn;
+  await (resolveFn(state, "setCel") as Fn)(state, key, { celType: "LockedLambdaCel", locked: true, fn, metadata: { key, segment: `win.${doc}`, name: "flush", kind: "native" } });
+};
+
 // origin.opendoc(state, name) — open a sheetapp DOCUMENT: load the origin-user
 // segment from the store (loadUserSpace hydrates BOTH its parent app sheetapp and
 // the doc's own cels — "like hydrating cels"), then render it as a worksheet
@@ -1755,7 +1792,13 @@ const opendocFn: Fn = (async (state: State, nameArg?: unknown): Promise<State> =
     if (!load) throw new Error("origin.opendoc: loadUserSpace not installed");
     await load(state, name);
   }
-  await (sheetdocFn as Fn)(state, name);
+  // a multi-sheet doc (e.g. turtles = turtle_data + turtle_charts) opens one
+  // worksheet window per segment, cascaded; each saves + evicts on close.
+  const segs = docRenderSegs(state, name);
+  for (let i = 0; i < segs.length; i++) {
+    await (sheetdocFn as Fn)(state, segs[i], segs[i], i);
+    await wireDocFlush(state, segs[i]!);
+  }
   return state;
 }) as Fn;
 
@@ -1773,6 +1816,7 @@ const newsheetFn: Fn = (async (state: State): Promise<State> => {
   for (let r = 1; r <= 12; r++) for (let c = 0; c < 7; c++) { const k = `${name}.${String.fromCharCode(65 + c)}${r}`; specs[k] = { celType: "ValueCel", v: "", metadata: { key: k, segment: name } }; }
   await (resolveFn(state, "setCelBatch") as Fn)(state, specs);
   await (sheetdocFn as Fn)(state, name);
+  await wireDocFlush(state, name);   // closing the window saves + evicts the doc
   return state;
 }) as Fn;
 
