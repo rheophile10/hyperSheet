@@ -19,8 +19,8 @@
         {
           "key": "desktop.iconbar.frame",
           "celType": "FormulaCel",
-          "metadata": { "key": "desktop.iconbar.frame", "segment": "desktop", "name": "iconbar.frame", "parser": "infix", "description": "self-mounting app launcher: draggable desktop icons (non-mobile) or the collapsible nav (mobile). Sheet launches the sheetapp origin-application via app:; the rest are still legacy actions until increment 2." },
-          "f": "=mount('.origin', desktop.icons(desktop.iconpos, viewport.mobile, item('🧮 Origin', '元'), item('▦ Sheet', 'app:sheetapp'), item('📁 Files', '=explorerwin()'), item('📖 Readme', 'open:/readme.f'), item('🎹 Keyboard', 'open:/keyboard.f'), item('📊 Turtles', 'open:/turtles.f'), item('🐢 DOOM', '=doom()')))"
+          "metadata": { "key": "desktop.iconbar.frame", "segment": "desktop", "name": "iconbar.frame", "parser": "infix", "description": "self-mounting app launcher: draggable desktop icons (non-mobile) or the collapsible nav (mobile). Sheet/Files/DOOM launch origin-applications via app:; readme/keyboard/turtles are sheetapp documents opened via open: until they become origin-user docs." },
+          "f": "=mount('.origin', desktop.icons(desktop.iconpos, viewport.mobile, item('🧮 Origin', '元'), item('▦ Sheet', 'app:sheetapp'), item('📁 Files', 'app:filesapp'), item('📖 Readme', 'open:/readme.f'), item('🎹 Keyboard', 'open:/keyboard.f'), item('📊 Turtles', 'open:/turtles.f'), item('🐢 DOOM', 'app:doomapp')))"
         },
         {
           "key": "desktop.graph.frame",

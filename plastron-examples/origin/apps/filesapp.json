@@ -1,0 +1,19 @@
+{
+  "formatVersion": 1,
+  "segments": [
+    {
+      "name": "filesapp",
+      "cels": [
+        {
+          "key": "filesapp.entry",
+          "celType": "FormulaCel",
+          "metadata": { "key": "filesapp.entry", "segment": "filesapp", "name": "entry", "parser": "infix", "description": "launch entry: open the OPFS file-explorer window. origin.launch hydrates this segment then runs the entry." },
+          "f": "=explorerwin()"
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    { "name": "filesapp", "version": "1.0.0", "description": "the OPFS file explorer, as an installable origin-application", "role": "user", "kind": "origin-application", "dependencies": [] }
+  ]
+}

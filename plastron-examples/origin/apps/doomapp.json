@@ -1,0 +1,19 @@
+{
+  "formatVersion": 1,
+  "segments": [
+    {
+      "name": "doomapp",
+      "cels": [
+        {
+          "key": "doomapp.entry",
+          "celType": "FormulaCel",
+          "metadata": { "key": "doomapp.entry", "segment": "doomapp", "name": "entry", "parser": "infix", "description": "launch entry: open the DOOM wasm window (the doom library lazy-fetches doom.wasm + the WAD). origin.launch hydrates this segment then runs the entry." },
+          "f": "=doom()"
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    { "name": "doomapp", "version": "1.0.0", "description": "DOOM, as an installable origin-application", "role": "user", "kind": "origin-application", "dependencies": [] }
+  ]
+}
