@@ -24,7 +24,10 @@ const isOn = (c: unknown): c is { __on: { event: string; binding: EventBinding }
 /** dom(tag, ...children) — a presentation vnode VALUE. `tag` accepts an
  *  emmet-ish class ("div.readme" → <div class="readme">). Children: strings →
  *  text, nested dom(...) → elements, (style …)/(attr …)/(on …) → that element's
- *  inline style / attributes / event bindings. */
+ *  inline style / attributes / event bindings. An ARRAY child is flattened in
+ *  place, so a collection built with MAP/FILTER renders as sibling children:
+ *  (dom "div" (MAP tasks!A1:A6 (LAMBDA t (dom "div.card" t)))). null/""/false
+ *  items are dropped (so MAP+IF can omit a child by yielding ""). */
 export const dom: Fn = (tag: unknown, ...children: unknown[]): V => {
   const spec = String(tag ?? "div");
   const dot = spec.indexOf(".");
@@ -34,11 +37,16 @@ export const dom: Fn = (tag: unknown, ...children: unknown[]): V => {
   const attrs: Record<string, unknown> = cls ? { class: cls } : {};
   const events: Record<string, unknown> = {};
   const kids: V[] = [];
-  for (const c of children) {
-    if (isStyle(c)) { style = { ...style, ...c.__style }; continue; }
-    if (isAttr(c)) { Object.assign(attrs, c.__attr); continue; }
-    if (isOn(c)) { events[c.__on.event] = c.__on.binding; continue; }
+  const pushChild = (c: unknown): void => {
+    if (isStyle(c)) { style = { ...style, ...c.__style }; return; }
+    if (isAttr(c)) { Object.assign(attrs, c.__attr); return; }
+    if (isOn(c)) { events[c.__on.event] = c.__on.binding; return; }
+    if (c === null || c === undefined || c === "" || c === false) return; // omitted child
     kids.push(isVnode(c) ? c : T(c) as V);
+  };
+  for (const c of children) {
+    if (Array.isArray(c)) { for (const item of c.flat(8)) pushChild(item); continue; }
+    pushChild(c);
   }
   return {
     type: "el", tag: name || "div",
@@ -52,17 +60,27 @@ export const dom: Fn = (tag: unknown, ...children: unknown[]): V => {
 /** style(prop, value, …) — inline styles. Pass as a child of dom():
  *  (dom "h1" (style "color" "tomato") "hi"). */
 export const style: Fn = (...pairs: unknown[]): { __style: Record<string, unknown> } => {
-  const s: Record<string, unknown> = {};
-  for (let i = 0; i + 1 < pairs.length; i += 2) s[String(pairs[i])] = pairs[i + 1];
-  return { __style: s };
+  return { __style: pairsOrObject(pairs) };
 };
 
 /** attr(name, value, …) — HTML attributes (href, target, type, id, …). Pass as
  *  a child of dom(): (dom "a" (attr "href" "https://…") "link"). */
 export const attr: Fn = (...pairs: unknown[]): { __attr: Record<string, unknown> } => {
-  const a: Record<string, unknown> = {};
-  for (let i = 0; i + 1 < pairs.length; i += 2) a[String(pairs[i])] = pairs[i + 1];
-  return { __attr: a };
+  return { __attr: pairsOrObject(pairs) };
+};
+
+// style/attr accept EITHER flat pairs ("color","tomato") OR an object value
+// ({color:"tomato"} — from an infix object literal or a cel) — or a mix. Object
+// args splat their entries; the rest are read as positional pairs.
+const pairsOrObject = (args: unknown[]): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  const scalars: unknown[] = [];
+  for (const a of args) {
+    if (a && typeof a === "object" && !Array.isArray(a)) Object.assign(out, a);
+    else scalars.push(a);
+  }
+  for (let i = 0; i + 1 < scalars.length; i += 2) out[String(scalars[i])] = scalars[i + 1];
+  return out;
 };
 
 /** on(event, handlerKey [, payload]) — bind a dom event to a handler cel. Pass
@@ -82,65 +100,6 @@ export const img: Fn = (...args: unknown[]): V => {
   const src = srcs.find((x) => x.trim() !== "") ?? "";
   const pair = src.startsWith("/") ? attr("data-opfs-src", src) : attr("src", src);
   return dom("img", pair, ...rest) as V;
-};
-
-// ── layout — arrange children into a responsive container ────────────────────
-// layout([mode|opts,] ...children) → a container vnode that flows its children
-// into a configuration. The default is MASONRY (Pinterest-style column packing).
-// Children may be vnodes (dom(…)/charts/img/nested layout(…)), ranges/arrays
-// (flattened), or scalars (boxed as text tiles). Each child is wrapped in a
-// .pl-layout-cell so column/grid packing has a stable break unit.
-//
-// Mobile-responsive with NO media queries: `columns: <min>px` and
-// `repeat(auto-fill, minmax(<min>px, 1fr))` are INTRINSICALLY fluid — "as many
-// columns as fit at ≥min px," so a phone collapses to one column and a wide
-// desktop fans out, all from the viewport width. Pure inline style, no sheet.
-type LayoutMode = "masonry" | "grid" | "rows" | "columns" | "stack";
-const LAYOUT_MODES = new Set<string>(["masonry", "grid", "rows", "columns", "stack"]);
-const styleOf = (o: Record<string, string>): { __style: Record<string, unknown> } => ({ __style: o });
-
-const containerStyle = (mode: LayoutMode, min: number, gap: number): Record<string, string> => {
-  switch (mode) {
-    case "grid":    return { display: "grid", "grid-template-columns": `repeat(auto-fill, minmax(${min}px, 1fr))`, gap: `${gap}px`, "align-items": "start" };
-    case "rows":    return { display: "flex", "flex-direction": "column", gap: `${gap}px` };
-    case "columns": return { display: "flex", "flex-direction": "row", "flex-wrap": "wrap", gap: `${gap}px`, "align-items": "flex-start" };
-    case "stack":   return { position: "relative", "min-height": "8rem" };
-    case "masonry":
-    default:        return { columns: `${min}px`, "column-gap": `${gap}px` };
-  }
-};
-const cellStyle = (mode: LayoutMode, min: number, gap: number): Record<string, string> => {
-  switch (mode) {
-    case "masonry": return { "break-inside": "avoid", "-webkit-column-break-inside": "avoid", "margin-bottom": `${gap}px`, display: "block" };
-    case "columns": return { flex: `1 1 ${min}px`, "min-width": `${min}px` };
-    case "stack":   return { position: "absolute", top: "0", left: "0" };
-    default:        return {}; // grid/rows: the item flows natively
-  }
-};
-
-export const layout: Fn = (...args: unknown[]): V => {
-  const rest = [...args];
-  let mode: LayoutMode = "masonry";
-  let min = 280, gap = 12;
-  // first arg may be a mode string, or an options map { mode, min, gap }
-  if (typeof rest[0] === "string" && LAYOUT_MODES.has(rest[0])) { mode = rest.shift() as LayoutMode; }
-  else if (rest[0] && typeof rest[0] === "object" && !isVnode(rest[0]) && !isStyle(rest[0]) && !isAttr(rest[0]) && !isOn(rest[0]) && !Array.isArray(rest[0])) {
-    const o = rest.shift() as { mode?: unknown; min?: unknown; gap?: unknown };
-    if (typeof o.mode === "string" && LAYOUT_MODES.has(o.mode)) mode = o.mode as LayoutMode;
-    if (Number.isFinite(Number(o.min))) min = Number(o.min);
-    if (Number.isFinite(Number(o.gap))) gap = Number(o.gap);
-  }
-  const cs = cellStyle(mode, min, gap);
-  const tiles: V[] = [];
-  for (const c of rest) {
-    if (isStyle(c) || isAttr(c) || isOn(c)) continue; // container styling/handlers stay on the container call site
-    for (const item of (Array.isArray(c) ? (c as unknown[]).flat(8) : [c])) {
-      if (item === null || item === undefined || item === "") continue;
-      const node = isVnode(item) ? item : (T(String(item)) as V);
-      tiles.push(dom("div.pl-layout-cell", styleOf(cs), node) as V);
-    }
-  }
-  return dom(`div.pl-layout.pl-layout-${mode}`, styleOf(containerStyle(mode, min, gap)), ...tiles) as V;
 };
 
 export const on: Fn = (event: unknown, handler: unknown, payload?: unknown): { __on: { event: string; binding: EventBinding } } => {

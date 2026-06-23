@@ -1,0 +1,87 @@
+{
+  "name": "origin-lifecycle",
+  "cels": [
+    {
+      "key": "origin.io",
+      "celType": "ChannelCel",
+      "metadata": {
+        "key": "origin.io", "segment": "origin-lifecycle", "name": "origin.io", "drain": "origin.io.drain",
+        "description": "Origin lifecycle effect channel. An origin-application's slot FormulaCels (<app>.open/.edit/.new/.save/.load/.close and an origin-user's <seg>.flush) evaluate to a {op,…} descriptor and emit here; the stateful drain executes it via the user-space ops. Formulas never touch state — the descriptor is pure, the drain holds state."
+      },
+      "v": { "drain": "origin.io.drain" },
+      "locked": true
+    },
+    {
+      "key": "origin.io.drain",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.io.drain", "segment": "origin-lifecycle", "name": "origin.io.drain", "kind": "native",
+        "description": "(items) — interpret origin lifecycle descriptors with state: new→newUserSpace, save→saveUserSpace, open→hydrate-closure, close→closeUserSpace, load→sha/compat gate then loadUserSpace, flush→optional save (the kernel evicts). Composition over the shipped user-space ops; no new persistence."
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.new",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.new", "segment": "origin-lifecycle", "name": "origin.new", "kind": "native", "emitsTo": "origin.io",
+        "description": "(app, name) → {op:'new'} descriptor. Use in an origin-application's .new slot; emits to origin.io, the drain creates the origin-user segment."
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.save",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.save", "segment": "origin-lifecycle", "name": "origin.save", "kind": "native", "emitsTo": "origin.io",
+        "description": "(name) → {op:'save'} descriptor. Use in a .save slot; the drain persists the origin-user's private closure via saveUserSpace/store.put."
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.load",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.load", "segment": "origin-lifecycle", "name": "origin.load", "kind": "native", "emitsTo": "origin.io",
+        "description": "(name, version?) → {op:'load'} descriptor. The drain runs the sha/compat gate, then loadUserSpace (which auto-starts the parent application)."
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.open",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.open", "segment": "origin-lifecycle", "name": "origin.open", "kind": "native", "emitsTo": "origin.io",
+        "description": "(app) → {op:'open'} descriptor — open the origin-application standalone (no user-segment). The drain hydrates the app closure."
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.close",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.close", "segment": "origin-lifecycle", "name": "origin.close", "kind": "native", "emitsTo": "origin.io",
+        "description": "(name) → {op:'close'} descriptor — close an origin-user segment (closeUserSpace flushes its private closure root-first)."
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.flush",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.flush", "segment": "origin-lifecycle", "name": "origin.flush", "kind": "native", "emitsTo": "origin.io",
+        "description": "(name, save?) → {op:'flush'} descriptor for an origin-user's <seg>.flush slot. The kernel flush hook enqueues this BEFORE eviction; the drain optionally saves first (close ≠ save), then the kernel evicts the cels."
+      },
+      "locked": true
+    },
+    {
+      "key": "origin.fire",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "origin.fire", "segment": "origin-lifecycle", "name": "origin.fire", "kind": "native",
+        "description": "(slotKey) — discrete dispatcher: enqueue a slot cel's current descriptor to its declared channel(s) and drain origin.io. The host calls this on a user action (save/open/new/load/close); the kernel flush hook is the equivalent trigger for the flush slot."
+      },
+      "locked": true
+    }
+  ]
+}

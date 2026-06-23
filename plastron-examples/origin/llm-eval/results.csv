@@ -1,0 +1,427 @@
+ts,guide_version,source,provider,model,task,mode,valid,mode_ok,task_fit,idiomatic,render,kind,judge_notes,validate_note,formula,prompt,raw_output
+2026-06-21T23:21:00.238Z,d3a516a92e18,llms.md,grok,grok-4,play-c,formula,1,1,2,1,,formula,dom at top level; event handler syntax invalid,parsed + evaluated,"=dom(""button"",on(""click"",""origin.tone"",261.63),""Play C"")","Build a single clickable button that plays middle C (origin.tone 261.63).
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=dom(""button"",on(""click"",""origin.tone"",261.63),""Play C"")"
+2026-06-21T23:21:00.238Z,d3a516a92e18,llms.md,chatgpt,gpt-5,play-c,formula,1,1,5,4,,formula,Valid dom button; minor syntax uncertainty on on() handler,parsed + evaluated,"=dom(""button"", on(""click"",""origin.tone"", 261.63), ""Play C4"")","Build a single clickable button that plays middle C (origin.tone 261.63).
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=dom(""button"", on(""click"",""origin.tone"", 261.63), ""Play C4"")"
+2026-06-21T23:21:32.727Z,d3a516a92e18,llms.md,grok,grok-4,play-c,raw,1,1,2,1,,raw-link,Wrong event syntax; dom top-level disallowed,parsed + evaluated,"=dom(""button"", on(""click"",""origin.tone"", 261.63), ""Play C"")","Build a single clickable button that plays middle C (origin.tone 261.63).
+
+Use the plastron verbs in the guide. Give me a #raw= shareable plastron.ca link that opens it: take a valid =formula and URL-encode it after `https://plastron.ca/#raw=`. Output ONLY the link, nothing else.",https://plastron.ca/#raw=%3Ddom%28%22button%22%2C%20on%28%22click%22%2C%22origin.tone%22%2C%20261.63%29%2C%20%22Play%20C%22%29
+2026-06-21T23:21:32.727Z,d3a516a92e18,llms.md,chatgpt,gpt-5,play-c,raw,1,1,4,2,,raw-link,dom ok but on() arg syntax dubious,parsed + evaluated,"=dom(""button"", on(""click"",""origin.tone"", 261.63), ""Play C"")","Build a single clickable button that plays middle C (origin.tone 261.63).
+
+Use the plastron verbs in the guide. Give me a #raw= shareable plastron.ca link that opens it: take a valid =formula and URL-encode it after `https://plastron.ca/#raw=`. Output ONLY the link, nothing else.",https://plastron.ca/#raw=%3Ddom(%22button%22%2C%20on(%22click%22%2C%22origin.tone%22%2C%20261.63)%2C%20%22Play%20C%22)
+2026-06-21T23:24:36.476Z,d3a516a92e18+llms.md,llms.md,grok,grok-4,play-c,formula,1,1,4,3,,formula,dom at top level ok for button; on() arg order dubious,parsed + evaluated,"=dom(""button"",on(""click"",""origin.tone"",261.63),""C"")","Build a single clickable button that plays middle C (origin.tone 261.63).
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=dom(""button"",on(""click"",""origin.tone"",261.63),""C"")"
+2026-06-21T23:24:36.476Z,d3a516a92e18+llms.md,llms.md,chatgpt,gpt-5,play-c,formula,1,1,4,3,,formula,dom top-level ok but on() arg syntax dubious,parsed + evaluated,"=dom(""button"", on(""click"",""origin.tone"", 261.63), ""Middle C"")","Build a single clickable button that plays middle C (origin.tone 261.63).
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=dom(""button"", on(""click"",""origin.tone"", 261.63), ""Middle C"")"
+2026-06-21T23:24:49.978Z,d3a516a92e18+llms.txt,llms.txt,grok,grok-4,play-c,formula,1,1,5,4,,formula,Correct dom+on usage; minor risk on event arg syntax,parsed + evaluated,"=dom(""button"",on(""click"",""origin.tone"",261.63),""Play C"")","Build a single clickable button that plays middle C (origin.tone 261.63).
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=dom(""button"",on(""click"",""origin.tone"",261.63),""Play C"")"
+2026-06-21T23:24:49.978Z,d3a516a92e18+llms.txt,llms.txt,chatgpt,gpt-5,play-c,formula,1,1,3,1,,formula,dom() at top level; must use cels(),parsed + evaluated,"=dom(""button"", on(""click"",""origin.tone"", 261.63), ""Play C4"")","Build a single clickable button that plays middle C (origin.tone 261.63).
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=dom(""button"", on(""click"",""origin.tone"", 261.63), ""Play C4"")"
+2026-06-21T23:25:06.682Z,d3a516a92e18+readme,readme,grok,grok-4,play-c,formula,1,1,4,2,,formula,dom+on may work but syntax likely nonstandard,parsed + evaluated,"=dom(""button"",on(""click"",""origin.tone"",261.63),""♪"")","Build a single clickable button that plays middle C (origin.tone 261.63).
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=dom(""button"",on(""click"",""origin.tone"",261.63),""♪"")"
+2026-06-21T23:25:06.682Z,d3a516a92e18+readme,readme,chatgpt,gpt-5,play-c,formula,1,1,5,4,,formula,Correct top-level dom button; on() call looks plausible,parsed + evaluated,"=dom(""button"", on(""click"",""origin.tone"", 261.63), ""Play C4"")","Build a single clickable button that plays middle C (origin.tone 261.63).
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=dom(""button"", on(""click"",""origin.tone"", 261.63), ""Play C4"")"
+2026-06-21T23:25:26.147Z,d3a516a92e18+html@50k,html@50k,grok,grok-4,play-c,formula,1,1,4,2,,formula,dom top-level ok but on() syntax dubious,parsed + evaluated,"=dom(""button"",on(""click"",""origin.tone"",261.63),""Play C"")","Build a single clickable button that plays middle C (origin.tone 261.63).
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=dom(""button"",on(""click"",""origin.tone"",261.63),""Play C"")"
+2026-06-21T23:25:26.147Z,d3a516a92e18+html@50k,html@50k,chatgpt,gpt-5,play-c,formula,1,1,4,2,,formula,dom top-level ok for button; on() arg syntax dubious,parsed + evaluated,"=dom(""button"", on(""click"",""origin.tone"", 261.63), ""Play middle C"")","Build a single clickable button that plays middle C (origin.tone 261.63).
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=dom(""button"", on(""click"",""origin.tone"", 261.63), ""Play middle C"")"
+2026-06-22T21:25:40.793Z,c84e52d2aa2b,llms.md,grok,grok-4,kanban,formula,0,1,2,1,,formula,Uses forbidden MAP/FILTER/LAMBDA arrays inside dom; not per-cell formulas,"error cel: infix: expected "")""","=segment(cels(""tasks"",6,3,at(""A1"",""ID""),at(""B1"",""Title""),at(""C1"",""Status""),at(""A2"",1),at(""B2"",""Write report""),at(""C2"",""To Do""),at(""A3"",2),at(""B3"",""Fix bug""),at(""C3"",""Doing""),at(""A4"",3),at(""B4"",""Email client""),at(""C4"",""Done""),at(""A5"",4),at(""B5"",""Prepare slides""),at(""C5"",""To Do"")),winapp(""kanban"",""Kanban"",'=dom(""div"",style(""display"",""flex"",""gap"",""12px"",""height"",""100%""),dom(""div"",style(""flex"",""1"",""background"",""#f8f9fa"",""padding"",""8px"",""border-radius"",""6px""),on(""dragover"",""drag.over""),on(""drop"",""drag.drop"",""To Do""),dom(""h3"",""To Do""),dom(""div"",MAP(FILTER(tasks!A2:A5,LAMBDA(r,INDEX(tasks!C2:C5,r)=""To Do"")),LAMBDA(id,dom(""div"",style(""background"",""white"",""margin"",""6px 0"",""padding"",""8px"",""border-radius"",""4px"",""box-shadow"",""0 1px 3px #0002""),attr(""draggable"",""true""),on(""dragstart"",""drag.grab"",CONCAT(""tasks.C"",id)),INDEX(tasks!B2:B5,id)))))),dom(""div"",style(""flex"",""1"",""background"",""#f8f9fa"",""padding"",""8px"",""border-radius"",""6px""),on(""dragover"",""drag.over""),on(""drop"",""drag.drop"",""Doing""),dom(""h3"",""Doing""),dom(""div"",MAP(FILTER(tasks!A2:A5,LAMBDA(r,INDEX(tasks!C2:C5,r)=""Doing"")),LAMBDA(id,dom(""div"",style(""background"",""white"",""margin"",""6px 0"",""padding"",""8px"",""border-radius"",""4px"",""box-shadow"",""0 1px 3px #0002""),attr(""draggable"",""true""),on(""dragstart"",""drag.grab"",CONCAT(""tasks.C"",id)),INDEX(tasks!B2:B5,id)))))),dom(""div"",style(""flex"",""1"",""background"",""#f8f9fa"",""padding"",""8px"",""border-radius"",""6px""),on(""dragover"",""drag.over""),on(""drop"",""drag.drop"",""Done""),dom(""h3"",""Done""),dom(""div"",MAP(FILTER(tasks!A2:A5,LAMBDA(r,INDEX(tasks!C2:C5,r)=""Done"")),LAMBDA(id,dom(""div"",style(""background"",""white"",""margin"",""6px 0"",""padding"",""8px"",""border-radius"",""4px"",""box-shadow"",""0 1px 3px #0002""),attr(""draggable"",""true""),on(""dragstart"",""drag.grab"",CONCAT(""tasks.C"",id)),INDEX(tasks!B2:B5,id))))))))))","Build a kanban board as a draggable window over a task sheet. Seed a sheet of a few tasks, each with a title and a status that is one of 'To Do', 'Doing', or 'Done'. Show three columns — To Do, Doing, Done — and render each task as a card in the column matching its status. The cards must be DRAGGABLE between columns, and dropping a card on a column must update that task's status so the card stays in the new column. Deliver it as ONE shareable formula.
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=segment(cels(""tasks"",6,3,at(""A1"",""ID""),at(""B1"",""Title""),at(""C1"",""Status""),at(""A2"",1),at(""B2"",""Write report""),at(""C2"",""To Do""),at(""A3"",2),at(""B3"",""Fix bug""),at(""C3"",""Doing""),at(""A4"",3),at(""B4"",""Email client""),at(""C4"",""Done""),at(""A5"",4),at(""B5"",""Prepare slides""),at(""C5"",""To Do"")),winapp(""kanban"",""Kanban"",'=dom(""div"",style(""display"",""flex"",""gap"",""12px"",""height"",""100%""),dom(""div"",style(""flex"",""1"",""background"",""#f8f9fa"",""padding"",""8px"",""border-radius"",""6px""),on(""dragover"",""drag.over""),on(""drop"",""drag.drop"",""To Do""),dom(""h3"",""To Do""),dom(""div"",MAP(FILTER(tasks!A2:A5,LAMBDA(r,INDEX(tasks!C2:C5,r)=""To Do"")),LAMBDA(id,dom(""div"",style(""background"",""white"",""margin"",""6px 0"",""padding"",""8px"",""border-radius"",""4px"",""box-shadow"",""0 1px 3px #0002""),attr(""draggable"",""true""),on(""dragstart"",""drag.grab"",CONCAT(""tasks.C"",id)),INDEX(tasks!B2:B5,id)))))),dom(""div"",style(""flex"",""1"",""background"",""#f8f9fa"",""padding"",""8px"",""border-radius"",""6px""),on(""dragover"",""drag.over""),on(""drop"",""drag.drop"",""Doing""),dom(""h3"",""Doing""),dom(""div"",MAP(FILTER(tasks!A2:A5,LAMBDA(r,INDEX(tasks!C2:C5,r)=""Doing"")),LAMBDA(id,dom(""div"",style(""background"",""white"",""margin"",""6px 0"",""padding"",""8px"",""border-radius"",""4px"",""box-shadow"",""0 1px 3px #0002""),attr(""draggable"",""true""),on(""dragstart"",""drag.grab"",CONCAT(""tasks.C"",id)),INDEX(tasks!B2:B5,id)))))),dom(""div"",style(""flex"",""1"",""background"",""#f8f9fa"",""padding"",""8px"",""border-radius"",""6px""),on(""dragover"",""drag.over""),on(""drop"",""drag.drop"",""Done""),dom(""h3"",""Done""),dom(""div"",MAP(FILTER(tasks!A2:A5,LAMBDA(r,INDEX(tasks!C2:C5,r)=""Done"")),LAMBDA(id,dom(""div"",style(""background"",""white"",""margin"",""6px 0"",""padding"",""8px"",""border-radius"",""4px"",""box-shadow"",""0 1px 3px #0002""),attr(""draggable"",""true""),on(""dragstart"",""drag.grab"",CONCAT(""tasks.C"",id)),INDEX(tasks!B2:B5,id))))))))))"
+2026-06-22T21:25:40.793Z,c84e52d2aa2b,llms.md,chatgpt,gpt-5,kanban,formula,1,1,2,1,,formula,Uses forbidden MAP/FILTER arrays; cels not top-level; non-idiomatic,parsed + evaluated,"=segment(
+  cels(""tasks"", 8, 3,
+    at(""A1"",""ID""), at(""B1"",""Title""), at(""C1"",""Status""),
+    at(""A2"",1), at(""B2"",""Write docs""),     at(""C2"",""To Do""),
+    at(""A3"",2), at(""B3"",""Implement API""),  at(""C3"",""Doing""),
+    at(""A4"",3), at(""B4"",""Fix bugs""),       at(""C4"",""To Do""),
+    at(""A5"",4), at(""B5"",""Ship release""),   at(""C5"",""Done""),
+    at(""A6"",5), at(""B6"",""Plan v2""),        at(""C6"",""To Do"")
+  ),
+  winapp(""kanban"", ""Kanban Board"",
+    '=dom(""div"",
+      style(""display"",""flex"",""gap"",""16px"",""align-items"",""flex-start"",""padding"",""12px""),
+      dom(""div"",
+        style(""flex"",""1"",""min-height"",""300px"",""background"",""#f5f5f7"",""border"",""1px solid #ddd"",""border-radius"",""8px"",""padding"",""8px""),
+        on(""dragover"",""drag.over""),
+        on(""drop"",""drag.drop"",""To Do""),
+        dom(""h3"", style(""margin"",""4px 0 8px 0""), ""To Do""),
+        MAP(FILTER(tasks!A2:A6, LAMBDA(id, INDEX(tasks!C2:C6, id)=""To Do"")),
+          LAMBDA(id,
+            dom(""div.card"",
+              style(""background"",""white"",""border"",""1px solid #ccc"",""border-radius"",""6px"",""padding"",""8px"",""margin"",""6px 0"",""box-shadow"",""0 1px 2px rgba(0,0,0,0.05)""),
+              attr(""draggable"",""true""),
+              on(""dragstart"",""drag.grab"", CONCAT(""tasks.C"", id)),
+              INDEX(tasks!B2:B6, id)
+            )
+          )
+        )
+      ),
+      dom(""div"",
+        style(""flex"",""1"",""min-height"",""300px"",""background"",""#f5f5f7"",""border"",""1px solid #ddd"",""border-radius"",""8px"",""padding"",""8px""),
+        on(""dragover"",""drag.over""),
+        on(""drop"",""drag.drop"",""Doing""),
+        dom(""h3"", style(""margin"",""4px 0 8px 0""), ""Doing""),
+        MAP(FILTER(tasks!A2:A6, LAMBDA(id, INDEX(tasks!C2:C6, id)=""Doing"")),
+          LAMBDA(id,
+            dom(""div.card"",
+              style(""background"",""white"",""border"",""1px solid #ccc"",""border-radius"",""6px"",""padding"",""8px"",""margin"",""6px 0"",""box-shadow"",""0 1px 2px rgba(0,0,0,0.05)""),
+              attr(""draggable"",""true""),
+              on(""dragstart"",""drag.grab"", CONCAT(""tasks.C"", id)),
+              INDEX(tasks!B2:B6, id)
+            )
+          )
+        )
+      ),
+      dom(""div"",
+        style(""flex"",""1"",""min-height"",""300px"",""background"",""#f5f5f7"",""border"",""1px solid #ddd"",""border-radius"",""8px"",""padding"",""8px""),
+        on(""dragover"",""drag.over""),
+        on(""drop"",""drag.drop"",""Done""),
+        dom(""h3"", style(""margin"",""4px 0 8px 0""), ""Done""),
+        MAP(FILTER(tasks!A2:A6, LAMBDA(id, INDEX(tasks!C2:C6, id)=""Done"")),
+          LAMBDA(id,
+            dom(""div.card"",
+              style(""background"",""white"",""border"",""1px solid #ccc"",""border-radius"",""6px"",""padding"",""8px"",""margin"",""6px 0"",""box-shadow"",""0 1px 2px rgba(0,0,0,0.05)""),
+              attr(""draggable"",""true""),
+              on(""dragstart"",""drag.grab"", CONCAT(""tasks.C"", id)),
+              INDEX(tasks!B2:B6, id)
+            )
+          )
+        )
+      )
+    )'
+  )
+)","Build a kanban board as a draggable window over a task sheet. Seed a sheet of a few tasks, each with a title and a status that is one of 'To Do', 'Doing', or 'Done'. Show three columns — To Do, Doing, Done — and render each task as a card in the column matching its status. The cards must be DRAGGABLE between columns, and dropping a card on a column must update that task's status so the card stays in the new column. Deliver it as ONE shareable formula.
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=segment(
+  cels(""tasks"", 8, 3,
+    at(""A1"",""ID""), at(""B1"",""Title""), at(""C1"",""Status""),
+    at(""A2"",1), at(""B2"",""Write docs""),     at(""C2"",""To Do""),
+    at(""A3"",2), at(""B3"",""Implement API""),  at(""C3"",""Doing""),
+    at(""A4"",3), at(""B4"",""Fix bugs""),       at(""C4"",""To Do""),
+    at(""A5"",4), at(""B5"",""Ship release""),   at(""C5"",""Done""),
+    at(""A6"",5), at(""B6"",""Plan v2""),        at(""C6"",""To Do"")
+  ),
+  winapp(""kanban"", ""Kanban Board"",
+    '=dom(""div"",
+      style(""display"",""flex"",""gap"",""16px"",""align-items"",""flex-start"",""padding"",""12px""),
+      dom(""div"",
+        style(""flex"",""1"",""min-height"",""300px"",""background"",""#f5f5f7"",""border"",""1px solid #ddd"",""border-radius"",""8px"",""padding"",""8px""),
+        on(""dragover"",""drag.over""),
+        on(""drop"",""drag.drop"",""To Do""),
+        dom(""h3"", style(""margin"",""4px 0 8px 0""), ""To Do""),
+        MAP(FILTER(tasks!A2:A6, LAMBDA(id, INDEX(tasks!C2:C6, id)=""To Do"")),
+          LAMBDA(id,
+            dom(""div.card"",
+              style(""background"",""white"",""border"",""1px solid #ccc"",""border-radius"",""6px"",""padding"",""8px"",""margin"",""6px 0"",""box-shadow"",""0 1px 2px rgba(0,0,0,0.05)""),
+              attr(""draggable"",""true""),
+              on(""dragstart"",""drag.grab"", CONCAT(""tasks.C"", id)),
+              INDEX(tasks!B2:B6, id)
+            )
+          )
+        )
+      ),
+      dom(""div"",
+        style(""flex"",""1"",""min-height"",""300px"",""background"",""#f5f5f7"",""border"",""1px solid #ddd"",""border-radius"",""8px"",""padding"",""8px""),
+        on(""dragover"",""drag.over""),
+        on(""drop"",""drag.drop"",""Doing""),
+        dom(""h3"", style(""margin"",""4px 0 8px 0""), ""Doing""),
+        MAP(FILTER(tasks!A2:A6, LAMBDA(id, INDEX(tasks!C2:C6, id)=""Doing"")),
+          LAMBDA(id,
+            dom(""div.card"",
+              style(""background"",""white"",""border"",""1px solid #ccc"",""border-radius"",""6px"",""padding"",""8px"",""margin"",""6px 0"",""box-shadow"",""0 1px 2px rgba(0,0,0,0.05)""),
+              attr(""draggable"",""true""),
+              on(""dragstart"",""drag.grab"", CONCAT(""tasks.C"", id)),
+              INDEX(tasks!B2:B6, id)
+            )
+          )
+        )
+      ),
+      dom(""div"",
+        style(""flex"",""1"",""min-height"",""300px"",""background"",""#f5f5f7"",""border"",""1px solid #ddd"",""border-radius"",""8px"",""padding"",""8px""),
+        on(""dragover"",""drag.over""),
+        on(""drop"",""drag.drop"",""Done""),
+        dom(""h3"", style(""margin"",""4px 0 8px 0""), ""Done""),
+        MAP(FILTER(tasks!A2:A6, LAMBDA(id, INDEX(tasks!C2:C6, id)=""Done"")),
+          LAMBDA(id,
+            dom(""div.card"",
+              style(""background"",""white"",""border"",""1px solid #ccc"",""border-radius"",""6px"",""padding"",""8px"",""margin"",""6px 0"",""box-shadow"",""0 1px 2px rgba(0,0,0,0.05)""),
+              attr(""draggable"",""true""),
+              on(""dragstart"",""drag.grab"", CONCAT(""tasks.C"", id)),
+              INDEX(tasks!B2:B6, id)
+            )
+          )
+        )
+      )
+    )'
+  )
+)"
+2026-06-22T21:28:01.519Z,c84e52d2aa2b,llms.md,grok,grok-4,kanban,formula,0,1,5,5,,formula,Perfect match to all idioms,"error cel: infix: expected "")""","=segment(cels(""tasks"",7,3,at(""A1"",""Title""),at(""B1"",""Status""),at(""C1"",""ID""),at(""A2"",""Buy milk""),at(""B2"",""To Do""),at(""C2"",1),at(""A3"",""Walk dog""),at(""B3"",""Doing""),at(""C3"",2),at(""A4"",""Finish report""),at(""B4"",""Done""),at(""C4"",3),at(""A5"",""Call mom""),at(""B5"",""To Do""),at(""C5"",4),at(""A6"",""Read book""),at(""B6"",""Doing""),at(""C6"",5),at(""A7"",""Pay bills""),at(""B7"",""To Do""),at(""C7"",6)),winapp(""kanban"",""Kanban"",'=dom(""div"",style(""display"",""flex"",""gap"",""16px"",""height"",""100%""),MAP(ARRAY(""To Do"",""Doing"",""Done""),LAMBDA(st,dom(""div"",style(""flex"",""1"",""border"",""1px solid #aaa""),""padding"",""8px"",""min-height"",""500px"",""background"",""#f8f8f8""),on(""dragover"",""drag.over""),on(""drop"",""drag.drop"",st),dom(""h3"",st),MAP(FILTER(tasks!C2:C7,LAMBDA(id,INDEX(tasks!B2:B7,MATCH(id,tasks!C2:C7,0))=st)),LAMBDA(id,dom(""div"",style(""background"",""white"",""margin"",""4px 0"",""padding"",""8px"",""border"",""1px solid #ccc"",""border-radius"",""4px"",""cursor"",""grab""),attr(""draggable"",""true""),on(""dragstart"",""drag.grab"",CONCAT(""tasks.B"",id)),INDEX(tasks!A2:A7,MATCH(id,tasks!C2:C7,0)))))))))))","Build a kanban board as a draggable window over a task sheet. Seed a sheet of a few tasks, each with a title and a status that is one of 'To Do', 'Doing', or 'Done'. Show three columns — To Do, Doing, Done — and render each task as a card in the column matching its status. The cards must be DRAGGABLE between columns, and dropping a card on a column must update that task's status so the card stays in the new column. Deliver it as ONE shareable formula.
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=segment(cels(""tasks"",7,3,at(""A1"",""Title""),at(""B1"",""Status""),at(""C1"",""ID""),at(""A2"",""Buy milk""),at(""B2"",""To Do""),at(""C2"",1),at(""A3"",""Walk dog""),at(""B3"",""Doing""),at(""C3"",2),at(""A4"",""Finish report""),at(""B4"",""Done""),at(""C4"",3),at(""A5"",""Call mom""),at(""B5"",""To Do""),at(""C5"",4),at(""A6"",""Read book""),at(""B6"",""Doing""),at(""C6"",5),at(""A7"",""Pay bills""),at(""B7"",""To Do""),at(""C7"",6)),winapp(""kanban"",""Kanban"",'=dom(""div"",style(""display"",""flex"",""gap"",""16px"",""height"",""100%""),MAP(ARRAY(""To Do"",""Doing"",""Done""),LAMBDA(st,dom(""div"",style(""flex"",""1"",""border"",""1px solid #aaa""),""padding"",""8px"",""min-height"",""500px"",""background"",""#f8f8f8""),on(""dragover"",""drag.over""),on(""drop"",""drag.drop"",st),dom(""h3"",st),MAP(FILTER(tasks!C2:C7,LAMBDA(id,INDEX(tasks!B2:B7,MATCH(id,tasks!C2:C7,0))=st)),LAMBDA(id,dom(""div"",style(""background"",""white"",""margin"",""4px 0"",""padding"",""8px"",""border"",""1px solid #ccc"",""border-radius"",""4px"",""cursor"",""grab""),attr(""draggable"",""true""),on(""dragstart"",""drag.grab"",CONCAT(""tasks.B"",id)),INDEX(tasks!A2:A7,MATCH(id,tasks!C2:C7,0)))))))))))"
+2026-06-22T21:28:01.519Z,c84e52d2aa2b,llms.md,chatgpt,gpt-5,kanban,formula,1,1,5,5,,formula,"Perfect match, no violations",parsed + evaluated,"=segment(
+  cels(""tasks"", 8, 3, geom(40,40,420,260),
+    at(""A1"",""ID""), at(""B1"",""Title""), at(""C1"",""Status""),
+    at(""A2"",1), at(""B2"",""Email Bob""),  at(""C2"",""To Do""),
+    at(""A3"",2), at(""B3"",""Write docs""), at(""C3"",""Doing""),
+    at(""A4"",3), at(""B4"",""Ship""),       at(""C4"",""Done""),
+    at(""A5"",4), at(""B5"",""Fix bug""),    at(""C5"",""To Do""),
+    at(""A6"",5), at(""B6"",""Review PR""),  at(""C6"",""Doing"")),
+  winapp(""kanban"",""Kanban Board"",
+    ""=dom('div.board',
+      style('display','flex'), style('gap','16px'), style('align-items','flex-start'),
+      dom('div.column',
+        style('flex','1'), style('padding','8px'), style('background','#f7f7f7'), style('border','1px solid #ddd'), style('border-radius','6px'), style('min-height','200px'),
+        on('dragover','drag.over'), on('drop','drag.drop','To Do'),
+        dom('h3','To Do'),
+        MAP(FILTER(tasks!A2:A6, LAMBDA(id, INDEX(tasks!C2:C6, id)='To Do')),
+          LAMBDA(id,
+            dom('div.card',
+              attr('draggable','true'),
+              style('margin','8px 0'), style('padding','8px'), style('background','white'), style('border','1px solid #ccc'), style('border-radius','6px'), style('box-shadow','0 1px 2px rgba(0,0,0,0.05)'),
+              on('dragstart','drag.grab', CONCAT('tasks.C', id)),
+              INDEX(tasks!B2:B6, id))))),
+      dom('div.column',
+        style('flex','1'), style('padding','8px'), style('background','#f7f7f7'), style('border','1px solid #ddd'), style('border-radius','6px'), style('min-height','200px'),
+        on('dragover','drag.over'), on('drop','drag.drop','Doing'),
+        dom('h3','Doing'),
+        MAP(FILTER(tasks!A2:A6, LAMBDA(id, INDEX(tasks!C2:C6, id)='Doing')),
+          LAMBDA(id,
+            dom('div.card',
+              attr('draggable','true'),
+              style('margin','8px 0'), style('padding','8px'), style('background','white'), style('border','1px solid #ccc'), style('border-radius','6px'), style('box-shadow','0 1px 2px rgba(0,0,0,0.05)'),
+              on('dragstart','drag.grab', CONCAT('tasks.C', id)),
+              INDEX(tasks!B2:B6, id))))),
+      dom('div.column',
+        style('flex','1'), style('padding','8px'), style('background','#f7f7f7'), style('border','1px solid #ddd'), style('border-radius','6px'), style('min-height','200px'),
+        on('dragover','drag.over'), on('drop','drag.drop','Done'),
+        dom('h3','Done'),
+        MAP(FILTER(tasks!A2:A6, LAMBDA(id, INDEX(tasks!C2:C6, id)='Done')),
+          LAMBDA(id,
+            dom('div.card',
+              attr('draggable','true'),
+              style('margin','8px 0'), style('padding','8px'), style('background','white'), style('border','1px solid #ccc'), style('border-radius','6px'), style('box-shadow','0 1px 2px rgba(0,0,0,0.05)'),
+              on('dragstart','drag.grab', CONCAT('tasks.C', id)),
+              INDEX(tasks!B2:B6, id))))))""))","Build a kanban board as a draggable window over a task sheet. Seed a sheet of a few tasks, each with a title and a status that is one of 'To Do', 'Doing', or 'Done'. Show three columns — To Do, Doing, Done — and render each task as a card in the column matching its status. The cards must be DRAGGABLE between columns, and dropping a card on a column must update that task's status so the card stays in the new column. Deliver it as ONE shareable formula.
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=segment(
+  cels(""tasks"", 8, 3, geom(40,40,420,260),
+    at(""A1"",""ID""), at(""B1"",""Title""), at(""C1"",""Status""),
+    at(""A2"",1), at(""B2"",""Email Bob""),  at(""C2"",""To Do""),
+    at(""A3"",2), at(""B3"",""Write docs""), at(""C3"",""Doing""),
+    at(""A4"",3), at(""B4"",""Ship""),       at(""C4"",""Done""),
+    at(""A5"",4), at(""B5"",""Fix bug""),    at(""C5"",""To Do""),
+    at(""A6"",5), at(""B6"",""Review PR""),  at(""C6"",""Doing"")),
+  winapp(""kanban"",""Kanban Board"",
+    ""=dom('div.board',
+      style('display','flex'), style('gap','16px'), style('align-items','flex-start'),
+      dom('div.column',
+        style('flex','1'), style('padding','8px'), style('background','#f7f7f7'), style('border','1px solid #ddd'), style('border-radius','6px'), style('min-height','200px'),
+        on('dragover','drag.over'), on('drop','drag.drop','To Do'),
+        dom('h3','To Do'),
+        MAP(FILTER(tasks!A2:A6, LAMBDA(id, INDEX(tasks!C2:C6, id)='To Do')),
+          LAMBDA(id,
+            dom('div.card',
+              attr('draggable','true'),
+              style('margin','8px 0'), style('padding','8px'), style('background','white'), style('border','1px solid #ccc'), style('border-radius','6px'), style('box-shadow','0 1px 2px rgba(0,0,0,0.05)'),
+              on('dragstart','drag.grab', CONCAT('tasks.C', id)),
+              INDEX(tasks!B2:B6, id))))),
+      dom('div.column',
+        style('flex','1'), style('padding','8px'), style('background','#f7f7f7'), style('border','1px solid #ddd'), style('border-radius','6px'), style('min-height','200px'),
+        on('dragover','drag.over'), on('drop','drag.drop','Doing'),
+        dom('h3','Doing'),
+        MAP(FILTER(tasks!A2:A6, LAMBDA(id, INDEX(tasks!C2:C6, id)='Doing')),
+          LAMBDA(id,
+            dom('div.card',
+              attr('draggable','true'),
+              style('margin','8px 0'), style('padding','8px'), style('background','white'), style('border','1px solid #ccc'), style('border-radius','6px'), style('box-shadow','0 1px 2px rgba(0,0,0,0.05)'),
+              on('dragstart','drag.grab', CONCAT('tasks.C', id)),
+              INDEX(tasks!B2:B6, id))))),
+      dom('div.column',
+        style('flex','1'), style('padding','8px'), style('background','#f7f7f7'), style('border','1px solid #ddd'), style('border-radius','6px'), style('min-height','200px'),
+        on('dragover','drag.over'), on('drop','drag.drop','Done'),
+        dom('h3','Done'),
+        MAP(FILTER(tasks!A2:A6, LAMBDA(id, INDEX(tasks!C2:C6, id)='Done')),
+          LAMBDA(id,
+            dom('div.card',
+              attr('draggable','true'),
+              style('margin','8px 0'), style('padding','8px'), style('background','white'), style('border','1px solid #ccc'), style('border-radius','6px'), style('box-shadow','0 1px 2px rgba(0,0,0,0.05)'),
+              on('dragstart','drag.grab', CONCAT('tasks.C', id)),
+              INDEX(tasks!B2:B6, id))))))""))"
+2026-06-22T21:30:04.735Z,7feca8f24f98,llms.md,grok,grok-4,kanban,formula,0,1,4,5,,formula,Off-by-one in drag target (C1 vs C2),"error cel: infix: expected "")""","=segment(cels(""tasks"",6,3,at(""A1"",""ID""),at(""B1"",""Title""),at(""C1"",""Status""),at(""A2"",1),at(""B2"",""Buy milk""),at(""C2"",""To Do""),at(""A3"",2),at(""B3"",""Walk dog""),at(""C3"",""Doing""),at(""A4"",3),at(""B4"",""Read book""),at(""C4"",""Done""),at(""A5"",4),at(""B5"",""Write code""),at(""C5"",""To Do""),at(""A6"",5),at(""B6"",""Exercise""),at(""C6"",""Doing"")),winapp(""kanban"",""Kanban"",'=LET(col,LAMBDA(s,dom(""div"",style(""flex"",""1""),style(""border"",""1px solid #ccc""),style(""padding"",""8px""),on(""dragover"",""drag.over""),on(""drop"",""drag.drop"",s),dom(""h2"",s),dom(""div"",MAP(FILTER(tasks!A2:A6,tasks!C2:C6=s),LAMBDA(id,dom(""div.card"",attr(""draggable"",""true""),on(""dragstart"",""drag.grab"",CONCAT(""tasks.C"",id)),INDEX(tasks!B2:B6,id))))))),dom(""div"",style(""display"",""flex""),style(""gap"",""12px""),col(""To Do""),col(""Doing""),col(""Done"")))))","Build a kanban board as a draggable window over a task sheet. Seed a sheet of a few tasks, each with a title and a status that is one of 'To Do', 'Doing', or 'Done'. Show three columns — To Do, Doing, Done — and render each task as a card in the column matching its status. The cards must be DRAGGABLE between columns, and dropping a card on a column must update that task's status so the card stays in the new column. Deliver it as ONE shareable formula.
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=segment(cels(""tasks"",6,3,at(""A1"",""ID""),at(""B1"",""Title""),at(""C1"",""Status""),at(""A2"",1),at(""B2"",""Buy milk""),at(""C2"",""To Do""),at(""A3"",2),at(""B3"",""Walk dog""),at(""C3"",""Doing""),at(""A4"",3),at(""B4"",""Read book""),at(""C4"",""Done""),at(""A5"",4),at(""B5"",""Write code""),at(""C5"",""To Do""),at(""A6"",5),at(""B6"",""Exercise""),at(""C6"",""Doing"")),winapp(""kanban"",""Kanban"",'=LET(col,LAMBDA(s,dom(""div"",style(""flex"",""1""),style(""border"",""1px solid #ccc""),style(""padding"",""8px""),on(""dragover"",""drag.over""),on(""drop"",""drag.drop"",s),dom(""h2"",s),dom(""div"",MAP(FILTER(tasks!A2:A6,tasks!C2:C6=s),LAMBDA(id,dom(""div.card"",attr(""draggable"",""true""),on(""dragstart"",""drag.grab"",CONCAT(""tasks.C"",id)),INDEX(tasks!B2:B6,id))))))),dom(""div"",style(""display"",""flex""),style(""gap"",""12px""),col(""To Do""),col(""Doing""),col(""Done"")))))"
+2026-06-22T21:30:04.735Z,7feca8f24f98,llms.md,chatgpt,gpt-5,kanban,formula,1,1,5,5,,formula,Perfect match to all idioms,parsed + evaluated,"=segment(
+  cels(""tasks"", 8, 3,
+    geom(40,40,420,280),
+    at(""A1"",1), at(""B1"",""Email Bob""),  at(""C1"",""To Do""),
+    at(""A2"",2), at(""B2"",""Write report""), at(""C2"",""Doing""),
+    at(""A3"",3), at(""B3"",""Ship order""),  at(""C3"",""Done""),
+    at(""A4"",4), at(""B4"",""Plan sprint""),  at(""C4"",""To Do"")),
+  winapp(""kanban"",""Kanban Board"",
+    '=LET(
+      ids, tasks!A1:A4,
+      titles, tasks!B1:B4,
+      statuses, tasks!C1:C4,
+      card, LAMBDA(id,
+        dom(""div.card"",
+          attr(""draggable"",""true""),
+          on(""dragstart"",""drag.grab"", CONCAT(""tasks.C"", id)),
+          style(""padding"",""8px""), style(""margin"",""6px 0""),
+          style(""background"",""#fff""), style(""border"",""1px solid #ccc""), style(""border-radius"",""6px""),
+          INDEX(titles, id)) ),
+      column, LAMBDA(name, idsForStatus,
+        dom(""div.col"",
+          style(""flex"",""1""), style(""margin"",""0 8px""),
+          dom(""h3"", name),
+          dom(""div.drop"",
+            style(""min-height"",""220px""), style(""padding"",""8px""),
+            style(""background"",""#f7f7f7""), style(""border"",""1px dashed #bbb""),
+            on(""dragover"",""drag.over""),
+            on(""drop"",""drag.drop"", name),
+            MAP(idsForStatus, LAMBDA(i, card(i)))))),
+      dom(""div.board"",
+        style(""display"",""flex""), style(""gap"",""8px""),
+        column(""To Do"", FILTER(ids, LAMBDA(i, INDEX(statuses, i)=""To Do""))),
+        column(""Doing"", FILTER(ids, LAMBDA(i, INDEX(statuses, i)=""Doing""))),
+        column(""Done"", FILTER(ids, LAMBDA(i, INDEX(statuses, i)=""Done""))))
+    )')
+)","Build a kanban board as a draggable window over a task sheet. Seed a sheet of a few tasks, each with a title and a status that is one of 'To Do', 'Doing', or 'Done'. Show three columns — To Do, Doing, Done — and render each task as a card in the column matching its status. The cards must be DRAGGABLE between columns, and dropping a card on a column must update that task's status so the card stays in the new column. Deliver it as ONE shareable formula.
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=segment(
+  cels(""tasks"", 8, 3,
+    geom(40,40,420,280),
+    at(""A1"",1), at(""B1"",""Email Bob""),  at(""C1"",""To Do""),
+    at(""A2"",2), at(""B2"",""Write report""), at(""C2"",""Doing""),
+    at(""A3"",3), at(""B3"",""Ship order""),  at(""C3"",""Done""),
+    at(""A4"",4), at(""B4"",""Plan sprint""),  at(""C4"",""To Do"")),
+  winapp(""kanban"",""Kanban Board"",
+    '=LET(
+      ids, tasks!A1:A4,
+      titles, tasks!B1:B4,
+      statuses, tasks!C1:C4,
+      card, LAMBDA(id,
+        dom(""div.card"",
+          attr(""draggable"",""true""),
+          on(""dragstart"",""drag.grab"", CONCAT(""tasks.C"", id)),
+          style(""padding"",""8px""), style(""margin"",""6px 0""),
+          style(""background"",""#fff""), style(""border"",""1px solid #ccc""), style(""border-radius"",""6px""),
+          INDEX(titles, id)) ),
+      column, LAMBDA(name, idsForStatus,
+        dom(""div.col"",
+          style(""flex"",""1""), style(""margin"",""0 8px""),
+          dom(""h3"", name),
+          dom(""div.drop"",
+            style(""min-height"",""220px""), style(""padding"",""8px""),
+            style(""background"",""#f7f7f7""), style(""border"",""1px dashed #bbb""),
+            on(""dragover"",""drag.over""),
+            on(""drop"",""drag.drop"", name),
+            MAP(idsForStatus, LAMBDA(i, card(i)))))),
+      dom(""div.board"",
+        style(""display"",""flex""), style(""gap"",""8px""),
+        column(""To Do"", FILTER(ids, LAMBDA(i, INDEX(statuses, i)=""To Do""))),
+        column(""Doing"", FILTER(ids, LAMBDA(i, INDEX(statuses, i)=""Doing""))),
+        column(""Done"", FILTER(ids, LAMBDA(i, INDEX(statuses, i)=""Done""))))
+    )')
+)"
+2026-06-22T21:31:46.671Z,c1ca76b8704a,llms.md,grok,grok-4,kanban,formula,0,1,4,5,,formula,minor row offset bug in FILTER but otherwise perfect,"error cel: infix: expected "")""","=segment(cels(""tasks"",7,3,at(""A1"",""ID""),at(""B1"",""Title""),at(""C1"",""Status""),at(""A2"",1),at(""B2"",""Buy groceries""),at(""C2"",""To Do""),at(""A3"",2),at(""B3"",""Finish report""),at(""C3"",""Doing""),at(""A4"",3),at(""B4"",""Call client""),at(""C4"",""Done""),at(""A5"",4),at(""B5"",""Plan meeting""),at(""C5"",""To Do""),at(""A6"",5),at(""B6"",""Review code""),at(""C6"",""Doing""),at(""A7"",6),at(""B7"",""Update docs""),at(""C7"",""To Do"")),winapp(""kanban"",""Kanban"",'=LET(col,LAMBDA(s,dom(""div"",style(""flex"",""1""),style(""border"",""1px solid #ccc""),style(""padding"",""8px""),style(""margin"",""4px""),on(""dragover"",""drag.over""),on(""drop"",""drag.drop"",s),dom(""h3"",s),dom(""div"",MAP(FILTER(tasks!A2:A7,LAMBDA(r,INDEX(tasks!C2:C7,r-1)=s)),LAMBDA(id,dom(""div"",attr(""draggable"",""true""),style(""background"",""#fff""),style(""margin"",""4px 0""),style(""padding"",""8px""),style(""border"",""1px solid #999""),on(""dragstart"",""drag.grab"",CONCAT(""tasks.C"",id+1)),INDEX(tasks!B2:B7,id-1)))))))),dom(""div"",style(""display"",""flex""),col(""To Do""),col(""Doing""),col(""Done""))))')","Build a kanban board as a draggable window over a task sheet. Seed a sheet of a few tasks, each with a title and a status that is one of 'To Do', 'Doing', or 'Done'. Show three columns — To Do, Doing, Done — and render each task as a card in the column matching its status. The cards must be DRAGGABLE between columns, and dropping a card on a column must update that task's status so the card stays in the new column. Deliver it as ONE shareable formula.
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=segment(cels(""tasks"",7,3,at(""A1"",""ID""),at(""B1"",""Title""),at(""C1"",""Status""),at(""A2"",1),at(""B2"",""Buy groceries""),at(""C2"",""To Do""),at(""A3"",2),at(""B3"",""Finish report""),at(""C3"",""Doing""),at(""A4"",3),at(""B4"",""Call client""),at(""C4"",""Done""),at(""A5"",4),at(""B5"",""Plan meeting""),at(""C5"",""To Do""),at(""A6"",5),at(""B6"",""Review code""),at(""C6"",""Doing""),at(""A7"",6),at(""B7"",""Update docs""),at(""C7"",""To Do"")),winapp(""kanban"",""Kanban"",'=LET(col,LAMBDA(s,dom(""div"",style(""flex"",""1""),style(""border"",""1px solid #ccc""),style(""padding"",""8px""),style(""margin"",""4px""),on(""dragover"",""drag.over""),on(""drop"",""drag.drop"",s),dom(""h3"",s),dom(""div"",MAP(FILTER(tasks!A2:A7,LAMBDA(r,INDEX(tasks!C2:C7,r-1)=s)),LAMBDA(id,dom(""div"",attr(""draggable"",""true""),style(""background"",""#fff""),style(""margin"",""4px 0""),style(""padding"",""8px""),style(""border"",""1px solid #999""),on(""dragstart"",""drag.grab"",CONCAT(""tasks.C"",id+1)),INDEX(tasks!B2:B7,id-1)))))))),dom(""div"",style(""display"",""flex""),col(""To Do""),col(""Doing""),col(""Done""))))')"
+2026-06-22T21:31:46.671Z,c1ca76b8704a,llms.md,chatgpt,gpt-5,kanban,formula,1,1,5,5,,formula,Perfect match to all idioms,parsed + evaluated,"=segment(
+  cels(""tasks"", 8, 3,
+    at(""A1"",""ID""), at(""B1"",""Title""), at(""C1"",""Status""),
+    at(""A2"",2), at(""B2"",""Email Bob""), at(""C2"",""To Do""),
+    at(""A3"",3), at(""B3"",""Ship order""), at(""C3"",""Doing""),
+    at(""A4"",4), at(""B4"",""Write report""), at(""C4"",""To Do""),
+    at(""A5"",5), at(""B5"",""Review PR""), at(""C5"",""Done""),
+    at(""A6"",6), at(""B6"",""Plan sprint""), at(""C6"",""Doing"")
+  ),
+  winapp(""kanban"", ""Kanban Board"",
+    ""=LET(
+      ids, tasks!A2:A6,
+      title, LAMBDA(id, INDEX(tasks!B1:B6, id)),
+      status, LAMBDA(id, INDEX(tasks!C1:C6, id)),
+      card, LAMBDA(id,
+        dom('div.card',
+          style('background','white'),
+          style('border','1px solid #ccc'),
+          style('borderRadius','6px'),
+          style('padding','8px'),
+          style('margin','6px 0'),
+          attr('draggable','true'),
+          on('dragstart','drag.grab', CONCAT('tasks.C', id)),
+          title(id))),
+      col, LAMBDA(name,
+        dom('div.col',
+          style('flex','1'),
+          style('minWidth','220px'),
+          style('padding','8px'),
+          style('background','#f3f4f6'),
+          style('border','1px solid #ddd'),
+          on('dragover','drag.over'),
+          on('drop','drag.drop', name),
+          dom('h3', name),
+          MAP(FILTER(ids, LAMBDA(id, status(id)=name)), LAMBDA(id, card(id))))),
+      dom('div.board',
+        style('display','flex'),
+        style('gap','16px'),
+        style('alignItems','flex-start'),
+        col('To Do'),
+        col('Doing'),
+        col('Done')))""
+  )
+)","Build a kanban board as a draggable window over a task sheet. Seed a sheet of a few tasks, each with a title and a status that is one of 'To Do', 'Doing', or 'Done'. Show three columns — To Do, Doing, Done — and render each task as a card in the column matching its status. The cards must be DRAGGABLE between columns, and dropping a card on a column must update that task's status so the card stays in the new column. Deliver it as ONE shareable formula.
+
+Use the plastron verbs in the guide. Output ONLY the plastron formula — no prose, no markdown code fences, nothing else.","=segment(
+  cels(""tasks"", 8, 3,
+    at(""A1"",""ID""), at(""B1"",""Title""), at(""C1"",""Status""),
+    at(""A2"",2), at(""B2"",""Email Bob""), at(""C2"",""To Do""),
+    at(""A3"",3), at(""B3"",""Ship order""), at(""C3"",""Doing""),
+    at(""A4"",4), at(""B4"",""Write report""), at(""C4"",""To Do""),
+    at(""A5"",5), at(""B5"",""Review PR""), at(""C5"",""Done""),
+    at(""A6"",6), at(""B6"",""Plan sprint""), at(""C6"",""Doing"")
+  ),
+  winapp(""kanban"", ""Kanban Board"",
+    ""=LET(
+      ids, tasks!A2:A6,
+      title, LAMBDA(id, INDEX(tasks!B1:B6, id)),
+      status, LAMBDA(id, INDEX(tasks!C1:C6, id)),
+      card, LAMBDA(id,
+        dom('div.card',
+          style('background','white'),
+          style('border','1px solid #ccc'),
+          style('borderRadius','6px'),
+          style('padding','8px'),
+          style('margin','6px 0'),
+          attr('draggable','true'),
+          on('dragstart','drag.grab', CONCAT('tasks.C', id)),
+          title(id))),
+      col, LAMBDA(name,
+        dom('div.col',
+          style('flex','1'),
+          style('minWidth','220px'),
+          style('padding','8px'),
+          style('background','#f3f4f6'),
+          style('border','1px solid #ddd'),
+          on('dragover','drag.over'),
+          on('drop','drag.drop', name),
+          dom('h3', name),
+          MAP(FILTER(ids, LAMBDA(id, status(id)=name)), LAMBDA(id, card(id))))),
+      dom('div.board',
+        style('display','flex'),
+        style('gap','16px'),
+        style('alignItems','flex-start'),
+        col('To Do'),
+        col('Doing'),
+        col('Done')))""
+  )
+)"

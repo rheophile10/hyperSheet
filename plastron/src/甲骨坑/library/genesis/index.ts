@@ -101,7 +101,7 @@ const drain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<v
     // (write-once; regeneration keeps the manifest). Composed parts (mints) each register.
     const register = (name: Key, kind: string): void => {
       if (!getSegmentManifest(state, name)) {
-        setSegmentManifest(state, { name, version: "0.0.0", description: `${kind} (minted)`, dependencies: [], role: "user", kind } as never);
+        setSegmentManifest(state, { name, version: "0.0.0", description: `${kind} (minted)`, dependencies: [], role: "user", kind });
       }
     };
     if (req.layer) register(req.layer, String(req.kind ?? "document"));

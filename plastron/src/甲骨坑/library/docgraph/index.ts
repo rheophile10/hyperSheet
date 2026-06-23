@@ -311,6 +311,13 @@ const articleVnode = (state: State, key: string): V => {
     const inDeps = deps.filter((d) => !FN_TYPES.has(celOf(state, d)?.celType ?? ""));
     if (fnDeps.length) body.push(...section("functions it calls", linkRow(fnDeps)));
     if (inDeps.length) body.push(...section("input cels", linkRow(inDeps)));
+
+    // provenance: the binder / `:=` cell that authored this symbol, and (if
+    // distinct) its source cel. definedBy/origin are stamped by the defn drain.
+    const definedBy = cel.metadata.definedBy as string | undefined;
+    const origin = cel.metadata.origin as string | undefined;
+    if (definedBy && state.cels.has(definedBy)) body.push(...section("defined by", linkRow([definedBy])));
+    if (origin && origin !== definedBy && state.cels.has(origin)) body.push(...section("origin", linkRow([origin])));
   }
 
   const back = backlinksOf(state, key);

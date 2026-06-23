@@ -130,6 +130,18 @@ export const flush: Fn = async (
     }
   }
 
+  // Per-segment teardown hook (origin contract): a `<seg>.flush` slot is a
+  // FormulaCel whose value is an effect descriptor emitting to a channel.
+  // Enqueue it so its teardown runs — in its own stateful drain, with the cels
+  // still live — BEFORE eviction. Generic: the kernel reads the slot's own
+  // declared channels (metadata.channel) and never names a specific drain; the
+  // flushChannels("all") below drains it alongside everything else.
+  const flushSlot = state.cels.get(`${segmentKey}.flush`);
+  for (const chKey of flushSlot?.metadata.channel ?? []) {
+    const chCel = state.cels.get(chKey);
+    if (chCel?.celType === "ChannelCel") chCel._channel?.enqueue({ cel: flushSlot!, state });
+  }
+
   // Capture the manifest + bundled loader BEFORE the cel walk removes the
   // SegmentCel — needed to RE-PARK a bundled segment (its code loader +
   // manifest) so a later loadSegment can bring it back. Runtime-born

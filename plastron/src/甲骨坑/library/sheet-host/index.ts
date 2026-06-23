@@ -1,6 +1,7 @@
 import type { 甲骨, Cel, Fn, State, VElement } from "../../../types/index.js";
 import { bindNativeFns, isSecretHandleRef, resolveFn, precompute } from "../../../kernel/index.js";
 import { el as makeEl, text as T, memo } from "../dom/index.js";
+import { lookupMount, isMountSel } from "../dom/utils/mounts.js";
 import { fromXlsx } from "../xlsx/index.js";
 import { zipBytes, unzipBytes } from "../segment-archive/index.js";
 import seed from "./甲骨.json" with { type: "json" };
@@ -98,13 +99,13 @@ const WIN_RESIZE_EDGES: ReadonlyArray<readonly [string, string]> = [
 const displayCell = (v: unknown): V => {
   if (isVnode(v)) return v as V;
   if (v === null || v === undefined || v === "") return T("");
+  if (isMountSel(v)) return T(""); // a mount handle — content renders elsewhere (mounted); the cell stays clean
   if (typeof v === "object") {
-    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; cels?: unknown; defn?: unknown; name?: unknown; __mount?: unknown };
+    const o = v as { kind?: unknown; message?: unknown; genesis?: unknown; cels?: unknown; defn?: unknown; name?: unknown };
     if (o.kind === "error") return T(/undefined symbol|not a function/.test(String(o.message)) ? "#NAME?" : "#ERR!");
     if (o.genesis === true) return el("pre", { class: "cell-pre", style: SX.pre }, [T(genesisSummary(o.cels as Record<string, unknown> | undefined))]);
     if (o.defn === true) return T(`ƒ ${String(o.name ?? "")}`);
     if (isSecretHandleRef(v)) return T(`🔑 ${(v as { name: string }).name}`); // wallet handle (or persisted ref) — never the secret
-    if (typeof o.__mount === "string") return T(""); // content renders elsewhere (mounted) — the cell stays clean
     // a plain object/array (a message list, a row set, …) renders as readable,
     // pretty-printed JSON in a wrapping <pre> — NOT String()'d to "[object
     // Object]" nor a 60-char one-liner. The full text is reachable: the cell
@@ -330,7 +331,7 @@ const sheetView: Fn = ((
     ]);
   };
 
-  const isMountVal = (v: unknown): boolean => !!v && typeof v === "object" && typeof (v as { __mount?: unknown }).__mount === "string";
+  const isMountVal = (v: unknown): boolean => isMountSel(v);
 
   // the inner of a cell: inline editor when active (double-click), else the VALUE.
   // A cell whose value renders ELSEWHERE (a mount — e.g. the readme in 元) shows
@@ -422,9 +423,8 @@ const sheetView: Fn = ((
   // anchor the origin lays out around the sheet ("top" above, "bottom"
   // below, others above in name order). Delete the formula → it's gone.
   const asPlacement = (v: unknown): { sel: string; vnode: V } | null => {
-    const o = v as { __mount?: unknown; vnode?: unknown } | undefined;
-    return o && typeof o === "object" && typeof o.__mount === "string" && isVnode(o.vnode)
-      ? { sel: o.__mount, vnode: o.vnode as V } : null;
+    const p = lookupMount(v); // v is the cel's string value = a mount handle
+    return p ? { sel: p.target, vnode: p.vnode as V } : null;
   };
   const placements: { sel: string; vnode: V }[] = [];
   for (const k of ks) { const p = asPlacement(valOf.get(k)); if (p) placements.push(p); }

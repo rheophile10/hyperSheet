@@ -51,6 +51,21 @@ const sqlInline =
   await Bun.write(HTML, html);
 }
 
+// Inject the canonical guide from llms.md — THE SINGLE SOURCE. index.html's #llms
+// <pre> is just a [[LLMS_GUIDE]] placeholder; fill it with HTML-escaped llms.md,
+// whose own [[VOCAB_CATALOG]] / [[OTP_DEMO]] sentinels the blocks below then bake.
+// So the #llms div, dist/llms.txt, and the <head> guide block are ALL downstream
+// of llms.md — edit that one file and every channel (incl. the llm-eval system
+// prompt, which reads llms.md directly) stays in sync.
+{
+  const md = await Bun.file(join(import.meta.dir, "llms.md")).text();
+  const escMd = md.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  let html = await Bun.file(HTML).text();
+  if (!html.includes("[[LLMS_GUIDE]]")) throw new Error("bundle: [[LLMS_GUIDE]] sentinel missing from index.html #llms");
+  html = html.replace("[[LLMS_GUIDE]]", () => escMd);   // function form — md may contain $ patterns
+  await Bun.write(HTML, html);
+}
+
 // Bake the =vocab() catalog into the <noscript> guide (the [[VOCAB_CATALOG]]
 // sentinel in index.html). We boot the origin kernel HEADLESS (no painter —
 // vocabText only reads state.cels) and emit the same plain text the in-app
@@ -132,6 +147,26 @@ const sqlInline =
   const txt = m[1]!.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").trim();
   await Bun.write(join(OUT, "llms.txt"), txt + "\n");
   console.log(`✔ dist/llms.txt — ${(txt.length / 1024).toFixed(1)} KB`);
+
+  // Sync the GitHub README's LLM-guide section from the SAME baked guide, so a
+  // model reading the repo README gets the identical text as plastron.ca/llms.txt.
+  // README ← llms.txt ← llms.md (the single source). Between the sentinels only.
+  {
+    const readmePath = join(import.meta.dir, "..", "..", "README.md");
+    const readme = await Bun.file(readmePath).text();
+    const re = /(<!--LLMS_GUIDE_START-->)[\s\S]*?(<!--LLMS_GUIDE_END-->)/;
+    if (re.test(readme)) {
+      const inner =
+        `\n<!-- GENERATED from plastron-examples/origin/llms.md by bun bundle.ts — edit llms.md, not here. -->\n`
+        + `<details>\n<summary><b>📖 Full LLM / agent guide</b> — the plastron formula reference `
+        + `(also at <a href="https://plastron.ca/llms.txt">plastron.ca/llms.txt</a>)</summary>\n\n`
+        + "~~~\n" + txt.replace(/~~~/g, "∼∼∼") + "\n~~~\n\n</details>\n";
+      await Bun.write(readmePath, readme.replace(re, (_m, p1, p2) => p1 + inner + p2));
+      console.log(`✔ README.md LLM-guide section synced from llms.md`);
+    } else {
+      console.warn("bundle: README LLMS_GUIDE sentinels not found — skipped README sync");
+    }
+  }
 
   // ALSO surface the guide at the very TOP of <head> — an inert text/plain block
   // BEFORE Bun's ~2 MB inlined bundle — so a raw-HTML fetcher with a truncation

@@ -38,7 +38,37 @@ import seed from "./甲骨.json" with { type: "json" };
 interface DefnRequest {
   defn: true; name: string; kind: string; source: string;
   overwrite?: boolean; origin?: Key;
+  // `:=` extensions: the minted cel's shape. Absent → legacy binder
+  // (EditableLambdaCel of `kind`). celType picks the tier; `parser`/`v`
+  // carry the FormulaCel parser / ValueCel literal.
+  celType?: string; parser?: string; v?: unknown; segment?: string;
 }
+
+const lastName = (key: Key): string =>
+  key.includes(".") ? key.slice(key.lastIndexOf(".") + 1) : key;
+
+// The setCel spec for a request — value/formula/lambda tier, with lineage
+// metadata (definedBy = the binder cell, origin = its source) stamped on all.
+const defnSpec = (req: DefnRequest, owner: Key, binderSeg: string | undefined): Record<string, unknown> => {
+  const md: Record<string, unknown> = {
+    name: lastName(req.name), segment: req.segment ?? binderSeg,
+    definedBy: owner, origin: req.origin,
+  };
+  if (req.celType === "ValueCel")   return { celType: "ValueCel", v: req.v, metadata: md };
+  if (req.celType === "FormulaCel") return { celType: "FormulaCel", f: req.source, metadata: { ...md, parser: req.parser ?? "infix" } };
+  return { celType: "EditableLambdaCel", f: req.source, metadata: { ...md, kind: req.kind } };
+};
+
+// True when the live cel already matches the request — skip the re-commit
+// (and its defGeneration bump) so an unchanged binder doesn't churn.
+const defnUnchanged = (live: (Cel & { f?: string; v?: unknown }) | undefined, req: DefnRequest, owner: Key): boolean => {
+  if (!live || definedBy(live) !== owner || live.celType !== (req.celType ?? "EditableLambdaCel")) return false;
+  if (req.celType === "ValueCel") return live.v === req.v;
+  const sameKind = req.celType === "FormulaCel"
+    ? (live.metadata as { parser?: string }).parser === (req.parser ?? "infix")
+    : (live.metadata as { kind?: string }).kind === req.kind;
+  return live.f === req.source && sameKind;
+};
 
 const isRequest = (v: unknown): v is DefnRequest =>
   !!v && typeof v === "object"
@@ -93,23 +123,12 @@ const drain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<v
       }
     }
 
-    // idempotence: same source+kind+owner → nothing to do
-    const live = state.cels.get(req.name) as (Cel & { f?: string }) | undefined;
-    if (live && live.f === req.source
-        && (live.metadata as { kind?: string }).kind === req.kind
-        && definedBy(live) === owner) continue;
+    // idempotence: same shape+source+owner → nothing to do
+    const live = state.cels.get(req.name) as (Cel & { f?: string; v?: unknown }) | undefined;
+    if (defnUnchanged(live, req, owner)) continue;
 
     try {
-      await setCel(state, req.name, {
-        celType: "EditableLambdaCel",
-        f: req.source,
-        metadata: {
-          kind: req.kind,
-          segment: binder.metadata.segment,
-          definedBy: owner,
-          origin: req.origin,
-        },
-      });
+      await setCel(state, req.name, defnSpec(req, owner, binder.metadata.segment));
       touched.push(req.name);
       // Compile failures trap-as-value on the definition cel; mirror
       // them onto the binder so the failure shows where the user typed.
@@ -146,6 +165,11 @@ const drain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<v
   if (seeds.length > 0 || stale.size > 0) {
     const affected = affectedFor(state, [...seeds, ...stale]);
     for (const k of stale) affected.add(k);
+    // Fire the minted cels themselves, not just their descendants: a
+    // value-tier `:=` mints a FormulaCel whose value (e.g. a LAMBDA closure)
+    // must be computed before any caller reads it. ValueCel/lambda mints are
+    // already settled, so re-firing them is a harmless no-op.
+    for (const k of touched) affected.add(k);
     await runCascade(state, affected);
   }
 };

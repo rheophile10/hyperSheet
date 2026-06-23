@@ -64,11 +64,74 @@ export const archiveSegmentNames = (json: string): Key[] => {
   catch { return []; }
 };
 
+// ── completeness gate ───────────────────────────────────────────────────────
+// The reusable check behind SEGMENT(json) / import / paste: is every segment +
+// cel complete enough to hydrate? A dehydrated cel needs a key, a known
+// celType, metadata, and — for the source tiers — a body `f`. (ValueCel value
+// is `dc.v ?? metadata.v ?? null` at inflate, so it is never "incomplete".)
+
+const KNOWN_CELTYPES = new Set<string>([
+  "ValueCel", "EditableLambdaCel", "LockedLambdaCel", "SchemaCel",
+  "FormulaCel", "CompilerCel", "ChannelCel", "RangeCel", "SegmentCel",
+]);
+
+export interface ArchiveProblem { where: string; message: string; }
+
+/** Validate a `甲骨` archive (JSON string OR already-parsed object). Returns the
+ *  list of completeness problems — empty means it is safe to hydrate. */
+export const validateArchive = (archive: string | unknown): ArchiveProblem[] => {
+  const problems: ArchiveProblem[] = [];
+  let arch: { segments?: Array<{ name?: unknown; cels?: unknown }> };
+  try {
+    arch = (typeof archive === "string" ? JSON.parse(archive) : archive) as typeof arch;
+  } catch (e) {
+    return [{ where: "(archive)", message: `not valid JSON: ${(e as Error).message}` }];
+  }
+  const segments = arch?.segments;
+  if (!Array.isArray(segments)) return [{ where: "(archive)", message: "missing a `segments` array" }];
+  for (const seg of segments) {
+    const segName = typeof seg?.name === "string" ? seg.name : undefined;
+    if (!segName) problems.push({ where: "(segment)", message: "segment missing a string `name`" });
+    const cels = seg?.cels;
+    if (cels !== undefined && !Array.isArray(cels)) {
+      problems.push({ where: segName ?? "(segment)", message: "`cels` is not an array" });
+      continue;
+    }
+    for (const c of (cels ?? []) as Array<Record<string, unknown>>) {
+      const key = typeof c?.key === "string" && c.key.length > 0 ? c.key : undefined;
+      const at = key ?? `${segName ?? "?"}:(unkeyed)`;
+      if (!key) problems.push({ where: at, message: "cel missing a non-empty string `key`" });
+      const ct = c?.celType;
+      if (typeof ct !== "string" || !KNOWN_CELTYPES.has(ct)) {
+        problems.push({ where: at, message: `cel has unknown celType ${JSON.stringify(ct)}` });
+        continue;
+      }
+      if (c?.metadata === undefined || typeof c.metadata !== "object") {
+        problems.push({ where: at, message: "cel missing `metadata`" });
+      }
+      if (ct === "FormulaCel" || ct === "EditableLambdaCel") {
+        const f = c?.f;
+        if (typeof f !== "string" && !Array.isArray(f)) {
+          problems.push({ where: at, message: `${ct} missing its source body \`f\`` });
+        }
+      }
+    }
+  }
+  return problems;
+};
+
 /** Load a `甲骨` archive string into `state` (hydrate). WHOLESALE: same-key cels
  *  are replaced. Returns the segment names installed. Caller enforces the
  *  boot-set-name guard (origin task) — this is the raw materialiser. */
 export const loadArchive = async (state: State, json: string): Promise<Key[]> => {
   const arch = JSON.parse(json) as { segments?: Array<{ name: Key; cels?: Array<{ metadata?: Record<string, unknown> }> }>; manifests?: unknown[]; formatVersion?: number };
+  // Completeness gate: refuse an incomplete archive BEFORE it touches state.
+  const problems = validateArchive(arch);
+  if (problems.length > 0) {
+    throw new Error(
+      `loadArchive: incomplete archive — ${problems.map((p) => `${p.where}: ${p.message}`).join("; ")}`,
+    );
+  }
   const segments = arch.segments ?? [];
   // An imported segment is STATIC DATA, not a live genesis bloom: strip
   // metadata.generatedBy so the genesis drain can't sweep its cels as orphaned
@@ -79,6 +142,6 @@ export const loadArchive = async (state: State, json: string): Promise<Key[]> =>
   }
   const hydrate = resolveFn(state, "hydrate") as (s: State, seg: unknown, man: unknown, v?: number) => Promise<unknown>;
   await hydrate(state, segments, arch.manifests ?? [], arch.formatVersion);
-  for (const s of segments) setSegmentManifest(state, { name: s.name, version: "0.0.0", description: "imported document segment", dependencies: [], role: "user" } as never);
+  for (const s of segments) setSegmentManifest(state, { name: s.name, version: "0.0.0", description: "imported document segment", dependencies: [], role: "user" });
   return segments.map((s) => s.name);
 };

@@ -77,6 +77,12 @@
     ]
   },
   {
+    "name": "php-compiler",
+    "version": "1.0.0",
+    "description": "The 'php' compiler cel — PHP source (named functions; pick one via the := php.<fn>{…} selector) → callable Fn via php-wasm. Each compile defines its source in a fresh PHP namespace (recompile-safe); the runtime call is async (returns a Promise — fireCel awaits it). Dynamic-imported on first compile.",
+    "dependencies": []
+  },
+  {
     "name": "formula-compiler",
     "version": "1.0.0",
     "description": "kind \"formula\": defn bodies that are parameterized plastron formulas (not JS). (params) => body, compiled via compileFormula, called positionally. Lets layout/note/glue verbs be defined from the formula surface, editable + wiki-visible.",
@@ -137,6 +143,15 @@
     "version": "1.0.0",
     "description": "Chunk D of segment-lifecycle. User-space lifecycle ops as locked native cels: newUserSpace / saveUserSpace / loadUserSpace / closeUserSpace, plus the shared hydrate-closure helper (BFS the segment-store from a root, topo-order the not-yet-loaded transitive closure, hydrate in one call; idempotent). save persists only the user-space's PRIVATE closure (role:user-space deps whose applications array subsets the owner's); load auto-starts the parent application via hydrate-closure; close flushes the private closure root-first without evicting shared libraries. v1 defers dirty-flag auto-tracking and runUntilSettled-before-save. See plastron/docs/4-current/02-hydration/ for the shipped surface and plastron/docs/1-design/3-accepted/02-hydration/session-segments.md for the design.",
     "dependencies": [
+      "segment-store"
+    ]
+  },
+  {
+    "name": "origin-lifecycle",
+    "version": "1.0.0",
+    "description": "The single public lifecycle surface for origin documents (segment-lifecycle umbrella). Composes the shipped ops — does NOT re-implement persistence. One descriptor channel origin.io + a stateful drain: slot FormulaCels on an origin-application (.open/.edit/.new/.save/.load/.close) and an origin-user (.flush) evaluate to a pure {op,…} descriptor (built by the origin.* verbs, which carry metadata.emitsTo:'origin.io') and emit; the drain dispatches with state — new→newUserSpace, save→saveUserSpace, open→hydrate-closure, close→closeUserSpace, load→sha/compat gate then loadUserSpace, flush→optional save. origin.fire(slotKey) is the discrete trigger (the kernel flush hook is the equivalent for the .flush slot). edit is deferred (editor being overhauled).",
+    "dependencies": [
+      "user-space-ops",
       "segment-store"
     ]
   },
@@ -299,6 +314,42 @@
     "dependencies": [
       "dom",
       "file-explorer"
+    ]
+  },
+  {
+    "name": "window",
+    "version": "0.0.1",
+    "description": "the primitive content-agnostic TABBABLE window frame — wframe (one window, drag/resize/min/fullscreen/close + a tab strip) + the window.* handler family over per-window state cels (win.<id>.state). A tab references a content cel of any kind, so a sheet tabs next to DOOM.",
+    "dependencies": [
+      "dom"
+    ]
+  },
+  {
+    "name": "winapps",
+    "version": "0.0.1",
+    "description": "the windowed-app framework — generic UI (toolbar/toolbtn) + app install (app.install/app.installed: an assets manifest {url,opfs,sha} → OPFS, idempotent). App-agnostic; sheet-specific UI lives in sheets, wasm specifics in winapps-wasm, the frame in window.",
+    "dependencies": [
+      "dom",
+      "file-store"
+    ]
+  },
+  {
+    "name": "sheets",
+    "version": "0.0.1",
+    "description": "the native spreadsheet grid as reusable lambdas (sheetgrid + sheetcell) producing a CONTENT vnode a window tab hosts — the perf fast path, sheet-unique rendering only.",
+    "dependencies": [
+      "dom",
+      "winapps"
+    ]
+  },
+  {
+    "name": "winapps-wasm",
+    "version": "0.0.1",
+    "description": "wasm-app specifics of the windowed-app stack — wasmapp builds a wasm <canvas> window on the new tabbable frame + the graph<->engine bridge + active-gated keys. Reuses wasm-window's canvas/key lambdas (cutover folds them in + retires wasm-window). Pairs with winapps app.install + a harness provider.",
+    "dependencies": [
+      "dom",
+      "window",
+      "wasm-window"
     ]
   },
   {

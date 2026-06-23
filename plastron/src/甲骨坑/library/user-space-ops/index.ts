@@ -116,6 +116,13 @@ const newUserSpace: Fn = async (
       );
     }
   }
+  // Pin the parent application's content sha so the origin load-gate can refuse
+  // an incompatible app version. Prefer the stored (canonical) sha; fall back to
+  // the live manifest; absent → leave unpinned (the gate stays lenient).
+  const getFn = resolveFn(state, "store.get") as Fn;
+  const appStored = (await getFn(state, applicationName)) as { manifest?: { sha?: string } } | undefined;
+  const applicationSha = appStored?.manifest?.sha ?? (app as { sha?: string }).sha;
+
   // 3-4. Manifest + empty 甲骨.
   const manifest: 冊 = {
     name,
@@ -124,6 +131,7 @@ const newUserSpace: Fn = async (
     role: "user-space",
     applications: [applicationName],
     dependencies: [applicationName, ...(options.extraDeps ?? [])],
+    ...(applicationSha ? { applicationSha } : {}),
   };
   const segment: 甲骨 = { name, cels: [] };
 

@@ -22,14 +22,19 @@ import * as builtins        from "./甲骨坑/library/builtins/index.js";
 import * as watCompiler     from "./甲骨坑/library/wat-compiler/index.js";
 import * as wasmBytes       from "./甲骨坑/library/wasm-bytes/index.js";
 import * as pyCompiler      from "./甲骨坑/library/py-compiler/index.js";
+import * as phpCompiler     from "./甲骨坑/library/php-compiler/index.js";
 import * as formulaCompiler from "./甲骨坑/library/formula-compiler/index.js";
 import * as fileStore       from "./甲骨坑/library/file-store/index.js";
 import * as htmlTemplate    from "./甲骨坑/library/html-template-parser/index.js";
 import * as plastronDom     from "./甲骨坑/library/dom/index.js";
 import * as sheetHost       from "./甲骨坑/library/sheet-host/index.js";
+import * as sheets          from "./甲骨坑/library/sheets/index.js";
+import * as winapps         from "./甲骨坑/library/winapps/index.js";
 import * as windows         from "./甲骨坑/library/windows/index.js";
+import * as windowSeg       from "./甲骨坑/library/window/index.js";
 import * as fileExplorer    from "./甲骨坑/library/file-explorer/index.js";
 import * as wasmWindow      from "./甲骨坑/library/wasm-window/index.js";
+import * as winappsWasm     from "./甲骨坑/library/winapps-wasm/index.js";
 import * as doom            from "./甲骨坑/library/doom/index.js";
 import * as peer            from "./甲骨坑/library/peer/index.js";
 import * as xlsx            from "./甲骨坑/library/xlsx/index.js";
@@ -40,6 +45,7 @@ import * as opfsSeeding     from "./甲骨坑/library/opfs-seeding/index.js";
 import * as cliSegmentExport from "./甲骨坑/library/cli-segment-export/index.js";
 import * as sheet           from "./甲骨坑/library/sheet/index.js";
 import * as userSpaceOps    from "./甲骨坑/library/user-space-ops/index.js";
+import * as originLifecycle from "./甲骨坑/library/origin-lifecycle/index.js";
 import * as segmentArchive  from "./甲骨坑/library/segment-archive/index.js";
 import * as defn            from "./甲骨坑/library/defn/index.js";
 import * as genesis         from "./甲骨坑/library/genesis/index.js";
@@ -92,14 +98,19 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "wat-compiler":     () => [...watCompiler.cels],
   "wasm-bytes":       () => [...wasmBytes.cels],
   "py-compiler":      () => [...pyCompiler.cels],
+  "php-compiler":     () => [...phpCompiler.cels],
   "formula-compiler": () => [...formulaCompiler.cels],
   "file-store":       () => [...fileStore.cels],
   "html-template-parser": () => [...htmlTemplate.cels],
   "dom":     () => [...plastronDom.cels],
   "sheet-host":       () => [...sheetHost.cels],
+  "sheets":           () => [...sheets.cels],
+  "winapps":          () => [...winapps.cels],
   "windows":          () => [...windows.cels],
+  "window":           () => [...windowSeg.cels],
   "file-explorer":    () => [...fileExplorer.cels],
   "wasm-window":      () => [...wasmWindow.cels],
+  "winapps-wasm":     () => [...winappsWasm.cels],
   "doom":             () => [...doom.cels],
   "peer":             () => [...peer.cels],
   "xlsx":             () => [...xlsx.cels],
@@ -110,6 +121,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "cli-segment-export": () => [...cliSegmentExport.cels],
   "sheet":            () => [...sheet.cels],
   "user-space-ops":   () => [...userSpaceOps.cels],
+  "origin-lifecycle": () => [...originLifecycle.cels],
   "segment-archive":  () => [...segmentArchive.cels],
   "sound":            () => [...sound.cels],
   "music":            () => [...music.cels],

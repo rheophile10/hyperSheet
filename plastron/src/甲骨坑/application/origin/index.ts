@@ -12,6 +12,7 @@ import {
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
 // `memo` attaches the diff's O(changed) short-circuit hint (see dom).
 import { el as makeEl, text as T } from "../../library/dom/index.js";
+import { registerMount } from "../../library/dom/utils/mounts.js";
 import { BUILTIN_DOCS } from "../../library/sheet/utils/infix.js";
 import { encodeLink, decodeLink, encodeEncLink, decodeEncLink, ENC_METHOD,
   encryptPayload, decryptPayload,
@@ -42,13 +43,16 @@ type V = { type: "el" | "text"; tag?: string; key?: string; memo?: unknown; attr
 const isVnode = (v: unknown): v is V =>
   !!v && typeof v === "object" && ((v as V).type === "el" || (v as V).type === "text");
 
-// mount(selector, content) — PLACE a dom object UNDER another element the view
-// renders, instead of inside the cell that holds the formula. Stays in origin
-// (an application segment, parked by default) so the verb name doesn't collide
-// with user cels named "mount" in other hosts. sheetView renders the {__mount}
-// values this produces.
+// mount(target, content) — PLACE a dom object UNDER another element the view
+// renders, instead of inside the cell that holds the formula. RETURNS the
+// SELECTOR of the placed element (a human-readable handle), so another cel can
+// mount inside it: `B := mount(A1, …)`. `target` is itself a selector — a bare
+// node the view renders (".origin", ".sheet", …) OR another mount's returned
+// handle. The vnode rides in the mount registry (mounts.ts); sheetView looks it
+// up by this cel's string value. Stays in origin (parked) so the verb name
+// doesn't collide with user cels named "mount" in other hosts.
 const mount: Fn = (target: unknown, content: unknown): unknown =>
-  ({ __mount: String(target ?? ".origin"), vnode: isVnode(content) ? content : T(content) });
+  registerMount(String(target ?? ".origin"), isVnode(content) ? content : T(content));
 
 // loose-typed adapter over the LIBRARY builder — origin's call sites pass plain
 // records; the painter stringifies, so the cast is safe.

@@ -3,6 +3,7 @@ import {
   inflateCel, compileCelBody, resolveSchemas, precompute, precomputeOptional, resolveFn,
 } from "../../../../kernel/index.js";
 import { addrFrom, cellKey } from "./address.js";
+import { isDefinitionSource } from "./infix.js";
 
 // ============================================================================
 // Sheet grid factory + action fns. buildSheet generates the data layer — an
@@ -16,7 +17,10 @@ import { addrFrom, cellKey } from "./address.js";
 // and a commit that changes a cell between the two re-installs the cel.
 // ============================================================================
 
-const isFormulaSource = (s: string): boolean => s.trimStart().startsWith("=");
+// `=…` is a formula; `seg.name := …` is a definition binder — both compile
+// through the infix parser (the binder emits a defn.commit request).
+const isFormulaSource = (s: string): boolean =>
+  s.trimStart().startsWith("=") || isDefinitionSource(s);
 
 const literal = (s: string): unknown => {
   if (s === "") return "";

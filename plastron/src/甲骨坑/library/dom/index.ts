@@ -4,7 +4,8 @@ import { diffVNodes } from "./utils/diff.js";
 import { applyPatch } from "./utils/apply.js";
 import { applyListenerDelta } from "./utils/events.js";
 import { paintDrain } from "./utils/paint.js";
-import { dom, style, attr, on, img, layout } from "./utils/vocab.js";
+import { dom, style, attr, on, img } from "./utils/vocab.js";
+import { dragGrab, dragOver, dragDrop } from "./utils/drag.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -27,7 +28,9 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["attr",                   attr],
   ["on",                     on],
   ["img",                    img],
-  ["layout",                 layout],
+  ["drag.grab",              dragGrab],
+  ["drag.over",              dragOver],
+  ["drag.drop",              dragDrop],
 ]));
 
 export { createPainter, getPainter, setPainter } from "./utils/paint.js";

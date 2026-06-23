@@ -1,0 +1,53 @@
+{
+ "name": "winapps",
+ "cels": [
+  {
+   "key": "toolbtn",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "toolbtn",
+    "segment": "winapps",
+    "name": "toolbtn",
+    "kind": "native",
+    "description": "(glyph, title, handler, payload?) - a generic toolbar/titlebar button for any windowed app: shows `glyph`, stops pointerdown (so it doesn't start a window drag), and dispatches handler(state, payload, event) on click. Compose several inside toolbar()."
+   }
+  },
+  {
+   "key": "toolbar",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "toolbar",
+    "segment": "winapps",
+    "name": "toolbar",
+    "kind": "native",
+    "description": "(...children) - a horizontal toolbar row an app places above its content. Arrays flatten and non-vnodes drop, so MAP(...) of toolbtn()s works. App-agnostic chrome; sheet-specific UI lives in the sheets segment."
+   }
+  },
+  {
+   "key": "app.install",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "app.install",
+    "segment": "winapps",
+    "name": "app.install",
+    "kind": "native",
+    "description": "(manifest) - install an app's ASSETS to OPFS from an assets manifest { name, version, readme?, assets:[{url, opfs, sha?}] } (object or a URL to its JSON). Downloads each MISSING asset to its opfs path (idempotent), verifying SHA-256 when given. Returns a one-line status. The foundation for origin-applications defined in formula-cels: install to OPFS, then load from OPFS into state. Network + OPFS IO."
+   }
+  },
+  {
+   "key": "app.installed",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "app.installed",
+    "segment": "winapps",
+    "name": "app.installed",
+    "kind": "native",
+    "description": "(manifest) - true iff every asset in the manifest is already present in OPFS (a formula can branch on it: install when false, load when true)."
+   }
+  }
+ ]
+}

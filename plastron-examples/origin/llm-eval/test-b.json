@@ -1,0 +1,31 @@
+{
+  "task": "play-c",
+  "results": [
+    {
+      "provider": "grok",
+      "model": "grok-4",
+      "requests": [
+        "https://plastron.ca"
+      ],
+      "channels": [
+        "html"
+      ],
+      "viable": true,
+      "formula": "=dom(\"button\",on(\"click\",\"origin.tone\",261.63),\"♪\")",
+      "finalText": "=dom(\"button\",on(\"click\",\"origin.tone\",261.63),\"♪\")"
+    },
+    {
+      "provider": "chatgpt",
+      "model": "gpt-5",
+      "requests": [
+        "https://plastron.ca"
+      ],
+      "channels": [
+        "html"
+      ],
+      "viable": true,
+      "formula": "=dom(\"button\", on(\"click\",\"origin.tone\", 261.63), \"Play C4\")",
+      "finalText": "=dom(\"button\", on(\"click\",\"origin.tone\", 261.63), \"Play C4\")"
+    }
+  ]
+}

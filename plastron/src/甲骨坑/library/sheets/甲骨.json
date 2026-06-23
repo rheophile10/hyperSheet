@@ -1,0 +1,29 @@
+{
+ "name": "sheets",
+ "cels": [
+  {
+   "key": "sheetcell",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "sheetcell",
+    "segment": "sheets",
+    "name": "sheetcell",
+    "kind": "native",
+    "description": "(value) - render ONE spreadsheet cell value to a vnode: a number/string as text, a vnode (a formula that built dom/canvas/a chart) in place, a cel error as its code. The leaf of the grid."
+   }
+  },
+  {
+   "key": "sheetgrid",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "sheetgrid",
+    "segment": "sheets",
+    "name": "sheetgrid",
+    "kind": "native",
+    "description": "(label, cells, opts?) - render a worksheet's cells as an editable Excel grid CONTENT vnode (corner label + column letters + row numbers + cells). `cells` is the host-aggregated list [{key,col,row,value,src}]; `opts` = {active, selected, draft, edit, select, fire, commit} (handler keys default to origin.*). The active cell shows an inline editor; others dispatch select/edit. SHEET-UNIQUE native renderer (the perf fast path); a window tab hosts the result so a sheet tabs next to any app."
+   }
+  }
+ ]
+}

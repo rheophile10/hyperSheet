@@ -130,7 +130,7 @@ test("=cels(sheet) lists a segment; unknown symbols show #NAME?", async () => {
 
 test("mount(selector) targets an existing view node (.origin); no match places nothing", async () => {
   const { state, root, m } = await boot();
-  const hello = () => walk(root, (n) => String(n.attrs?.class ?? "") === "hello")[0];
+  const hello = () => walk(root, (n) => String(n.attrs?.class ?? "").split(/\s+/).includes("hello"))[0];
   await put(state, root, m, '(mount ".origin" (dom "h2.hello" "pinned"))'); // replaces 元's readme mount
   assert.ok(hello(), "dom placed under .origin, not in the cell");
   assert.match(txt(hello()), /pinned/);
@@ -147,11 +147,33 @@ test("mount(selector, content) splices under any element of the view (e.g. .shee
   await put(state, root, m, '(mount ".origin" (dom "div.under" "below the cells"))', "g3x3.A1");
   const sheet = walk(root, (n) => String(n.attrs?.class ?? "") === "origin")[0];
   assert.ok(sheet, "the .origin desktop rendered");
-  const under = walk(sheet, (n) => String(n.attrs?.class ?? "") === "under")[0];
+  const hasUnder = (n) => String(n.attrs?.class ?? "").split(/\s+/).includes("under");
+  const under = walk(sheet, hasUnder)[0];
   assert.ok(under, "the dom is spliced UNDER .origin");
   assert.match(txt(under), /below the cells/);
   await put(state, root, m, "", "g3x3.A1"); // clear the formula
-  assert.equal(walk(root, (n) => String(n.attrs?.class ?? "") === "under")[0], undefined, "gone with its formula");
+  assert.equal(walk(root, hasUnder)[0], undefined, "gone with its formula");
+});
+
+test("mount returns a selector handle; another cel mounts INSIDE it", async () => {
+  const { state, root, m } = await boot();
+  await put(state, root, m, "=cels(2, 2)"); // a grid with addressable cells
+  // A: place a parent under .origin → its returned value is the handle selector
+  await put(state, root, m, '=mount(".origin", dom("div.parent", "P"))', "g2x2.A1");
+  // B: mount a child INTO whatever A1 returned (compose by the returned handle)
+  await put(state, root, m, '=mount(g2x2.A1, dom("p.child", "C"))', "g2x2.B1");
+
+  const hasClass = (c) => (n) => String(n.attrs?.class ?? "").split(/\s+/).includes(c);
+  const parent = walk(root, hasClass("parent"))[0];
+  assert.ok(parent, "A's parent rendered under .origin");
+  const child = walk(parent, hasClass("child"))[0];
+  assert.ok(child, "B's child rendered INSIDE A's parent — composed via the returned selector");
+  assert.match(txt(child), /C/);
+
+  // the returned VALUE is a human-readable selector string, not an object.
+  const aVal = state.cels.get("g2x2.A1").v;
+  assert.equal(typeof aVal, "string", "mount returns a selector string");
+  assert.match(String(aVal), /^[.#]/, "…a class/id selector handle");
 });
 
 test("introspection: inspect / segments / vocab return readable values", async () => {
@@ -169,7 +191,7 @@ test("introspection: inspect / segments / vocab return readable values", async (
   assert.match(fnsrc, /^signature: \(target content\)$/m, "signature split out of the doc");
   assert.match(fnsrc, /^about: \|$/m, "about is a wrapped literal block");
   assert.match(fnsrc, /\nsource: /, "source comes last");
-  assert.match(fnsrc, /__mount/, "shows the actual fn body");
+  assert.match(fnsrc, /registerMount/, "shows the actual fn body");
   assert.match(fnsrc, /selector/, "shows the (updated) description");
   // multi-line value renders as a <pre> so it's not jumbled into one line
   assert.ok(walk(root, (n) => n.tag === "pre" && /cell-pre/.test(String(n.attrs?.class ?? "")))[0],

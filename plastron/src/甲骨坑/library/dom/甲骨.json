@@ -80,7 +80,7 @@
     "segment": "dom",
     "name": "dom",
     "kind": "native",
-    "description": "(tag, ...children) - a presentation vnode value. tag.class is emmet sugar; string children → text, nested dom(…) → elements, (style …)/(attr …)/(on …) → that element's style/attributes/events. Children must be vnodes/strings/style/attr/on — NOT a genesis: cels()/segment() build sheets and don't nest here (they'd stringify to \"[object Object]\"); make the grid top-level instead."
+    "description": "(tag, ...children) - a presentation vnode value. tag.class is emmet sugar; string children → text, nested dom(…) → elements, (style …)/(attr …)/(on …) → that element's style/attributes/events. An ARRAY child is FLATTENED in place, so a collection from MAP/FILTER renders as sibling children: (dom 'div' (MAP tasks!A1:A6 (LAMBDA t (dom 'div.card' t)))); null/''/false items are dropped. Children must be vnodes/strings/arrays/style/attr/on — NOT a genesis: cels()/segment() build sheets and don't nest here (they'd stringify to \"[object Object]\"); make the grid top-level instead."
    }
   },
   {
@@ -132,15 +132,49 @@
    }
   },
   {
-   "key": "layout",
+   "key": "drag.active",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "drag.active",
+    "segment": "dom",
+    "description": "drag-reassign: the cel KEY named by the item currently being dragged (set by drag.grab on dragstart, cleared by drag.drop). The single transient source of truth for what is in hand."
+   },
+   "v": null
+  },
+  {
+   "key": "drag.grab",
    "celType": "LockedLambdaCel",
    "locked": true,
    "metadata": {
-    "key": "layout",
+    "key": "drag.grab",
     "segment": "dom",
-    "name": "layout",
+    "name": "drag.grab",
     "kind": "native",
-    "description": "([mode|opts,] ...children) - arrange children into a responsive container. Default mode is masonry (Pinterest column packing); also grid, rows, columns, stack. Children: vnodes (dom/charts/img/nested layout), ranges/arrays (flattened), or scalars (boxed as text). Mobile-responsive with NO media queries - columns:<min>px collapses to one column on a phone and fans out on a wide screen, all from viewport width. opts: {mode, min, gap}."
+    "description": "dragstart handler: records WHICH cel the dragged item names into drag.active. Make an item draggable with (attr 'draggable' 'true') and (on 'dragstart' 'drag.grab' <celKey>)."
+   }
+  },
+  {
+   "key": "drag.over",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "drag.over",
+    "segment": "dom",
+    "name": "drag.over",
+    "kind": "native",
+    "description": "dragover handler: preventDefault so the browser allows a drop. REQUIRED on any drop zone - (on 'dragover' 'drag.over'). No drop event fires without it."
+   }
+  },
+  {
+   "key": "drag.drop",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "drag.drop",
+    "segment": "dom",
+    "name": "drag.drop",
+    "kind": "native",
+    "description": "drop handler: assigns the zone's VALUE to the cel named in drag.active, then clears it. A drop zone carries its value as the payload - (on 'drop' 'drag.drop' 'Done'). Movement is reactive: any formula referencing the assigned cel re-renders the item in its new place."
    }
   }
  ]

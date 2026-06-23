@@ -45,6 +45,7 @@ type Node =
   | { t: "sym"; name: string }                     // bare non-ref name → cel value by key
   | { t: "bin"; op: string; l: Node; r: Node }
   | { t: "un"; op: string; e: Node }
+  | { t: "obj"; entries: { key: string; value: Node }[] } // { color: "tomato", "font-size": A1 }
   | { t: "call"; name: string; args: Node[] };
 
 // ── tokenizer ────────────────────────────────────────────────────────────────
@@ -75,7 +76,7 @@ const tokenize = (src: string): Tok[] => {
     }
     const two = src.slice(i, i + 2);
     if (OPS2.has(two)) { toks.push({ k: "op", v: two }); i += 2; continue; }
-    if ("+-*/&=<>(),:!".includes(c)) { toks.push({ k: "op", v: c }); i++; continue; }
+    if ("+-*/&=<>(),:!{}".includes(c)) { toks.push({ k: "op", v: c }); i++; continue; }
     if ((c >= "0" && c <= "9") || c === ".") {
       let j = i;
       while (j < n && ((src[j]! >= "0" && src[j]! <= "9") || src[j] === ".")) j++;
@@ -176,6 +177,24 @@ const parseToks = (toks: Tok[]): Node => {
     if (t.k === "num") return { t: "num", v: parseFloat(t.v) };
     if (t.k === "str") return { t: "str", v: t.v };
     if (t.v === "(") { const e = comparison(); eat(")"); return e; }
+    // object literal — { key: expr, "hyphen-key": expr, … }. Keys are bare
+    // names or strings; values are full expressions, so a cel ref in a value
+    // stays a real dependency (style({ color: A1 }) wires A1).
+    if (t.v === "{") {
+      const entries: { key: string; value: Node }[] = [];
+      if (peek()?.v !== "}") {
+        for (;;) {
+          const kt = next();
+          if (!kt || (kt.k !== "name" && kt.k !== "str")) throw new Error("infix: object key expected");
+          eat(":");
+          entries.push({ key: kt.v, value: comparison() });
+          if (peek()?.v === ",") { next(); continue; }
+          break;
+        }
+      }
+      eat("}");
+      return { t: "obj", entries };
+    }
     if (t.k === "name") {
       // Function call?
       if (peek()?.v === "(") {
@@ -283,6 +302,11 @@ const evalNode = (node: Node, lookup: Lookup): unknown => {
       }
       return null;
     }
+    case "obj": {
+      const o: Record<string, unknown> = {};
+      for (const e of node.entries) o[e.key] = evalNode(e.value, lookup);
+      return o;
+    }
     case "call": return evalCall(node, lookup);
   }
 };
@@ -346,7 +370,10 @@ const flatVals = (args: Node[], lookup: Lookup): unknown[] => {
 const argVals = (a: Node | undefined, lookup: Lookup): unknown[] => {
   if (!a) return [];
   if (a.t === "range") return a.keys ? a.keys.map(lookup) : rangeValues(a.range, lookup);
-  return [evalNode(a, lookup)];
+  // an array-VALUED expression (a nested MAP/FILTER/…) spreads into the value
+  // stream, exactly as a range does — so MAP(FILTER(…), fn) iterates per element.
+  const v = evalNode(a, lookup);
+  return Array.isArray(v) ? v : [v];
 };
 
 const str = (v: unknown): string => {
@@ -484,7 +511,7 @@ const BUILTIN_CALLS: ReadonlySet<string> = new Set([
   // date (pure, literal args only)
   "DATE",
   // variables + higher-order (lexical, in-formula — NOT cels)
-  "LET", "LAMBDA", "MAP", "REDUCE", "SCAN", "BYROW",
+  "LET", "LAMBDA", "MAP", "FILTER", "REDUCE", "SCAN", "BYROW",
 ]);
 
 // One-line docs for every inline builtin — co-located with BUILTIN_CALLS so the
@@ -510,6 +537,7 @@ export const BUILTIN_DOCS: Readonly<Record<string, string>> = {
   LET: "(name, value, …, calc) bind names for THIS formula, then compute calc — reuse a sub-expression without repeating it: =LET(r, A1*2, r + r*r)",
   LAMBDA: "(param, …, body) an inline function value — pass to MAP/REDUCE/etc: =LAMBDA(x, x*x)",
   MAP: "(range, fn) apply fn to each value → array: =SUM(MAP(A1:A9, LAMBDA(x, x*x)))",
+  FILTER: "(range, predicate) keep values where predicate is true → array: =FILTER(A1:A9, LAMBDA(x, x > 0))",
   REDUCE: "(init, range, fn) fold: =REDUCE(0, A1:A9, LAMBDA(acc, x, acc + x))",
   SCAN: "(init, range, fn) running fold → array of each step",
   BYROW: "(range, fn) apply fn to each ROW (an array) → array: =BYROW(A1:C3, LAMBDA(row, SUM(row)))",
@@ -559,6 +587,11 @@ const evalCall = (node: { name: string; args: Node[] }, lookup: Lookup): unknown
       const fn = evalNode(A[1]!, lookup);
       if (typeof fn !== "function") return VALUE();
       return argVals(A[0], lookup).map((v) => (fn as Fn)(v));
+    }
+    case "FILTER": {
+      const fn = evalNode(A[1]!, lookup);
+      if (typeof fn !== "function") return VALUE();
+      return argVals(A[0], lookup).filter((v) => truthy((fn as Fn)(v)));
     }
     case "REDUCE": {
       const init = evalNode(A[0]!, lookup);
@@ -778,6 +811,7 @@ const collectDeps = (node: Node, acc: Set<Key>): void => {
     case "sym": acc.add(node.name); break;
     case "un": collectDeps(node.e, acc); break;
     case "bin": collectDeps(node.l, acc); collectDeps(node.r, acc); break;
+    case "obj": for (const e of node.entries) collectDeps(e.value, acc); break;
     case "call": {
       const up = node.name.toUpperCase();
       // LET/LAMBDA bind names that are NOT cel refs — collect the deps of the
@@ -881,16 +915,62 @@ const rangeCelKeys = (state: State, name: string): string[] | undefined => {
   return keys;
 };
 
-const resolveSymbols = (node: Node, state: State, defs: Set<Key>): Node => {
+// resolveSymbols rewrites bare names against `state` BEFORE qualifyRefs:
+//   1. a named-range symbol → a range node (its member keys)
+//   2. segment-local-first: a bare `sym` / user-defined call name that names a
+//      live `<seg>.<name>` cel is rewritten to that key, so a grid formula reads
+//      its own sheet's siblings before falling back to a global name (builtins,
+//      library verbs, cross-segment names). Excel sheet-scoping for names.
+// LET/LAMBDA-bound names (params) are NOT scoped — they're local bindings, not
+// cel refs — so `bound` tracks them down each branch.
+const resolveSymbols = (
+  node: Node, state: State, defs: Set<Key>, seg?: string, bound: Set<string> = new Set(),
+): Node => {
+  const rec = (n: Node, b: Set<string>) => resolveSymbols(n, state, defs, seg, b);
   switch (node.t) {
     case "sym": {
+      if (bound.has(node.name)) return node;
       const keys = rangeCelKeys(state, node.name);
       if (keys) { defs.add(node.name); return { t: "range", range: node.name, keys }; }
+      if (seg && !node.name.includes(".") && state.cels.has(`${seg}.${node.name}`)) {
+        const q = `${seg}.${node.name}`;
+        defs.add(q);
+        return { t: "sym", name: q };
+      }
       return node;
     }
-    case "un": return { ...node, e: resolveSymbols(node.e, state, defs) };
-    case "bin": return { ...node, l: resolveSymbols(node.l, state, defs), r: resolveSymbols(node.r, state, defs) };
-    case "call": return { ...node, args: node.args.map((a) => resolveSymbols(a, state, defs)) };
+    case "un": return { ...node, e: rec(node.e, bound) };
+    case "bin": return { ...node, l: rec(node.l, bound), r: rec(node.r, bound) };
+    case "obj": return { ...node, entries: node.entries.map((e) => ({ key: e.key, value: rec(e.value, bound) })) };
+    case "call": {
+      const up = node.name.toUpperCase();
+      if (up === "LET") {
+        // LET(name1, val1, …, body): val_k may reference earlier bindings only.
+        const inner = new Set(bound);
+        const args: Node[] = [];
+        const n = node.args.length;
+        for (let i = 0; i + 1 < n; i += 2) {
+          const nm = node.args[i]!;
+          args.push(nm, rec(node.args[i + 1]!, inner));
+          if (nm.t === "sym") inner.add(nm.name);
+        }
+        if (n % 2 === 1) args.push(rec(node.args[n - 1]!, inner));
+        return { ...node, args };
+      }
+      if (up === "LAMBDA") {
+        const inner = new Set(bound);
+        const params = node.args.slice(0, -1);
+        for (const p of params) if (p.t === "sym") inner.add(p.name);
+        const body = node.args[node.args.length - 1];
+        return { ...node, args: [...params, ...(body ? [rec(body, inner)] : [])] };
+      }
+      const args = node.args.map((a) => rec(a, bound));
+      if (seg && !node.name.includes(".") && !BUILTIN_CALLS.has(up)
+          && state.cels.has(`${seg}.${node.name}`)) {
+        return { ...node, name: `${seg}.${node.name}`, args };
+      }
+      return { ...node, args };
+    }
     default: return node;
   }
 };
@@ -927,16 +1007,80 @@ const qualifyRefs = (node: Node, seg: string): Node => {
       return node.keys ? node : { ...node, keys: expandRange(node.range).map((a) => `${seg}.${a}`) };
     case "un": return { ...node, e: qualifyRefs(node.e, seg) };
     case "bin": return { ...node, l: qualifyRefs(node.l, seg), r: qualifyRefs(node.r, seg) };
+    case "obj": return { ...node, entries: node.entries.map((e) => ({ key: e.key, value: qualifyRefs(e.value, seg) })) };
     case "call": return { ...node, args: node.args.map((a) => qualifyRefs(a, seg)) };
     default: return node;
   }
 };
 
+// ── `:=` definition form — `seg.name := RHS` mints a named cel ───────────────
+// A cell whose content is `<key> := <rhs>` is a binder: firing it emits a
+// defn.commit request that mints a cel keyed <key> (no leading `=` needed,
+// DAX-style). The RHS picks the tier:
+//   js|py|php[.fn]{ … }     → EditableLambdaCel  (compiled, structure tier)
+//   bare literal 1/"x"/TRUE → ValueCel
+//   anything else           → FormulaCel parser "infix"  (value tier — the
+//                             value may itself be a LAMBDA, i.e. a verb)
+const DEFN_RE      = /^\s*=?\s*([A-Za-z_][\w]*(?:\.[A-Za-z_][\w]*)*)\s*:=\s*([\s\S]+?)\s*$/;
+const DEFN_LANG_RE = /^(js|py|php)(?:\.([A-Za-z_]\w*))?\s*\{([\s\S]*)\}\s*$/;
+const DEFN_NUM_RE  = /^-?(?:\d+\.?\d*|\.\d+)$/;
+const DEFN_STR_RE  = /^(['"])([\s\S]*)\1$/;
+
+/** True when a cell's source is a `:=` definition (so it compiles as a binder). */
+export const isDefinitionSource = (src: string): boolean => DEFN_RE.test(src);
+
+interface DefnFields {
+  defn: true; name: string; kind: string; source: string;
+  celType: string; parser?: string; v?: unknown; segment?: string; origin?: Key;
+}
+
+// `:=` canonicalizes the verb NAME (the tail after the last dot) to UPPERCASE:
+// the namespace stays lowercase (native convention), the verb is UPPER (so
+// `func := …` is reachable as FUNC, never func). Enforcement-by-construction —
+// you cannot mint a lower-cased verb through `:=`.
+const upperVerbKey = (key: string): string => {
+  const i = key.lastIndexOf(".");
+  return i < 0 ? key.toUpperCase() : `${key.slice(0, i)}.${key.slice(i + 1).toUpperCase()}`;
+};
+
+const buildDefnRequest = (rawKey: string, rhs: string, origin?: Key): DefnFields => {
+  const key = upperVerbKey(rawKey);
+  const segment = key.includes(".") ? key.slice(0, key.lastIndexOf(".")) : undefined;
+  const base = { defn: true as const, name: key, segment, origin };
+  const lang = DEFN_LANG_RE.exec(rhs);
+  if (lang) {
+    const [, kind, func, body] = lang;
+    // The runtime's last expression IS the callable; a `.func` selector appends
+    // the function name so a multi-function source resolves to the right one.
+    const src = func ? `${body!.trim()}\n${func}` : body!.trim();
+    return { ...base, kind: kind!, source: src, celType: "EditableLambdaCel" };
+  }
+  const t = rhs.trim();
+  if (DEFN_NUM_RE.test(t))   return { ...base, kind: "ValueCel", source: t, celType: "ValueCel", v: Number(t) };
+  const sm = DEFN_STR_RE.exec(t);
+  if (sm)                    return { ...base, kind: "ValueCel", source: t, celType: "ValueCel", v: sm[2] };
+  const up = t.toUpperCase();
+  if (up === "TRUE" || up === "FALSE") return { ...base, kind: "ValueCel", source: t, celType: "ValueCel", v: up === "TRUE" };
+  const f = t.startsWith("=") ? t : `=${t}`;
+  return { ...base, kind: "infix", source: f, celType: "FormulaCel", parser: "infix" };
+};
+
+const definitionEnvelope = (key: string, rhs: string, context?: CompileContext): CompiledEnvelope => {
+  const req = buildDefnRequest(key, rhs, context?.selfKey);
+  return {
+    fn: (() => req) as Fn,
+    buildEvaluate: () => (): unknown => req,
+    channels: ["defn.commit"],
+  };
+};
+
 /** The infix compiler — a FormulaCel parser. */
 export const compileInfix = (source: string, state?: State, context?: CompileContext): CompiledLambda => {
+  const def = DEFN_RE.exec(source);
+  if (def && state) return definitionEnvelope(def[1]!, def[2]!, context);
   let ast = isFormula(source) ? parseSource(source) : literalNode(source);
-  if (state) ast = resolveSymbols(ast, state, new Set());
   const seg = selfSegmentOf(context?.selfKey);
+  if (state) ast = resolveSymbols(ast, state, new Set(), seg);
   if (seg) ast = qualifyRefs(ast, seg);
   const binder = binderShape(ast, state);
   if (binder) return binderEnvelope(binder);
@@ -953,11 +1097,12 @@ export const compileInfix = (source: string, state?: State, context?: CompileCon
 };
 
 compileInfix.extractDeps = (source: string, state?: State, context?: CompileContext): Key[] => {
+  if (DEFN_RE.test(source)) return []; // a `:=` binder has inline source — no formula deps
   if (!isFormula(source)) return [];
   let ast = parseSource(source);
   const acc = new Set<Key>();
-  if (state) ast = resolveSymbols(ast, state, acc); // named-range DEFINITION edges land in acc
   const seg = selfSegmentOf(context?.selfKey);
+  if (state) ast = resolveSymbols(ast, state, acc, seg); // named-range + segment-local DEFINITION edges land in acc
   if (seg) ast = qualifyRefs(ast, seg); // wire relative deps to THIS segment's siblings
   const binder = binderShape(ast, state);
   if (binder) {

@@ -1,0 +1,125 @@
+{
+ "name": "window",
+ "cels": [
+  {
+   "key": "wframe",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "wframe",
+    "segment": "window",
+    "name": "wframe",
+    "kind": "native",
+    "description": "(state, active, ...contents) - render ONE window's chrome around the ACTIVE tab's content (contents[active]): titlebar (icon + name + minimize/fullscreen/close), a tab strip when the window has >=2 tabs, the body, and a resize grip. `state` is the window state object { x,y,w,h,z,min,max,closed,title,icon,tabs:[{ref,title,icon}],active,dockedIn }; `active` is win.active; `contents` is one value per tab (the frame formula passes each tab's content cel). A window whose state has dockedIn set self-hides (its host renders it). Content-AGNOSTIC: a tab's content may be a sheet grid, a wasmcanvas, or any winapp body, so heterogeneous windows tab together."
+   }
+  },
+  {
+   "key": "wopen",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "wopen",
+    "segment": "window",
+    "name": "wopen",
+    "kind": "native",
+    "description": "(id, title, body, where?) - genesis a SELF-MOUNTING window: a content cel (= body, the app render), a state cel (one tab = its own content), and a frame cel `(mount '.origin' (wframe <state> win.active <content>))` that mounts itself into the desktop. `where` = geom(x,y,w,h) sizes it. There is NO separate desktop renderer - each top-level window draws itself; dock one into another with window.dock to tab them together."
+   }
+  },
+  {
+   "key": "window.grab",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.grab", "segment": "window", "name": "window.grab", "kind": "native", "description": "pointerdown on a titlebar: capture the pointer + record the move offset into window.drag." }
+  },
+  {
+   "key": "window.move",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.move", "segment": "window", "name": "window.move", "kind": "native", "description": "pointermove while dragging: write the window state cel's x/y." }
+  },
+  {
+   "key": "window.grabResize",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.grabResize", "segment": "window", "name": "window.grabResize", "kind": "native", "description": "pointerdown on the resize grip: capture + record the size offset into window.drag (resize mode)." }
+  },
+  {
+   "key": "window.resizeMove",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.resizeMove", "segment": "window", "name": "window.resizeMove", "kind": "native", "description": "pointermove while resizing: write the window state cel's w/h (clamped to a minimum)." }
+  },
+  {
+   "key": "window.drop",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.drop", "segment": "window", "name": "window.drop", "kind": "native", "description": "pointerup: clear the transient window.drag state." }
+  },
+  {
+   "key": "window.raise",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.raise", "segment": "window", "name": "window.raise", "kind": "native", "description": "pointerdown anywhere in a window: focus it (win.active) and bump it to the top of the z-order (win.topz)." }
+  },
+  {
+   "key": "window.min",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.min", "segment": "window", "name": "window.min", "kind": "native", "description": "toggle the window's minimized flag (the frame hides; a launcher restores it)." }
+  },
+  {
+   "key": "window.max",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.max", "segment": "window", "name": "window.max", "kind": "native", "description": "toggle fullscreen: when set the frame fills the viewport." }
+  },
+  {
+   "key": "window.close",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.close", "segment": "window", "name": "window.close", "kind": "native", "description": "the red X: runs EACH tab's <seg>.flush contract cel (every tab is an app with its own save-then-teardown), then drops the window. A tab's flush is `<seg>.flush` derived from its content ref (or tab.flush)." }
+  },
+  {
+   "key": "window.stop",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.stop", "segment": "window", "name": "window.stop", "kind": "native", "description": "pointerdown on a titlebar/tab BUTTON: stopPropagation so the click does not start a window/tab drag." }
+  },
+  {
+   "key": "window.tab",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.tab", "segment": "window", "name": "window.tab", "kind": "native", "description": "({ref, index}) select a tab: set the window state cel's active index." }
+  },
+  {
+   "key": "window.tabClose",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.tabClose", "segment": "window", "name": "window.tabClose", "kind": "native", "description": "({ref, index}) close one tab: remove it from the window's tabs; closing the last tab closes the window." }
+  },
+  {
+   "key": "window.dock",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.dock", "segment": "window", "name": "window.dock", "kind": "native", "description": "({into, win}) COMBINE windows: pull an existing window `win` in as a tab of `into` (it is marked dockedIn → self-hides; the host renders it; tear-off restores it). Or ({into, tab}) append a raw tab { ref:<contentCel>, title, icon }. Rebuilds the host's self-mounting frame so it references the new content. Lets a sheet + DOOM share one tabbed frame." }
+  },
+  {
+   "key": "window.reorder",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.reorder", "segment": "window", "name": "window.reorder", "kind": "native", "description": "({ref, from, to}) move a tab within a window's tab order." }
+  },
+  {
+   "key": "window.undock",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.undock", "segment": "window", "name": "window.undock", "kind": "native", "description": "({ref, index}) TEAR OFF a tab (inverse of window.dock): remove it from `ref` + rebuild its frame. If the tab backs a real window (docked via window.dock), RESTORE it (clear dockedIn → it self-mounts again); otherwise mint a fresh standalone window + add it to win.list." }
+  },
+  {
+   "key": "window.tabGrab",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.tabGrab", "segment": "window", "name": "window.tabGrab", "kind": "native", "description": "pointerdown on a tab chip: record the grab (window.tabdrag) so a later move can reorder or a release outside can tear off." }
+  }
+ ]
+}

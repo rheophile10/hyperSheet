@@ -1,0 +1,17 @@
+{
+ "name": "winapps-wasm",
+ "cels": [
+  {
+   "key": "wasmapp",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "wasmapp",
+    "segment": "winapps-wasm",
+    "name": "wasmapp",
+    "kind": "native",
+    "description": "(id, title, engineCel, opts?) - genesis a wasm app as a SELF-MOUNTING window on the new tabbable frame: the graph<->engine bridge cels (wasm.<id>.in/.out/.active), a <canvas> content cel (wasmcanvas id), a window state cel (one tab = the canvas), and a (mount '.origin' (wframe …)) frame. So a wasm window (DOOM) tabs next to a sheet. opts = geom {x,y,w,h,icon}. The engine instance is grabbed by canvas id at boot; pair with winapps app.install (assets → OPFS) + a harness provider to keep the app mostly formula-cells."
+   }
+  }
+ ]
+}

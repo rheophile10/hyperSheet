@@ -26,11 +26,38 @@ const extract = async (text: string): Promise<{ kind: string; formula: string | 
     try { return { kind: "f-link", formula: await decodeLink(link), note: "" }; }   // #f=
     catch (e) { return { kind: "f-link", formula: null, note: "bad #f= payload: " + String((e as { message?: unknown })?.message ?? e) }; }
   }
-  // a fenced code block, else the first line that looks like a formula
+  // a fenced code block, else a bare formula in prose. A plastron formula can
+  // span MANY lines (the parser ignores whitespace), so don't stop at the first
+  // line — start at the first line that begins with = or ( and capture through
+  // the balanced close paren (string-aware), dropping any trailing prose. A
+  // paren-less infix (=A1*2) falls back to that single line.
   const fenced = /```[a-z]*\n([\s\S]*?)```/i.exec(t)?.[1];
-  const body = (fenced ?? t).split("\n").map((l) => l.trim()).find((l) => l.startsWith("=") || l.startsWith("("));
+  const body = grabFormula(fenced ?? t);
   if (body) return { kind: "formula", formula: body, note: "" };
   return { kind: "none", formula: null, note: "no formula or plastron link found in the reply" };
+};
+
+// Pull a (possibly multi-line) formula out of free text: from the first line
+// starting with = or (, balance parens while respecting "…"/'…' string literals
+// so trailing explanation after the formula is excluded.
+const grabFormula = (src: string): string | null => {
+  const lines = src.split("\n");
+  const si = lines.findIndex((l) => /^\s*[=(]/.test(l));
+  if (si < 0) return null;
+  const from = lines.slice(si).join("\n");
+  const start = from.search(/[=(]/);
+  const rest = from.slice(start);
+  const firstParen = rest.indexOf("(");
+  if (firstParen < 0) return rest.split("\n")[0]!.trim();   // paren-less infix, e.g. =A1*2
+  let depth = 0, q: string | null = null, end = -1;
+  for (let i = firstParen; i < rest.length; i++) {
+    const c = rest[i];
+    if (q) { if (c === q && rest[i - 1] !== "\\") q = null; continue; }
+    if (c === '"' || c === "'") { q = c; continue; }
+    if (c === "(") depth++;
+    else if (c === ")" && --depth === 0) { end = i + 1; break; }
+  }
+  return (end > 0 ? rest.slice(0, end) : rest).trim();
 };
 
 // Boot origin headless and commit `formula` as 元; success = no parse/eval error.
