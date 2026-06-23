@@ -1499,6 +1499,171 @@ const graphNodeFn: Fn = (async (state: State, payload?: unknown): Promise<State>
   return state;
 }) as Fn;
 
+// ── desktop chrome: wallpaper + display settings + draggable icons ──────────
+const WALLPAPER_DIR = "/wallpapers";
+const dnum = (v: unknown, d = 0): number => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+const dcapture = (e?: { pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void }; target?: { setPointerCapture?: (id: number) => void } }): void => {
+  try { (e?.currentTarget ?? e?.target)?.setPointerCapture?.(dnum(e?.pointerId)); } catch { /* off-DOM */ }
+};
+
+// desktop.bg(src, fallback) — the wallpaper image mount. img() hydrates a "/path"
+// src to an objectURL via file-store, so the cel can hold an OPFS path OR a
+// data-URI; the fallback chain covers an empty wallpaper. Right-click → settings.
+const desktopBgFn: Fn = ((src?: unknown, fallback?: unknown): V => {
+  const chosen = (typeof src === "string" && src.trim()) ? src : (typeof fallback === "string" ? fallback : "");
+  const srcAttr: Record<string, unknown> = chosen.startsWith("/") ? { "data-opfs-src": chosen } : { src: chosen };
+  return el("img", { class: "desktop-bg", ...srcAttr, style: "position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;z-index:-1" }, [],
+    { contextmenu: { dispatch: "desktop.bgmenu", prevent: true } });
+}) as Fn;
+
+// desktop.settingsView(current, files) — the display-settings window body: a
+// preview, an import button (file IO), and a chip per image under /wallpapers/.
+const settingsViewFn: Fn = ((current?: unknown, files?: unknown): V => {
+  const cur = typeof current === "string" ? current : "";
+  const list = Array.isArray(files) ? files.map(String) : [];
+  const imgEl = (p: string, style: string): V => el("img", { ...(p.startsWith("/") ? { "data-opfs-src": p } : { src: p }), style }, []);
+  const preview = cur
+    ? imgEl(cur, "width:100%;height:120px;object-fit:cover;border-radius:.4rem;border:1px solid #8884")
+    : el("div", { style: "height:120px;border:1px dashed #8886;border-radius:.4rem;display:flex;align-items:center;justify-content:center;opacity:.6;font:.72rem ui-monospace,monospace" }, [T("(default wallpaper)")]);
+  const importBtn = el("label", { class: "pl-wp-import", style: "display:inline-block;padding:.3rem .6rem;border:1px solid #8884;border-radius:.4rem;cursor:pointer;font:600 .72rem ui-monospace,monospace" },
+    [T("⬆ import image…"), el("input", { type: "file", accept: "image/*", style: "display:none" }, [], { change: { dispatch: "desktop.importWallpaper" } })]);
+  const grid = list.length
+    ? el("div", { style: "display:flex;flex-wrap:wrap;gap:.4rem" }, list.map((p) =>
+        el("button", { class: "pl-wp-chip", title: p, style: `padding:.15rem;border:2px solid ${p === cur ? "#4a90d9" : "#8884"};border-radius:.4rem;background:Canvas;cursor:pointer` },
+          [imgEl(p, "width:72px;height:48px;object-fit:cover;border-radius:.25rem;display:block")], { click: { dispatch: "desktop.setWallpaper", payload: p } })))
+    : el("div", { style: "opacity:.6;font:.72rem ui-monospace,monospace" }, [T(`no images in ${WALLPAPER_DIR} yet — import one`)]);
+  return el("div", { class: "pl-dispsettings", style: "display:flex;flex-direction:column;gap:.55rem;padding:.3rem" }, [
+    el("div", { style: "font:600 .8rem ui-monospace,monospace" }, [T("Background")]),
+    preview, importBtn, grid,
+  ]);
+}) as Fn;
+
+// desktop.refreshWallpapers — list /wallpapers/ into the desktop.wallpapers cel
+// (the settings view references it, so the grid updates reactively).
+const refreshWallpapers: Fn = (async (state: State): Promise<State> => {
+  await ensureSegments(state, ["file-store"]);
+  const exists = resolveFn(state, "fs.exists") as Fn, mkdir = resolveFn(state, "fs.mkdir") as Fn, listFn = resolveFn(state, "fs.list") as Fn;
+  if (!(await (exists(WALLPAPER_DIR) as Promise<boolean>).catch(() => false))) await (mkdir(WALLPAPER_DIR) as Promise<unknown>).catch(() => {});
+  let names: string[] = [];
+  try { names = (await (listFn(WALLPAPER_DIR) as Promise<unknown>)) as string[]; } catch { names = []; }
+  const paths = (Array.isArray(names) ? names : []).map(String).filter((n) => n && !n.startsWith(".")).map((n) => `${WALLPAPER_DIR}/${n}`);
+  await putDesktopCel(state, "desktop.wallpapers", paths);
+  return state;
+}) as Fn;
+
+// desktop.setWallpaper(path) — point the wallpaper cel at an OPFS path (the bg
+// img + the painter do the loading); reactive repaint.
+const setWallpaper: Fn = (async (state: State, payload?: unknown): Promise<State> => {
+  const path = String(payload ?? "");
+  if (!path) return state;
+  await putDesktopCel(state, "desktop.wallpaper", path);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+}) as Fn;
+
+// desktop.importWallpaper(event) — file-IO import: read the picked File, write it
+// under /wallpapers/, then select it. Browser-only (File API); no-op off-DOM.
+const importWallpaper: Fn = (async (state: State, _payload?: unknown, event?: unknown): Promise<State> => {
+  const file = (event as { target?: { files?: ArrayLike<{ name?: string; arrayBuffer?: () => Promise<ArrayBuffer> }> } } | undefined)?.target?.files?.[0];
+  if (!file?.arrayBuffer) return state;
+  await ensureSegments(state, ["file-store"]);
+  const exists = resolveFn(state, "fs.exists") as Fn, mkdir = resolveFn(state, "fs.mkdir") as Fn, write = resolveFn(state, "fs.write") as Fn;
+  if (!(await (exists(WALLPAPER_DIR) as Promise<boolean>).catch(() => false))) await (mkdir(WALLPAPER_DIR) as Promise<unknown>).catch(() => {});
+  const name = String(file.name || "wallpaper").replace(/[^\w.-]/g, "_");
+  const path = `${WALLPAPER_DIR}/${name}`;
+  await (write(path, new Uint8Array(await file.arrayBuffer())) as Promise<unknown>);
+  await (refreshWallpapers as Fn)(state);
+  await (setWallpaper as Fn)(state, path);
+  return state;
+}) as Fn;
+
+// desktop.bgmenu — right-click the wallpaper: refresh the image list, open (or
+// raise) the display-settings window. Same self-mounting holder as the state graph.
+const bgmenu: Fn = (async (state: State): Promise<State> => {
+  await ensureSegments(state, ["window"]);
+  await (refreshWallpapers as Fn)(state);
+  const sref = "win.dispsettings.state";
+  if (!state.cels.get(sref)) {
+    await (resolveFn(state, "setCel") as Fn)(state, "desktop.settings.元", { celType: "FormulaCel",
+      f: `(wopen "dispsettings" "🖼 display" "(desktop.settingsView desktop.wallpaper desktop.wallpapers)" (geom 0.32 0.2 0.34 0.52))`,
+      metadata: { key: "desktop.settings.元", segment: "desktop.settings", parser: "f" } });
+    const drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
+    for (let i = 0; i < 6; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
+  } else {
+    const cur = (state.cels.get(sref)?.v ?? {}) as WinChip;
+    await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0 });
+    await (resolveFn(state, "window.raise") as Fn)(state, sref);
+  }
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+}) as Fn;
+
+// putDesktopCel — set-or-create an origin-segment ValueCel (the desktop chrome's
+// own state lives in plain cels, so views referencing them stay reactive).
+const putDesktopCel = async (state: State, key: string, v: unknown): Promise<void> => {
+  if (state.cels.get(key)) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, key, v));
+  else await Promise.resolve((resolveFn(state, "setCel") as Fn)(state, key, { celType: "ValueCel", v, metadata: { key, segment: "origin", name: key.split(".").pop() } }));
+};
+
+// --- draggable desktop icons (desktop only) --------------------------------
+const ICON_H = 90;
+// desktop.icons(iconpos, mobile, ...items) — desktop: free-positioned, draggable
+// app icons (positions persisted in desktop.iconpos by label); mobile: today's
+// collapsible nav. items are item(label, action); a click LAUNCHES via navOpen.
+const desktopIconsFn: Fn = ((iconpos?: unknown, mobile?: unknown, ...rest: unknown[]): V => {
+  const items = rest.filter(isNavItem);
+  if (mobile) return (navFn as Fn)(true, ...items) as V;
+  const pos = (iconpos && typeof iconpos === "object" && !Array.isArray(iconpos)) ? iconpos as Record<string, [number, number]> : {};
+  const tiles = items.map((it, i) => {
+    const p = pos[it.label] ?? [16, 12 + i * ICON_H];
+    const sp = it.label.indexOf(" ");
+    const glyph = sp > 0 ? it.label.slice(0, sp) : it.label;
+    const caption = sp > 0 ? it.label.slice(sp + 1) : "";
+    return el("button", { class: "pl-desk-icon", "data-icon": it.label, style: `position:fixed;left:${dnum(p[0], 16)}px;top:${dnum(p[1], 16)}px;z-index:38;display:flex;flex-direction:column;align-items:center;gap:.15rem;width:5rem;padding:.25rem;border:0;background:transparent;cursor:grab;touch-action:none;text-align:center;user-select:none` }, [
+      el("div", { class: "pl-nav-glyph", style: "font-size:1.7rem;line-height:1;width:2.6rem;height:2.6rem;display:flex;align-items:center;justify-content:center;color:#fff;background:rgba(20,22,30,.45);border:1px solid #ffffff22;border-radius:.7rem;box-shadow:0 2px 6px #0006" }, [T(glyph)]),
+      ...(caption ? [el("div", { class: "pl-nav-cap", style: "font:600 .72rem ui-monospace,monospace;color:#fff;text-shadow:0 1px 3px #000c,0 0 2px #000a;white-space:nowrap" }, [T(caption)])] : []),
+    ], { pointerdown: { dispatch: "desktop.iconGrab", payload: it.label }, pointermove: { dispatch: "desktop.iconMove" }, pointerup: { dispatch: "desktop.iconDrop" }, click: { dispatch: "desktop.iconClick", payload: it.action } });
+  });
+  return el("div", { class: "pl-desk-icons" }, tiles);
+}) as Fn;
+
+interface IconDrag { label: string; ox: number; oy: number; sx: number; sy: number; moved: number }
+const iconGrab: Fn = (async (state: State, payload?: unknown, event?: unknown): Promise<void> => {
+  const label = String(payload ?? "");
+  if (!label) return;
+  const e = event as { clientX?: number; clientY?: number } | undefined;
+  dcapture(event as Parameters<typeof dcapture>[0]);
+  const pos = (state.cels.get("desktop.iconpos")?.v ?? {}) as Record<string, [number, number]>;
+  const cur = pos[label] ?? [16, 16];
+  const sx = dnum(e?.clientX), sy = dnum(e?.clientY);
+  await putDesktopCel(state, "desktop.icondrag", { label, ox: sx - dnum(cur[0], 16), oy: sy - dnum(cur[1], 16), sx, sy, moved: 0 } as IconDrag);
+}) as Fn;
+const iconMove: Fn = (async (state: State, _payload?: unknown, event?: unknown): Promise<void> => {
+  const d = state.cels.get("desktop.icondrag")?.v as IconDrag | null | undefined;
+  if (!d) return;
+  const e = event as { clientX?: number; clientY?: number } | undefined;
+  const cx = dnum(e?.clientX), cy = dnum(e?.clientY);
+  const pos = { ...((state.cels.get("desktop.iconpos")?.v ?? {}) as Record<string, [number, number]>) };
+  pos[d.label] = [Math.max(0, cx - d.ox), Math.max(0, cy - d.oy)];
+  await putDesktopCel(state, "desktop.iconpos", pos);
+  await putDesktopCel(state, "desktop.icondrag", { ...d, moved: Math.abs(cx - d.sx) + Math.abs(cy - d.sy) });
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+}) as Fn;
+const iconDrop: Fn = (async (state: State): Promise<void> => {
+  const d = state.cels.get("desktop.icondrag")?.v as IconDrag | null | undefined;
+  await putDesktopCel(state, "desktop.iconLastMoved", d ? d.moved : 0);
+  await putDesktopCel(state, "desktop.icondrag", null);
+}) as Fn;
+// desktop.iconClick(action) — launch UNLESS the pointer dragged (a drag is not a
+// click). Reuses origin.navOpen so icons share the navbar's launcher semantics.
+const iconClick: Fn = (async (state: State, payload?: unknown): Promise<State> => {
+  if (dnum(state.cels.get("desktop.iconLastMoved")?.v) > 3) { await putDesktopCel(state, "desktop.iconLastMoved", 0); return state; }
+  await (resolveFn(state, "origin.navOpen") as Fn)(state, payload);
+  return state;
+}) as Fn;
+
 // (origin.autoload removed: no boot auto-restore. =save() writes a real OPFS file;
 //  reopen it from 📁 Files or with =open(). Reload = a clean desktop.)
 
@@ -2043,6 +2208,17 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["desktop.graphbtn", graphbtnFn],
   ["desktop.stategraph", stategraphFn],
   ["desktop.graphNode", graphNodeFn],
+  ["desktop.bg",        desktopBgFn],
+  ["desktop.bgmenu",    bgmenu],
+  ["desktop.settingsView", settingsViewFn],
+  ["desktop.refreshWallpapers", refreshWallpapers],
+  ["desktop.setWallpaper", setWallpaper],
+  ["desktop.importWallpaper", importWallpaper],
+  ["desktop.icons",     desktopIconsFn],
+  ["desktop.iconGrab",  iconGrab],
+  ["desktop.iconMove",  iconMove],
+  ["desktop.iconDrop",  iconDrop],
+  ["desktop.iconClick", iconClick],
   ["def",            defFn],
   ["link",           linkFn],
   ["unlink",         unlinkFn],

@@ -549,6 +549,138 @@
       }
     },
     {
+      "key": "desktop.bg",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.bg",
+        "segment": "origin",
+        "name": "desktop.bg",
+        "kind": "native",
+        "description": "(src, fallback) - the desktop wallpaper image. img() hydrates a /path src to an objectURL via file-store, so src can be an OPFS path or a data-URI; fallback covers an empty wallpaper. Right-click opens display settings (desktop.bgmenu)."
+      }
+    },
+    {
+      "key": "desktop.bgmenu",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.bgmenu",
+        "segment": "origin",
+        "name": "desktop.bgmenu",
+        "kind": "native",
+        "description": "(state) - right-click the wallpaper: refresh the /wallpapers/ image list and open (or raise) the display-settings window."
+      }
+    },
+    {
+      "key": "desktop.settingsView",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.settingsView",
+        "segment": "origin",
+        "name": "desktop.settingsView",
+        "kind": "native",
+        "description": "(current, files) - the display-settings window body: a wallpaper preview, a file-IO import button, and a chip per image under /wallpapers/ (click → desktop.setWallpaper)."
+      }
+    },
+    {
+      "key": "desktop.refreshWallpapers",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.refreshWallpapers",
+        "segment": "origin",
+        "name": "desktop.refreshWallpapers",
+        "kind": "native",
+        "description": "(state) - list /wallpapers/ into the desktop.wallpapers cel (the settings grid references it, so it updates reactively). Creates the folder if missing."
+      }
+    },
+    {
+      "key": "desktop.setWallpaper",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.setWallpaper",
+        "segment": "origin",
+        "name": "desktop.setWallpaper",
+        "kind": "native",
+        "description": "(state, path) - point the desktop.wallpaper cel at an OPFS path; the bg img + painter load it. Reactive repaint."
+      }
+    },
+    {
+      "key": "desktop.importWallpaper",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.importWallpaper",
+        "segment": "origin",
+        "name": "desktop.importWallpaper",
+        "kind": "native",
+        "description": "(state, _, event) - file-IO import: read the picked File, write it under /wallpapers/, then select it as the wallpaper. Browser-only (File API)."
+      }
+    },
+    {
+      "key": "desktop.icons",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.icons",
+        "segment": "origin",
+        "name": "desktop.icons",
+        "kind": "native",
+        "description": "(iconpos, mobile, ...items) - desktop: free-positioned, draggable app icons (positions persisted in desktop.iconpos by label); mobile: today's collapsible nav. items are item(label, action); a click LAUNCHES via origin.navOpen."
+      }
+    },
+    {
+      "key": "desktop.iconGrab",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.iconGrab",
+        "segment": "origin",
+        "name": "desktop.iconGrab",
+        "kind": "native",
+        "description": "(state, label, event) - pointerdown on a desktop icon: capture the pointer + record the grab offset in desktop.icondrag."
+      }
+    },
+    {
+      "key": "desktop.iconMove",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.iconMove",
+        "segment": "origin",
+        "name": "desktop.iconMove",
+        "kind": "native",
+        "description": "(state, _, event) - pointermove while dragging an icon: update desktop.iconpos[label] to the pointer position; repaint."
+      }
+    },
+    {
+      "key": "desktop.iconDrop",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.iconDrop",
+        "segment": "origin",
+        "name": "desktop.iconDrop",
+        "kind": "native",
+        "description": "(state) - pointerup: record how far the icon moved (desktop.iconLastMoved, so a drag suppresses the click) and clear desktop.icondrag."
+      }
+    },
+    {
+      "key": "desktop.iconClick",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.iconClick",
+        "segment": "origin",
+        "name": "desktop.iconClick",
+        "kind": "native",
+        "description": "(state, action) - launch the icon's app via origin.navOpen UNLESS the pointer dragged (a drag is not a click)."
+      }
+    },
+    {
       "key": "vocab",
       "celType": "LockedLambdaCel",
       "locked": true,

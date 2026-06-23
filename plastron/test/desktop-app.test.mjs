@@ -1,10 +1,15 @@
-import { test } from "bun:test";
+import { test, beforeAll } from "bun:test";
 import assert from "node:assert/strict";
+import * as fsp from "node:fs/promises";
+import * as nodepath from "node:path";
 
 process.env.PLASTRON_FILE_STORE_ROOT ??= "./.plastron-fs-desktop";
 
 const { createInitialState, resolveFn } = await import("../dist/index.js");
 const origin = await import("../dist/甲骨坑/application/origin/index.js");
+
+const ROOT = createInitialState().cels.get("file-store.root").v;
+beforeAll(async () => { await fsp.rm(nodepath.resolve(ROOT, "wallpapers"), { recursive: true, force: true }); });
 
 // origin is parked by default; wake it so the desktop chrome verbs resolve.
 const boot = async () => {
@@ -72,4 +77,72 @@ test("buildStateGraphSpec: one node per segment, sized by memory, origin-applica
   // memory ordering: origin (a large segment) outweighs a tiny one → larger node
   const sizes = spec.nodes.map((n) => n.size);
   assert.ok(Math.max(...sizes) > Math.min(...sizes), "memory variation produces size variation");
+});
+
+test("desktop.bg renders an OPFS-hydrated wallpaper img with a right-click → settings binding", async () => {
+  const s = await boot();
+  const v = resolveFn(s, "desktop.bg")("/wallpapers/a.png", "data:fallback");
+  assert.equal(v.tag, "img");
+  assert.equal(v.attrs["data-opfs-src"], "/wallpapers/a.png", "a /path src is an OPFS reference");
+  assert.equal(v.events.contextmenu.dispatch, "desktop.bgmenu");
+  assert.equal(v.events.contextmenu.prevent, true, "suppresses the native menu");
+  // empty src falls back
+  const fb = resolveFn(s, "desktop.bg")("", "data:fallback");
+  assert.equal(fb.attrs.src, "data:fallback");
+});
+
+test("desktop.refreshWallpapers lists /wallpapers/; desktop.setWallpaper points the cel at a path", async () => {
+  const s = await boot();
+  await resolveFn(s, "ensureSegments")(s, ["file-store"]);
+  const write = resolveFn(s, "fs.write");
+  await write("/wallpapers/a.png", new Uint8Array([1, 2, 3]));
+  await write("/wallpapers/b.png", new Uint8Array([4, 5, 6]));
+
+  await resolveFn(s, "desktop.refreshWallpapers")(s);
+  const list = s.cels.get("desktop.wallpapers").v;
+  assert.ok(list.includes("/wallpapers/a.png") && list.includes("/wallpapers/b.png"), "both images listed");
+
+  await resolveFn(s, "desktop.setWallpaper")(s, "/wallpapers/a.png");
+  assert.equal(s.cels.get("desktop.wallpaper").v, "/wallpapers/a.png", "wallpaper cel points at the picked path");
+});
+
+test("desktop.settingsView renders a preview + import button + a chip per image", async () => {
+  const s = await boot();
+  const v = resolveFn(s, "desktop.settingsView")("/wallpapers/a.png", ["/wallpapers/a.png", "/wallpapers/b.png"]);
+  const flat = JSON.stringify(v);
+  assert.match(flat, /desktop\.importWallpaper/, "has the file-IO import binding");
+  assert.match(flat, /desktop\.setWallpaper/, "chips dispatch setWallpaper");
+  // two picker chips
+  const chips = (v.children ?? []).flatMap((c) => c.children ?? []).filter((c) => c?.attrs?.class === "pl-wp-chip");
+  assert.equal(chips.length, 2, "one chip per listed image");
+});
+
+test("desktop.icons: desktop renders draggable positioned tiles; mobile falls back to the nav", async () => {
+  const s = await boot();
+  const item = resolveFn(s, "item");
+  const pos = { "🐢 DOOM": [200, 120] };
+  const desk = resolveFn(s, "desktop.icons")(pos, false, item("🐢 DOOM", "=doom()"), item("📁 Files", "=explorerwin()"));
+  assert.equal(desk.attrs.class, "pl-desk-icons");
+  assert.equal(desk.children.length, 2, "two icon tiles");
+  assert.match(String(desk.children[0].attrs.style), /left:200px;top:120px/, "honors persisted position");
+  assert.equal(desk.children[0].events.pointerdown.dispatch, "desktop.iconGrab");
+  assert.equal(desk.children[0].events.click.dispatch, "desktop.iconClick");
+
+  const mob = resolveFn(s, "desktop.icons")(pos, true, item("🐢 DOOM", "=doom()"));
+  assert.equal(mob.tag, "details", "mobile returns the collapsible nav, not desktop tiles");
+});
+
+test("desktop icon drag updates desktop.iconpos; a drag past threshold suppresses the click-launch", async () => {
+  const s = await boot();
+  await resolveFn(s, "desktop.iconGrab")(s, "🐢 DOOM", { clientX: 100, clientY: 100 });
+  await resolveFn(s, "desktop.iconMove")(s, null, { clientX: 140, clientY: 130 });
+  // default start pos [16,16] → offset [84,84]; new pos = [140-84, 130-84] = [56,46]
+  assert.deepEqual(s.cels.get("desktop.iconpos").v["🐢 DOOM"], [56, 46], "icon moved to the dragged position");
+
+  await resolveFn(s, "desktop.iconDrop")(s);
+  assert.ok(s.cels.get("desktop.iconLastMoved").v > 3, "a real drag records movement");
+
+  // iconClick after a drag must NOT launch (and resets the guard)
+  await resolveFn(s, "desktop.iconClick")(s, "=doom()");
+  assert.equal(s.cels.get("desktop.iconLastMoved").v, 0, "the drag guard is consumed; no launch fired");
 });
