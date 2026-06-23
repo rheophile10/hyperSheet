@@ -86,9 +86,52 @@ const wireDocFlush = async (state: State, doc: string): Promise<void> => {
   await (resolveFn(state, "setCel") as Fn)(state, key, { celType: "LockedLambdaCel", locked: true, fn, metadata: { key, segment: `win.${doc}`, name: "flush", kind: "native" } });
 };
 
+// A document segment renders into the LEFT (worksheet) pane by default, or the
+// RIGHT (dom-view) pane when its manifest declares `pane: "viz"`. A viz segment's
+// grid still shows the dom vnodes its formulas paint (canvases, buttons that
+// dispatch cel writes) — it just sits in the view stack instead of the sheet stack.
+const paneOf = (state: State, seg: string): string =>
+  (getSegmentManifest(state, seg) as { pane?: string } | undefined)?.pane === "viz" ? "viz" : "sheet";
+
+// renderWorkbook — open (or restore) ONE workbook window for document `primary`:
+// its render segments split into sheet tabs (left) ‖ view tabs (right), each tab a
+// content cel rendering that segment's grid (reactive to its cels). Closing the
+// window runs win.<primary>.flush (save + evict). Replaces the old one-window-per-
+// segment cascade with a single tabbed two-pane workbook.
+const renderWorkbook = async (state: State, primary: string, title: string): Promise<void> => {
+  const sref = `win.${primary}.state`;
+  if (state.cels.get(sref)) {                          // already open → restore + raise
+    const cur = (state.cels.get(sref)?.v ?? {}) as WinChip;
+    await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0 });
+    await (resolveFn(state, "window.raise") as Fn)(state, sref);
+  } else {
+    const segs = docRenderSegs(state, primary);
+    const setCel = resolveFn(state, "setCel") as Fn;
+    const mkTabs = async (list: string[]): Promise<{ ref: string; title: string }[]> => {
+      const tabs: { ref: string; title: string }[] = [];
+      for (const seg of list) {
+        const cref = `win.${primary}.view.${seg}`;
+        if (!state.cels.get(cref)) {
+          await setCel(state, cref, { celType: "FormulaCel", f: `=${singleGrid(state, seg)}`, metadata: { key: cref, segment: `win.${primary}`, name: `view.${seg}`, parser: "infix" } });
+        }
+        tabs.push({ ref: cref, title: seg });
+      }
+      return tabs;
+    };
+    const sheetTabs = await mkTabs(segs.filter((s) => paneOf(state, s) === "sheet"));
+    const vizTabs = await mkTabs(segs.filter((s) => paneOf(state, s) === "viz"));
+    const g = (resolveFn(state, "wbopen") as Fn)(primary, title, sheetTabs, vizTabs, { __geom: { x: 120, y: 64, w: 820, h: 540 } }) as { cels: Record<string, unknown> };
+    await (resolveFn(state, "setCelBatch") as Fn)(state, g.cels);
+  }
+  await wireDocFlush(state, primary);                  // closing the window saves + evicts the doc
+  await (resolveFn(state, "view.refresh") as Fn)(state);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+};
+
 // origin.opendoc(state, name) — open a sheetapp DOCUMENT: load the origin-user
 // segment from the store (loadUserSpace hydrates BOTH its parent app sheetapp and
-// the doc's own cels), then render it as worksheet window(s) via sheetdoc.
+// the doc's own cels), then render it as a tabbed two-pane workbook.
 const opendocFn: Fn = (async (state: State, nameArg?: unknown): Promise<State> => {
   const name = String(nameArg ?? "");
   if (!name) return state;
@@ -98,19 +141,13 @@ const opendocFn: Fn = (async (state: State, nameArg?: unknown): Promise<State> =
     if (!load) throw new Error("sheetapp.opendoc: loadUserSpace not installed");
     await load(state, name);
   }
-  // a multi-sheet doc (e.g. turtles = turtle_data + turtle_charts) opens one
-  // worksheet window per segment, cascaded; each saves + evicts on close.
-  const segs = docRenderSegs(state, name);
-  for (let i = 0; i < segs.length; i++) {
-    await (sheetdocFn as Fn)(state, segs[i], segs[i], i);
-    await wireDocFlush(state, segs[i]!);
-  }
+  await renderWorkbook(state, name, name);
   return state;
 }) as Fn;
 
 // origin.newsheet(state) — the Sheet app: create a fresh blank worksheet DOCUMENT
-// (a new origin-user segment of sheetapp), seed an empty grid, and render it. Save
-// it later with origin.savedoc; close flushes it.
+// (a new origin-user segment of sheetapp), seed an empty grid, and render it as a
+// (one-pane) workbook. Save it later with origin.savedoc; close flushes it.
 const newsheetFn: Fn = (async (state: State): Promise<State> => {
   await ensureSegments(state, ["segment-store", "opfs-seeding", "user-space-ops", "sheets", "window"]);
   if (!hasSegment(state, "sheetapp")) await (resolveFn(state, "hydrate-closure") as Fn)(state, "sheetapp");
@@ -121,8 +158,7 @@ const newsheetFn: Fn = (async (state: State): Promise<State> => {
   const specs: Record<string, unknown> = {};
   for (let r = 1; r <= 12; r++) for (let c = 0; c < 7; c++) { const k = `${name}.${String.fromCharCode(65 + c)}${r}`; specs[k] = { celType: "ValueCel", v: "", metadata: { key: k, segment: name } }; }
   await (resolveFn(state, "setCelBatch") as Fn)(state, specs);
-  await (sheetdocFn as Fn)(state, name);
-  await wireDocFlush(state, name);   // closing the window saves + evicts the doc
+  await renderWorkbook(state, name, name);
   return state;
 }) as Fn;
 

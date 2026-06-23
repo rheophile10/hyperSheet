@@ -199,6 +199,10 @@ const maximize: Fn = (async (s: State, ref: unknown): Promise<void> => { const r
 const close: Fn = (async (s: State, ref: unknown): Promise<void> => {
   const r = String(ref); const st = stateOf(s, r);
   for (const tab of st.tabs ?? []) await fireFlush(s, tab);
+  // a WORKBOOK has no `tabs` — run the window segment's own <seg>.flush so the
+  // sheetapp doc save-on-close hook (win.<doc>.flush) still fires on close.
+  const wf = resolveFn(s, `${segOf(r)}.flush`) as Fn | undefined;
+  if (typeof wf === "function") { try { await wf(s); } catch { /* best-effort save */ } }
   await setState(s, r, { closed: 1 });
 }) as Fn;
 const stop: Fn = ((_s: State, _p: unknown, e?: { stopPropagation?: () => void }): void => { try { e?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
@@ -328,7 +332,10 @@ const wbframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V
   const aview = views.length ? Math.max(0, Math.min(views.length - 1, num(s.aview, 0))) : 0;
   const sheetBodies = contents.slice(0, sheets.length);
   const viewBodies = contents.slice(sheets.length);
-  const full = s.full === "L" || s.full === "R" ? s.full : "";
+  // an empty pane forces the other to full width (a sheets-only doc reads as one
+  // clean pane, no divider); otherwise honor the user's fullscreen toggle.
+  const onlyOne = (views.length === 0 && sheets.length > 0) ? "L" : (sheets.length === 0 && views.length > 0) ? "R" : "";
+  const full = onlyOne || (s.full === "L" || s.full === "R" ? s.full : "");
   const split = Math.max(0.15, Math.min(0.85, num(s.split, 0.6)));
   const bodyOf = (v: unknown): V => isVnode(v) ? v as V : T(v == null ? "" : String(v));
 
