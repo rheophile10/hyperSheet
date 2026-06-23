@@ -3,7 +3,7 @@ import type {
 } from "../../../types/index.js";
 import {
   bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, retireCel,
-  isSegmentPending, hasSegment,
+  isSegmentPending, hasSegment, getSegmentManifest,
 } from "../../../kernel/index.js";
 import {
   dumpArchive, dumpSegments, loadArchive, documentSegments, isSubstrateSegment, archiveSegmentNames,
@@ -1364,6 +1364,141 @@ const bootRun: Fn = (async (state: State, optsArg?: unknown): Promise<State> => 
   return state;
 }) as Fn;
 
+// ── desktop chrome: taskbar + state force-graph (desktop-only) ──────────────
+// Self-mounting chrome on the new `window` segment: the taskbar reflects every
+// open window; the round button opens a force-graph of the whole state. Both are
+// wired into the desktop in the boot/archive phase — here are the verbs.
+
+interface WinChip { ref?: string; title?: string; icon?: string; min?: number; closed?: number; dockedIn?: string }
+
+// taskbarBar(active, ...states) — the bottom bar render. One chip per non-closed,
+// non-docked window: the active one bordered, a minimized one dimmed + italic.
+// Click → desktop.taskClick. Receives each window's STATE VALUE (the frame
+// formula splices the state cels in), so it re-renders on any min/raise/title.
+const taskbarBarFn: Fn = ((active?: unknown, ...states: unknown[]): V => {
+  const act = String(active ?? "");
+  const chips: V[] = [];
+  for (const st of states) {
+    const w = (st && typeof st === "object" && !Array.isArray(st)) ? st as WinChip : null;
+    if (!w?.ref || w.closed || w.dockedIn) continue;
+    const isActive = w.ref === act, isMin = !!w.min;
+    const label = (w.icon ? w.icon + " " : "") + String(w.title ?? w.ref.replace(/^win\.|\.state$/g, ""));
+    chips.push(el("button", {
+      class: "pl-task" + (isActive ? " active" : "") + (isMin ? " min" : ""),
+      title: isMin ? "restore" : (isActive ? "minimize" : "raise"),
+      style: `flex:0 0 auto;max-width:12rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:.2rem .55rem;border:1px solid ${isActive ? "#4a90d9" : "#8884"};border-radius:.35rem;background:${isActive ? "#4a90d922" : "Canvas"};color:CanvasText;cursor:pointer;font:600 .72rem ui-monospace,monospace;opacity:${isMin ? ".55" : "1"};font-style:${isMin ? "italic" : "normal"}`,
+    }, [T(label)], { click: { dispatch: "desktop.taskClick", payload: w.ref } }));
+  }
+  return el("div", { class: "pl-taskbar", style: "position:fixed;left:0;right:0;bottom:0;z-index:55;display:flex;gap:.3rem;align-items:center;padding:.3rem .5rem;background:#8881;border-top:1px solid #8884;overflow-x:auto" }, chips);
+}) as Fn;
+
+// desktop.taskbarGenesis(list, active) — re-derive the taskbar from win.list. A
+// FormulaCel `(desktop.taskbarGenesis win.list win.active)` re-fires when the
+// window set or focus changes and returns a genesis whose desktop.taskbar.frame
+// SPLICES IN each window's state cel by name — so the bar tracks min/raise/title
+// reactively (same genesis-from-formula pattern as navpanel; no hand-rolled wiring).
+const taskbarGenesisFn: Fn = ((list?: unknown): unknown => {
+  const refs = (Array.isArray(list) ? list.map(String) : []).filter((r) => /^[\w.-]+$/.test(r));
+  const f = `(mount ".origin" (taskbarBar win.active ${refs.join(" ")}))`;
+  return { genesis: true, layer: "desktop.taskbar", cels: {
+    "desktop.taskbar.frame": { celType: "FormulaCel", f, metadata: { name: "frame", parser: "f", segment: "desktop.taskbar" } },
+  } };
+}) as Fn;
+
+// desktop.taskClick(ref) — click a taskbar chip: a minimized window restores
+// (clear min + raise); the active one minimizes; any other open one raises.
+const taskClickFn: Fn = (async (state: State, payload?: unknown): Promise<State> => {
+  const ref = String(payload ?? "");
+  if (!ref || !state.cels.get(ref)) return state;
+  const st = (state.cels.get(ref)?.v ?? {}) as WinChip;
+  const active = String(state.cels.get("win.active")?.v ?? "");
+  const min = resolveFn(state, "window.min") as Fn, raise = resolveFn(state, "window.raise") as Fn;
+  if (st.min) { await min(state, ref); await raise(state, ref); }
+  else if (ref === active) { await min(state, ref); }
+  else { await raise(state, ref); }
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+}) as Fn;
+
+// --- state force-graph: one node per segment, sized by memory, origin-application
+//     segments tinted distinctly. Reuses the forcegraph segment (fg.set + fgview).
+const APP_TINT = "#e8923a22", APP_ACCENT = "#e8923a";   // origin-applications: warm
+const SEG_TINT = "#4a90d922", SEG_ACCENT = "#4a90d9";   // everything else: blue
+
+interface StateGraphNode { key: string; label: string; size: number; kind: string; tint: string; accent: string }
+interface StateGraphSpec { nodes: StateGraphNode[]; edges: Array<[string, string]>; onNode: { dispatch: string } }
+
+// buildStateGraphSpec(state) — PURE: segments → FgSpec. size ∝ segment memory
+// (Σ bytes of its cels, sqrt-normalized into ~0.7–2 so area tracks weight), the
+// kind/tint/accent split origin-applications (role application/user) from the
+// rest, edges = manifest dependencies (both endpoints present).
+export const buildStateGraphSpec = (state: State): StateGraphSpec => {
+  const bytes = new Map<string, number>();
+  for (const [k, c] of state.cels) {
+    const seg = (c.metadata?.segment as string | undefined) ?? "";
+    if (!seg) continue;
+    let approx = 64;
+    try { approx = JSON.stringify({ k, v: (c as { v?: unknown }).v, f: (c as { f?: unknown }).f, m: c.metadata }).length; } catch { /* cyclic value */ }
+    bytes.set(seg, (bytes.get(seg) ?? 0) + approx);
+  }
+  const segs = [...bytes.keys()];
+  const max = Math.max(1, ...bytes.values());
+  const isApp = (seg: string): boolean => {
+    const m = getSegmentManifest(state, seg) as { role?: string } | undefined;
+    return m?.role === "application" || m?.role === "user";
+  };
+  const nodes: StateGraphNode[] = segs.map((seg) => {
+    const size = 0.7 + Math.sqrt((bytes.get(seg) ?? 0) / max) * 1.3;   // 0.7 .. 2.0
+    const app = isApp(seg);
+    return { key: seg, label: seg, size, kind: app ? "app" : "segment", tint: app ? APP_TINT : SEG_TINT, accent: app ? APP_ACCENT : SEG_ACCENT };
+  });
+  const present = new Set(segs);
+  const edges: Array<[string, string]> = [];
+  for (const seg of segs) {
+    const m = getSegmentManifest(state, seg) as { dependencies?: string[] } | undefined;
+    for (const dep of m?.dependencies ?? []) if (present.has(dep) && dep !== seg) edges.push([seg, dep]);
+  }
+  return { nodes, edges, onNode: { dispatch: "desktop.graphNode" } };
+};
+
+// desktop.graphbtn() — the round lower-left button that opens the state graph.
+const graphbtnFn: Fn = ((): V => el("button", {
+  class: "pl-graphbtn", title: "state graph — segments sized by memory",
+  style: "position:fixed;left:.6rem;bottom:3rem;z-index:56;width:2.6rem;height:2.6rem;border-radius:50%;border:1px solid #8884;background:Canvas;color:CanvasText;cursor:pointer;font-size:1.2rem;box-shadow:0 2px 8px #0005;display:flex;align-items:center;justify-content:center",
+}, [T("🕸")], { click: { dispatch: "desktop.stategraph" } })) as Fn;
+
+// desktop.stategraph(state) — open/refresh the state graph in a window: build the
+// spec, lay it out via fg.set, then self-mount an fgview window (idempotent — a
+// re-open refreshes the spec and raises the existing window).
+const stategraphFn: Fn = (async (state: State): Promise<State> => {
+  await ensureSegments(state, ["forcegraph", "window"]);
+  await (resolveFn(state, "fg.set") as Fn)(state, { id: "stategraph", spec: buildStateGraphSpec(state) });
+  const sref = "win.stategraph.state";
+  if (!state.cels.get(sref)) {
+    const holder = "desktop.graph.元";
+    await (resolveFn(state, "setCel") as Fn)(state, holder, { celType: "FormulaCel",
+      f: `(wopen "stategraph" "🕸 state" "(fgview 'stategraph' fg.stategraph.spec fg.stategraph.pos fg.stategraph.zoom fg.stategraph.armed fg.stategraph.hide)" (geom 0.16 0.12 0.62 0.62))`,
+      metadata: { key: holder, segment: "desktop.graph", parser: "f" } });
+    const drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
+    for (let i = 0; i < 6; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
+  } else {
+    const cur = (state.cels.get(sref)?.v ?? {}) as WinChip;
+    await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0 });
+    await (resolveFn(state, "window.raise") as Fn)(state, sref);
+  }
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+}) as Fn;
+
+// desktop.graphNode(seg) — click a graph node: raise that segment's window if it
+// has one (a self-mounted win.<seg>.state). Otherwise a no-op.
+const graphNodeFn: Fn = (async (state: State, payload?: unknown): Promise<State> => {
+  const sref = `win.${String(payload ?? "")}.state`;
+  if (state.cels.get(sref)) { await (resolveFn(state, "window.raise") as Fn)(state, sref); await (resolveFn(state, "drain") as Fn)(state, "dom.paint"); }
+  return state;
+}) as Fn;
+
 // (origin.autoload removed: no boot auto-restore. =save() writes a real OPFS file;
 //  reopen it from 📁 Files or with =open(). Reload = a clean desktop.)
 
@@ -1902,6 +2037,12 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["installBakedApps", installBakedApps],
   ["origin.launch",   launch],
   ["boot.run",        bootRun],
+  ["taskbarBar",      taskbarBarFn],
+  ["desktop.taskbarGenesis", taskbarGenesisFn],
+  ["desktop.taskClick", taskClickFn],
+  ["desktop.graphbtn", graphbtnFn],
+  ["desktop.stategraph", stategraphFn],
+  ["desktop.graphNode", graphNodeFn],
   ["def",            defFn],
   ["link",           linkFn],
   ["unlink",         unlinkFn],

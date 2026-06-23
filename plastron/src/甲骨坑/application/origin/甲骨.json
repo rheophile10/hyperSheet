@@ -476,6 +476,79 @@
       }
     },
     {
+      "key": "taskbarBar",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "taskbarBar",
+        "segment": "origin",
+        "name": "taskbarBar",
+        "kind": "native",
+        "description": "(active, ...states) - render the desktop bottom taskbar: one chip per non-closed, non-docked window, the active one bordered, a minimized one dimmed. Receives each window's state VALUE; click → desktop.taskClick. Built reactively by desktop.taskbarGenesis."
+      }
+    },
+    {
+      "key": "desktop.taskbarGenesis",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.taskbarGenesis",
+        "segment": "origin",
+        "name": "desktop.taskbarGenesis",
+        "kind": "native",
+        "genesis": true,
+        "description": "(list, active) - re-derive the taskbar from win.list. A FormulaCel (desktop.taskbarGenesis win.list win.active) re-fires when the window set or focus changes and returns a genesis whose desktop.taskbar.frame splices in each window's state cel by name, so the bar tracks min/raise/title reactively."
+      }
+    },
+    {
+      "key": "desktop.taskClick",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.taskClick",
+        "segment": "origin",
+        "name": "desktop.taskClick",
+        "kind": "native",
+        "description": "(state, ref) - click a taskbar chip: a minimized window restores (clear min + raise); the active one minimizes; any other open one raises."
+      }
+    },
+    {
+      "key": "desktop.graphbtn",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.graphbtn",
+        "segment": "origin",
+        "name": "desktop.graphbtn",
+        "kind": "native",
+        "description": "() - the round lower-left desktop button that opens the state force-graph (dispatches desktop.stategraph)."
+      }
+    },
+    {
+      "key": "desktop.stategraph",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.stategraph",
+        "segment": "origin",
+        "name": "desktop.stategraph",
+        "kind": "native",
+        "description": "(state) - open/refresh a force-graph of the whole state in a window: one node per segment, sized by how much memory it uses, origin-application segments tinted distinctly. Reuses the forcegraph segment (fg.set + fgview); idempotent (re-open refreshes + raises)."
+      }
+    },
+    {
+      "key": "desktop.graphNode",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "desktop.graphNode",
+        "segment": "origin",
+        "name": "desktop.graphNode",
+        "kind": "native",
+        "description": "(state, seg) - click a state-graph node: raise that segment's window if it has one (win.<seg>.state); otherwise a no-op."
+      }
+    },
+    {
       "key": "vocab",
       "celType": "LockedLambdaCel",
       "locked": true,
