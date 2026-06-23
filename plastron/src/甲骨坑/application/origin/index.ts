@@ -1634,6 +1634,58 @@ const iconClick: Fn = (async (state: State, payload?: unknown): Promise<State> =
   return state;
 }) as Fn;
 
+// ── worksheet documents (program/document split) ───────────────────────────
+// A worksheet DOCUMENT is an origin-user segment whose cels are keyed in THAT
+// segment (doc.A1, doc.B2 = the data/formulas). sheetdoc opens a window that
+// renders them via the sheets segment's sheetgrid — the program (window + grid)
+// belongs to the sheet app; the cels belong to the document, so
+// dumpSegments([doc]) exports just the document. (The legacy =cels() path mints
+// the worksheet AND its rendering together; this separates them.)
+
+const wsCol = (addr: string): number => { const m = addr.match(/^([A-Z]+)/); if (!m) return 0; let n = 0; for (const ch of m[1]!) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; };
+const wsRow = (addr: string): number => Number((addr.match(/(\d+)$/) ?? [])[1] ?? 1) - 1;
+const addrOf = (key: string): string => key.slice(key.lastIndexOf(".") + 1);
+
+// sheetcells(keys, vals) — zip a key list + value list into sheetgrid entries
+// {key,col,row,value}, deriving col/row from each key's A1 suffix. Pure; the host
+// formula passes the keys (string list) + the cel VALUES (a list that references
+// each cel, so the grid re-renders reactively when any cel changes).
+const sheetcellsFn: Fn = ((keys?: unknown, vals?: unknown): unknown => {
+  const K = Array.isArray(keys) ? keys.map(String) : [];
+  const V = Array.isArray(vals) ? vals : [];
+  return K.map((key, i) => { const a = addrOf(key); return { key, col: wsCol(a), row: wsRow(a), value: (V as unknown[])[i] }; });
+}) as Fn;
+
+// sheetdoc(state, seg, title?) — open a worksheet window over the cels of document
+// segment `seg`. Builds a content formula that references each grid cel (reactive)
+// and renders via sheetgrid, then wopen's a window around it. Idempotent (re-open
+// un-hides + raises). The window (program) is win.<seg>; the data stays in <seg>.
+const sheetdocFn: Fn = (async (state: State, segArg?: unknown, titleArg?: unknown): Promise<State> => {
+  const seg = String(segArg ?? "");
+  if (!seg) return state;
+  await ensureSegments(state, ["sheets", "window"]);
+  const sref = `win.${seg}.state`;
+  if (!state.cels.get(sref)) {
+    const keys = [...state.cels.keys()]
+      .filter((k) => k.startsWith(seg + ".") && /^[A-Z]+\d+$/.test(addrOf(k)))
+      .sort((a, b) => wsRow(addrOf(a)) - wsRow(addrOf(b)) || wsCol(addrOf(a)) - wsCol(addrOf(b)));
+    const keyList = keys.map((k) => `'${k}'`).join(", ");
+    const refList = keys.join(", ");
+    const title = String(titleArg ?? seg);
+    const content = `=sheetgrid('${seg}', sheetcells(list(${keyList}), list(${refList})))`;
+    await (resolveFn(state, "origin.run") as Fn)(state, `${seg}.docwin.元`,
+      `=wopen('${seg}', '${title}', "${content}", geom(140, 90, 640, 440))`);
+  } else {
+    const cur = (state.cels.get(sref)?.v ?? {}) as WinChip;
+    await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0 });
+    await (resolveFn(state, "window.raise") as Fn)(state, sref);
+  }
+  await (resolveFn(state, "view.refresh") as Fn)(state);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+}) as Fn;
+
 // (origin.autoload removed: no boot auto-restore. =save() writes a real OPFS file;
 //  reopen it from 📁 Files or with =open(). Reload = a clean desktop.)
 
@@ -2185,6 +2237,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["desktop.iconMove",  iconMove],
   ["desktop.iconDrop",  iconDrop],
   ["desktop.iconClick", iconClick],
+  ["sheetcells",      sheetcellsFn],
+  ["sheetdoc",        sheetdocFn],
   ["def",            defFn],
   ["link",           linkFn],
   ["unlink",         unlinkFn],

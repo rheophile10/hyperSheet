@@ -631,6 +631,30 @@
       }
     },
     {
+      "key": "sheetcells",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetcells",
+        "segment": "origin",
+        "name": "sheetcells",
+        "kind": "native",
+        "description": "(keys, vals) - zip a key list + value list into sheetgrid entries {key,col,row,value}, deriving col/row from each key's A1 suffix. The host formula passes the keys (strings) + the cel values (a list referencing each cel, so the grid is reactive)."
+      }
+    },
+    {
+      "key": "sheetdoc",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetdoc",
+        "segment": "origin",
+        "name": "sheetdoc",
+        "kind": "native",
+        "description": "(state, seg, title?) - open a worksheet window over the cels of document segment `seg`, rendered via the sheets segment's sheetgrid (reactive: the content formula references each grid cel). The window (program) is win.<seg>; the data stays in segment <seg>, so dumpSegments([seg]) exports just the document. Idempotent."
+      }
+    },
+    {
       "key": "vocab",
       "celType": "LockedLambdaCel",
       "locked": true,
