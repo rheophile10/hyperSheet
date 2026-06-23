@@ -35,7 +35,7 @@ interface Ctx2D {
 const n = (v: unknown, d = 0): number => { const x = Number(v); return Number.isFinite(x) ? x : d; };
 
 // an op that depends on `t` → the canvas must redraw each frame (rAF loop)
-const isAnimated = (o: Op): boolean => o?.op === "orbit" || o?.op === "frames" || o?.op === "draggable";
+const isAnimated = (o: Op): boolean => o?.op === "frames" || o?.op === "draggable";
 
 // drag state for a draggable canvas: the live rect box + whether it's grabbed.
 type Drag = { x: number; y: number; w: number; h: number; dragging: boolean; ox: number; oy: number };
@@ -84,18 +84,6 @@ const replay = (ctx: Ctx2D, ops: Op[], w: number, h: number, t = 0): void => {
   for (const o of ops) {
     if (!o || typeof o !== "object") continue;
     switch (o.op) {
-      case "orbit": {
-        // a planet circling (cx,cy) at radius orbitR, once per `period` sec
-        const cx = n(o.cx), cy = n(o.cy), orbitR = n(o.orbitR), planetR = n(o.planetR);
-        const period = Math.max(0.1, n(o.period, 8));
-        ctx.beginPath(); ctx.arc(cx, cy, orbitR, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(255,255,255,.12)"; ctx.lineWidth = 1; ctx.stroke();
-        const ang = (t / 1000 / period) * Math.PI * 2 + n(o.phase);
-        const px = cx + orbitR * Math.cos(ang), py = cy + orbitR * Math.sin(ang);
-        ctx.beginPath(); ctx.arc(px, py, planetR, 0, Math.PI * 2);
-        ctx.fillStyle = String(o.color ?? "#fff"); ctx.fill();
-        break;
-      }
       case "rect":
         if (o.fill) { ctx.fillStyle = String(o.fill); ctx.fillRect(n(o.x), n(o.y), n(o.w), n(o.h)); }
         if (o.stroke) { ctx.strokeStyle = String(o.stroke); ctx.lineWidth = n(o.lineWidth, 1); ctx.strokeRect(n(o.x), n(o.y), n(o.w), n(o.h)); }
@@ -190,7 +178,7 @@ const clock = (): number => {
 
 /** Replay draw-spec ops onto every <canvas data-ops> under `root`. Called by
  *  the painter after applyPatch; guarded so it can never break a flush. An
- *  animated canvas (orbit ops) gets a self-cancelling rAF loop. */
+ *  animated canvas (frames/draggable ops) gets a self-cancelling rAF loop. */
 export const drawCanvases = (root: unknown): void => {
   try {
     const found: CanvasLike[] = [];

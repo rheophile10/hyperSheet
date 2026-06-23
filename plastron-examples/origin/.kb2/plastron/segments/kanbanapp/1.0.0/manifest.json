@@ -1,0 +1,9 @@
+{
+  "name": "kanbanapp",
+  "version": "1.0.0",
+  "description": "a kanban board, as an installable origin-application (cels + drag.* primitive)",
+  "role": "user",
+  "kind": "origin-application",
+  "dependencies": [],
+  "sha": "0172bff18b1017"
+}

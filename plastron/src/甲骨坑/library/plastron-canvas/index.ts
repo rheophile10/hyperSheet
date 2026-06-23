@@ -40,12 +40,18 @@ const circle: Fn = (x, y, r, fill, stroke, lineWidth) =>
 const wedge: Fn = (cx, cy, r, a0, a1, fill, stroke, lineWidth) =>
   ({ op: "wedge", cx: num(cx), cy: num(cy), r: num(r), a0: num(a0), a1: num(a1), fill: str(fill), stroke: str(stroke), lineWidth: str(lineWidth) ? num(lineWidth) : undefined });
 
-/** orbit(cx, cy, orbitR, planetR, period [, color] [, phase]) — an ANIMATED
- *  op: a planet circling (cx,cy) at radius orbitR, once every `period` seconds.
- *  A canvas with any orbit op runs a rAF loop (see dom). Stack a few
- *  around a central circle() for a heliocentric system. */
-const orbit: Fn = (cx, cy, orbitR, planetR, period, color, phase) =>
-  ({ op: "orbit", cx: num(cx), cy: num(cy), orbitR: num(orbitR), planetR: num(planetR), period: num(period, 8), color: str(color), phase: num(phase) });
+/** frames(points, r?, period?, fill?, box?) — an ANIMATED op: a dot of radius
+ *  r stepping through a trajectory `points` ([[x,y],…]) once per `period` sec;
+ *  `box` strokes a frame border. dom's replay loop drives it via rAF. The
+ *  `simulate` verb (origin) computes a def'd trajectory then emits through this
+ *  rather than hand-rolling the op literal — so the shape lives in one place. */
+export const frames: Fn = ((points, r, period, fill, box) =>
+  ({ op: "frames",
+     frames: Array.isArray(points) ? (points as unknown[]) : [],
+     r: num(r, 10),
+     fill: fill === undefined ? "#e91e63" : String(fill),
+     period: num(period, 4),
+     box: box === undefined ? "rgba(255,255,255,.25)" : String(box) })) as Fn;
 
 /** canvas(width, height, …ops) — a <canvas> VNODE that draws `ops`. Use it
  *  as a cell value or inside mount/dom: `=canvas(600, 140, rect(…), text(…))`.
@@ -68,6 +74,20 @@ const canvas: Fn = (width, height, ...rest) => {
   };
 };
 
+/** dragdrop(w?, h?) — two drop zones (A, B) + a draggable rect that snaps to
+ *  the nearest zone on release. A VALUE vnode (like canvas); the interactivity
+ *  lives in dom's canvas renderer (the `draggable`/`zone` ops). */
+const dragdrop: Fn = (w, h) => {
+  const W = Math.max(220, Math.floor(Number(w)) || 420), H = Math.max(120, Math.floor(Number(h)) || 200);
+  const zw = W * 0.4, zh = H * 0.66, zy = (H - zh) / 2, ax = W * 0.04, bx = W - W * 0.04 - zw, rw = 64, rh = 40;
+  const ops = [
+    { op: "zone", x: ax, y: zy, w: zw, h: zh, label: "A" },
+    { op: "zone", x: bx, y: zy, w: zw, h: zh, label: "B" },
+    { op: "draggable", x: ax + zw / 2 - rw / 2, y: zy + zh / 2 - rh / 2, w: rw, h: rh, fill: "#e91e63" },
+  ];
+  return { type: "el", tag: "canvas", attrs: { width: W, height: H, "data-ops": JSON.stringify(ops) }, children: [] };
+};
+
 export const name = "plastron-canvas" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
@@ -76,6 +96,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["line",   line],
   ["circle", circle],
   ["wedge",  wedge],
-  ["orbit",  orbit],
+  ["frames", frames],
   ["canvas", canvas],
+  ["dragdrop", dragdrop],
 ]));

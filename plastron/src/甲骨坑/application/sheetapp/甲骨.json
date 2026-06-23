@@ -1,0 +1,52 @@
+{
+  "name": "sheetapp",
+  "cels": [
+    {
+      "key": "sheetapp.program",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "sheetapp.program",
+        "segment": "sheetapp",
+        "name": "program",
+        "description": "the worksheet program marker. sheetapp is the origin-application its documents (origin-user segments stamped applications:[\"sheetapp\"]) render against; it owns new/open/save/load/close + the worksheet window render (sheetdoc). role:application is derived from the application/ loader group."
+      },
+      "v": "worksheet"
+    },
+    {
+      "key": "sheetdoc",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetdoc",
+        "segment": "sheetapp",
+        "name": "sheetdoc",
+        "kind": "native",
+        "description": "(state, seg, title?, offset?) - open a worksheet window over the cels of document segment `seg`, rendered via the sheets segment's sheetgrid (reactive: the content formula references each grid cel). The window (program) is win.<seg>; the data stays in segment <seg>. Idempotent (re-open un-hides + raises)."
+      }
+    },
+    {
+      "key": "origin.opendoc",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.opendoc",
+        "segment": "sheetapp",
+        "name": "origin.opendoc",
+        "kind": "native",
+        "description": "(state, name) - open a sheetapp DOCUMENT: loadUserSpace the origin-user segment from the store (hydrates both its parent app + its own cels), then render it as worksheet window(s) (sheetdoc). The launcher path for a recorded document (doc:<name>)."
+      }
+    },
+    {
+      "key": "origin.newsheet",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.newsheet",
+        "segment": "sheetapp",
+        "name": "origin.newsheet",
+        "kind": "native",
+        "description": "(state) - the Sheet app: create a fresh blank worksheet DOCUMENT (a new origin-user segment of sheetapp), seed an empty grid, and render it. Save with origin.savedoc."
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "turtles",
+  "version": "0.0.1",
+  "description": "turtle doc",
+  "role": "user-space",
+  "applications": [
+    "sheetapp"
+  ],
+  "dependencies": [
+    "sheetapp"
+  ],
+  "sha": "14470fcac18a75"
+}

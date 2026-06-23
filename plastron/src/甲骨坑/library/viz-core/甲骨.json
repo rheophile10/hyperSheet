@@ -1,0 +1,104 @@
+{
+  "name": "viz-core",
+  "cels": [
+    {
+      "key": "linscale",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "linscale", "segment": "viz-core", "name": "linscale", "kind": "native",
+        "description": "(d0, d1, r0, r1) - a linear SCALE SPEC mapping the data interval [d0,d1] onto the visual interval [r0,r1]; r0>r1 is fine (screen y grows down). A scale is a pure data value, not a closure — feed it to scaleapply/ticks. e.g. scaleapply(linscale(0, max(col), plotH, 0), v) → a pixel y."
+      }
+    },
+    {
+      "key": "bandscale",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "bandscale", "segment": "viz-core", "name": "bandscale", "kind": "native",
+        "description": "(labels, r0, r1 [, pad]) - a categorical SCALE SPEC: one evenly spaced band per label across [r0,r1]. pad (0..1, default .2) is the gap fraction between bands. scaleapply(band, label) → a band's start; bandwidth(band) → its drawn width."
+      }
+    },
+    {
+      "key": "colorscale",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "colorscale", "segment": "viz-core", "name": "colorscale", "kind": "native",
+        "description": "(d0, d1 [, c0, c1]) - a sequential color SCALE SPEC; colorapply(scale, v) lerps a value's \"#rrggbb\" in RGB between c0 (at d0) and c1 (at d1). Defaults to a dark→cyan ramp."
+      }
+    },
+    {
+      "key": "scaleapply",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "scaleapply", "segment": "viz-core", "name": "scaleapply", "kind": "native",
+        "description": "(scale, v) - map a value through a scale. linear: un-clamped linear interpolation → number. band: the START position of v's band (v is a label or a 0-based index)."
+      }
+    },
+    {
+      "key": "bandwidth",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "bandwidth", "segment": "viz-core", "name": "bandwidth", "kind": "native",
+        "description": "(scale) - the drawn width of one band of a band scale (0 for non-band scales). Pair with scaleapply for a bar's x and width."
+      }
+    },
+    {
+      "key": "scaleinvert",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "scaleinvert", "segment": "viz-core", "name": "scaleinvert", "kind": "native",
+        "description": "(scale, pos) - the inverse of scaleapply. linear: pixel → data value. band: the label nearest pos. The hook for interaction (a pointer x → which datum)."
+      }
+    },
+    {
+      "key": "ticks",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "ticks", "segment": "viz-core", "name": "ticks", "kind": "native",
+        "description": "(scale [, count]) - axis ticks for a scale as [{v, pos, label}]. linear: \"nice\" round values (1/2/5×10^k) across the domain; band: one tick per label at its band center. An axis is ticks(scale) rendered as text+line ops."
+      }
+    },
+    {
+      "key": "nice",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "nice", "segment": "viz-core", "name": "nice", "kind": "native",
+        "description": "(lo, hi [, count]) - round [lo,hi] outward to a \"nice\" step (1/2/5 ×10^k); returns [niceLo, niceHi, step]. Used to give a linear axis round endpoints."
+      }
+    },
+    {
+      "key": "colorapply",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "colorapply", "segment": "viz-core", "name": "colorapply", "kind": "native",
+        "description": "(scale, v) - the \"#rrggbb\" for v under a colorscale (RGB lerp, clamped to the domain). Drives a choropleth/heatmap fill."
+      }
+    },
+    {
+      "key": "ordinalcolor",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "ordinalcolor", "segment": "viz-core", "name": "ordinalcolor", "kind": "native",
+        "description": "(key [, keys]) - a categorical palette color. With keys, the color of key's position in keys; otherwise key coerced to a 0-based index. The 10-color palette wraps."
+      }
+    },
+    {
+      "key": "extent",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "extent", "segment": "viz-core", "name": "extent", "kind": "native",
+        "description": "(values) - [min, max] over the finite numbers in a (possibly nested) range; [0,1] when empty. Derive a scale's domain from a data column: linscale with min(col)/max(col), or feed extent to your own logic."
+      }
+    }
+  ]
+}

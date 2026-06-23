@@ -1,0 +1,14 @@
+{
+  "name": "sheetapp",
+  "cels": [
+    {
+      "key": "sheetapp.program",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "sheetapp.program",
+        "segment": "sheetapp"
+      },
+      "v": "x"
+    }
+  ]
+}

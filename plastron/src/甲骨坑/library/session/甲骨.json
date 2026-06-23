@@ -1,0 +1,53 @@
+{
+  "name": "session",
+  "cels": [
+    {
+      "key": "session.put",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "session.put",
+        "segment": "session",
+        "name": "session.put",
+        "kind": "native",
+        "description": "(state, name, tokens) - store a service's live session tokens ({ access, refresh?, exp?, meta? }; tokens may be an object or a JSON string) in the module-scope token store, and write a non-secret session.<name>.status cel ({ status: active, exp }) that formulas react to. The tokens NEVER become a cel value and NEVER enter an archive — only the status does. Called by auth providers (e.g. supabase-auth) on sign-in, not by user formulas."
+      },
+      "locked": true
+    },
+    {
+      "key": "session.handle",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "session.handle",
+        "segment": "session",
+        "name": "session.handle",
+        "kind": "native",
+        "description": "(state, name, kind?) - mint a SecretHandle for a service's access token (kind='access', default) or refresh token (kind='refresh'). The handle carries the name + a resolver closure over the module-scope store; it dehydrates to name-only (the resolver, and the token, are dropped). Effect sites (e.g. the supabase data verb) resolve() the access handle to set the Authorization bearer; an auth provider resolves the refresh handle to rotate the access token. The token is never surfaced as a cel value."
+      },
+      "locked": true
+    },
+    {
+      "key": "session.peek",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "session.peek",
+        "segment": "session",
+        "name": "session.peek",
+        "kind": "native",
+        "description": "(state, name) - return the non-secret status snapshot for a service ({ status: active|none, exp, hasRefresh }). Mirrors the session.<name>.status cel; never returns the token."
+      },
+      "locked": true
+    },
+    {
+      "key": "session.forget",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "session.forget",
+        "segment": "session",
+        "name": "session.forget",
+        "kind": "native",
+        "description": "(state, name) - drop a service's tokens from the store (sign-out) and set session.<name>.status to { status: none }. After this the handle's resolver returns undefined."
+      },
+      "locked": true
+    }
+  ]
+}

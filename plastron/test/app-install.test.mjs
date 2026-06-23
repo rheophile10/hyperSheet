@@ -106,12 +106,12 @@ const loadBakedManifest = async () => {
   return manifest;
 };
 
-test("boot.run installs the real desktop + sheetapp archives WITHOUT hydrating them", async () => {
+test("boot.run installs the real desktop archive WITHOUT hydrating it", async () => {
   const state = await boot();
   const manifest = await loadBakedManifest();
   await fn(state, "boot.run")(state, { manifest, open: false });
   assert.equal(await fn(state, "store.has")(state, "desktop"), true, "desktop installed to OPFS");
-  assert.equal(await fn(state, "store.has")(state, "sheetapp"), true, "sheetapp installed to OPFS");
+  // sheetapp is no longer a baked archive — it's a real segment loaded with origin.
   assert.equal(state.cels.has("desktop.iconbar.frame"), false, "install did not hydrate the desktop chrome");
 });
 
@@ -135,11 +135,11 @@ test("the Sheet icon (do:origin.newsheet) creates a new worksheet document", asy
   const state = await boot();
   const manifest = await loadBakedManifest();
   await fn(state, "boot.run")(state, { manifest, open: "desktop" });
-  assert.equal(state.cels.has("sheetapp.program"), false, "the sheet program isn't loaded until used");
+  // sheetapp is a real segment loaded with origin (origin depends on it), so its
+  // program marker is present once the desktop (origin) is up.
+  assert.equal(state.cels.has("sheetapp.program"), true, "sheetapp loaded with origin");
 
   await fn(state, "origin.navOpen")(state, "do:origin.newsheet");
-  // newsheet auto-starts the sheetapp program (from the store) + opens a fresh
-  // worksheet doc window
-  assert.equal(state.cels.has("sheetapp.program"), true, "newsheet auto-started the sheetapp program");
+  // newsheet (now owned by the sheetapp segment) opens a fresh worksheet doc window
   assert.ok([...state.cels.keys()].some((k) => /^win\.sheet\d+\.state$/.test(k)), "a new worksheet window opened");
 });

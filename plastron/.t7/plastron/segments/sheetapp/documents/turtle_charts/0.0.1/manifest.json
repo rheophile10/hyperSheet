@@ -1,0 +1,15 @@
+{
+  "name": "turtle_charts",
+  "version": "0.0.1",
+  "description": "turtles (a sheetapp document)",
+  "role": "user-space",
+  "kind": "origin-user",
+  "applications": [
+    "sheetapp"
+  ],
+  "dependencies": [
+    "sheetapp",
+    "turtle_data"
+  ],
+  "sha": "17276959c037e3"
+}

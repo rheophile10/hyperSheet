@@ -47,12 +47,12 @@
       }
     },
     {
-      "key": "orbit",
+      "key": "frames",
       "celType": "LockedLambdaCel",
       "locked": true,
       "metadata": {
-        "key": "orbit", "segment": "plastron-canvas", "name": "orbit", "kind": "native",
-        "description": "(cx, cy, orbitR, planetR, period [, color] [, phase]) - an ANIMATED canvas op: a planet circling (cx,cy) once every `period` seconds. A canvas with an orbit op runs a rAF loop; stack a few around a circle() for a heliocentric system."
+        "key": "frames", "segment": "plastron-canvas", "name": "frames", "kind": "native",
+        "description": "(points, r?, period?, fill?, box?) - an ANIMATED canvas op: a dot of radius r steps through the trajectory points ([[x,y],…]) once per period seconds; box strokes a frame border. The painter's rAF loop drives it. The simulate verb computes a def-driven trajectory and emits through this."
       }
     },
     {
@@ -62,6 +62,15 @@
       "metadata": {
         "key": "canvas", "segment": "plastron-canvas", "name": "canvas", "kind": "native",
         "description": "(width, height, ...ops) - a <canvas> drawn from rect/text/line/circle/wedge ops; the painter replays them onto the 2d context. use as a cell value or inside mount/dom. op LISTS flatten in, so chart fns compose: =canvas(420, 260, barchart(t!A2:A8, t!B2:B8))."
+      }
+    },
+    {
+      "key": "dragdrop",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "dragdrop", "segment": "plastron-canvas", "name": "dragdrop", "kind": "native",
+        "description": "(w?, h?) - two drop zones (A, B) + a rectangle you drag between them; it snaps to the nearest zone on release. A value vnode; the interactivity lives in the canvas renderer (the draggable/zone ops)."
       }
     }
   ]

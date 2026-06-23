@@ -1,0 +1,9 @@
+{
+  "name": "sheetapp",
+  "version": "1.0.0",
+  "description": "sheet app",
+  "role": "application",
+  "kind": "origin-application",
+  "dependencies": [],
+  "sha": "0070e567e72bd6"
+}

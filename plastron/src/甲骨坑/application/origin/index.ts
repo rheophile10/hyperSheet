@@ -13,6 +13,7 @@ import {
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
 // `memo` attaches the diff's O(changed) short-circuit hint (see dom).
 import { el as makeEl, text as T } from "../../library/dom/index.js";
+import { frames as canvasFrames } from "../../library/plastron-canvas/index.js";
 import { registerMount } from "../../library/dom/utils/mounts.js";
 import { BUILTIN_DOCS } from "../../library/sheet/utils/infix.js";
 import { encodeLink, decodeLink, encodeEncLink, decodeEncLink, ENC_METHOD,
@@ -1646,53 +1647,10 @@ const sheetcellsFn: Fn = ((...args: unknown[]): unknown => {
   return out;
 }) as Fn;
 
-// the user-space segments that make up a document: the primary + its loaded
-// user-space deps (e.g. turtle_charts pulls in turtle_data), so a multi-segment
-// doc renders all its sheets stacked in one window. Deps first (the data), then
-// the primary (e.g. the charts that read it).
-const docRenderSegs = (state: State, primary: string): string[] => {
-  const m = getSegmentManifest(state, primary) as { dependencies?: string[] } | undefined;
-  const deps = (m?.dependencies ?? []).filter((d) => {
-    const dm = getSegmentManifest(state, d) as { role?: string } | undefined;
-    return dm?.role === "user-space" && [...state.cels.keys()].some((k) => k.startsWith(d + "."));
-  });
-  return [...deps, primary];
-};
-const gridKeysOf = (state: State, seg: string): string[] =>
-  [...state.cels.keys()].filter((k) => k.startsWith(seg + ".") && /^[A-Z]+\d+$/.test(addrOf(k)))
-    .sort((a, b) => wsRow(addrOf(a)) - wsRow(addrOf(b)) || wsCol(addrOf(a)) - wsCol(addrOf(b)));
-const singleGrid = (state: State, seg: string): string => {
-  const keys = gridKeysOf(state, seg);
-  // variadic 'seg.A1', seg.A1, … — infix has no array literal, and each ref makes
-  // the grid reactive to that cel.
-  return `sheetgrid('${seg}', sheetcells(${keys.map((k) => `'${k}', ${k}`).join(", ")}))`;
-};
-
-// sheetdoc(state, seg, title?, offset?) — open a worksheet window over the cels of
-// document segment `seg`. The content formula references each grid cel (reactive).
-// `offset` cascades the window position (a multi-sheet doc opens one per segment).
-// Idempotent (re-open un-hides + raises). Window (program) is win.<seg>.
-const sheetdocFn: Fn = (async (state: State, segArg?: unknown, titleArg?: unknown, offsetArg?: unknown): Promise<State> => {
-  const seg = String(segArg ?? "");
-  if (!seg) return state;
-  await ensureSegments(state, ["sheets", "window"]);
-  const sref = `win.${seg}.state`;
-  if (!state.cels.get(sref)) {
-    const off = (Number(offsetArg) || 0) * 38;
-    const title = String(titleArg ?? seg);
-    const content = `=${singleGrid(state, seg)}`;
-    await (resolveFn(state, "origin.run") as Fn)(state, `${seg}.docwin.元`,
-      `=wopen('${seg}', '${title}', "${content}", geom(${140 + off}, ${88 + off}, 600, 420))`);
-  } else {
-    const cur = (state.cels.get(sref)?.v ?? {}) as WinChip;
-    await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0 });
-    await (resolveFn(state, "window.raise") as Fn)(state, sref);
-  }
-  await (resolveFn(state, "view.refresh") as Fn)(state);
-  await (resolveFn(state, "runCycle") as Fn)(state);
-  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
-  return state;
-}) as Fn;
+// The worksheet document lifecycle — docRenderSegs / gridKeysOf / singleGrid /
+// sheetdoc / opendoc / newsheet / wireDocFlush — moved to the `sheetapp`
+// application segment (windowing-cutover Stage 4). origin depends on sheetapp;
+// the verb keys (sheetdoc / origin.opendoc / origin.newsheet) are unchanged.
 
 // ── app editor: edit ANOTHER segment's cels (its formulas/definition) ───────
 // An app's cels are NAMED (desktop.bg.frame), not A1-coordinate, so the worksheet
@@ -1765,60 +1723,8 @@ const editAppCelFn: Fn = (async (state: State, payload?: unknown, event?: unknow
   return state;
 }) as Fn;
 
-// wireDocFlush — make a doc worksheet window SAVE + EVICT its document on close.
-// The window segment's close runs each tab's flush cel; sheetdoc's tab content is
-// win.<doc>.content, so its flush key is win.<doc>.flush. Install a lambda there
-// that saveUserSpace's (records edits) then closeUserSpace's (evicts the closure).
-const wireDocFlush = async (state: State, doc: string): Promise<void> => {
-  const key = `win.${doc}.flush`;
-  if (state.cels.get(key)) return;
-  const fn = (async (s: State): Promise<void> => {
-    try { const save = resolveFn(s, "saveUserSpace") as Fn | undefined; if (save) await save(s, doc); } catch { /* unsaved beats a thrown close */ }
-    try { const close = resolveFn(s, "closeUserSpace") as Fn | undefined; if (close) await close(s, doc); } catch { /* evict best-effort */ }
-  }) as Fn;
-  await (resolveFn(state, "setCel") as Fn)(state, key, { celType: "LockedLambdaCel", locked: true, fn, metadata: { key, segment: `win.${doc}`, name: "flush", kind: "native" } });
-};
-
-// origin.opendoc(state, name) — open a sheetapp DOCUMENT: load the origin-user
-// segment from the store (loadUserSpace hydrates BOTH its parent app sheetapp and
-// the doc's own cels — "like hydrating cels"), then render it as a worksheet
-// window via sheetdoc. This is the icon/launcher path for a recorded document.
-const opendocFn: Fn = (async (state: State, nameArg?: unknown): Promise<State> => {
-  const name = String(nameArg ?? "");
-  if (!name) return state;
-  await ensureSegments(state, ["segment-store", "opfs-seeding", "user-space-ops", "origin-lifecycle", "sheets", "window"]);
-  if (!hasSegment(state, name)) {
-    const load = resolveFn(state, "loadUserSpace") as Fn | undefined;
-    if (!load) throw new Error("origin.opendoc: loadUserSpace not installed");
-    await load(state, name);
-  }
-  // a multi-sheet doc (e.g. turtles = turtle_data + turtle_charts) opens one
-  // worksheet window per segment, cascaded; each saves + evicts on close.
-  const segs = docRenderSegs(state, name);
-  for (let i = 0; i < segs.length; i++) {
-    await (sheetdocFn as Fn)(state, segs[i], segs[i], i);
-    await wireDocFlush(state, segs[i]!);
-  }
-  return state;
-}) as Fn;
-
-// origin.newsheet(state) — the Sheet app: create a fresh blank worksheet DOCUMENT
-// (a new origin-user segment of sheetapp), seed an empty grid, and render it. Save
-// it later with origin.savedoc; close flushes it.
-const newsheetFn: Fn = (async (state: State): Promise<State> => {
-  await ensureSegments(state, ["segment-store", "opfs-seeding", "user-space-ops", "sheets", "window"]);
-  if (!hasSegment(state, "sheetapp")) await (resolveFn(state, "hydrate-closure") as Fn)(state, "sheetapp");
-  const has = resolveFn(state, "store.has") as Fn;
-  let n = 1, name = "sheet1";
-  while (state.cels.has(`${name}.A1`) || (await (has(state, name) as Promise<boolean>))) name = `sheet${++n}`;
-  await (resolveFn(state, "newUserSpace") as Fn)(state, name, "sheetapp", { autoSave: false });
-  const specs: Record<string, unknown> = {};
-  for (let r = 1; r <= 12; r++) for (let c = 0; c < 7; c++) { const k = `${name}.${String.fromCharCode(65 + c)}${r}`; specs[k] = { celType: "ValueCel", v: "", metadata: { key: k, segment: name } }; }
-  await (resolveFn(state, "setCelBatch") as Fn)(state, specs);
-  await (sheetdocFn as Fn)(state, name);
-  await wireDocFlush(state, name);   // closing the window saves + evicts the doc
-  return state;
-}) as Fn;
+// (wireDocFlush / origin.opendoc / origin.newsheet moved to the sheetapp segment —
+// see the Stage 4 breadcrumb above.)
 
 // origin.savedoc(state, name) — record the document's cel states: saveUserSpace
 // dehydrates the origin-user segment's private closure and store.put's it (under
@@ -2014,19 +1920,10 @@ const interlinkedFn: Fn = (seg: unknown) => ({ originGraph: String(seg ?? "") })
 const simulateFn: Fn = (fnName: unknown, n: unknown, r: unknown) =>
   ({ originSim: true, fn: String(fnName ?? ""), n: Math.max(2, Math.min(2000, Math.floor(Number(n)) || 120)), r: Math.max(2, Math.floor(Number(r)) || 12) });
 
-// dragdrop(w?, h?) — two drop zones (A, B) + a draggable rect that snaps to the
-// nearest zone on release. A VALUE vnode (like dom/canvas); the interactivity
-// lives in dom's canvas renderer (the `draggable`/`zone` ops).
-const dragdropFn: Fn = (w: unknown, h: unknown) => {
-  const W = Math.max(220, Math.floor(Number(w)) || 420), H = Math.max(120, Math.floor(Number(h)) || 200);
-  const zw = W * 0.4, zh = H * 0.66, zy = (H - zh) / 2, ax = W * 0.04, bx = W - W * 0.04 - zw, rw = 64, rh = 40;
-  const ops = [
-    { op: "zone", x: ax, y: zy, w: zw, h: zh, label: "A" },
-    { op: "zone", x: bx, y: zy, w: zw, h: zh, label: "B" },
-    { op: "draggable", x: ax + zw / 2 - rw / 2, y: zy + zh / 2 - rh / 2, w: rw, h: rh, fill: "#e91e63" },
-  ];
-  return { type: "el", tag: "canvas", attrs: { width: W, height: H, "data-ops": JSON.stringify(ops) }, children: [] };
-};
+// dragdrop moved to plastron-canvas (the single canvas vocabulary); see
+// library/plastron-canvas/index.ts. simulate stays here — it's app glue
+// (runs a def'd physics fn through the effect drain) but emits via the
+// plastron-canvas `frames` constructor rather than a hand-rolled op literal.
 
 const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<void> => {
   const state = (stateArg ?? items[0]?.state) as State | undefined;
@@ -2309,7 +2206,7 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
             else frames.push([Number((p as { x?: unknown })?.x) || 0, Number((p as { y?: unknown })?.y) || 0]);
           }
           const w = 360, h = 280;
-          const ops = [{ op: "frames", frames, r: Number(req.r) || 12, fill: "#e91e63", period: 4, box: "rgba(255,255,255,.25)" }];
+          const ops = [canvasFrames(frames, Number(req.r) || 12, 4)];
           result = { type: "el", tag: "canvas", attrs: { width: w, height: h, "data-ops": JSON.stringify(ops) }, children: [] };
         }
       } else continue;
@@ -2383,10 +2280,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["desktop.iconDrop",  iconDrop],
   ["desktop.iconClick", iconClick],
   ["sheetcells",      sheetcellsFn],
-  ["sheetdoc",        sheetdocFn],
-  ["origin.opendoc",  opendocFn],
   ["origin.savedoc",  savedocFn],
-  ["origin.newsheet", newsheetFn],
   ["origin.editapp",  editappFn],
   ["origin.editAppCel", editAppCelFn],
   ["def",            defFn],
@@ -2433,7 +2327,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["dbimport",       dbImportFn],
   ["interlinked",    interlinkedFn],
   ["simulate",       simulateFn],
-  ["dragdrop",       dragdropFn],
   ["save",           saveFn],
   ["open",           openFn],
 ]));

@@ -1,0 +1,357 @@
+{
+  "name": "turtle_data",
+  "cels": [
+    {
+      "key": "turtle_data.A1",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "A1",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.A1",
+        "v": "Species"
+      }
+    },
+    {
+      "key": "turtle_data.B1",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "B1",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.B1",
+        "v": "Lifespan years"
+      }
+    },
+    {
+      "key": "turtle_data.C1",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "C1",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.C1",
+        "v": "Top speed km/h"
+      }
+    },
+    {
+      "key": "turtle_data.D1",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "D1",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.D1",
+        "v": "Eggs per clutch"
+      }
+    },
+    {
+      "key": "turtle_data.A2",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "A2",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.A2",
+        "v": "Galápagos"
+      }
+    },
+    {
+      "key": "turtle_data.B2",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "B2",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.B2",
+        "v": 177
+      }
+    },
+    {
+      "key": "turtle_data.C2",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "C2",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.C2",
+        "v": 0.3
+      }
+    },
+    {
+      "key": "turtle_data.D2",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "D2",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.D2",
+        "v": 10
+      }
+    },
+    {
+      "key": "turtle_data.A3",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "A3",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.A3",
+        "v": "Leatherback"
+      }
+    },
+    {
+      "key": "turtle_data.B3",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "B3",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.B3",
+        "v": 45
+      }
+    },
+    {
+      "key": "turtle_data.C3",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "C3",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.C3",
+        "v": 35
+      }
+    },
+    {
+      "key": "turtle_data.D3",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "D3",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.D3",
+        "v": 80
+      }
+    },
+    {
+      "key": "turtle_data.A4",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "A4",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.A4",
+        "v": "Green sea"
+      }
+    },
+    {
+      "key": "turtle_data.B4",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "B4",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.B4",
+        "v": 75
+      }
+    },
+    {
+      "key": "turtle_data.C4",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "C4",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.C4",
+        "v": 32
+      }
+    },
+    {
+      "key": "turtle_data.D4",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "D4",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.D4",
+        "v": 110
+      }
+    },
+    {
+      "key": "turtle_data.A5",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "A5",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.A5",
+        "v": "Box"
+      }
+    },
+    {
+      "key": "turtle_data.B5",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "B5",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.B5",
+        "v": 100
+      }
+    },
+    {
+      "key": "turtle_data.C5",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "C5",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.C5",
+        "v": 0.5
+      }
+    },
+    {
+      "key": "turtle_data.D5",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "D5",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.D5",
+        "v": 5
+      }
+    },
+    {
+      "key": "turtle_data.A6",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "A6",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.A6",
+        "v": "Snapping"
+      }
+    },
+    {
+      "key": "turtle_data.B6",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "B6",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.B6",
+        "v": 40
+      }
+    },
+    {
+      "key": "turtle_data.C6",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "C6",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.C6",
+        "v": 2
+      }
+    },
+    {
+      "key": "turtle_data.D6",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "D6",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.D6",
+        "v": 30
+      }
+    },
+    {
+      "key": "turtle_data.A7",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "A7",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.A7",
+        "v": "Painted"
+      }
+    },
+    {
+      "key": "turtle_data.B7",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "B7",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.B7",
+        "v": 55
+      }
+    },
+    {
+      "key": "turtle_data.C7",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "C7",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.C7",
+        "v": 1.5
+      }
+    },
+    {
+      "key": "turtle_data.D7",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "D7",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.D7",
+        "v": 12
+      }
+    },
+    {
+      "key": "turtle_data.A8",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "A8",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.A8",
+        "v": "Loggerhead"
+      }
+    },
+    {
+      "key": "turtle_data.B8",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "B8",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.B8",
+        "v": 65
+      }
+    },
+    {
+      "key": "turtle_data.C8",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "C8",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.C8",
+        "v": 24
+      }
+    },
+    {
+      "key": "turtle_data.D8",
+      "celType": "ValueCel",
+      "metadata": {
+        "name": "D8",
+        "parser": "infix",
+        "segment": "turtle_data",
+        "key": "turtle_data.D8",
+        "v": 100
+      }
+    }
+  ]
+}

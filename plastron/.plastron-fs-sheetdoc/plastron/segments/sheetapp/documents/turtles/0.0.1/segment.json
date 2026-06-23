@@ -1,0 +1,37 @@
+{
+  "name": "turtles",
+  "cels": [
+    {
+      "key": "turtles.A1",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "turtles.A1",
+        "segment": "turtles",
+        "v": "speed"
+      }
+    },
+    {
+      "key": "turtles.B1",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "turtles.B1",
+        "segment": "turtles",
+        "v": 77
+      }
+    },
+    {
+      "key": "turtles.B2",
+      "celType": "FormulaCel",
+      "metadata": {
+        "key": "turtles.B2",
+        "segment": "turtles",
+        "parser": "infix",
+        "inputMap": {
+          "turtles.B1": "turtles.B1"
+        },
+        "v": 154
+      },
+      "f": "=turtles.B1*2"
+    }
+  ]
+}

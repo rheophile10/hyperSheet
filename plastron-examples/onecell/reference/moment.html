@@ -1,0 +1,108 @@
+<!doctype html>
+
+<html>
+<head splash>
+<title>Chaos Cube Chi Training Arena</title>
+<style>
+  .pick {
+    cursor: pointer;
+    margin-left: 25px;
+  }
+</style>
+<link rel=stylesheet href='/css/styles.css'></link>
+<script async src="/js/es_shims.js"></script>
+<script type="importmap">
+  {
+    "imports": {
+      "three": "/js/three/build/three.module.js",
+      "three/addons/": "/js/three/examples/jsm/"
+    }
+  }
+</script>
+<script type="module">
+import * as objs from '/js/moment1.js';
+window.onejs = objs;
+for( var i in objs ) {
+  window[i] = objs[i];
+}
+</script>
+</head>
+
+<body style='background: black; color: tan; font-size: 18pt'>
+<div xSect=main id=mainscroll class="margin-small">
+<div id=loading_1 style='display: block'>loading...</div>
+
+<div id=sourcehelp style='display:none; float:left; font-size: 14pt; max-width: 400px'>
+  <p><b>Welcome to onecell!</b>
+  <b>Good luck!!!</b>
+</div>
+
+</div> <!--mainscroll-->
+
+<div id="topstatus">
+  <div class=fl id='topstatusmsg' style='max-width: 90%'></div>
+  <div class=fl onClick='cycleStatusLogState()' style='max-width: 5%' title='hide/show cycle'>[<font style='text-decoration:underline; color: blue'>h</font>]</div>
+  <div class=fl onClick='cycleTimersType()' style='max-width: 5%' title='learn/lock/lose cycle'>[<font style='text-decoration:underline; color: red'>y</font>]</div>
+</div>
+
+<div id="lefttoast"></div>
+<div id="righttoast"></div>
+<div id="yourtoast"></div>
+
+<script src='js/toast.js'></script>
+</body>
+
+<script language=javascript>
+function scriptPick(name)
+{
+  console.log("scriptPick(" + name + ")");
+  let names = name.split('.');
+  let ext = names.length > 1 ? names[names.length-1] : '';
+  name = names[0];
+  window.loadScript('cells/' + name + (ext===''?'':'.') + ext, (nm) => {
+      if( typeof nm != 'undefined' ) {
+        if( ext === 'bin' ) {
+          scriptPick(name + ".json");
+        } else if( ext === "json" ) {
+          alert("I am sorry: I couldn't download " + name + " - are you ssure the path is right? It may have been removed - try one of these.");
+        } else {
+          scriptPick(name + ".json");
+        }
+      } else {
+        document.getElementById('loading_3').style.display = 'none';
+        f.style.display = 'none';
+      }
+    });
+}
+
+function selectScript(name)
+{
+  let f = document.getElementById('sourcehelp');
+
+  if( typeof name == 'undefined' ) {
+    f.style.display='none';
+    window.startupOneCell();
+  } else {
+    f.style.display='none';
+    scriptPick(name);
+  }
+}
+
+function sleighbell()
+{
+  selectScript('oddcell');
+}
+window.onload = function(){
+    let sh = document.getElementById('sourcehelp');
+    if( window.matchMedia("(any-pointer:coarse)").matches > 0 ) {
+      document.body.style.fontSize = '28pt';
+      if( sh )
+        sh.style.fontSize = '24pt';
+    }
+    document.getElementById('loading_1').style.display='none';
+
+    selectScript();
+};
+
+</script>
+</html>

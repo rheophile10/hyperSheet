@@ -1,0 +1,17 @@
+{
+  "name": "supabase-auth",
+  "cels": [
+    {
+      "key": "supabase.auth",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "supabase.auth",
+        "segment": "supabase-auth",
+        "name": "supabase.auth",
+        "kind": "native",
+        "description": "(state, op, project, payload) - Supabase GoTrue auth over gated fetch. Reads the public config cels sb.<project>.url and sb.<project>.anonkey. op=signin {email,password} → password grant; op=otp/magiclink {email} → email a magic link; op=refresh → rotate the access token via the stored refresh token; op=signout → revoke + clear. On sign-in the tokens go to the session store (session.put under 'supabase.<project>'); the JWT never becomes a cel value. The graph sees only the non-secret sb.<project>.auth status cel ({ status: signed-in|signed-out|otp-sent|error, email, userId }). The host should net.allowlist the project URL when the net gate is active."
+      },
+      "locked": true
+    }
+  ]
+}

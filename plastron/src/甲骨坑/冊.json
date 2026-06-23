@@ -202,6 +202,13 @@
     "role": "library"
   },
   {
+    "name": "viz-core",
+    "version": "0.0.1",
+    "description": "Medium-agnostic encoding layer shared by charts, maps, and the 3d/gpu renderer. A SCALE is a pure data spec, not a closure: linscale/bandscale/colorscale return {t,…} objects; scaleapply/bandwidth/ticks/scaleinvert/colorapply/ordinalcolor consume them, plus extent/nice helpers. All pure fns over plain values — no DOM, no 2d context — so off-browser unit-testable and serialisable into a data-ops/scene spec. A chart axis, a map projection, and a sim unit-map are the same scale.",
+    "dependencies": [],
+    "role": "library"
+  },
+  {
     "name": "charts",
     "version": "0.0.1",
     "description": "Charting vocabulary over the plastron-canvas draw-spec: barchart/linechart/piechart(labels, values [, x y w h]) turn column ranges into op LISTS that canvas() concats — =canvas(420, 260, barchart(turtles!A2:A8, turtles!B2:B8)). Pure fns, no module state; the range edges in inputMap re-render a chart when its sheet data changes.",
@@ -252,9 +259,23 @@
       "defn",
       "sheet",
       "sound",
-      "builtins"
+      "builtins",
+      "sheetapp"
     ],
     "role": "application"
+  },
+  {
+    "name": "sheetapp",
+    "version": "1.0.0",
+    "description": "the worksheet origin-application: owns the document lifecycle (opendoc/newsheet/sheetdoc + save-on-close wiring) and the sheetapp.program marker. Documents are origin-user segments stamped applications:[\"sheetapp\"]. Reaches origin.run + the user-space-ops lifecycle at runtime via resolveFn; origin depends on it (loaded with origin, parked otherwise).",
+    "dependencies": [
+      "sheets",
+      "window",
+      "user-space-ops",
+      "segment-store",
+      "opfs-seeding",
+      "origin-lifecycle"
+    ]
   },
   {
     "name": "net",
@@ -273,6 +294,18 @@
     "version": "0.0.1",
     "description": "foundational crypto via WebCrypto (zero-dep, Bun + browser): Ed25519 sign/verify, AES-256-GCM encrypt/decrypt, ECDH P-256 wrap/unwrap. The private key is NEVER a cel value — the graph holds a CryptoKeyHandle (id + public); the non-extractable CryptoKey lives in the keystore (IndexedDB in the browser, in-process in Bun) and resolves at the effect site. Tier 2 WebAuthn PRF scaffolded; Tier 3 seed-phrase recovery.",
     "dependencies": []
+  },
+  {
+    "name": "session",
+    "version": "0.0.1",
+    "description": "service-agnostic session token store (the home the removed vault left open). Holds live auth tokens for any service (supabase-auth is the first tenant) in a module-scope Map and mints SecretHandles over them: session.put stores tokens + writes a non-secret session.<name>.status cel formulas react to; session.handle mints a SecretHandle whose resolver closes over the store and dehydrates to name-only; session.peek snapshots status; session.forget signs out. The token never becomes a cel value and never enters an archive — session-only by default (cross-reload persistence delegates bytes to seal/crypto in a later stage).",
+    "dependencies": []
+  },
+  {
+    "name": "supabase-auth",
+    "version": "0.0.1",
+    "description": "Supabase GoTrue auth provider on top of the session store. supabase.auth(state, op, project, payload): op=signin (password grant), op=otp/magiclink, op=refresh (rotate via stored refresh token), op=signout. Reads public config cels sb.<project>.url / sb.<project>.anonkey; on sign-in hands tokens to session.put (the JWT never becomes a cel value) and surfaces the non-secret sb.<project>.auth status cel. IO via gated fetch; no service_role key.",
+    "dependencies": ["session"]
   },
   {
     "name": "sqlite",

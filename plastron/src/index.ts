@@ -51,16 +51,20 @@ import * as defn            from "./甲骨坑/library/defn/index.js";
 import * as genesis         from "./甲骨坑/library/genesis/index.js";
 import * as checkpoint      from "./甲骨坑/library/checkpoint/index.js";
 import * as plastronCanvas  from "./甲骨坑/library/plastron-canvas/index.js";
+import * as vizCore         from "./甲骨坑/library/viz-core/index.js";
 import * as charts          from "./甲骨坑/library/charts/index.js";
 import * as net             from "./甲骨坑/library/net/index.js";
 import * as cryptoLib       from "./甲骨坑/library/crypto/index.js";
 import * as seal            from "./甲骨坑/library/seal/index.js";
+import * as session         from "./甲骨坑/library/session/index.js";
+import * as supabaseAuth     from "./甲骨坑/library/supabase-auth/index.js";
 import * as sqlite          from "./甲骨坑/library/sqlite/index.js";
 import * as sqliteClient    from "./甲骨坑/library/sqlite-client/index.js";
 import * as sqliteDemo      from "./甲骨坑/library/sqlite-demo/index.js";
 import * as docgraph        from "./甲骨坑/library/docgraph/index.js";
 import * as forcegraph      from "./甲骨坑/library/forcegraph/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
+import * as sheetapp        from "./甲骨坑/application/sheetapp/index.js";
 import * as sound           from "./甲骨坑/library/sound/index.js";
 import * as music           from "./甲骨坑/library/music/index.js";
 
@@ -129,10 +133,13 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "genesis":          () => [...genesis.cels],
   "checkpoint":       () => [...checkpoint.cels],
   "plastron-canvas":  () => [...plastronCanvas.cels],
+  "viz-core":         () => [...vizCore.cels],
   "charts":           () => [...charts.cels],
   "net":              () => [...net.cels],
   "crypto":           () => [...cryptoLib.cels],
   "seal":             () => [...seal.cels],
+  "session":          () => [...session.cels],
+  "supabase-auth":    () => [...supabaseAuth.cels],
   "sqlite":           () => [...sqlite.cels],
   "sqlite-client":    () => [...sqliteClient.cels],
   "sqlite-demo":      () => [...sqliteDemo.cels],
@@ -144,6 +151,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
 // loaded by `ensureSegments(["origin"])` and parked-by-default below.
 const applicationLoaders: Record<Key, () => Cel[]> = {
   "origin":           () => [...origin.cels],
+  "sheetapp":         () => [...sheetapp.cels],
 };
 
 const segmentLoaders: Record<Key, () => Cel[]> = {
@@ -226,7 +234,7 @@ export const createInitialState = (opts?: CreateInitialStateOptions): State => {
   // want. The origin host wakes it explicitly —
   // `await ensureSegments(state, ["origin"])` then `hydrate(state, [], [])`.
   // Pass `lazy: []` (or any list without "origin") to opt OUT of parking.
-  if (opts?.lazy === undefined) lazy.add("origin");
+  if (opts?.lazy === undefined) { lazy.add("origin"); lazy.add("sheetapp"); }
   if (lazy.has("kernel")) {
     throw new Error("createInitialState: the \"kernel\" segment cannot be lazy.");
   }

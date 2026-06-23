@@ -1,0 +1,14 @@
+{
+  "name": "readme",
+  "version": "0.0.1",
+  "description": "readme (a sheetapp document)",
+  "role": "user-space",
+  "kind": "origin-user",
+  "applications": [
+    "sheetapp"
+  ],
+  "dependencies": [
+    "sheetapp"
+  ],
+  "sha": "1f995d1871bfd0"
+}

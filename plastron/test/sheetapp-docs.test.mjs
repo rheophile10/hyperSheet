@@ -38,8 +38,9 @@ test("origin.opendoc loads BOTH the app + the doc and renders a worksheet window
   const s = await boot();
   await resolveFn(s, "origin.install")(s, sheetappArchive);
   await resolveFn(s, "origin.install")(s, turtlesDoc);
-  // install ≠ load
-  assert.equal(s.cels.has("sheetapp.program"), false, "install did not hydrate the app");
+  // sheetapp is now a real segment loaded with origin (origin depends on it), so
+  // its program marker is present from boot; the DOC archive (install ≠ load) is not.
+  assert.equal(s.cels.has("sheetapp.program"), true, "sheetapp is a real segment, loaded with origin");
   assert.equal(s.cels.has("turtles.A1"), false, "install did not hydrate the doc");
 
   await resolveFn(s, "origin.opendoc")(s, "turtles");

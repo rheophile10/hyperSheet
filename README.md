@@ -311,7 +311,7 @@ functions (call as (name …) or =name(…)), grouped by segment:
   style  — (prop value …) - inline styles for a dom element; pass as a child of dom().
 
 [doom]
-  doom  — () - open a DOOM window: a wasm-window (canvas) running Doom, lazy-fetching doom.wasm + the WAD from plastron.ca (consent-gated). Arrow keys / Ctrl (fire) / Space (use) drive the player when the window is focused. =doom()
+  doom  — () - open a DOOM window: a wasm app (canvas) running Doom, lazy-fetching doom.wasm + the WAD from plastron.ca. Arrow keys / Ctrl (fire) / Space (use) drive the player when the window is focused. =doom()
 
 [file-explorer]
   download  — (path) - a button that downloads an OPFS file to your disk.
@@ -440,7 +440,6 @@ functions (call as (name …) or =name(…)), grouped by segment:
   delSeg  — (name) - delete a saved sheet from OPFS.
   doc  — DEPRECATED legacy alias of seg/甲. genesis: compose a whole document from cels()/def()/cel() parts in one formula, e.g. doc(cels("in",2,2,at("a1","x")), def("f","js","x=>x")). What seed() emits — paste it into 元 to recreate an app.
   downloadSeg  — (name) - a button that downloads a saved sheet (.json) from OPFS.
-  dragdrop  — (w?, h?) - two drop zones (A, B) + a rectangle you drag between them; it snaps to the nearest zone on release.
   encrypt  — (passphrase?, target?, base?) - like link, but AES-256-GCM the source behind a passphrase. The URL parameter names the method: https://plastron.ca/#aes256gcm=<ciphertext>. =encrypt() encrypts the WHOLE sheet; =encrypt("", "元") one cell. Omit the passphrase to be PROMPTED (so it never lands in the sheet). Pipeline: deflate → AES-256-GCM (PBKDF2-SHA256, 600k) → base64url; AES-256 is quantum-resistant. The URL is opaque; share the passphrase out-of-band. Caveat: the decrypted formula lives in browser memory — run a local index.html offline for high stakes.
   ex  — (formula, target) - a try-it payload pairing an example formula with the cell key it should run in. Used inside the readme's yellow-lightning buttons: (on "click" "tryexample" (ex "=cels(8, 5)" "readme.B2")). Returns a marker the painter hands to tryexample verbatim as the click payload.
   export  — (segment?, form?) - serialize a document segment (or, with no arg, the WHOLE document stack); the boot substrate is never included. form "archive" (default) = a lossless 甲骨 json string for =import(); form "formula" = the re-minting formula (=cels(...)/=def(...)) for a workbook/function segment. Whole-doc formula is also =seed()/=link().
@@ -474,7 +473,6 @@ functions (call as (name …) or =name(…)), grouped by segment:
   segments  — () - every loaded segment with role, version, dependencies.
   segs  — () - list sheets saved to OPFS (=saveSeg/openSeg/delSeg manage them).
   sheetcells  — (keys, vals) - zip a key list + value list into sheetgrid entries {key,col,row,value}, deriving col/row from each key's A1 suffix. The host formula passes the keys (strings) + the cel values (a list referencing each cel, so the grid is reactive).
-  sheetdoc  — (state, seg, title?) - open a worksheet window over the cels of document segment `seg`, rendered via the sheets segment's sheetgrid (reactive: the content formula references each grid cel). The window (program) is win.<seg>; the data stays in segment <seg>, so dumpSegments([seg]) exports just the document. Idempotent.
   simulate  — (fnName, n?) - def-driven animation: run a def'd frame fn (i -> [x, y]) n times and play the trajectory on an animated canvas.
   sql  — (db, query) - run SQL against a db handle; SELECT returns rows, writes persist to OPFS.
   stat  — (path) - size / isDir / mtime of an OPFS path.
@@ -503,8 +501,9 @@ functions (call as (name …) or =name(…)), grouped by segment:
 [plastron-canvas]
   canvas  — (width, height, ...ops) - a <canvas> drawn from rect/text/line/circle/wedge ops; the painter replays them onto the 2d context. use as a cell value or inside mount/dom. op LISTS flatten in, so chart fns compose: =canvas(420, 260, barchart(t!A2:A8, t!B2:B8)).
   circle  — (x, y, r [, fill] [, stroke] [, lineWidth]) - a canvas circle op.
+  dragdrop  — (w?, h?) - two drop zones (A, B) + a rectangle you drag between them; it snaps to the nearest zone on release. A value vnode; the interactivity lives in the canvas renderer (the draggable/zone ops).
+  frames  — (points, r?, period?, fill?, box?) - an ANIMATED canvas op: a dot of radius r steps through the trajectory points ([[x,y],…]) once per period seconds; box strokes a frame border. The painter's rAF loop drives it. The simulate verb computes a def-driven trajectory and emits through this.
   line  — (x1, y1, x2, y2 [, stroke] [, lineWidth]) - a canvas line segment op.
-  orbit  — (cx, cy, orbitR, planetR, period [, color] [, phase]) - an ANIMATED canvas op: a planet circling (cx,cy) once every `period` seconds. A canvas with an orbit op runs a rAF loop; stack a few around a circle() for a heliocentric system.
   rect  — (x, y, w, h [, fill] [, stroke] [, lineWidth]) - a canvas rectangle op. pass to canvas(): =canvas(200, 80, rect(0, 0, 200, 80, "#1a1a2e")).
   text  — (x, y, text [, fill] [, font]) - a canvas text op (baseline at x,y). =text(12, 24, "hi", "#fff", "16px system-ui").
   wedge  — (cx, cy, r, a0, a1 [, fill] [, stroke] [, lineWidth]) - a canvas pie-slice op from angle a0 to a1 (radians, clockwise from 3 o'clock). The piechart fn stacks these.
@@ -519,6 +518,9 @@ functions (call as (name …) or =name(…)), grouped by segment:
 
 [sheet-host]
   sheetView  — (cfg editing draft mount error keys vals srcs geom selected tabdrag) - spreadsheet RenderSpec producer: each worksheet table wrapped in a draggable window frame. Single-click SELECTS a cell (origin.select sets 元.selected) and the cell KEEPS rendering its value; the window's formula bar shows the SELECTED cell's source (bound to 元.draft) and commits on Enter (origin.key) to 元.selected. Double-click opens the inline editor. Formula bar order is left-to-right [W wiki][lightning-bolt fire][textarea]: the fire button is an inline SVG lightning bolt (origin.fire — re-evaluate the selected cell), the W opens the wiki. The bar textarea defaults to a tall multi-line box (min-height ~7.5rem) and wraps (pre-wrap, no horizontal scrollbar); resize:vertical lets the user grow it further. Tabs render by win.geom[seg].order; dragging a tab chip reorders it among siblings (winsheet.tabMove) or, released off the window, tears it into its own window (winsheet.tabDrop -> tearoff). While a tab is being dragged (winsheet.tabdrag), its chip highlights in the SAME blue as a window's drop-target glow. Dragging a window/tab over another window glows the target (win.geom[seg].glow) to show where it will land. The formula bar's W wiki + fire buttons are sized for a comfortable hit target (glyphBtn ~1.1rem, bolt svg ~22px). Cells render clean (no per-cell glyphs). The titlebar shows exactly one of ◱ (mid/restore, when maximized) and ⛶ (maximize, when not), plus – minimize and ✕ close.
+
+[sheetapp]
+  sheetdoc  — (state, seg, title?, offset?) - open a worksheet window over the cels of document segment `seg`, rendered via the sheets segment's sheetgrid (reactive: the content formula references each grid cel). The window (program) is win.<seg>; the data stays in segment <seg>. Idempotent (re-open un-hides + raises).
 
 [sheets]
   sheetcell  — (value) - render ONE spreadsheet cell value to a vnode: a number/string as text, a vnode (a formula that built dom/canvas/a chart) in place, a cel error as its code. The leaf of the grid.
@@ -538,6 +540,19 @@ functions (call as (name …) or =name(…)), grouped by segment:
   newUserSpace  — Async. (state, name, applicationName, options?) -> manifest. Create a fresh empty user-space (role:'user-space', applications:[applicationName], dependencies:[applicationName, ...extraDeps]) and hydrate it into state. Throws if applicationName isn't a loaded role:'application' segment, or if name collides with a loaded segment / a stored segment (unless options.overwrite). autoSave defaults true (persists to segment-store immediately); pass { autoSave: false } for a preview-without-commit flow.
   saveUserSpace  — Async. (state, name) -> Key[] (persisted segment names). Dehydrate the user-space + its PRIVATE closure (role:'user-space' deps whose applications array is a subset of this user-space's) and write each via segment-store.put. Library/application/kernel deps are excluded — they ship with the distribution, not the user's saved data. Throws if name isn't a loaded role:'user-space' segment.
 
+[viz-core]
+  bandscale  — (labels, r0, r1 [, pad]) - a categorical SCALE SPEC: one evenly spaced band per label across [r0,r1]. pad (0..1, default .2) is the gap fraction between bands. scaleapply(band, label) → a band's start; bandwidth(band) → its drawn width.
+  bandwidth  — (scale) - the drawn width of one band of a band scale (0 for non-band scales). Pair with scaleapply for a bar's x and width.
+  colorapply  — (scale, v) - the "#rrggbb" for v under a colorscale (RGB lerp, clamped to the domain). Drives a choropleth/heatmap fill.
+  colorscale  — (d0, d1 [, c0, c1]) - a sequential color SCALE SPEC; colorapply(scale, v) lerps a value's "#rrggbb" in RGB between c0 (at d0) and c1 (at d1). Defaults to a dark→cyan ramp.
+  extent  — (values) - [min, max] over the finite numbers in a (possibly nested) range; [0,1] when empty. Derive a scale's domain from a data column: linscale with min(col)/max(col), or feed extent to your own logic.
+  linscale  — (d0, d1, r0, r1) - a linear SCALE SPEC mapping the data interval [d0,d1] onto the visual interval [r0,r1]; r0>r1 is fine (screen y grows down). A scale is a pure data value, not a closure — feed it to scaleapply/ticks. e.g. scaleapply(linscale(0, max(col), plotH, 0), v) → a pixel y.
+  nice  — (lo, hi [, count]) - round [lo,hi] outward to a "nice" step (1/2/5 ×10^k); returns [niceLo, niceHi, step]. Used to give a linear axis round endpoints.
+  ordinalcolor  — (key [, keys]) - a categorical palette color. With keys, the color of key's position in keys; otherwise key coerced to a 0-based index. The 10-color palette wraps.
+  scaleapply  — (scale, v) - map a value through a scale. linear: un-clamped linear interpolation → number. band: the START position of v's band (v is a label or a 0-based index).
+  scaleinvert  — (scale, pos) - the inverse of scaleapply. linear: pixel → data value. band: the label nearest pos. The hook for interaction (a pointer x → which datum).
+  ticks  — (scale [, count]) - axis ticks for a scale as [{v, pos, label}]. linear: "nice" round values (1/2/5×10^k) across the domain; band: one tick per label at its band center. An axis is ticks(scale) rendered as text+line ops.
+
 [wasm-bytes]
   js-to-wasm  — Bridge: convert a JS-domain value to a wasm-domain value. Scalars are identity (the wasm ABI accepts JS numbers via WebAssembly's coercion). Authors invoke via formula syntax: (js-to-wasm someCel).
   wasm  — Precompiled-wasm loader. Takes a precompiled .wasm module as base64 bytes (inline source) or a 'file-store:<path>' reference, instantiates it via WebAssembly.instantiate, and exposes one export as a callable Fn. The sibling to wat/py/js that takes bytes instead of source. Export chosen by metadata.wasmExport (else prefer 'main', else the single export). Imports default to { host }; metadata.imports names a provider cel for WASI/env shims. Gated on csp.wasm-available.
@@ -549,9 +564,6 @@ functions (call as (name …) or =name(…)), grouped by segment:
   wasm-scalar_dehydrate
   wasm-scalar_hydrate
   wasm-scalar_isChanged
-
-[wasm-window]
-  wasmcanvas  — (id, engine?, active?) - the body of a wasm window: a focusable <canvas id="wasm-<id>"> the engine grabs by id. Focus/blur toggle wasm.<id>.active; keydown/keyup route to the engine (active-gated).
 
 [wat-compiler]
   js-to-wat  — Bridge: convert a JS-domain value to a wat-domain value. v1 scalars are identity (the wat ABI accepts JS numbers directly via WebAssembly's coercion). Becomes a real marshalling call when composites and workers land. Authors invoke via formula syntax: (js-to-wat someCel).
@@ -565,15 +577,15 @@ functions (call as (name …) or =name(…)), grouped by segment:
 
 [winapps-wasm]
   wasmapp  — (id, title, engineCel, opts?) - genesis a wasm app as a SELF-MOUNTING window on the new tabbable frame: the graph<->engine bridge cels (wasm.<id>.in/.out/.active), a <canvas> content cel (wasmcanvas id), a window state cel (one tab = the canvas), and a (mount '.origin' (wframe …)) frame. So a wasm window (DOOM) tabs next to a sheet. opts = geom {x,y,w,h,icon}. The engine instance is grabbed by canvas id at boot; pair with winapps app.install (assets → OPFS) + a harness provider to keep the app mostly formula-cells.
+  wasmcanvas  — (id, engine?, active?) - the body of a wasm window: a focusable <canvas id="wasm-<id>"> the engine grabs by id. Focus/blur toggle wasm.<id>.active; keydown/keyup route to the engine (active-gated).
 
 [window]
-  wframe  — (state, active, ...contents) - render ONE window's chrome around the ACTIVE tab's content (contents[active]): titlebar (icon + name + minimize/fullscreen/close), a tab strip when the window has >=2 tabs, the body, and a resize grip. `state` is the window state object { x,y,w,h,z,min,max,closed,title,icon,tabs:[{ref,title,icon}],active,dockedIn }; `active` is win.active; `contents` is one value per tab (the frame formula passes each tab's content cel). A window whose state has dockedIn set self-hides (its host renders it). Content-AGNOSTIC: a tab's content may be a sheet grid, a wasmcanvas, or any winapp body, so heterogeneous windows tab together.
+  wframe  — (state, active, ...contents) - render ONE window's chrome around the ACTIVE tab's content (contents[active]): titlebar (icon + name + minimize/fullscreen/close), a tab strip when the window has >=2 tabs, the body, and 8 resize handles (n/s/e/w + nw/ne/sw/se) so the window resizes from every edge and corner. `state` is the window state object { x,y,w,h,z,min,max,closed,title,icon,tabs:[{ref,title,icon}],active,dockedIn }; `active` is win.active; `contents` is one value per tab (the frame formula passes each tab's content cel). A window whose state has dockedIn set self-hides (its host renders it). Content-AGNOSTIC: a tab's content may be a sheet grid, a wasmcanvas, or any winapp body, so heterogeneous windows tab together.
   wopen  — (id, title, body, where?) - genesis a SELF-MOUNTING window: a content cel (= body, the app render), a state cel (one tab = its own content), and a frame cel `(mount '.origin' (wframe <state> win.active <content>))` that mounts itself into the desktop. `where` = geom(x,y,w,h) sizes it. There is NO separate desktop renderer - each top-level window draws itself; dock one into another with window.dock to tab them together.
 
 [windows]
   chatapp  — (channel, title) — a chat WINDOW: seeds log/input + a winframe of (chat …). =chatapp("claude","Claude")
   chatui  — (channel, log, input) — generic chat UI; the other party (claude/grok/peer) is just a user
-  desktop  — mount a fixed full-screen wallpaper behind the windows (ships inline). =desktop()
   explorerwin  — genesis: a standalone OPFS file-explorer WINDOW. Seeds explorer.cwd / explorer.preview and a (explorer explorer.cwd explorer.preview) content formula that references them, so click-to-descend / click-to-preview re-fire reactively. =explorerwin()
   readme  — the plastron readme as a vnode, for a readme window
   readmewin  — genesis: the readme WINDOW with the full plastron README

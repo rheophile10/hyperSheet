@@ -631,18 +631,6 @@
       }
     },
     {
-      "key": "sheetdoc",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "sheetdoc",
-        "segment": "origin",
-        "name": "sheetdoc",
-        "kind": "native",
-        "description": "(state, seg, title?) - open a worksheet window over the cels of document segment `seg`, rendered via the sheets segment's sheetgrid (reactive: the content formula references each grid cel). The window (program) is win.<seg>; the data stays in segment <seg>, so dumpSegments([seg]) exports just the document. Idempotent."
-      }
-    },
-    {
       "key": "origin.editapp",
       "celType": "LockedLambdaCel",
       "locked": true,
@@ -667,18 +655,6 @@
       }
     },
     {
-      "key": "origin.opendoc",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.opendoc",
-        "segment": "origin",
-        "name": "origin.opendoc",
-        "kind": "native",
-        "description": "(state, name) - open a sheetapp DOCUMENT: loadUserSpace the origin-user segment from the store (hydrates both its parent app + its own cels), then render it as a worksheet window (sheetdoc). The launcher path for a recorded document (doc:<name>)."
-      }
-    },
-    {
       "key": "origin.savedoc",
       "celType": "LockedLambdaCel",
       "locked": true,
@@ -688,18 +664,6 @@
         "name": "origin.savedoc",
         "kind": "native",
         "description": "(state, name) - record the document's cel states: saveUserSpace dehydrates the origin-user segment's private closure and store.put's it under the app's documents/ subfolder."
-      }
-    },
-    {
-      "key": "origin.newsheet",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.newsheet",
-        "segment": "origin",
-        "name": "origin.newsheet",
-        "kind": "native",
-        "description": "(state) - the Sheet app: create a fresh blank worksheet DOCUMENT (a new origin-user segment of sheetapp), seed an empty grid, and render it. Save with origin.savedoc."
       }
     },
     {
@@ -1109,18 +1073,6 @@
         "kind": "native",
         "emitsTo": "origin.effects",
         "description": "(fnName, n?) - def-driven animation: run a def'd frame fn (i -> [x, y]) n times and play the trajectory on an animated canvas."
-      }
-    },
-    {
-      "key": "dragdrop",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "dragdrop",
-        "segment": "origin",
-        "name": "dragdrop",
-        "kind": "native",
-        "description": "(w?, h?) - two drop zones (A, B) + a rectangle you drag between them; it snaps to the nearest zone on release."
       }
     },
     {

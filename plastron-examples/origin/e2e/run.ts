@@ -105,19 +105,16 @@ await withPage("boot — canvas readme renders + draws", async (page) => {
   ok(drawn > 1000, `canvas actually painted (${drawn} opaque px)`);
 });
 
-await withPage("the heliocentric canvas is ANIMATED (pixels change over time)", async (page) => {
-  // the 2nd readme canvas is the solar system (orbit ops → rAF loop)
-  const sample = () => page.evaluate(() => {
+await withPage("the composed solar-system canvas paints (static circles)", async (page) => {
+  // the 2nd readme canvas composes rings + planet dots from circle() ops
+  const drawn = await page.evaluate(() => {
     const cs = [...document.querySelectorAll(".readme canvas")] as HTMLCanvasElement[];
-    const c = cs[cs.length - 1]; // the heliocentric one
+    const c = cs[cs.length - 1]; // the composed scene
     const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
-    let h = 0; for (let i = 0; i < d.length; i += 16) h = (h * 31 + d[i]!) | 0; // cheap frame hash
-    return h;
+    let nonzero = 0; for (let i = 3; i < d.length; i += 4) if (d[i] !== 0) nonzero++;
+    return nonzero;
   });
-  const a = await sample();
-  await page.waitForTimeout(500);
-  const b = await sample();
-  ok(a !== b, `frame changed between samples (${a} → ${b}) — animation running`);
+  ok(drawn > 1000, `composed canvas painted (${drawn} opaque px)`);
 });
 
 await withPage("=save() persists + reload restores the sheet", async (page) => {

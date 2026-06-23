@@ -12,12 +12,14 @@ import {
 // runtime-defined segments.
 // ============================================================================
 
-test("default createInitialState: only origin parked (host-choice), registry cel exists", () => {
+test("default createInitialState: origin + sheetapp parked (host-choice), registry cel exists", () => {
   const state = createInitialState();
   const loaders = getSegmentLoaders(state);
   assert.ok(loaders instanceof Map);
-  // origin is parked by default (a host-choice segment; see origin-segment.md).
-  assert.deepEqual([...loaders.keys()], ["origin"]);
+  // origin is parked by default (a host-choice segment; see origin-segment.md);
+  // sheetapp parks alongside it — it loads via origin's dependency closure
+  // (origin depends on sheetapp), never eagerly for a non-origin host.
+  assert.deepEqual([...loaders.keys()].sort(), ["origin", "sheetapp"]);
   assert.ok(state.cels.get(SEGMENT_LOADERS_KEY)?.locked);
 });
 
