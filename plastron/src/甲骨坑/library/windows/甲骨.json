@@ -432,19 +432,6 @@
       "locked": true
     },
     {
-      "key": "desktop",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "desktop",
-        "segment": "windows",
-        "name": "desktop",
-        "kind": "native",
-        "description": "mount a fixed full-screen wallpaper behind the windows (ships inline). =desktop()",
-        "genesis": true
-      },
-      "locked": true
-    },
-    {
       "key": "readme",
       "celType": "LockedLambdaCel",
       "metadata": {

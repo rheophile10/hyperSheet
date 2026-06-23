@@ -358,7 +358,16 @@
     "dependencies": [
       "dom",
       "file-store",
-      "sheet-host"
+      "sheet-io"
+    ]
+  },
+  {
+    "name": "sheet-io",
+    "version": "0.0.1",
+    "description": "worksheet save/open + serialization (CSV / XLSX / .甲) as a library capability: saveSheet/openAsSheet TS exports + sheetio.save/sheetio.open verbs + the materialize-as-sheet engine. Extracted from sheet-host so file-explorer (and the windowing stack) import serialization without the gen-1 view loop. XLSX path delegates to the xlsx segment at runtime; .甲 uses segment-archive zip.",
+    "dependencies": [
+      "xlsx",
+      "segment-archive"
     ]
   },
   {

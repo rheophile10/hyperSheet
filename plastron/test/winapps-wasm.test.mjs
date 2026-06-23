@@ -9,7 +9,7 @@ import { createInitialState, resolveFn, setPainter } from "../dist/index.js";
 const boot = async () => {
   const state = createInitialState();
   setPainter(state, { enqueue: () => {}, drain: () => {}, flush: () => {} });
-  await resolveFn(state, "ensureSegments")(state, ["winapps-wasm", "window", "wasm-window", "dom"]);
+  await resolveFn(state, "ensureSegments")(state, ["winapps-wasm", "window", "dom"]);
   await resolveFn(state, "hydrate")(state, [], []);
   return state;
 };
@@ -25,7 +25,7 @@ test("wasmapp: a self-mounting wasm window on the NEW frame + the graph↔engine
   assert.equal(g.cels["wasm.doom.out"].v, null);
   assert.equal(g.cels["wasm.doom.active"].v, 0);
 
-  // content is the focusable canvas (reuses wasm-window's verb)
+  // content is the focusable canvas (winapps-wasm's wasmcanvas verb)
   assert.equal(g.cels["wasm.doom.content"].f, '(wasmcanvas "doom")');
 
   // window state: one tab = the canvas, with geometry

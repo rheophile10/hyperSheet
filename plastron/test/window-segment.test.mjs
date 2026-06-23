@@ -45,7 +45,7 @@ test("wframe renders a tabbable frame: titlebar controls, one chip per tab, acti
   assert.equal(byClass(root, "pl-window").length, 1, "one window frame");
   assert.equal(byClass(root, "pl-titlebar").length, 1, "a titlebar");
   assert.equal(byClass(root, "pl-close-btn").length, 1, "a close (✕) control");
-  assert.equal(byClass(root, "pl-resize").length, 1, "a resize grip");
+  assert.equal(byClass(root, "pl-resize").length, 8, "8 resize handles (4 edges + 4 corners)");
   const chips = byClass(root, "pl-tab");
   assert.equal(chips.length, 2, "two tab chips (heterogeneous: a sheet + DOOM)");
   assert.ok(vtxt(chips[0]).includes("Sheet") && vtxt(chips[1]).includes("DOOM"), "chips show both tab titles");
@@ -187,6 +187,50 @@ test("tabClose runs only that tab's flush", async () => {
   await fire(state, "window.tabClose", { ref: REF, index: 1 });   // close DOOM
   assert.equal(doomFlushed, 1, "the closed tab's flush ran once");
   assert.equal(st(state).tabs.length, 1, "DOOM tab removed");
+});
+
+test("resize from the SE corner grows w/h; each handle dispatches its direction", async () => {
+  const state = await boot();
+  await seedWindow(state);   // x100 y80 w400 h300
+  const root = wframe(state, REF, resolveFn(state, "dom")("div", "x"));
+  const handles = byClass(root, "pl-resize");
+  // each handle carries { ref, dir } so grabResize knows which edge was grabbed
+  const dirs = handles.map((h) => h.events?.pointerdown?.payload?.dir).sort();
+  assert.deepEqual(dirs, ["e", "n", "ne", "nw", "s", "se", "sw", "w"], "all 8 directions present");
+  for (const h of handles) assert.equal(h.events?.pointerdown?.dispatch, "window.grabResize");
+
+  await fire(state, "window.grabResize", { ref: REF, dir: "se" }, { clientX: 500, clientY: 380, pointerId: 1 });
+  await fire(state, "window.resizeMove", null, { clientX: 560, clientY: 430 });   // +60, +50
+  assert.equal(st(state).w, 460, "SE width grew by dx");
+  assert.equal(st(state).h, 350, "SE height grew by dy");
+  assert.equal(st(state).x, 100, "SE leaves x put"); assert.equal(st(state).y, 80, "SE leaves y put");
+});
+
+test("resize from a non-SE edge: W edge moves x and changes width, anchoring the right edge", async () => {
+  const state = await boot();
+  await seedWindow(state);   // x100 y80 w400 h300 → right edge at 500
+  await fire(state, "window.grabResize", { ref: REF, dir: "w" }, { clientX: 100, clientY: 200, pointerId: 1 });
+  await fire(state, "window.resizeMove", null, { clientX: 60, clientY: 200 });    // drag left 40
+  assert.equal(st(state).x, 60, "W edge moved x left by 40");
+  assert.equal(st(state).w, 440, "width grew by 40 (right edge stays at 500)");
+  assert.equal(st(state).x + st(state).w, 500, "right edge anchored");
+  assert.equal(st(state).h, 300, "W leaves height unchanged");
+
+  // N edge moves y and changes height, anchoring the bottom edge (y+h = 380)
+  await fire(state, "window.grabResize", { ref: REF, dir: "n" }, { clientX: 200, clientY: 80, pointerId: 1 });
+  await fire(state, "window.resizeMove", null, { clientX: 200, clientY: 50 });    // drag up 30
+  assert.equal(st(state).y, 50, "N edge moved y up by 30");
+  assert.equal(st(state).h, 330, "height grew by 30 (bottom edge stays put)");
+});
+
+test("grabResize tolerates a bare string ref (backward compat: treated as 'se')", async () => {
+  const state = await boot();
+  await seedWindow(state);
+  await fire(state, "window.grabResize", REF, { clientX: 500, clientY: 380, pointerId: 1 });
+  await fire(state, "window.resizeMove", null, { clientX: 540, clientY: 410 });   // +40, +30
+  assert.equal(st(state).w, 440, "bare-ref resize grew width (se default)");
+  assert.equal(st(state).h, 330, "bare-ref resize grew height (se default)");
+  assert.equal(st(state).x, 100, "bare-ref resize anchors x (se)");
 });
 
 test("drag writes the window's geometry cel; raise focuses + bumps z", async () => {

@@ -33,6 +33,7 @@ import * as winapps         from "./甲骨坑/library/winapps/index.js";
 import * as windows         from "./甲骨坑/library/windows/index.js";
 import * as windowSeg       from "./甲骨坑/library/window/index.js";
 import * as fileExplorer    from "./甲骨坑/library/file-explorer/index.js";
+import * as sheetIo         from "./甲骨坑/library/sheet-io/index.js";
 import * as winappsWasm     from "./甲骨坑/library/winapps-wasm/index.js";
 import * as doom            from "./甲骨坑/library/doom/index.js";
 import * as peer            from "./甲骨坑/library/peer/index.js";
@@ -108,6 +109,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "windows":          () => [...windows.cels],
   "window":           () => [...windowSeg.cels],
   "file-explorer":    () => [...fileExplorer.cels],
+  "sheet-io":         () => [...sheetIo.cels],
   "winapps-wasm":     () => [...winappsWasm.cels],
   "doom":             () => [...doom.cels],
   "peer":             () => [...peer.cels],

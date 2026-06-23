@@ -81,11 +81,26 @@ const fireFlush = async (s: State, tab: Tab): Promise<boolean> => {
   return true;
 };
 const capture = (e?: DomEvt): void => { try { (e?.currentTarget ?? e?.target)?.setPointerCapture?.(num(e?.pointerId)); } catch { /* off-DOM */ } };
-const dragOf = (s: State): { ref: string; ox: number; oy: number; resize?: boolean } | null | undefined =>
-  s.cels.get("window.drag")?.v as { ref: string; ox: number; oy: number; resize?: boolean } | null | undefined;
+interface DragState { ref: string; ox?: number; oy?: number; resize?: boolean; dir?: string; x0?: number; y0?: number; w0?: number; h0?: number; px?: number; py?: number }
+const dragOf = (s: State): DragState | null | undefined => s.cels.get("window.drag")?.v as DragState | null | undefined;
 
 // ── the frame renderer ───────────────────────────────────────────────────────
 const BTN = "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .3rem;line-height:1";
+
+// 8 resize handles — [direction, position css]. 4 edges (6px) + 4 corners (14px);
+// corners come last so they paint over the edges and win the cursor. Ported from
+// sheet-host's WIN_RESIZE_EDGES so gen-2 windows resize from every edge/corner.
+const WIN_RESIZE_EDGES: ReadonlyArray<readonly [string, string]> = [
+  ["n", "top:0;left:0;right:0;height:6px;cursor:ns-resize"],
+  ["s", "left:0;right:0;bottom:0;height:6px;cursor:ns-resize"],
+  ["e", "top:0;right:0;bottom:0;width:6px;cursor:ew-resize"],
+  ["w", "top:0;left:0;bottom:0;width:6px;cursor:ew-resize"],
+  ["nw", "top:0;left:0;width:14px;height:14px;cursor:nwse-resize"],
+  ["ne", "top:0;right:0;width:14px;height:14px;cursor:nesw-resize"],
+  ["sw", "bottom:0;left:0;width:14px;height:14px;cursor:nesw-resize"],
+  ["se", "bottom:0;right:0;width:14px;height:14px;cursor:nwse-resize"],
+];
+const RESIZE_MINW = 160, RESIZE_MINH = 90;
 
 // wframe(state, active, content) — render ONE window. `active` = win.active's value
 // (the focused window's ref, for highlight). `content` = the ACTIVE tab's content
@@ -141,16 +156,39 @@ const wframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V 
   const children: V[] = [titlebar];
   if (tabStrip) children.push(tabStrip);
   children.push(el("div", { class: "pl-window-body", style: "flex:1 1 auto;overflow:auto;padding:.3rem;min-height:0" }, [body]));
-  if (!s.max) children.push(el("div", { class: "pl-resize", style: "position:absolute;right:0;bottom:0;width:15px;height:15px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" }, [], { pointerdown: { dispatch: "window.grabResize", payload: ref }, pointermove: { dispatch: "window.resizeMove" }, pointerup: { dispatch: "window.drop" } }));
+  if (!s.max) for (const [dir, pos] of WIN_RESIZE_EDGES) children.push(el("div", {
+    class: "pl-resize pl-resize-" + dir,
+    style: `position:absolute;${pos};touch-action:none;z-index:6${dir === "se" ? ";background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" : ""}`,
+  }, [], { pointerdown: { dispatch: "window.grabResize", payload: { ref, dir } }, pointermove: { dispatch: "window.resizeMove" }, pointerup: { dispatch: "window.drop" } }));
 
   return el("div", { class: "pl-window" + (isActive ? " active" : ""), "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:${isActive ? "2px solid #4a90d9" : "1px solid #8886"};border-radius:6px;background:Canvas;box-shadow:${isActive ? "0 6px 22px #4a90d966" : "0 4px 16px #0004"};overflow:hidden` }, children, { pointerdown: { dispatch: "window.raise", payload: ref } });
 }) as Fn;
 
 // ── drag / resize / focus / state controls (operate on the state cel by ref) ──
 const grab: Fn = (async (s: State, ref: unknown, e?: DomEvt): Promise<void> => { const r = String(ref); capture(e); const st = stateOf(s, r); await putV(s, "window.drag", { ref: r, ox: num(e?.clientX) - num(st.x, 80), oy: num(e?.clientY) - num(st.y, 80) }); }) as Fn;
-const move: Fn = (async (s: State, _p: unknown, e?: DomEvt): Promise<void> => { const d = dragOf(s); if (!d || d.resize) return; await setState(s, d.ref, { x: num(e?.clientX) - d.ox, y: num(e?.clientY) - d.oy }); }) as Fn;
-const grabResize: Fn = (async (s: State, ref: unknown, e?: DomEvt): Promise<void> => { const r = String(ref); capture(e); const st = stateOf(s, r); await putV(s, "window.drag", { ref: r, ox: num(e?.clientX) - num(st.w, 380), oy: num(e?.clientY) - num(st.h, 260), resize: true }); }) as Fn;
-const resizeMove: Fn = (async (s: State, _p: unknown, e?: DomEvt): Promise<void> => { const d = dragOf(s); if (!d?.resize) return; await setState(s, d.ref, { w: Math.max(160, num(e?.clientX) - d.ox), h: Math.max(90, num(e?.clientY) - d.oy) }); }) as Fn;
+const move: Fn = (async (s: State, _p: unknown, e?: DomEvt): Promise<void> => { const d = dragOf(s); if (!d || d.resize) return; await setState(s, d.ref, { x: num(e?.clientX) - num(d.ox), y: num(e?.clientY) - num(d.oy) }); }) as Fn;
+// grabResize — payload is { ref, dir } (dir ∈ n/s/e/w/nw/ne/sw/se); a bare string ref
+// is tolerated for backward compat (treated as "se"). Snapshots the start rect +
+// pointer so resizeMove can anchor the OPPOSITE edge with absolute deltas.
+const grabResize: Fn = (async (s: State, payload: unknown, e?: DomEvt): Promise<void> => {
+  capture(e);
+  const p = (payload && typeof payload === "object" && !Array.isArray(payload)) ? payload as { ref?: unknown; dir?: unknown } : { ref: payload, dir: "se" };
+  const r = String(p.ref); const dir = String(p.dir ?? "se"); const st = stateOf(s, r);
+  await putV(s, "window.drag", { ref: r, resize: true, dir, x0: num(st.x, 80), y0: num(st.y, 80), w0: num(st.w, 380), h0: num(st.h, 260), px: num(e?.clientX), py: num(e?.clientY) });
+}) as Fn;
+// resizeMove — resize per direction: e/w change width (w also moves x), n/s change
+// height (n also moves y), corners combine. Min sizes preserved (w>=160, h>=90).
+const resizeMove: Fn = (async (s: State, _p: unknown, e?: DomEvt): Promise<void> => {
+  const d = dragOf(s); if (!d?.resize) return;
+  const dir = String(d.dir ?? "se");
+  const dx = num(e?.clientX) - num(d.px), dy = num(e?.clientY) - num(d.py);
+  let x = num(d.x0), y = num(d.y0), w = num(d.w0), h = num(d.h0);
+  if (dir.includes("e")) w = Math.max(RESIZE_MINW, num(d.w0) + dx);
+  if (dir.includes("s")) h = Math.max(RESIZE_MINH, num(d.h0) + dy);
+  if (dir.includes("w")) { const nw = Math.max(RESIZE_MINW, num(d.w0) - dx); x = num(d.x0) + (num(d.w0) - nw); w = nw; }
+  if (dir.includes("n")) { const nh = Math.max(RESIZE_MINH, num(d.h0) - dy); y = num(d.y0) + (num(d.h0) - nh); h = nh; }
+  await setState(s, d.ref, { x, y, w, h });
+}) as Fn;
 const drop: Fn = (async (s: State): Promise<void> => { await putV(s, "window.drag", null); }) as Fn;
 const raise: Fn = (async (s: State, ref: unknown): Promise<void> => { const r = String(ref); await putV(s, "win.active", r); await setState(s, r, { z: await nextZ(s) }); }) as Fn;
 const minimize: Fn = (async (s: State, ref: unknown): Promise<void> => { const r = String(ref); const st = stateOf(s, r); await setState(s, r, { min: st.min ? 0 : 1 }); }) as Fn;

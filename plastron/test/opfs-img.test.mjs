@@ -38,14 +38,14 @@ test("fallback chain: first non-empty string wins; children fold", async () => {
   assert.equal(v.style["object-fit"], "cover");
 });
 
-test("the shipped wallpaper: windows.wallpaper is locked data, desktop() emits img", async () => {
+test("the shipped wallpaper: windows.wallpaper is locked data", async () => {
   const state = await boot();
   await resolveFn(state, "ensureSegments")(state, ["windows"]);
   const wp = state.cels.get("windows.wallpaper");
   assert.ok(wp?.locked, "default wallpaper is locked library data");
   assert.match(String(wp.v).slice(0, 20), /^data:image/);
-  const req = resolveFn(state, "desktop")();
-  assert.ok(req.genesis, "desktop() is genesis");
-  assert.match(req.cels["desktop.bg"].f, /\(img desktop\.wallpaper windows\.wallpaper/, "bg is a plain img mount formula");
-  assert.equal(req.cels["desktop.wallpaper"].v, "", "user path cell ships empty");
+  // The wallpaper rendering moved to the `desktop` origin-application
+  // (desktop.bg / desktop.bg.frame over desktop.wallpaper with windows.wallpaper
+  // as fallback); the gen-1 windows `desktop()` genesis verb was retired. The
+  // desktop-app's behavior is covered by desktop-app.test.mjs.
 });

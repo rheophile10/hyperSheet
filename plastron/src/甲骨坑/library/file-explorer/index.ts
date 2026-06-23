@@ -3,7 +3,7 @@ import type {
 } from "../../../types/index.js";
 import { bindNativeFns, resolveFn, ensureSegments } from "../../../kernel/index.js";
 import { el as makeEl, text as T } from "../dom/index.js";
-import { openAsSheet } from "../sheet-host/index.js";
+import { openAsSheet } from "../sheet-io/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================

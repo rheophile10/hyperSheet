@@ -10,7 +10,7 @@
     "segment": "window",
     "name": "wframe",
     "kind": "native",
-    "description": "(state, active, ...contents) - render ONE window's chrome around the ACTIVE tab's content (contents[active]): titlebar (icon + name + minimize/fullscreen/close), a tab strip when the window has >=2 tabs, the body, and a resize grip. `state` is the window state object { x,y,w,h,z,min,max,closed,title,icon,tabs:[{ref,title,icon}],active,dockedIn }; `active` is win.active; `contents` is one value per tab (the frame formula passes each tab's content cel). A window whose state has dockedIn set self-hides (its host renders it). Content-AGNOSTIC: a tab's content may be a sheet grid, a wasmcanvas, or any winapp body, so heterogeneous windows tab together."
+    "description": "(state, active, ...contents) - render ONE window's chrome around the ACTIVE tab's content (contents[active]): titlebar (icon + name + minimize/fullscreen/close), a tab strip when the window has >=2 tabs, the body, and 8 resize handles (n/s/e/w + nw/ne/sw/se) so the window resizes from every edge and corner. `state` is the window state object { x,y,w,h,z,min,max,closed,title,icon,tabs:[{ref,title,icon}],active,dockedIn }; `active` is win.active; `contents` is one value per tab (the frame formula passes each tab's content cel). A window whose state has dockedIn set self-hides (its host renders it). Content-AGNOSTIC: a tab's content may be a sheet grid, a wasmcanvas, or any winapp body, so heterogeneous windows tab together."
    }
   },
   {
@@ -42,13 +42,13 @@
    "key": "window.grabResize",
    "celType": "LockedLambdaCel",
    "locked": true,
-   "metadata": { "key": "window.grabResize", "segment": "window", "name": "window.grabResize", "kind": "native", "description": "pointerdown on the resize grip: capture + record the size offset into window.drag (resize mode)." }
+   "metadata": { "key": "window.grabResize", "segment": "window", "name": "window.grabResize", "kind": "native", "description": "pointerdown on a resize handle: capture the pointer + snapshot the start rect (x/y/w/h) and pointer (px/py) into window.drag (resize mode). Payload is { ref, dir } where dir is one of n/s/e/w/nw/ne/sw/se; a bare string ref is tolerated for backward compat and treated as dir 'se'." }
   },
   {
    "key": "window.resizeMove",
    "celType": "LockedLambdaCel",
    "locked": true,
-   "metadata": { "key": "window.resizeMove", "segment": "window", "name": "window.resizeMove", "kind": "native", "description": "pointermove while resizing: write the window state cel's w/h (clamped to a minimum)." }
+   "metadata": { "key": "window.resizeMove", "segment": "window", "name": "window.resizeMove", "kind": "native", "description": "pointermove while resizing: resize per the grabbed direction, anchoring the opposite edge - e/w change width (w also moves x), n/s change height (n also moves y), corners combine. Writes the window state cel's x/y/w/h, clamped to min w>=160, h>=90." }
   },
   {
    "key": "window.drop",

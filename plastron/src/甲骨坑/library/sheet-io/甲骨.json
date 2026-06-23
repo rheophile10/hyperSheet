@@ -1,0 +1,23 @@
+{
+  "name": "sheet-io",
+  "cels": [
+    {
+      "key": "sheetio.save",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetio.save", "segment": "sheet-io", "name": "sheetio.save", "kind": "native",
+        "description": "({ seg, fmt }) - serialize a worksheet segment to bytes. fmt in {csv, xlsx, 甲}: CSV/XLSX are values-only, .甲 is the rich plastron archive (cels + formulas round-trip). Writes the bytes to OPFS (/<seg>.<ext>, best-effort) and returns { bytes, filename, text? } so the host can offer a download. xlsx reuses the xlsx segment's exporter."
+      }
+    },
+    {
+      "key": "sheetio.open",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetio.open", "segment": "sheet-io", "name": "sheetio.open", "kind": "native",
+        "description": "({ bytes, name }) - detect the format by the name's extension (csv/xlsx/甲), build a worksheet cels record, materialize it as a NEW standalone sheet window, and return the new segment name. .甲 restores cels + formulas; csv/xlsx import values."
+      }
+    }
+  ]
+}
