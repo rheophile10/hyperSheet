@@ -12,6 +12,36 @@
     "kind": "native",
     "description": "(id, title, engineCel, opts?) - genesis a wasm app as a SELF-MOUNTING window on the new tabbable frame: the graph<->engine bridge cels (wasm.<id>.in/.out/.active), a <canvas> content cel (wasmcanvas id), a window state cel (one tab = the canvas), and a (mount '.origin' (wframe …)) frame. So a wasm window (DOOM) tabs next to a sheet. opts = geom {x,y,w,h,icon}. The engine instance is grabbed by canvas id at boot; pair with winapps app.install (assets → OPFS) + a harness provider to keep the app mostly formula-cells."
    }
+  },
+  {
+   "key": "wasmcanvas",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "wasmcanvas",
+    "segment": "winapps-wasm",
+    "name": "wasmcanvas",
+    "kind": "native",
+    "description": "(id, engine?, active?) - the body of a wasm window: a focusable <canvas id=\"wasm-<id>\"> the engine grabs by id. Focus/blur toggle wasm.<id>.active; keydown/keyup route to the engine (active-gated)."
+   }
+  },
+  {
+   "key": "wasmwin.focus",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "wasmwin.focus", "segment": "winapps-wasm", "name": "wasmwin.focus", "kind": "native", "description": "(state, id) - the wasm canvas gained focus → mark it the active wasm window (keys route here)." }
+  },
+  {
+   "key": "wasmwin.blur",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "wasmwin.blur", "segment": "winapps-wasm", "name": "wasmwin.blur", "kind": "native", "description": "(state, id) - lost focus → no longer the active wasm window." }
+  },
+  {
+   "key": "wasmwin.key",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "wasmwin.key", "segment": "winapps-wasm", "name": "wasmwin.key", "kind": "native", "description": "(state, id, event) - a keystroke on the canvas → route to the engine inbox if this window is active." }
   }
  ]
 }

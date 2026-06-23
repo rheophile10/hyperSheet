@@ -11,7 +11,7 @@
     "name": "doom",
     "kind": "native",
     "genesis": true,
-    "description": "() - open a DOOM window: a wasm-window (canvas) running Doom, lazy-fetching doom.wasm + the WAD from plastron.ca (consent-gated). Arrow keys / Ctrl (fire) / Space (use) drive the player when the window is focused. =doom()"
+    "description": "() - open a DOOM window: a wasm app (canvas) running Doom, lazy-fetching doom.wasm + the WAD from plastron.ca. Arrow keys / Ctrl (fire) / Space (use) drive the player when the window is focused. =doom()"
    }
   },
   {

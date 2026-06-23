@@ -40,8 +40,8 @@ try {
   await page.waitForFunction(() => !!globalThis.plastron, { timeout: 10000 });
   await page.waitForTimeout(1200);
 
-  // the REAL user path: click the 🐢 DOOM launcher in the navpanel.
-  await (await page.$('button.pl-nav-icon:has-text("DOOM")')).click();
+  // the REAL user path: click the 🐢 DOOM launcher on the desktop.
+  await (await page.$('button.pl-desk-icon:has-text("DOOM")')).click();
   await page.waitForTimeout(800);
 
   ok(await page.evaluate(() => !!document.getElementById("wasm-doom")), "clicking 🐢 DOOM mounted the <canvas id=wasm-doom>");

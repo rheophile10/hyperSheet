@@ -345,11 +345,10 @@
   {
     "name": "winapps-wasm",
     "version": "0.0.1",
-    "description": "wasm-app specifics of the windowed-app stack — wasmapp builds a wasm <canvas> window on the new tabbable frame + the graph<->engine bridge + active-gated keys. Reuses wasm-window's canvas/key lambdas (cutover folds them in + retires wasm-window). Pairs with winapps app.install + a harness provider.",
+    "description": "wasm-app specifics of the windowed-app stack — wasmapp builds a wasm <canvas> window on the tabbable frame + the graph<->engine bridge + active-gated keys (wasmcanvas + wasmwin.focus/blur/key live here). Pairs with winapps app.install + a harness provider.",
     "dependencies": [
       "dom",
-      "window",
-      "wasm-window"
+      "window"
     ]
   },
   {
@@ -363,21 +362,11 @@
     ]
   },
   {
-    "name": "wasm-window",
-    "version": "0.0.1",
-    "description": "a window hosting a wasm app on a <canvas> — graph↔engine message bridge + active-gated key routing; in-process or jailed",
-    "dependencies": [
-      "dom",
-      "windows",
-      "wasm-bytes"
-    ]
-  },
-  {
     "name": "doom",
     "version": "0.0.1",
-    "description": "=doom() — Doom in a wasm window; the WASI harness + consent-gated lazy asset load (doom.wasm + WAD from plastron.ca)",
+    "description": "=doom() — Doom in a wasm window; the WASI harness + lazy asset load (doom.wasm + WAD from plastron.ca)",
     "dependencies": [
-      "wasm-window",
+      "winapps-wasm",
       "wasm-bytes"
     ]
   },

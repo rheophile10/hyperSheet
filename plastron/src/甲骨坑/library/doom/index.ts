@@ -1,14 +1,14 @@
 import type { State, Fn, 甲骨, Cel } from "../../../types/index.js";
 import { bindNativeFns, resolveFn, ensureSegments } from "../../../kernel/index.js";
-import { wasmwinGenesis } from "../wasm-window/index.js";
+import { wasmappGenesis } from "../winapps-wasm/index.js";
 import { createDoomHarness, type DoomHarness } from "./doom-harness.js";
 import seed from "./甲骨.json" with { type: "json" };
 
-// doom — the first USER of the wasm-window kind. `=doom()` opens a freespace
-// window running Doom: the wasm-window library supplies the window + canvas +
+// doom — the first USER of the wasm app kind. `=doom()` opens a freespace
+// window running Doom: the winapps-wasm library supplies the window + canvas +
 // key routing; this segment supplies the engine (doom.wasm), the WASI harness,
-// and the lazy, CONSENT-GATED asset load. Assets are hosted at plastron.ca and
-// fetched at runtime — never inlined (the 28 MB WAD would wreck the bundle).
+// and the lazy asset load. Assets are hosted at plastron.ca and fetched at
+// runtime — never inlined (the 28 MB WAD would wreck the bundle).
 
 const ASSETS = (globalThis as { __doomAssets?: string }).__doomAssets ?? "/"; // base for doom.wasm + the WAD (overridable for e2e)
 const WAD = "freedoom1.wad";
@@ -22,7 +22,7 @@ const b64 = (u8: Uint8Array): string => { let s = ""; for (const x of u8) s += S
 // genesis; the window materialises, then `doom.arm` RAF-defers the engine boot
 // so the canvas exists first.
 const doomFn: Fn = (() => {
-  const g = wasmwinGenesis("doom", "🐢 DOOM", "doom.engine", { w: 640, h: 400 });
+  const g = wasmappGenesis("doom", "🐢 DOOM", "doom.engine", { w: 640, h: 400 });
   g.cels["wasm.doom.armboot"] = { celType: "FormulaCel", f: "(doom.arm wasm.doom.state)", metadata: { name: "armboot", parser: "f", segment: "wasm.doom" } };
   return g;
 }) as Fn;
@@ -90,7 +90,7 @@ export const boot = async (stateArg: State): Promise<void> => {
       onExit: () => {
         _harness = null; _booting = false;
         void Promise.resolve().then(async () => {
-          const close = resolveFn(state, "winx.close") as Fn | undefined;
+          const close = resolveFn(state, "window.close") as Fn | undefined;
           if (close) await close(state, "wasm.doom.state");
           const stopAll = resolveFn(state, "sound.stop-all") as Fn | undefined;
           if (stopAll) await stopAll(state);
