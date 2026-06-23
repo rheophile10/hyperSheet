@@ -1616,6 +1616,9 @@ const iconMove: Fn = (async (state: State, _payload?: unknown, event?: unknown):
   pos[d.label] = [Math.max(0, cx - d.ox), Math.max(0, cy - d.oy)];
   await putDesktopCel(state, "desktop.iconpos", pos);
   await putDesktopCel(state, "desktop.icondrag", { ...d, moved: Math.abs(cx - d.sx) + Math.abs(cy - d.sy) });
+  // re-evaluate the iconbar frame so the dragged tile follows the cursor LIVE
+  // (the frame re-renders from desktop.iconpos), then paint.
+  await (resolveFn(state, "runCycle") as Fn)(state);
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
 }) as Fn;
 const iconDrop: Fn = (async (state: State): Promise<void> => {

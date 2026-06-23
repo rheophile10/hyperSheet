@@ -11,6 +11,18 @@
           "v": 1
         },
         {
+          "key": "desktop.iconpos",
+          "celType": "ValueCel",
+          "metadata": { "key": "desktop.iconpos", "segment": "desktop", "name": "iconpos", "description": "per-label icon positions { label: [x,y] }. Seeded {} so desktop.iconbar.frame's dep edge is LIVE from hydrate — else a drag (setValue iconpos) wouldn't re-render the icon (it'd teleport on drop)." },
+          "v": {}
+        },
+        {
+          "key": "desktop.wallpaper",
+          "celType": "ValueCel",
+          "metadata": { "key": "desktop.wallpaper", "segment": "desktop", "name": "wallpaper", "description": "the current wallpaper src (OPFS /path or data-URI); empty falls back to the shipped windows.wallpaper. Seeded so desktop.bg.frame's dep edge is live (a settings change repaints reactively)." },
+          "v": ""
+        },
+        {
           "key": "desktop.bg.frame",
           "celType": "FormulaCel",
           "metadata": { "key": "desktop.bg.frame", "segment": "desktop", "name": "bg.frame", "parser": "infix", "description": "self-mounting wallpaper; right-click opens display settings. Falls back to the shipped windows.wallpaper when desktop.wallpaper is unset." },
