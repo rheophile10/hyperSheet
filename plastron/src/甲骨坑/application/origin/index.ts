@@ -1084,6 +1084,10 @@ const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> =
     // an ORIGIN-APPLICATION launcher: hydrate the app's segment from the store
     // (idempotent) and run its entry cel. "load the segment, then open it".
     await (resolveFn(state, "origin.launch") as Fn)(state, action.slice(4));
+  } else if (action.startsWith("doc:")) {
+    // an ORIGIN-USER DOCUMENT launcher: origin.load the recorded user segment
+    // (auto-starts its app sheetapp) + render it as a worksheet.
+    await (resolveFn(state, "origin.opendoc") as Fn)(state, action.slice(4));
   } else if (action.startsWith("do:")) {
     // a HOST-VERB launcher (e.g. do:origin.savepage) — the verb materializes +
     // paints its own windows, so just dispatch it.
@@ -1686,6 +1690,35 @@ const sheetdocFn: Fn = (async (state: State, segArg?: unknown, titleArg?: unknow
   return state;
 }) as Fn;
 
+// origin.opendoc(state, name) — open a sheetapp DOCUMENT: load the origin-user
+// segment from the store (loadUserSpace hydrates BOTH its parent app sheetapp and
+// the doc's own cels — "like hydrating cels"), then render it as a worksheet
+// window via sheetdoc. This is the icon/launcher path for a recorded document.
+const opendocFn: Fn = (async (state: State, nameArg?: unknown): Promise<State> => {
+  const name = String(nameArg ?? "");
+  if (!name) return state;
+  await ensureSegments(state, ["segment-store", "opfs-seeding", "user-space-ops", "origin-lifecycle", "sheets", "window"]);
+  if (!hasSegment(state, name)) {
+    const load = resolveFn(state, "loadUserSpace") as Fn | undefined;
+    if (!load) throw new Error("origin.opendoc: loadUserSpace not installed");
+    await load(state, name);
+  }
+  await (sheetdocFn as Fn)(state, name);
+  return state;
+}) as Fn;
+
+// origin.savedoc(state, name) — record the document's cel states: saveUserSpace
+// dehydrates the origin-user segment's private closure and store.put's it (under
+// the app's documents/ subfolder). The window-close <seg>.flush hook does the
+// same on teardown; this is the explicit Save.
+const savedocFn: Fn = (async (state: State, nameArg?: unknown): Promise<State> => {
+  const name = String(nameArg ?? "");
+  if (!name) return state;
+  await ensureSegments(state, ["segment-store", "user-space-ops"]);
+  await (resolveFn(state, "saveUserSpace") as Fn)(state, name);
+  return state;
+}) as Fn;
+
 // (origin.autoload removed: no boot auto-restore. =save() writes a real OPFS file;
 //  reopen it from 📁 Files or with =open(). Reload = a clean desktop.)
 
@@ -2239,6 +2272,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["desktop.iconClick", iconClick],
   ["sheetcells",      sheetcellsFn],
   ["sheetdoc",        sheetdocFn],
+  ["origin.opendoc",  opendocFn],
+  ["origin.savedoc",  savedocFn],
   ["def",            defFn],
   ["link",           linkFn],
   ["unlink",         unlinkFn],

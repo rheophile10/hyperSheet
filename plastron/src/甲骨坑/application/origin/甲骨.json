@@ -655,6 +655,30 @@
       }
     },
     {
+      "key": "origin.opendoc",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.opendoc",
+        "segment": "origin",
+        "name": "origin.opendoc",
+        "kind": "native",
+        "description": "(state, name) - open a sheetapp DOCUMENT: loadUserSpace the origin-user segment from the store (hydrates both its parent app + its own cels), then render it as a worksheet window (sheetdoc). The launcher path for a recorded document (doc:<name>)."
+      }
+    },
+    {
+      "key": "origin.savedoc",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.savedoc",
+        "segment": "origin",
+        "name": "origin.savedoc",
+        "kind": "native",
+        "description": "(state, name) - record the document's cel states: saveUserSpace dehydrates the origin-user segment's private closure and store.put's it under the app's documents/ subfolder."
+      }
+    },
+    {
       "key": "vocab",
       "celType": "LockedLambdaCel",
       "locked": true,
