@@ -366,18 +366,6 @@
       }
     },
     {
-      "key": "origin.seedStarter",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.seedStarter",
-        "segment": "origin",
-        "name": "origin.seedStarter",
-        "kind": "native",
-        "description": "(state) - first run: read the inert #plastron-starter manifest the bundle baked into the page (a {opfsPath: source} map of the repo's starter/ files: readme, keyboard) and write each MISSING file into OPFS, so they ship as real, discoverable files in the file explorer instead of baked seed cells. Idempotent; no-op without a filesystem; host-called once in the desktop boot."
-      }
-    },
-    {
       "key": "origin.install",
       "celType": "LockedLambdaCel",
       "locked": true,
@@ -495,7 +483,7 @@
         "segment": "origin",
         "name": "desktop.graphNode",
         "kind": "native",
-        "description": "(state, seg) - click a state-graph node: raise that segment's window if it has one (win.<seg>.state); otherwise a no-op."
+        "description": "(state, seg) - click a state-graph node: open that segment in the app editor (origin.editapp) to edit its cels' sources."
       }
     },
     {
@@ -652,6 +640,30 @@
         "name": "sheetdoc",
         "kind": "native",
         "description": "(state, seg, title?) - open a worksheet window over the cels of document segment `seg`, rendered via the sheets segment's sheetgrid (reactive: the content formula references each grid cel). The window (program) is win.<seg>; the data stays in segment <seg>, so dumpSegments([seg]) exports just the document. Idempotent."
+      }
+    },
+    {
+      "key": "origin.editapp",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.editapp",
+        "segment": "origin",
+        "name": "origin.editapp",
+        "kind": "native",
+        "description": "(state, app) - open another segment's cels as an editable source list (its formulas/definition): each cel as key → editable source; Enter commits. Click a node in the state force-graph to edit that segment. sheetapp-as-editor."
+      }
+    },
+    {
+      "key": "origin.editAppCel",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.editAppCel",
+        "segment": "origin",
+        "name": "origin.editAppCel",
+        "kind": "native",
+        "description": "(state, {app,key}, event) - commit an edited cel source from the app editor (on Enter): rewrite the cel's source, then refresh the editor."
       }
     },
     {

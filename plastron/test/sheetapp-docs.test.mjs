@@ -86,3 +86,31 @@ test("a reopened doc restores its saved state (round-trip through the store)", a
   assert.equal(s2.cels.get("turtles.B1")?.v, 42, "the recorded state came back");
   assert.equal(s2.cels.has("sheetapp.program"), true, "loadUserSpace auto-started the parent app");
 });
+
+test("documents accumulate under their app's store subfolder (not flat)", async () => {
+  const s = await boot();
+  await resolveFn(s, "origin.install")(s, sheetappArchive);
+  await resolveFn(s, "origin.install")(s, turtlesDoc);
+  // the doc still loads by name (the index records its app) ...
+  const rec = await resolveFn(s, "store.get")(s, "turtles");
+  assert.equal(rec.manifest.role, "user-space");
+  // ... and on disk it lives under sheetapp/documents/, NOT flat segments/turtles/
+  const base = path.resolve(root, "plastron", "segments");
+  assert.ok(await fs.stat(path.join(base, "sheetapp", "documents", "turtles")).then(() => true).catch(() => false), "doc under app/documents/");
+  assert.ok(!(await fs.stat(path.join(base, "turtles")).then(() => true).catch(() => false)), "not flat");
+});
+
+test("origin.editapp edits another segment's cels — the source commits back to the cel", async () => {
+  const s = await boot();
+  await resolveFn(s, "setCel")(s, "myapp.greet", { celType: "FormulaCel", metadata: { key: "myapp.greet", segment: "myapp", parser: "infix" }, f: "=1+1" });
+  await resolveFn(s, "runCycle")(s);
+
+  await resolveFn(s, "origin.editapp")(s, "myapp");
+  assert.equal(s.cels.has("win.editapp_myapp.state"), true, "editor window opened");
+  assert.match(JSON.stringify(s.cels.get("editapp.myapp.view").v), /=1\+1/, "editor shows the cel's source");
+
+  await resolveFn(s, "origin.editAppCel")(s, { app: "myapp", key: "myapp.greet" }, { key: "Enter", target: { value: "=10*5" } });
+  await resolveFn(s, "runCycle")(s);
+  assert.equal(s.cels.get("myapp.greet").f, "=10*5", "the edited source committed to the cel");
+  assert.equal(s.cels.get("myapp.greet").v, 50, "and recomputed");
+});

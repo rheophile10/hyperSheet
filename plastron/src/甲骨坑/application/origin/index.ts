@@ -1179,28 +1179,8 @@ const openFile = async (state: State, opfsPath: string): Promise<State> => {
   return state;
 };
 
-// origin.seedStarter — first-run: read the inert #plastron-starter manifest the
-// bundle baked into the page (a {opfsPath: source} map of the repo's starter/
-// files: readme, keyboard) and write each MISSING file into OPFS, so they ship as
-// real, discoverable files in 📁 Files instead of baked seed cells. Idempotent
-// (skips files that already exist — a user edit is preserved). No-op off-DOM /
-// without a filesystem (file://, sandbox); host-called once in the desktop boot.
-const seedStarter: Fn = async (state: State): Promise<State> => {
-  const backend = state.cels.get("file-store.backend")?.v;
-  if (backend === "none" || backend === undefined) return state;
-  const g = globalThis as { document?: { getElementById?: (id: string) => { textContent?: string | null } | null } };
-  const raw = g.document?.getElementById?.("plastron-starter")?.textContent;
-  if (!raw) return state;
-  let manifest: Record<string, unknown>;
-  try { manifest = JSON.parse(raw) as Record<string, unknown>; } catch { return state; }
-  await ensureSegments(state, ["file-store"]);
-  const exists = resolveFn(state, "fs.exists") as Fn, writeText = resolveFn(state, "fs.writeText") as Fn;
-  for (const [path, content] of Object.entries(manifest)) {
-    const there = await (exists(path) as Promise<boolean>).catch(() => false);
-    if (!there) await (writeText(path, String(content)) as Promise<unknown>).catch(() => {});
-  }
-  return state;
-};
+// (origin.seedStarter removed — readme/keyboard/turtles are now sheetapp origin-user
+//  DOCUMENTS installed to the segment-store by boot.run, not .f files seeded to OPFS.)
 
 // (Legacy origin.reseed removed — it backed the old 元.f "↻ reseed" button, which
 //  is gone with the old desktop genesis. Re-importing starter files is a dev concern;
@@ -1459,8 +1439,9 @@ const stategraphFn: Fn = (async (state: State): Promise<State> => {
 // desktop.graphNode(seg) — click a graph node: raise that segment's window if it
 // has one (a self-mounted win.<seg>.state). Otherwise a no-op.
 const graphNodeFn: Fn = (async (state: State, payload?: unknown): Promise<State> => {
-  const sref = `win.${String(payload ?? "")}.state`;
-  if (state.cels.get(sref)) { await (resolveFn(state, "window.raise") as Fn)(state, sref); await (resolveFn(state, "drain") as Fn)(state, "dom.paint"); }
+  // click a segment node → open it in the app editor (edit its cels' sources).
+  const seg = String(payload ?? "");
+  if (seg) await (editappFn as Fn)(state, seg);
   return state;
 }) as Fn;
 
@@ -1687,6 +1668,77 @@ const sheetdocFn: Fn = (async (state: State, segArg?: unknown, titleArg?: unknow
   await (resolveFn(state, "view.refresh") as Fn)(state);
   await (resolveFn(state, "runCycle") as Fn)(state);
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+}) as Fn;
+
+// ── app editor: edit ANOTHER segment's cels (its formulas/definition) ───────
+// An app's cels are NAMED (desktop.bg.frame), not A1-coordinate, so the worksheet
+// grid doesn't fit. The editor lists each cel as key → editable source; committing
+// writes the source back to the cel. Reuses the sheetapp window via a view cel.
+const celSource = (c: Cel): string => {
+  if (c.celType === "FormulaCel") return String((c as { f?: unknown }).f ?? "");
+  if (c.celType === "ValueCel") { const v = (c as { v?: unknown }).v; return v == null ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v)); }
+  return `[${c.celType}]`;
+};
+const buildAppEditor = (state: State, app: string): V => {
+  const cels = [...state.cels.entries()].filter(([, c]) => (c.metadata as { segment?: string })?.segment === app).sort(([a], [b]) => a.localeCompare(b));
+  const rows = cels.map(([k, c]) => el("div", { class: "pl-appedit-row", style: "display:flex;gap:.5rem;padding:.2rem .45rem;border-bottom:1px solid #8882;align-items:flex-start" }, [
+    el("div", { style: "flex:0 0 11rem;font:600 .7rem ui-monospace,monospace;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-top:.2rem" }, [T(k)]),
+    el("textarea", { class: "pl-appedit-src", style: "flex:1;min-width:0;font:.74rem ui-monospace,monospace;min-height:1.7rem;resize:vertical;border:1px solid #8884;border-radius:.25rem;padding:.15rem .3rem;background:Canvas;color:CanvasText", rows: 1, value: celSource(c), "data-key": k, "data-celtype": c.celType }, [],
+      { keydown: { dispatch: "origin.editAppCel", payload: { app, key: k } } }),
+  ]));
+  return el("div", { class: "pl-appedit", style: "display:flex;flex-direction:column;height:100%;overflow:auto" }, [
+    el("div", { style: "padding:.3rem .45rem;font:600 .76rem ui-monospace,monospace;background:#8881;position:sticky;top:0" }, [T(`✎ editing ${app} — Enter commits a cell`)]),
+    ...rows,
+  ]);
+};
+
+// origin.editapp(state, app) — open the app's cels as an editable source list.
+const editappFn: Fn = (async (state: State, appArg?: unknown): Promise<State> => {
+  const app = String(appArg ?? "");
+  if (!app) return state;
+  await ensureSegments(state, ["window"]);
+  // edit whatever's loaded; only pull from the store if the segment has no cels in
+  // state yet (and it's actually a stored segment — else just edit what's there).
+  const present = [...state.cels.values()].some((c) => (c.metadata as { segment?: string })?.segment === app);
+  if (!present && !hasSegment(state, app)) {
+    const hc = resolveFn(state, "hydrate-closure") as Fn | undefined;
+    if (hc) await (hc(state, app) as Promise<unknown>).catch(() => { /* not in store */ });
+  }
+  const viewKey = `editapp.${app}.view`;
+  const put = resolveFn(state, state.cels.get(viewKey) ? "setValue" : "setCel") as Fn;
+  if (state.cels.get(viewKey)) await put(state, viewKey, buildAppEditor(state, app));
+  else await put(state, viewKey, { celType: "ValueCel", v: buildAppEditor(state, app), metadata: { key: viewKey, segment: `editapp.${app}` } });
+  const sref = `win.editapp_${app}.state`;
+  if (!state.cels.get(sref)) {
+    await (resolveFn(state, "origin.run") as Fn)(state, `editapp.${app}.元`,
+      `=wopen('editapp_${app}', '✎ ${app}', "=editapp.${app}.view", geom(160, 80, 560, 460))`);
+  } else {
+    const cur = (state.cels.get(sref)?.v ?? {}) as WinChip;
+    await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0 });
+    await (resolveFn(state, "window.raise") as Fn)(state, sref);
+  }
+  await (resolveFn(state, "view.refresh") as Fn)(state);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+}) as Fn;
+
+// origin.editAppCel(state, {app,key}, event) — commit an edited cel source (Enter):
+// rewrite the cel's source (FormulaCel.f via setValue, ValueCel.v) then refresh the
+// editor so the change shows.
+const editAppCelFn: Fn = (async (state: State, payload?: unknown, event?: unknown): Promise<State> => {
+  const ev = event as { key?: string; target?: { value?: string }; preventDefault?: () => void } | undefined;
+  if (ev?.key && ev.key !== "Enter") return state;     // commit on Enter only
+  try { ev?.preventDefault?.(); } catch { /* off-DOM */ }
+  const { app, key } = (payload ?? {}) as { app?: string; key?: string };
+  if (!app || !key) return state;
+  const src = String(ev?.target?.value ?? "");
+  const cel = state.cels.get(key);
+  if (!cel) return state;
+  if (cel.celType === "FormulaCel") await (resolveFn(state, "setValue") as Fn)(state, key, src);
+  else await (resolveFn(state, "setValue") as Fn)(state, key, src);   // ValueCel.v
+  await (editappFn as Fn)(state, app);                  // re-render the editor + repaint
   return state;
 }) as Fn;
 
@@ -2265,7 +2317,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["nav",            navFn],
   ["item",           itemFn],
   ["origin.navOpen", navOpenFn],
-  ["origin.seedStarter", seedStarter],
   ["origin.install",  appInstall],
   ["installBakedApps", installBakedApps],
   ["origin.launch",   launch],
@@ -2292,6 +2343,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.opendoc",  opendocFn],
   ["origin.savedoc",  savedocFn],
   ["origin.newsheet", newsheetFn],
+  ["origin.editapp",  editappFn],
+  ["origin.editAppCel", editAppCelFn],
   ["def",            defFn],
   ["link",           linkFn],
   ["unlink",         unlinkFn],

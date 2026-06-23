@@ -68,9 +68,8 @@ if (shared) {
       { ...geom, ["元"]: { ...(geom["元"] ?? {}), closed: 1 } });
     await (resolve(state, "runCycle"))(state);
   }
-  // first run: materialize the starter kit (readme/keyboard/turtles) into OPFS as
-  // real files so the launchers open them + they're editable in 📁 Files.
-  await (resolve(state, "origin.seedStarter"))(state);
+  // readme/keyboard/turtles are now sheetapp origin-user DOCUMENTS (installed to the
+  // store by boot.run), opened via their desktop icons — no .f files seeded.
   await (resolve(state, "drain"))(state, "dom.paint");
 }
 

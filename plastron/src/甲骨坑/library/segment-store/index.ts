@@ -27,6 +27,16 @@ const ROOT = STORE_ROOT;
 const INDEX = `${ROOT}/index.json`;
 const INDEX_TMP = `${ROOT}/index.json.tmp`;
 const segDir = (name: string, version: string) => `${ROOT}/segments/${name}/${version}`;
+// origin-user DOCUMENTS accumulate under their app: plastron/segments/<app>/documents/<doc>/<version>/
+// — near the app's own segment dir (the index records each doc's app so get/del
+// can find it without re-reading the manifest). Apps/libs stay flat.
+const docDir = (app: string, name: string, version: string) => `${ROOT}/segments/${app}/documents/${name}/${version}`;
+const dirOf = (name: string, version: string, app?: string) => app ? docDir(app, name, version) : segDir(name, version);
+const appOfManifest = (manifest: unknown): string | undefined => {
+  const m = manifest as { role?: string; applications?: unknown } | undefined;
+  const apps = Array.isArray(m?.applications) ? m!.applications : [];
+  return (m?.role === "user-space" && typeof apps[0] === "string") ? apps[0] : undefined;
+};
 
 // Deterministic content hash (cyrb53 → 53-bit hex). Cross-runtime (Bun.hash is
 // CLI-only), sync, dependency-free — used to stamp a segment's `sha` (a version
@@ -43,7 +53,7 @@ const contentHash = (str: string): string => {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, "0");
 };
 
-interface IndexEntry { latest: string; versions: string[]; }
+interface IndexEntry { latest: string; versions: string[]; app?: string; }
 export interface IndexFile { version: number; segments: Record<string, IndexEntry>; }
 
 // ----- fs access through file-store's cels (isolation: the dependency
@@ -117,9 +127,11 @@ const putRaw: Fn = async (
   const name = assertComponent("name", nameArg);
   const version = assertComponent("version", versionArg);
 
+  // origin-user docs land under their app's documents/ subfolder; apps/libs flat.
+  const app = appOfManifest(manifest);
   // Per-segment files first, so any index entry we add below already has
   // its payload on disk.
-  const dir = segDir(name, version);
+  const dir = dirOf(name, version, app);
   // Content-address the segment: stamp the manifest's sha from the dehydrated
   // cels (the origin load-gate pins an origin-user against its app's sha).
   (manifest as { sha?: string }).sha = contentHash(JSON.stringify(segment));
@@ -130,6 +142,7 @@ const putRaw: Fn = async (
   const entry = idx.segments[name] ?? { latest: version, versions: [] };
   if (!entry.versions.includes(version)) entry.versions.push(version);
   entry.latest = version;
+  if (app) entry.app = app; else delete entry.app;
   idx.segments[name] = entry;
   await writeIndexAtomic(state, idx);
 };
@@ -155,7 +168,7 @@ const get: Fn = async (stateArg: unknown, nameArg: unknown, versionArg?: unknown
   if (!entry) return undefined;
   const version = versionArg === undefined ? entry.latest : String(versionArg);
   if (!entry.versions.includes(version)) return undefined;
-  const dir = segDir(name, version);
+  const dir = dirOf(name, version, entry.app);
   if (!(await exists(state, `${dir}/manifest.json`))) return undefined;
   const manifest = JSON.parse(await readText(state, `${dir}/manifest.json`)) as 冊;
   const segment = JSON.parse(await readText(state, `${dir}/segment.json`)) as 甲骨;
@@ -175,7 +188,7 @@ const del: Fn = async (stateArg: unknown, nameArg: unknown, versionArg?: unknown
   if (!entry) return; // nothing to do
   const version = versionArg === undefined ? entry.latest : String(versionArg);
 
-  await rmdir(state, segDir(name, version));
+  await rmdir(state, dirOf(name, version, entry.app));
 
   entry.versions = entry.versions.filter((v) => v !== version);
   if (entry.versions.length === 0) {
