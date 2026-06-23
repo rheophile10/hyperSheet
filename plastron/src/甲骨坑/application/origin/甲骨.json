@@ -428,6 +428,54 @@
       }
     },
     {
+      "key": "origin.install",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.install",
+        "segment": "origin",
+        "name": "origin.install",
+        "kind": "native",
+        "description": "(state, archive) - persist an origin-application segment ARCHIVE (dumpSegments shape {segments,manifests}, object or JSON string) into the OPFS segment-store via store.putRaw WITHOUT loading it into state. Idempotent at name granularity (an already-stored app is skipped). The ONLY way the archive's cels reach state is a later origin.launch (hydrate-closure); install never hydrates. Returns a status string. (Distinct from winapps' app.install, which fetches asset FILES.)"
+      }
+    },
+    {
+      "key": "installBakedApps",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "installBakedApps",
+        "segment": "origin",
+        "name": "installBakedApps",
+        "kind": "native",
+        "description": "(state, manifest?) - first-run twin of seedStarter for APPLICATION segments: read the inert #plastron-apps manifest the bundle baked into the page (a { name: archive } map) and app.install each entry (OPFS only, never state). Pass `manifest` to bypass the DOM read (tests/headless). No-op off-DOM or without a filesystem. A broken baked app is logged, not thrown."
+      }
+    },
+    {
+      "key": "origin.launch",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.launch",
+        "segment": "origin",
+        "name": "origin.launch",
+        "kind": "native",
+        "description": "(state, app) - open an installed origin-application by name: hydrate its segment closure from the store (idempotent), then run its conventional ENTRY cel `<app>.entry` so it materializes its window(s). The navbar/icon click path. The app must already be installed (boot.run installs the baked set)."
+      }
+    },
+    {
+      "key": "boot.run",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "boot.run",
+        "segment": "origin",
+        "name": "boot.run",
+        "kind": "native",
+        "description": "(state, opts?) - the origin-application boot sequence: install every baked app archive into the store (OPFS, not state), then launch the desktop shell. Tests pass {manifest, open} to drive it headlessly; open:false installs only."
+      }
+    },
+    {
       "key": "vocab",
       "celType": "LockedLambdaCel",
       "locked": true,

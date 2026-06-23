@@ -3,10 +3,11 @@ import type {
 } from "../../../types/index.js";
 import {
   bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, retireCel,
-  isSegmentPending,
+  isSegmentPending, hasSegment,
 } from "../../../kernel/index.js";
 import {
   dumpArchive, dumpSegments, loadArchive, documentSegments, isSubstrateSegment, archiveSegmentNames,
+  validateArchive,
 } from "../../library/segment-io/index.js";
 // Core rendering comes from the dom LIBRARY — the app doesn't re-roll
 // vnode building, diffing, or the memo. `el`/`text` build the canonical VNode;
@@ -1254,6 +1255,115 @@ const reseed: Fn = async (state: State): Promise<State> => {
   return state;
 };
 
+// ── INSTALL + boot (origin-application machinery) ───────────────────────────
+// The desktop and every app is an origin-application SEGMENT. Three tiers keep
+// persist, load, and render separate (the user's "save/load shouldn't auto-add
+// to state" concern): origin.install persists an archive to the store (OPFS
+// only), origin.launch hydrates it into state on demand, boot.run sequences the
+// two. (NB: named origin.install — winapps owns app.install, the asset fetcher.)
+
+interface DumpedArchive {
+  segments?: Array<{ name?: string; cels?: unknown[] }>;
+  manifests?: Array<{ name?: string; version?: string; dependencies?: string[]; role?: string }>;
+  formatVersion?: number;
+}
+
+// origin.install(archive) — persist a segment ARCHIVE (dumpSegments shape:
+// {segments,manifests}) into the OPFS segment-store WITHOUT loading it into
+// state. store.put/get already split persist from load; this just composes them
+// over a dumped archive via store.putRaw (per segment). Idempotent at NAME
+// granularity — an already-stored app is skipped, so re-boot is cheap (a real
+// version bump is an explicit store.delete + reinstall, not this path). The ONLY
+// way a cel reaches state.cels is a later origin.launch (hydrate-closure);
+// install never hydrates. Accepts an archive object or its JSON string.
+const appInstall: Fn = (async (state: State, archiveArg?: unknown): Promise<string> => {
+  await ensureSegments(state, ["segment-store"]);
+  const problems = validateArchive(archiveArg as string | unknown);
+  if (problems.length) {
+    throw new Error(`app.install: incomplete archive — ${problems.map((p) => `${p.where}: ${p.message}`).join("; ")}`);
+  }
+  const arch = (typeof archiveArg === "string" ? JSON.parse(archiveArg) : archiveArg) as DumpedArchive;
+  const segments = arch.segments ?? [];
+  const manifests = new Map((arch.manifests ?? []).map((m) => [String(m.name), m]));
+  const putRaw = resolveFn(state, "store.putRaw") as Fn;
+  const has = resolveFn(state, "store.has") as Fn;
+  const installed: string[] = [], skipped: string[] = [];
+  for (const s of segments) {
+    const name = String(s.name);
+    const man = manifests.get(name) ?? { name, version: "0.0.0", description: "installed application segment", dependencies: [], role: "application" };
+    const version = String(man.version ?? "0.0.0");
+    if (await (has(state, name) as Promise<boolean>)) { skipped.push(name); continue; }
+    await putRaw(state, name, version, man, { name, cels: s.cels ?? [] });
+    installed.push(name);
+  }
+  return `app.install — installed: [${installed.join(", ")}]${skipped.length ? `; skipped: [${skipped.join(", ")}]` : ""}`;
+}) as Fn;
+
+// installBakedApps — first-run twin of seedStarter for APPLICATION segments:
+// read the inert #plastron-apps manifest the bundle baked into the page (a
+// { "<name>": <archive> } map) and origin.install each entry. Like seedStarter it
+// touches OPFS only, never state. Pass `manifest` to bypass the DOM read (tests
+// / headless). No-op off-DOM or without a filesystem backend. A broken baked app
+// must not brick boot — failures are logged, not thrown.
+const installBakedApps: Fn = (async (state: State, manifestArg?: unknown): Promise<string[]> => {
+  const backend = state.cels.get("file-store.backend")?.v;
+  if (backend === "none" || backend === undefined) return [];
+  let manifest = manifestArg as Record<string, unknown> | undefined;
+  if (manifest === undefined) {
+    const g = globalThis as { document?: { getElementById?: (id: string) => { textContent?: string | null } | null } };
+    const raw = g.document?.getElementById?.("plastron-apps")?.textContent;
+    if (!raw) return [];
+    try { manifest = JSON.parse(raw) as Record<string, unknown>; } catch { return []; }
+  }
+  const installed: string[] = [];
+  for (const [appName, archive] of Object.entries(manifest)) {
+    try { await (appInstall as Fn)(state, archive); installed.push(appName); }
+    catch (e) { console.warn(`installBakedApps: "${appName}" failed to install`, e); }
+  }
+  return installed;
+}) as Fn;
+
+// origin.launch(app) — open an installed origin-application by name: hydrate its
+// segment closure from the store (idempotent — a no-op if already loaded), then
+// run its conventional ENTRY cel `<app>.entry` so it materializes its window(s).
+// This is the navbar/icon click path: "load the segment, then fire the key that
+// opens it". The app must already be installed (boot.run installs the baked set).
+const launch: Fn = (async (state: State, appArg?: unknown): Promise<State> => {
+  const app = String(appArg ?? "").trim();
+  if (!app) return state;
+  await ensureSegments(state, ["segment-store", "opfs-seeding", "user-space-ops"]);
+  if (!hasSegment(state, app)) {
+    const hc = resolveFn(state, "hydrate-closure") as Fn | undefined;
+    if (!hc) throw new Error("origin.launch: hydrate-closure not installed (user-space-ops dormant)");
+    await hc(state, app);
+  }
+  // run the entry cel through the genesis settle loop (mirrors origin.navOpen):
+  // its formula returns a window/genesis request the commit/drain cycle opens.
+  if (state.cels.has(`${app}.entry`)) {
+    const drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
+    for (let i = 0; i < 6; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
+    await runCycle(state);
+    await drain(state, "dom.paint");
+  }
+  return state;
+}) as Fn;
+
+// boot.run — the origin-application boot sequence: install every baked app
+// archive into the store (OPFS, not state), then launch the desktop shell. The
+// follow-up to the imperative "draw 元 + navpanel" boot. Tests pass {manifest,
+// open} to drive it headlessly; `open:false` installs only.
+const bootRun: Fn = (async (state: State, optsArg?: unknown): Promise<State> => {
+  const opts = (optsArg ?? {}) as { manifest?: unknown; open?: string | false };
+  await (installBakedApps as Fn)(state, opts.manifest);
+  const openName = opts.open === false ? undefined : (opts.open ?? "desktop");
+  if (openName) {
+    await ensureSegments(state, ["segment-store"]);
+    const has = resolveFn(state, "store.has") as Fn;
+    if (await (has(state, openName) as Promise<boolean>)) await (launch as Fn)(state, openName);
+  }
+  return state;
+}) as Fn;
+
 // (origin.autoload removed: no boot auto-restore. =save() writes a real OPFS file;
 //  reopen it from 📁 Files or with =open(). Reload = a clean desktop.)
 
@@ -1788,6 +1898,10 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["origin.opennav", opennav],
   ["origin.seedStarter", seedStarter],
   ["origin.reseed",   reseed],
+  ["origin.install",  appInstall],
+  ["installBakedApps", installBakedApps],
+  ["origin.launch",   launch],
+  ["boot.run",        bootRun],
   ["def",            defFn],
   ["link",           linkFn],
   ["unlink",         unlinkFn],
