@@ -22,6 +22,7 @@
     "segment": "window",
     "name": "wopen",
     "kind": "native",
+    "genesis": true,
     "description": "(id, title, body, where?) - genesis a SELF-MOUNTING window: a content cel (= body, the app render), a state cel (one tab = its own content), and a frame cel `(mount '.origin' (wframe <state> win.active <content>))` that mounts itself into the desktop. `where` = geom(x,y,w,h) sizes it. There is NO separate desktop renderer - each top-level window draws itself; dock one into another with window.dock to tab them together."
    }
   },

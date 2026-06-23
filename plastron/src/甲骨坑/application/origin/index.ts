@@ -1419,9 +1419,9 @@ const taskbarBarFn: Fn = ((active?: unknown, ...states: unknown[]): V => {
 // reactively (same genesis-from-formula pattern as navpanel; no hand-rolled wiring).
 const taskbarGenesisFn: Fn = ((list?: unknown): unknown => {
   const refs = (Array.isArray(list) ? list.map(String) : []).filter((r) => /^[\w.-]+$/.test(r));
-  const f = `(mount ".origin" (taskbarBar win.active ${refs.join(" ")}))`;
+  const f = `=mount('.origin', taskbarBar(win.active${refs.length ? ", " + refs.join(", ") : ""}))`;
   return { genesis: true, layer: "desktop.taskbar", cels: {
-    "desktop.taskbar.frame": { celType: "FormulaCel", f, metadata: { name: "frame", parser: "f", segment: "desktop.taskbar" } },
+    "desktop.taskbar.frame": { celType: "FormulaCel", f, metadata: { name: "frame", parser: "infix", segment: "desktop.taskbar" } },
   } };
 }) as Fn;
 
@@ -1487,43 +1487,27 @@ const graphbtnFn: Fn = ((): V => el("button", {
   style: "position:fixed;left:.6rem;bottom:3rem;z-index:56;width:2.6rem;height:2.6rem;border-radius:50%;border:1px solid #8884;background:Canvas;color:CanvasText;cursor:pointer;font-size:1.2rem;box-shadow:0 2px 8px #0005;display:flex;align-items:center;justify-content:center",
 }, [T("🕸")], { click: { dispatch: "desktop.stategraph" } })) as Fn;
 
-// desktop.graphpanel(open, content) — frame the fgview as a floating centered
-// panel (title + ✕). A self-mounting `.origin` panel, NOT a window-segment frame:
-// reuses the proven mount path the rest of the desktop chrome uses. `content` is
-// the fgview vnode, composed by the frame formula so the graph stays reactive.
-const graphPanelFn: Fn = ((open?: unknown, content?: unknown): V => {
-  if (!open) return el("div", { class: "pl-graphpanel-hidden", style: "display:none" }, []);
-  const body = isVnode(content) ? content : T(content == null ? "" : String(content));
-  return el("div", { class: "pl-graphpanel", style: "position:fixed;left:50%;top:48%;transform:translate(-50%,-50%);z-index:70;width:min(760px,92vw);background:Canvas;border:1px solid #8886;border-radius:.6rem;box-shadow:0 10px 40px #0007;overflow:hidden" }, [
-    el("div", { style: "display:flex;align-items:center;justify-content:space-between;padding:.3rem .6rem;background:#8881;font:600 .78rem ui-monospace,monospace" }, [
-      T("🕸 state — segments sized by memory"),
-      el("button", { title: "close", style: "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace" }, [T("✕")], { click: { dispatch: "desktop.graphClose" } }),
-    ]),
-    el("div", { style: "padding:.4rem" }, [body]),
-  ]);
-}) as Fn;
-
-// desktop.stategraph(state) — toggle the state graph: build + lay out the spec via
-// fg.set, flip desktop.graph.open, and ensure the self-mounting panel frame exists.
+// desktop.stategraph(state) — open the state graph as a real window-segment
+// window (drag / resize / minimize / fullscreen / close come from wframe). Build
+// + lay out the spec via fg.set, then wopen a self-mounting window whose content
+// is the fgview. Idempotent: a re-open refreshes the spec and un-hides + raises.
 const stategraphFn: Fn = (async (state: State): Promise<State> => {
-  await ensureSegments(state, ["forcegraph"]);
+  await ensureSegments(state, ["forcegraph", "window"]);
   await (resolveFn(state, "fg.set") as Fn)(state, { id: "stategraph", spec: buildStateGraphSpec(state) });
-  const open = !!state.cels.get("desktop.graph.open")?.v;
-  await putDesktopCel(state, "desktop.graph.open", open ? 0 : 1);
-  if (!state.cels.get("desktop.graphpanel.frame")) {
-    await (resolveFn(state, "setCel") as Fn)(state, "desktop.graphpanel.frame", { celType: "FormulaCel",
-      f: "(mount '.origin' (desktop.graphpanel desktop.graph.open (fgview 'stategraph' fg.stategraph.spec fg.stategraph.pos fg.stategraph.zoom fg.stategraph.armed fg.stategraph.hide)))",
-      metadata: { key: "desktop.graphpanel.frame", segment: "desktop", name: "graphpanel.frame", parser: "f" } });
+  const sref = "win.stategraph.state";
+  if (!state.cels.get(sref)) {
+    await (resolveFn(state, "setCel") as Fn)(state, "desktop.graph.元", { celType: "FormulaCel",
+      f: `=wopen('stategraph', '🕸 state', "=fgview('stategraph', fg.stategraph.spec, fg.stategraph.pos, fg.stategraph.zoom, fg.stategraph.armed, fg.stategraph.hide)", geom(220, 90, 820, 560))`,
+      metadata: { key: "desktop.graph.元", segment: "desktop.graph", parser: "infix" } });
+    const drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
+    for (let i = 0; i < 6; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
+  } else {
+    const cur = (state.cels.get(sref)?.v ?? {}) as WinChip;
+    await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0 });
+    await (resolveFn(state, "window.raise") as Fn)(state, sref);
   }
   await (resolveFn(state, "view.refresh") as Fn)(state);
   await (resolveFn(state, "runCycle") as Fn)(state);
-  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
-  return state;
-}) as Fn;
-
-// desktop.graphClose(state) — close the state-graph panel.
-const graphCloseFn: Fn = (async (state: State): Promise<State> => {
-  await putDesktopCel(state, "desktop.graph.open", 0);
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
   return state;
 }) as Fn;
@@ -1549,8 +1533,14 @@ const dcapture = (e?: { pointerId?: number; currentTarget?: { setPointerCapture?
 const desktopBgFn: Fn = ((src?: unknown, fallback?: unknown): V => {
   const chosen = (typeof src === "string" && src.trim()) ? src : (typeof fallback === "string" ? fallback : "");
   const srcAttr: Record<string, unknown> = chosen.startsWith("/") ? { "data-opfs-src": chosen } : { src: chosen };
-  return el("img", { class: "desktop-bg", ...srcAttr, style: "position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;z-index:-1" }, [],
-    { contextmenu: { dispatch: "desktop.bgmenu", prevent: true } });
+  // A full-screen SURFACE div (z-index:0) carries the right-click handler and the
+  // wallpaper img. The surface — not the img — is the event target: an OPFS-
+  // hydrated img can drop its listener, and a -1 img sits behind the page so the
+  // contextmenu never reaches it. Icons (z38), windows (z1+), taskbar (z55) all
+  // stack above the surface, so only empty-desktop right-clicks open settings.
+  return el("div", { class: "desktop-surface", style: "position:fixed;inset:0;z-index:0;overflow:hidden" }, [
+    el("img", { class: "desktop-bg", ...srcAttr, style: "width:100vw;height:100vh;object-fit:cover;display:block;pointer-events:none" }, []),
+  ], { contextmenu: { dispatch: "desktop.bgmenu", prevent: true } });
 }) as Fn;
 
 // desktop.settingsView(current, files) — the display-settings window body: a
@@ -1623,8 +1613,8 @@ const bgmenu: Fn = (async (state: State): Promise<State> => {
   const sref = "win.dispsettings.state";
   if (!state.cels.get(sref)) {
     await (resolveFn(state, "setCel") as Fn)(state, "desktop.settings.元", { celType: "FormulaCel",
-      f: `(wopen "dispsettings" "🖼 display" "(desktop.settingsView desktop.wallpaper desktop.wallpapers)" (geom 0.32 0.2 0.34 0.52))`,
-      metadata: { key: "desktop.settings.元", segment: "desktop.settings", parser: "f" } });
+      f: `=wopen('dispsettings', '🖼 display', "=desktop.settingsView(desktop.wallpaper, desktop.wallpapers)", geom(380, 130, 460, 520))`,
+      metadata: { key: "desktop.settings.元", segment: "desktop.settings", parser: "infix" } });
     const drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
     for (let i = 0; i < 6; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
   } else {
@@ -2244,8 +2234,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["desktop.taskClick", taskClickFn],
   ["desktop.graphbtn", graphbtnFn],
   ["desktop.stategraph", stategraphFn],
-  ["desktop.graphpanel", graphPanelFn],
-  ["desktop.graphClose", graphCloseFn],
   ["desktop.graphNode", graphNodeFn],
   ["desktop.bg",        desktopBgFn],
   ["desktop.bgmenu",    bgmenu],

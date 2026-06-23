@@ -26,7 +26,7 @@ test("taskbarGenesis rebuilds the taskbar frame, splicing in each window's state
   assert.equal(gen.layer, "desktop.taskbar");
   const frame = gen.cels["desktop.taskbar.frame"];
   assert.ok(frame, "frame cel minted");
-  assert.match(frame.f, /taskbarBar win\.active/, "renders taskbarBar over win.active");
+  assert.match(frame.f, /taskbarBar\(win\.active/, "renders taskbarBar over win.active");
   assert.match(frame.f, /win\.a\.state/, "references window a's state cel");
   assert.match(frame.f, /win\.b\.state/, "references window b's state cel");
 });
@@ -79,16 +79,19 @@ test("buildStateGraphSpec: one node per segment, sized by memory, origin-applica
   assert.ok(Math.max(...sizes) > Math.min(...sizes), "memory variation produces size variation");
 });
 
-test("desktop.bg renders an OPFS-hydrated wallpaper img with a right-click → settings binding", async () => {
+test("desktop.bg renders a wallpaper surface (OPFS-hydrated img) with a right-click → settings binding", async () => {
   const s = await boot();
   const v = resolveFn(s, "desktop.bg")("/wallpapers/a.png", "data:fallback");
-  assert.equal(v.tag, "img");
-  assert.equal(v.attrs["data-opfs-src"], "/wallpapers/a.png", "a /path src is an OPFS reference");
+  // a full-screen surface DIV carries the contextmenu; the img sits inside it
+  assert.equal(v.tag, "div", "the event-receiving surface is a div, not the img");
   assert.equal(v.events.contextmenu.dispatch, "desktop.bgmenu");
   assert.equal(v.events.contextmenu.prevent, true, "suppresses the native menu");
+  const img = v.children[0];
+  assert.equal(img.tag, "img");
+  assert.equal(img.attrs["data-opfs-src"], "/wallpapers/a.png", "a /path src is an OPFS reference");
   // empty src falls back
   const fb = resolveFn(s, "desktop.bg")("", "data:fallback");
-  assert.equal(fb.attrs.src, "data:fallback");
+  assert.equal(fb.children[0].attrs.src, "data:fallback");
 });
 
 test("desktop.refreshWallpapers lists /wallpapers/; desktop.setWallpaper points the cel at a path", async () => {
@@ -147,15 +150,12 @@ test("desktop icon drag updates desktop.iconpos; a drag past threshold suppresse
   assert.equal(s.cels.get("desktop.iconLastMoved").v, 0, "the drag guard is consumed; no launch fired");
 });
 
-test("desktop.graphpanel renders hidden when closed and a framed panel (with fgview + close) when open", async () => {
+test("desktop.stategraph opens a real window-segment window (drag/resize/min/close via wframe)", async () => {
   const s = await boot();
-  const hidden = resolveFn(s, "desktop.graphpanel")(0, null);
-  assert.match(String(hidden.attrs.style), /display:none/, "closed → hidden");
-
-  const fakeFgview = { type: "el", tag: "div", attrs: { class: "fg-box" }, children: [] };
-  const open = resolveFn(s, "desktop.graphpanel")(1, fakeFgview);
-  const flat = JSON.stringify(open);
-  assert.match(flat, /desktop\.graphClose/, "open panel has a close button");
-  assert.match(flat, /fg-box/, "open panel embeds the passed fgview vnode");
-  assert.match(flat, /segments sized by memory/, "panel title");
+  await resolveFn(s, "ensureSegments")(s, ["window", "forcegraph"]);
+  await resolveFn(s, "desktop.stategraph")(s);
+  // wopen genesis materialized the window cels (proves wopen carries genesis:true)
+  assert.equal(s.cels.has("win.stategraph.state"), true, "window state cel created");
+  assert.equal(s.cels.has("win.stategraph.frame"), true, "self-mounting frame cel created");
+  assert.equal(s.cels.has("fg.stategraph.spec"), true, "forcegraph spec laid out");
 });
