@@ -1,7 +1,8 @@
-// e2e: the ▦ Sheet navpanel launcher opens a fresh BLANK worksheet —
-// =cels("sheet", 20, 12, geom(0.18, 0.12, 0.6, 0.66)). Proves: clicking it mounts
-// a 20×12 grid window, the geom() resolves to viewport-proportional pixels (via the
-// navOpen "=formula" path's geom-application), and re-clicking reuses the segment.
+// e2e: the ▦ Sheet desktop launcher (do:origin.newsheet) creates a FRESH blank
+// worksheet DOCUMENT each click — a new origin-user sheetapp segment (sheet1,
+// sheet2, …) seeded with a 12×7 grid, rendered as a one-pane gen-2 workbook
+// window (win.<doc>.state). Proves: clicking it mounts a workbook with editable
+// grid cells, and a second click makes a SECOND new sheet (not a reuse).
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 const PORT = 8811, dist = new URL("../dist", import.meta.url).pathname;
@@ -15,31 +16,31 @@ await p.waitForFunction(() => !!globalThis.plastron, { timeout: 10000 });
 await p.waitForTimeout(1200);
 let pass = 0, fail = 0; const ok = (c, w, g) => { if (c) { pass++; console.log("  ✔", w); } else { fail++; console.log("  ✘", w, "got:", JSON.stringify(g)); } };
 
-const probe = () => p.evaluate(() => {
-  const win = [...document.querySelectorAll(".pl-window")].find((w) => w.getAttribute("data-win") === "sheet");
-  const box = win ? win.getBoundingClientRect() : null;
+// inspect a sheetapp workbook window by its doc segment (win.<doc>.state).
+const probe = (doc) => p.evaluate((d) => {
+  const win = [...document.querySelectorAll(".pl-window")].find((w) => w.getAttribute("data-win") === `win.${d}.state`);
   return {
     mounted: !!win,
-    w: box ? Math.round(box.width) : 0, h: box ? Math.round(box.height) : 0,
-    cells: win ? win.querySelectorAll(".sheet-cell, [data-cell], td").length : 0,
-    geom: globalThis.plastron.state.cels.get("win.geom")?.v?.sheet ?? null,
+    workbook: !!win && win.classList.contains("pl-workbook"),
+    cells: win ? win.querySelectorAll("td.cell").length : 0,
+    docExists: !!globalThis.plastron.state.cels.get(`win.${d}.state`),
   };
-});
+}, doc);
 
-await (await p.$('button.pl-nav-icon:has-text("Sheet")')).click();
+await (await p.$('button.pl-desk-icon:has-text("Sheet")')).click();
 await p.waitForTimeout(900);
-const r = await probe();
-ok(r.mounted, "clicking ▦ Sheet mounted a 'sheet' worksheet window", r);
-ok(r.cells === 240, "the blank sheet is a 20×12 grid (240 cells)", r.cells);
-// geom: x=0.18*1280=230, y=0.12*800=96, w=0.6*1280=768, h=0.66*800=528
-ok(r.geom && r.geom.x === 230 && r.geom.y === 96 && r.geom.w === 768 && r.geom.h === 528, "geom() resolved to viewport-proportional pixels", r.geom);
-ok(Math.abs(r.w - 768) <= 2 && Math.abs(r.h - 528) <= 2, "the rendered window honours the geom (≈768×528)", { w: r.w, h: r.h });
+const r = await probe("sheet1");
+ok(r.mounted, "clicking ▦ Sheet mounted a new 'sheet1' workbook window", r);
+ok(r.workbook, "the new sheet renders as a gen-2 workbook (pl-workbook)", r);
+ok(r.cells >= 84, "the blank sheet has its 12×7 grid of editable cells (≥84)", r.cells);
 
-// re-clicking reuses the same segment (no sheet1/sheet2) and keeps it open.
-await (await p.$('button.pl-nav-icon:has-text("Sheet")')).click();
-await p.waitForTimeout(600);
-const again = await probe();
-ok(again.mounted && (await p.evaluate(() => [...document.querySelectorAll('.pl-window')].filter((w) => /^sheet/.test(w.getAttribute("data-win") || "")).length)) === 1, "re-clicking reuses the single 'sheet' window (no sheet1/sheet2)", again);
+// a SECOND click makes a SECOND fresh document (sheet2) — New, not reuse.
+await (await p.$('button.pl-desk-icon:has-text("Sheet")')).click();
+await p.waitForTimeout(900);
+const r2 = await probe("sheet2");
+ok(r2.mounted, "re-clicking ▦ Sheet makes a SECOND new sheet (sheet2)", r2);
+const count = await p.evaluate(() => [...document.querySelectorAll(".pl-window")].filter((w) => /^win\.sheet\d+\.state$/.test(w.getAttribute("data-win") || "")).length);
+ok(count === 2, "two distinct sheet workbooks are open", count);
 
 ok(errs.filter((e) => !/reading 'get'/.test(e)).length === 0, "no page errors", errs.slice(0, 2));
 await b.close(); srv.kill();

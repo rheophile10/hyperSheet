@@ -1,7 +1,7 @@
-// e2e: the navpanel launchers (open:/<file>.f → openFile) open worksheet windows
-// FLUSH to the viewport (geom(0,0,1,1) → the actual corner — #app has no padding),
-// and REOPEN a window the ✕ had closed (openFile uses winsheet.restore, which
-// clears the closed flag — not just winsheet.raise).
+// e2e: a desktop DOCUMENT launcher (📖 Readme → doc:readme → origin.opendoc) opens
+// the readme as a gen-2 sheetapp workbook window (win.readme.state), and — the key
+// behavior — RE-clicking the launcher after ✕ REOPENS the closed window
+// (origin.navOpen → restoreWindow clears the `closed` flag + raises, not just raise).
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 const PORT = 8796, dist = new URL("../dist", import.meta.url).pathname;
@@ -14,22 +14,23 @@ await p.goto(`http://localhost:${PORT}/index.html`);
 await p.waitForFunction(() => !!globalThis.plastron, { timeout: 10000 });
 await p.waitForTimeout(1500);
 let pass = 0, fail = 0; const ok = (c, w, g) => { if (c) { pass++; console.log("  ✔", w); } else { fail++; console.log("  ✘", w, "got:", JSON.stringify(g)); } };
-const winBox = (seg) => p.evaluate((s) => { const w = [...document.querySelectorAll(".pl-window")].find((x) => x.getAttribute("data-win") === s); return w ? ((r) => ({ x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }))(w.getBoundingClientRect()) : null; }, seg);
+const W = "win.readme.state";
+const winShown = () => p.evaluate((s) => { const w = [...document.querySelectorAll(".pl-window")].find((x) => x.getAttribute("data-win") === s); return !!w && w.offsetParent !== null; }, W);
 
-// 1) full-viewport readme is FLUSH — geom(0,0,1,1) → (0,0), no 32px gap.
-await (await p.$('button.pl-nav-icon:has-text("Readme")')).click();
-await p.waitForTimeout(1000);
-const box = await winBox("readme");
-ok(box && box.x === 0 && box.y === 0, "readme window is flush to (0,0) — no gap", box);
-ok(box && box.w === 1280 && box.h === 800, "readme fills the viewport (1280×800)", box);
+// 1) the 📖 Readme launcher opens the readme document as a gen-2 workbook window.
+await (await p.$('button.pl-desk-icon:has-text("Readme")')).click();
+await p.waitForTimeout(1200);
+ok(await winShown(), "📖 Readme opened the readme document window (win.readme.state)");
 
-// 2) ✕ closes it, then re-clicking the launcher REOPENS it (restore clears `closed`).
-await p.click('.pl-window[data-win="readme"] .pl-close-btn');
+// 2) ✕ closes it (sets state.closed=1 → the frame hides).
+await p.click(`.pl-window[data-win="${W}"] .pl-close-btn`);
 await p.waitForTimeout(500);
-ok((await winBox("readme")) === null, "✕ closed the readme window", await winBox("readme"));
-await (await p.$('button.pl-nav-icon:has-text("Readme")')).click();
+ok(!(await winShown()), "✕ closed the readme window");
+
+// 3) re-clicking 📖 Readme REOPENS the closed window (restoreWindow clears `closed`).
+await (await p.$('button.pl-desk-icon:has-text("Readme")')).click();
 await p.waitForTimeout(900);
-ok((await winBox("readme")) !== null, "re-clicking 📖 Readme REOPENS the closed window", await winBox("readme"));
+ok(await winShown(), "re-clicking 📖 Readme REOPENS the closed window");
 
 ok(errs.filter((e) => !/reading 'get'/.test(e)).length === 0, "no page errors", errs.slice(0, 2));
 await b.close(); srv.kill();

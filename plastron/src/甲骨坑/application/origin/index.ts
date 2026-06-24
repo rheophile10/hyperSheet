@@ -1368,6 +1368,15 @@ const launch: Fn = (async (state: State, appArg?: unknown): Promise<State> => {
   if (state.cels.has(`${app}.entry`)) {
     const drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
     for (let i = 0; i < 6; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
+    // un-hide the app's window(s) if a prior ✕/– had closed/minimized them: a
+    // re-launch REOPENS (the genesis is idempotent and preserves the closed flag,
+    // so without this a re-clicked app icon couldn't reopen its window). Restoring
+    // the state cel also re-fires its reactive deps — e.g. DOOM's armboot
+    // `(doom.arm wasm.doom.state)` reboots the freed engine.
+    const entryReq = state.cels.get(`${app}.entry`)?.v as { layer?: string; cels?: Record<string, unknown> } | undefined;
+    const stateRefs = entryReq?.layer ? [`${entryReq.layer}.state`]
+      : Object.keys(entryReq?.cels ?? {}).filter((k) => /^(?:win|wasm|desktop)\.[^.]+\.state$/.test(k));
+    for (const sref of stateRefs) if (state.cels.get(sref)) await restoreWindow(state, sref);
     // rescan the view's cell list so the app's self-mounting frames (the desktop
     // chrome, a window's frame) enter it and paint (cellKeys whitelists them).
     await (resolveFn(state, "view.refresh") as Fn)(state);
@@ -1540,6 +1549,92 @@ const graphNodeFn: Fn = (async (state: State, payload?: unknown): Promise<State>
   return state;
 }) as Fn;
 
+// --- cel topology: the runCycle dependency CONE of ONE cel — everything it
+//     depends on (upstream, blue) and everything that depends on it (downstream,
+//     green), the cel itself pinned (gold). The 🔗 button on the formula bar opens
+//     it; clicking a node re-centers. Reuses the forcegraph segment (fg.set + fgview).
+const TOPO_TINT: Record<string, string> = { self: "#e6a23c33", up: "#4a90d922", down: "#3fa34d22" };
+const TOPO_ACCENT: Record<string, string> = { self: "#e6a23c", up: "#4a90d9", down: "#3fa34d" };
+// flatten a cel's inputMap (values are Key | Key[]) into its direct dependency keys.
+const flatInputs = (cel: Cel | undefined): string[] => {
+  const im = cel?.metadata?.inputMap as Record<string, unknown> | undefined;
+  if (!im) return [];
+  const out: string[] = [];
+  for (const v of Object.values(im)) {
+    if (typeof v === "string") out.push(v);
+    else if (Array.isArray(v)) for (const k of v) if (typeof k === "string") out.push(k);
+  }
+  return [...new Set(out)];
+};
+interface TopoNode { key: string; label: string; size: number; kind: string; tint: string; accent: string }
+interface TopoSpec { nodes: TopoNode[]; edges: Array<[string, string]>; pin: string; onNode: { dispatch: string } }
+// buildCelTopoSpec(state, center) — PURE: BFS upstream over inputMap + downstream
+// over the reverse index, capped, tagged by direction. Edges are the inputMap edges
+// among the included cels (the literal runCycle propagation arrows).
+export const buildCelTopoSpec = (state: State, center: string): TopoSpec => {
+  const CAP = 60;
+  const dir = new Map<string, string>([[center, "self"]]);
+  // reverse adjacency (dependent → cels) so downstream is one scan, not N
+  const rev = new Map<string, string[]>();
+  for (const [k, c] of state.cels) for (const d of flatInputs(c)) { (rev.get(d) ?? rev.set(d, []).get(d)!).push(k); }
+  // upstream: what `center` (transitively) depends on
+  let frontier = [center];
+  while (frontier.length && dir.size < CAP) {
+    const next: string[] = [];
+    for (const k of frontier) for (const d of flatInputs(state.cels.get(k))) {
+      if (state.cels.has(d) && !dir.has(d)) { dir.set(d, "up"); next.push(d); }
+    }
+    frontier = next;
+  }
+  // downstream: what (transitively) depends on `center`
+  frontier = [center];
+  while (frontier.length && dir.size < CAP) {
+    const next: string[] = [];
+    for (const k of frontier) for (const dep of rev.get(k) ?? []) {
+      if (!dir.has(dep)) { dir.set(dep, "down"); next.push(dep); }
+    }
+    frontier = next;
+  }
+  const keys = [...dir.keys()];
+  const present = new Set(keys);
+  const edges: Array<[string, string]> = [];
+  for (const k of keys) for (const d of flatInputs(state.cels.get(k))) if (present.has(d)) edges.push([k, d]);
+  const nodes: TopoNode[] = keys.map((k) => {
+    const d = dir.get(k)!;
+    const deg = flatInputs(state.cels.get(k)).filter((x) => present.has(x)).length + (rev.get(k) ?? []).filter((x) => present.has(x)).length;
+    const size = Math.min(2.2, (0.8 + 0.16 * Math.sqrt(deg)) * (d === "self" ? 1.3 : 1));
+    const label = k.includes(".") ? k.slice(k.lastIndexOf(".") + 1) : k;
+    return { key: k, label, size, kind: d, tint: TOPO_TINT[d]!, accent: TOPO_ACCENT[d]! };
+  });
+  return { nodes, edges, pin: center, onNode: { dispatch: "origin.celtopo" } };
+};
+
+// origin.celtopo(state, key) — open (or refresh) the dependency-cone window for a
+// cel. Defaults to the selected cell. Self-mounting window via wopen; idempotent
+// (re-open rebuilds the spec + un-hides + raises). Mirrors desktop.stategraph.
+const celtopoFn: Fn = (async (state: State, payload?: unknown): Promise<State> => {
+  const key = (String(payload ?? "") || String(state.cels.get("sheet.selected")?.v ?? "") || String(state.cels.get("元.selected")?.v ?? "")).trim();
+  if (!key || !state.cels.has(key)) return state;          // nothing to trace
+  await ensureSegments(state, ["forcegraph", "window"]);
+  await (resolveFn(state, "fg.set") as Fn)(state, { id: "celtopo", spec: buildCelTopoSpec(state, key) });
+  const sref = "win.celtopo.state";
+  if (!state.cels.get(sref)) {
+    await (resolveFn(state, "setCel") as Fn)(state, "desktop.celtopo.元", { celType: "FormulaCel",
+      f: `=wopen('celtopo', '🔗 topology', "=fgview('celtopo', fg.celtopo.spec, fg.celtopo.pos, fg.celtopo.zoom, fg.celtopo.armed, fg.celtopo.hide)", geom(200, 100, 760, 520))`,
+      metadata: { key: "desktop.celtopo.元", segment: "desktop.celtopo", parser: "infix" } });
+    const drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
+    for (let i = 0; i < 6; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
+  } else {
+    const cur = (state.cels.get(sref)?.v ?? {}) as WinChip;
+    await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0 });
+    await (resolveFn(state, "window.raise") as Fn)(state, sref);
+  }
+  await (resolveFn(state, "view.refresh") as Fn)(state);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+}) as Fn;
+
 // ── desktop chrome: wallpaper + display settings + draggable icons ──────────
 const WALLPAPER_DIR = "/wallpapers";
 const dnum = (v: unknown, d = 0): number => { const n = Number(v); return Number.isFinite(n) ? n : d; };
@@ -1680,12 +1775,25 @@ interface IconDrag { label: string; ox: number; oy: number; sx: number; sy: numb
 const iconGrab: Fn = (async (state: State, payload?: unknown, event?: unknown): Promise<void> => {
   const label = String(payload ?? "");
   if (!label) return;
-  const e = event as { clientX?: number; clientY?: number } | undefined;
+  type RectEl = { closest?: (s: string) => { getBoundingClientRect?: () => { left: number; top: number } } | null };
+  const e = event as { clientX?: number; clientY?: number; currentTarget?: RectEl; target?: RectEl } | undefined;
   dcapture(event as Parameters<typeof dcapture>[0]);
-  const pos = (state.cels.get("desktop.iconpos")?.v ?? {}) as Record<string, [number, number]>;
-  const cur = pos[label] ?? [16, 16];
   const sx = dnum(e?.clientX), sy = dnum(e?.clientY);
-  await putDesktopCel(state, "desktop.icondrag", { label, ox: sx - dnum(cur[0], 16), oy: sy - dnum(cur[1], 16), sx, sy, moved: 0 } as IconDrag);
+  // cursor→icon offset from the tile's actual on-screen rect (the button is
+  // position:fixed, so rect.left/top equal its CSS left/top). Resolve via
+  // closest('.pl-desk-icon') since pointerdown can land on a child glyph/caption.
+  // Measuring beats reading desktop.iconpos: a never-moved icon is absent from
+  // iconpos and is laid out at [16, 12+i*ICON_H], so a stored-pos fallback would
+  // assume a phantom origin and teleport the tile to the top-left on first drag.
+  const rect = (e?.currentTarget ?? e?.target)?.closest?.(".pl-desk-icon")?.getBoundingClientRect?.();
+  let ox: number, oy: number;
+  if (rect) { ox = sx - rect.left; oy = sy - rect.top; }
+  else {
+    const pos = (state.cels.get("desktop.iconpos")?.v ?? {}) as Record<string, [number, number]>;
+    const cur = pos[label] ?? [16, 16];
+    ox = sx - dnum(cur[0], 16); oy = sy - dnum(cur[1], 16);
+  }
+  await putDesktopCel(state, "desktop.icondrag", { label, ox, oy, sx, sy, moved: 0 } as IconDrag);
 }) as Fn;
 const iconMove: Fn = (async (state: State, _payload?: unknown, event?: unknown): Promise<void> => {
   const d = state.cels.get("desktop.icondrag")?.v as IconDrag | null | undefined;
@@ -2363,6 +2471,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["desktop.graphbtn", graphbtnFn],
   ["desktop.stategraph", stategraphFn],
   ["desktop.graphNode", graphNodeFn],
+  ["origin.celtopo", celtopoFn],
   ["desktop.bg",        desktopBgFn],
   ["desktop.bgmenu",    bgmenu],
   ["desktop.settingsView", settingsViewFn],

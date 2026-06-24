@@ -26,7 +26,7 @@ try {
   await p.waitForFunction(() => !!globalThis.plastron, { timeout: 10000 });
   await p.waitForTimeout(1200);
 
-  await (await p.$('button.pl-nav-icon:has-text("DOOM")')).click();
+  await (await p.$('button.pl-desk-icon:has-text("DOOM")')).click();
   await p.waitForFunction(() => globalThis.plastron.state.cels.get("wasm.doom.out")?.v === "running", { timeout: 45000 });
   // wait for the attract demo to fire SFX
   let started = 0;
@@ -40,13 +40,13 @@ try {
   const atClose = await p.evaluate(() => globalThis.__snd.started);
 
   // open a DIFFERENT app and wait — NO new DOOM SFX may fire after close
-  await (await p.$('button.pl-nav-icon:has-text("Sheet")')).click();
+  await (await p.$('button.pl-desk-icon:has-text("Sheet")')).click();
   await p.waitForTimeout(3000);
   const later = await p.evaluate(() => globalThis.__snd.started);
   ok(later === atClose, `no new DOOM SFX after close (${later - atClose} new)`, { atClose, later });
 
   // re-clicking DOOM reboots a fresh engine (onDetach freed _harness; armboot re-arms)
-  await (await p.$('button.pl-nav-icon:has-text("DOOM")')).click();
+  await (await p.$('button.pl-desk-icon:has-text("DOOM")')).click();
   ok(await p.waitForFunction(() => globalThis.plastron.state.cels.get("wasm.doom.out")?.v === "running", { timeout: 30000 }).then(() => true).catch(() => false), "re-opening DOOM after close reboots the engine");
 } finally {
   await b.close(); srv.kill();
