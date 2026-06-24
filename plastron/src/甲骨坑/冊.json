@@ -211,9 +211,10 @@
   {
     "name": "charts",
     "version": "0.0.1",
-    "description": "Charting vocabulary over the plastron-canvas draw-spec: barchart/linechart/piechart(labels, values [, x y w h]) turn column ranges into op LISTS that canvas() concats — =canvas(420, 260, barchart(turtles!A2:A8, turtles!B2:B8)). Pure fns, no module state; the range edges in inputMap re-render a chart when its sheet data changes.",
+    "description": "Charting vocabulary over the plastron-canvas draw-spec: barchart/linechart/piechart(labels, values [, x y w h]) turn column ranges into op LISTS that canvas() concats — =canvas(420, 260, barchart(turtles!A2:A8, turtles!B2:B8)). Pure fns, no module state; the range edges in inputMap re-render a chart when its sheet data changes. Value→pixel axes and the categorical palette come from viz-core (linscale/scaleapply/ordinalcolor).",
     "dependencies": [
-      "plastron-canvas"
+      "plastron-canvas",
+      "viz-core"
     ],
     "role": "library"
   },
@@ -223,7 +224,7 @@
     "description": "The documentation graph rendered as a wiki window (unified-metadata-model). wiki.open assembles an article for any cel/segment/layer — summary + doc metadata, formula source, links to called functions and input cels (inputMap = the resolved AST edges), backlinks, a force-directed neighborhood graph, an editable note saved to metadata.note. The W titlebar button on every window opens its layer's article; =wiki(name) opens from a formula. Navigation is handler re-entry; the article is a snapshot built at open time.",
     "dependencies": [
       "dom",
-      "windows",
+      "window",
       "forcegraph"
     ]
   },
@@ -234,6 +235,29 @@
     "dependencies": [
       "dom"
     ]
+  },
+  {
+    "name": "scheduler",
+    "version": "0.0.1",
+    "description": "The learn/lock/lose adaptive frame governor (onecell §6) as a reusable cel group. clock.tick(state, cost) folds the measured frame cost into a learnable EWMA cost model (clock.cost_ewma) per clock.mode, then writes the next clock.interval (ms to wait) + the achievable clock.fps and returns the interval. Decouples desired / device-sustainable / scheduled rates via a tiny feedback controller; the host loop schedules the next frame with the returned interval. governStep is pure (off-browser unit-testable). Replaces hand-rolled setInterval/rAF clock loops.",
+    "dependencies": [],
+    "role": "library"
+  },
+  {
+    "name": "buffer-schema",
+    "version": "0.0.1",
+    "description": "A SchemaCel ('buffers') that snapshots a buffer struct — a plain object whose values may be typed arrays (Float32/Float64/Int8/Uint8/Uint8Clamped/Int16/Uint16/Int32/Uint32 Array) alongside JSON-native scalars/arrays (dims, counters, RNG state). dehydrate encodes each typed array as {__ta, b64}; hydrate reconstructs the live typed array; isChanged is ref-eq. Bind via metadata.schema:'buffers' on any cel holding sim/mesh/gpu buffers — the default dehydrate is JSON-only. The snapshot half of the CPU-resident-SoA / dense-ECS interior; generalises js-common-schema's uint8array to every numeric dtype + the struct.",
+    "dependencies": [],
+    "role": "library"
+  },
+  {
+    "name": "asset-loader",
+    "version": "0.0.1",
+    "description": "asset.fetch(state, name [, {base?, cache?, onProgress?}]) → Uint8Array. Fetch a named binary asset from base+name, cached in OPFS at /plastron/assets/<name> so it downloads once and reloads instantly. Generalises doom's inline fetch; the one mechanism behind every heavy lazy tier (doom WAD, and rapier/maplibre/occt/three to come). Caching is best-effort over file-store — a missing OPFS degrades to a plain fetch; cache:false skips it.",
+    "dependencies": [
+      "file-store"
+    ],
+    "role": "library"
   },
   {
     "name": "origin",
@@ -305,6 +329,18 @@
     "name": "supabase-auth",
     "version": "0.0.1",
     "description": "Supabase GoTrue auth provider on top of the session store. supabase.auth(state, op, project, payload): op=signin (password grant), op=otp/magiclink, op=refresh (rotate via stored refresh token), op=signout. Reads public config cels sb.<project>.url / sb.<project>.anonkey; on sign-in hands tokens to session.put (the JWT never becomes a cel value) and surfaces the non-secret sb.<project>.auth status cel. IO via gated fetch; no service_role key.",
+    "dependencies": ["session"]
+  },
+  {
+    "name": "supabase",
+    "version": "0.0.1",
+    "description": "Supabase PostgREST data plane (cloud twin of the sqlite library). supabase.data(state, op, project, payload): select/insert/update/delete/rpc over REST, borrowing the user JWT from the session store as the bearer (anon when not signed in). Reads config cels sb.<project>.url / sb.<project>.anonkey. Writes bump sb.<project>.<table>.rev — reference it in a select formula to re-fire on change (the same cel realtime pushes bump). supabase.realtime subscribes a table to live postgres_changes over a Phoenix WebSocket, bumping the same rev cel on each push. Returns rows on success.",
+    "dependencies": ["session"]
+  },
+  {
+    "name": "supabase-storage",
+    "version": "0.0.1",
+    "description": "Supabase Storage (buckets) — the cloud twin of the file-store/OPFS library. supabase.storage(state, op, project, payload): upload/download/list/remove objects in a bucket, createBucket/listBuckets, over gated fetch with the session JWT (RLS-scoped). Reads config cels sb.<project>.url / sb.<project>.anonkey. No service_role.",
     "dependencies": ["session"]
   },
   {
@@ -406,10 +442,11 @@
   {
     "name": "doom",
     "version": "0.0.1",
-    "description": "=doom() — Doom in a wasm window; the WASI harness + lazy asset load (doom.wasm + WAD from plastron.ca)",
+    "description": "=doom() — Doom in a wasm window; the WASI harness + lazy asset load (doom.wasm + WAD from plastron.ca, via asset-loader's OPFS-cached fetch)",
     "dependencies": [
       "winapps-wasm",
-      "wasm-bytes"
+      "wasm-bytes",
+      "asset-loader"
     ]
   },
   {

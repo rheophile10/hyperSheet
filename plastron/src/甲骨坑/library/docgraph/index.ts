@@ -396,9 +396,9 @@ const ensureWikiWindow = async (state: State): Promise<void> => {
       metadata: { segment: "win.wiki", name: "content", parser: "f" },
     });
   }
-  if (!state.cels.has("win.wiki.frame") && state.cels.has("mount") && state.cels.has("winframe")) {
+  if (!state.cels.has("win.wiki.frame") && state.cels.has("mount") && state.cels.has("wframe")) {
     await setCel(state, "win.wiki.frame", {
-      celType: "FormulaCel", f: '(mount ".origin" (winframe win.wiki.state win.active win.wiki.content))',
+      celType: "FormulaCel", f: '(mount ".origin" (wframe win.wiki.state win.active win.wiki.content))',
       metadata: { segment: "win.wiki", name: "frame", parser: "f" },
     });
   }
@@ -521,9 +521,9 @@ const wikiOpenSource: Fn = (async (state: State, payload?: unknown): Promise<voi
       metadata: { segment: "win.wikisrc", name: "content", parser: "f" },
     });
   }
-  if (!state.cels.has("win.wikisrc.frame") && state.cels.has("mount") && state.cels.has("winframe")) {
+  if (!state.cels.has("win.wikisrc.frame") && state.cels.has("mount") && state.cels.has("wframe")) {
     await setCel(state, "win.wikisrc.frame", {
-      celType: "FormulaCel", f: '(mount ".origin" (winframe win.wikisrc.state win.active win.wikisrc.content))',
+      celType: "FormulaCel", f: '(mount ".origin" (wframe win.wikisrc.state win.active win.wikisrc.content))',
       metadata: { segment: "win.wikisrc", name: "frame", parser: "f" },
     });
   }
