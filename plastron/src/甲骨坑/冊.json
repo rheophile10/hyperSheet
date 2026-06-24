@@ -322,6 +322,14 @@
     "dependencies": []
   },
   {
+    "name": "keystore",
+    "version": "0.0.1",
+    "description": "the user identity WALLET (encrypted-collaborative-sheetapp Phase 1): a passcode-locked keyring of EXTRACTABLE keypairs (ecdh P-256 wrap + Ed25519 sign), sealed PBKDF2-HMAC-SHA-256 -> AES-256-GCM into a portable blob. create/unlock/lock/reshuffle(+history)/changePasscode/setName/export/import/seedPhrase. Dual-capability: persists the sealed blob to OPFS when available (served), else session-only with manual import/export (file://). Keyring + private keys live module-scope, never a cel; only non-secret status cels (keystore.status/.name/.identity/.ecdhpub) reach the graph.",
+    "dependencies": [
+      "file-store"
+    ]
+  },
+  {
     "name": "supabase-auth",
     "version": "0.0.1",
     "description": "Supabase GoTrue auth provider on top of the session store. supabase.auth(state, op, project, payload): op=signin (password grant), op=otp/magiclink, op=refresh (rotate via stored refresh token), op=signout. Reads public config cels sb.<project>.url / sb.<project>.anonkey; on sign-in hands tokens to session.put (the JWT never becomes a cel value) and surfaces the non-secret sb.<project>.auth status cel. IO via gated fetch; no service_role key.",
