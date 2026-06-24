@@ -275,8 +275,6 @@
       "xlsx",
       "music",
       "formula-compiler",
-      "sqlite-client",
-      "sqlite-demo",
       "file-explorer",
       "windows",
       "defn",
@@ -347,25 +345,6 @@
     "version": "0.0.1",
     "description": "in-browser SQLite via @sqlite.org/sqlite-wasm over the opfs-sahpool VFS, in a Worker (persistent, incremental writes, no COOP/COEP — Pages-safe). sqlite.command (open/sql/seed/schema): seed bulk-loads a JSON array into a table; schema introspects tables/columns/PK/FK; every write bumps a sqlite.<db>.rev cel so SELECT formulas re-fire. Browser-only (the sahpool VFS needs a Worker); the engine ships as sidecar files next to index.html.",
     "dependencies": []
-  },
-  {
-    "name": "sqlite-client",
-    "version": "0.0.1",
-    "description": "a SQLite client WINDOW (=sqlclient(db)) — query editor + tables sidebar + result rows rendered as a grid and materialized into real sqlres.* cels. Authored as a native-fn panel inside a winframe, the windows/chat pattern.",
-    "dependencies": [
-      "sqlite",
-      "dom",
-      "windows"
-    ]
-  },
-  {
-    "name": "sqlite-demo",
-    "version": "0.0.1",
-    "description": "one verb =sqlitedemo() that lays down a worked SQLite example (db handle, CREATE-TABLE schema, JSON seed, get/aggregate queries) and opens the client window on it. Dormant at boot; runs only when called.",
-    "dependencies": [
-      "sqlite",
-      "sqlite-client"
-    ]
   },
   {
     "name": "windows",

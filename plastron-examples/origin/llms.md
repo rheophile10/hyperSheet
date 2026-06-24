@@ -137,13 +137,10 @@ DRAG & DROP — "a drop writes a cel" (reusable: boards, buckets, file moves, as
   move it by hand. drag.active remembers the grabbed cel between grab and drop.
 
 DATABASE (browser SQLite — persistent, runs in a Worker; the db NAME is the handle)
-  =sqlitedemo()                           one formula: makes a table, seeds it, opens the client
-  =sqlclient("mydb")                      a SQL client WINDOW — query editor, tables sidebar, results grid
   =sql("mydb", "create table t(a,b)")     run SQL on a db; writes persist. The first arg is the db name
   =sql("mydb", "select * from t")         …or a handle from =db(); SELECT returns rows
   =dbseed("mydb", rows, "t")              bulk-load a JSON array of row-objects (or a range) into table t
   =schema("mydb")   =tables("mydb")       introspect tables/columns/PK·FK   ·   list table names
-  Results from =sqlclient land in real `sqlres.*` cels you can chart or reference.
 
 FILES (OPFS, in-browser)
   =write("/a.txt","hi")  =cat("/a.txt")  =ls("/")  =mkdir("/d")  =upload("/")

@@ -58,8 +58,6 @@ import * as seal            from "./甲骨坑/library/seal/index.js";
 import * as session         from "./甲骨坑/library/session/index.js";
 import * as supabaseAuth     from "./甲骨坑/library/supabase-auth/index.js";
 import * as sqlite          from "./甲骨坑/library/sqlite/index.js";
-import * as sqliteClient    from "./甲骨坑/library/sqlite-client/index.js";
-import * as sqliteDemo      from "./甲骨坑/library/sqlite-demo/index.js";
 import * as docgraph        from "./甲骨坑/library/docgraph/index.js";
 import * as forcegraph      from "./甲骨坑/library/forcegraph/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
@@ -139,8 +137,6 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "session":          () => [...session.cels],
   "supabase-auth":    () => [...supabaseAuth.cels],
   "sqlite":           () => [...sqlite.cels],
-  "sqlite-client":    () => [...sqliteClient.cels],
-  "sqlite-demo":      () => [...sqliteDemo.cels],
   "docgraph":         () => [...docgraph.cels],
   "forcegraph":       () => [...forcegraph.cels],
 };
