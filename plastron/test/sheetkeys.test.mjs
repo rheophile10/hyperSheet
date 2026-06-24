@@ -69,3 +69,64 @@ test("hash of an empty/unknown segment is the empty-set digest, and '' for no se
   assert.equal(await H(s, ""), "", "no segment → empty string");
   assert.match(await H(s, "nope"), /^[0-9a-f]{64}$/, "unknown segment → digest of nothing (still 64-hex)");
 });
+
+// ── sealsheet / opensheet (envelope to the wallet keypair) ────────────────────
+process.env.PLASTRON_FILE_STORE_ROOT ??= "./.plastron-fs-sheetkeys";
+const bootCrypto = async () => {
+  const s = createInitialState();
+  await resolveFn(s, "ensureSegments")(s, ["sheetkeys", "keystore", "crypto", "file-store"]);
+  await resolveFn(s, "hydrate")(s, [], []);
+  await precomputeOptional(s);
+  await resolveFn(s, "runCycle")(s);
+  await resolveFn(s, "keystore.create")(s, "sealpass", "Owner");   // unlock an identity
+  return s;
+};
+
+test("sealsheet → opensheet round-trips a segment through ciphertext", async () => {
+  const s = await bootCrypto();
+  await put(s, "doc.A1", { celType: "ValueCel", v: 5 });
+  await put(s, "doc.A2", { celType: "FormulaCel", f: "=doc.A1*2", v: 10 });
+  const sealed = await resolveFn(s, "sheetkeys.sealsheet")(s, "doc");
+  assert.equal(sealed.ok, true, "sealed");
+  assert.ok(!/"v":\s*5|doc\.A1\*2/.test(sealed.blob), "the blob is ciphertext — no source leaks");
+  const blob = JSON.parse(sealed.blob);
+  assert.equal(blob.seg, "doc"); assert.match(blob.hash, /^[0-9a-f]{64}$/, "carries a source hash");
+  // clobber the live cels, then open the sealed blob → restores the sources
+  await put(s, "doc.A1", { celType: "ValueCel", v: 999 });
+  const opened = await resolveFn(s, "sheetkeys.opensheet")(s, sealed.blob);
+  assert.equal(opened.ok, true);
+  assert.equal(opened.seg, "doc");
+  assert.equal(s.cels.get("doc.A1")?.v, 5, "value source restored");
+  assert.equal(s.cels.get("doc.A2")?.celType, "FormulaCel", "formula source restored");
+});
+
+test("a tampered blob and a wrong-key blob fail cleanly", async () => {
+  const s = await bootCrypto();
+  await put(s, "t.A1", { celType: "ValueCel", v: 1 });
+  const { blob } = await resolveFn(s, "sheetkeys.sealsheet")(s, "t");
+  const tampered = blob.replace(/"cipher":"./, '"cipher":"X');
+  assert.equal((await resolveFn(s, "sheetkeys.opensheet")(s, tampered)).ok, false, "tamper rejected");
+  // a blob wrapped to a key we never held
+  const fake = JSON.stringify({ ...JSON.parse(blob), pub: "AAAA-unheld" });
+  assert.equal((await resolveFn(s, "sheetkeys.opensheet")(s, fake)).ok, false, "unheld key rejected");
+});
+
+test("a sheet sealed BEFORE a reshuffle still opens (history key)", async () => {
+  const s = await bootCrypto();
+  await put(s, "h.A1", { celType: "ValueCel", v: 42 });
+  const { blob } = await resolveFn(s, "sheetkeys.sealsheet")(s, "h");
+  await resolveFn(s, "keystore.reshuffle")(s);             // rotate the key
+  await put(s, "h.A1", { celType: "ValueCel", v: 0 });     // clobber
+  const opened = await resolveFn(s, "sheetkeys.opensheet")(s, blob);
+  assert.equal(opened.ok, true, "the retired key still opens it");
+  assert.equal(s.cels.get("h.A1")?.v, 42);
+});
+
+test("sealsheet/opensheet refuse when the wallet is locked", async () => {
+  const s = await bootCrypto();
+  await put(s, "L.A1", { celType: "ValueCel", v: 1 });
+  const { blob } = await resolveFn(s, "sheetkeys.sealsheet")(s, "L");
+  await resolveFn(s, "keystore.lock")(s);
+  assert.equal((await resolveFn(s, "sheetkeys.sealsheet")(s, "L")).ok, false, "seal refused when locked");
+  assert.equal((await resolveFn(s, "sheetkeys.opensheet")(s, blob)).ok, false, "open refused when locked");
+});

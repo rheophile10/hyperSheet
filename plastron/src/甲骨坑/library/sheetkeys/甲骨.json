@@ -4,7 +4,37 @@
     {
       "key": "sheetkeys.hash",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "sheetkeys.hash", "segment": "sheetkeys", "name": "sheetkeys.hash", "kind": "native", "description": "(state, seg, exclude?) -> hex SHA-256 of segment `seg`'s SOURCE cels (ValueCel value | FormulaCel formula-text), sorted by key, excluding `exclude` patterns (array or comma-string; trailing * = prefix). Derived FormulaCel values are inherently excluded (sources only). Deterministic across replicas. Used by =hash, sealsheet, and the change pipeline." },
+      "metadata": {
+        "key": "sheetkeys.hash",
+        "segment": "sheetkeys",
+        "name": "sheetkeys.hash",
+        "kind": "native",
+        "description": "(state, seg, exclude?) -> hex SHA-256 of segment `seg`'s SOURCE cels (ValueCel value | FormulaCel formula-text), sorted by key, excluding `exclude` patterns (array or comma-string; trailing * = prefix). Derived FormulaCel values are inherently excluded (sources only). Deterministic across replicas. Used by =hash, sealsheet, and the change pipeline."
+      },
+      "locked": true
+    },
+    {
+      "key": "sheetkeys.sealsheet",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sheetkeys.sealsheet",
+        "segment": "sheetkeys",
+        "name": "sheetkeys.sealsheet",
+        "kind": "native",
+        "description": "(state, seg, recipientPub?) -> {ok, blob}. Envelope-encrypt segment `seg`s SOURCE archive to a keypair (default = my ecdh key = self): datakey -> crypto.encrypt -> keystore.wrap. Returns a sealed blob string {v,seg,hash,by,pub,wrapped,cipher} - opaque ciphertext. Must be unlocked."
+      },
+      "locked": true
+    },
+    {
+      "key": "sheetkeys.opensheet",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sheetkeys.opensheet",
+        "segment": "sheetkeys",
+        "name": "sheetkeys.opensheet",
+        "kind": "native",
+        "description": "(state, blobString) -> {ok, seg, hash}. keystore.unwrap (tries current+history) -> crypto.decrypt -> restore the segment cels -> open as a gen-2 workbook (sheetdoc). A blob sealed to a key you do not hold fails cleanly. Must be unlocked."
+      },
       "locked": true
     }
   ]
