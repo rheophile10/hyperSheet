@@ -149,21 +149,14 @@ const materializeSheet = async (state: State, seg: string, cells: Record<string,
   const gd = resolveFn(state, "genesis.drain") as Fn | undefined;
   if (gd) await gd([{ cel: makerCel, state }], state);
 };
-// place a freshly-materialized sheet as a STANDALONE window (untabbed), staggered
-// via win.geom, then refresh the view + repaint so its cells render.
-type WGeom = { x?: number; y?: number; z?: number; min?: number; closed?: number; host?: string };
-const geomMap = (state: State): Record<string, WGeom> => { const v = state.cels.get("win.geom")?.v; return (v && typeof v === "object" && !Array.isArray(v)) ? { ...(v as Record<string, WGeom>) } : {}; };
-const nextZ = async (state: State): Promise<number> => {
-  const z = (Number(state.cels.get("win.topz")?.v) || 100) + 1;
-  if (state.cels.get("win.topz")) await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.topz", z));
-  else await Promise.resolve((resolveFn(state, "setCel") as Fn)(state, "win.topz", { celType: "ValueCel", v: z, metadata: { key: "win.topz", segment: "win" } }));
-  return z;
-};
+// place a freshly-materialized sheet as a gen-2 worksheet WINDOW. Delegates to
+// sheetapp's `sheetdoc` (win.<seg>.state/.content/.frame self-mounting via wframe)
+// — the gen-1 win.geom/sheetView placement this used to do is gone. Resolved at
+// runtime (sheet-io is a library; the host app provides sheetdoc) with a repaint
+// fallback if it's absent.
 const placeStandalone = async (state: State, seg: string): Promise<void> => {
-  const m = geomMap(state);
-  const i = Object.keys(m).length;
-  m[seg] = { ...(m[seg] ?? {}), host: undefined, x: 60 + (i % 6) * 34, y: 60 + (i % 6) * 34, z: await nextZ(state), min: 0, closed: 0 };
-  await Promise.resolve((resolveFn(state, "setValue") as Fn)(state, "win.geom", m));
+  const sheetdoc = resolveFn(state, "sheetdoc") as Fn | undefined;
+  if (typeof sheetdoc === "function") { await sheetdoc(state, seg, seg); return; }
   if (state.cels.get("view.refresh")) await Promise.resolve((resolveFn(state, "view.refresh") as Fn)(state));
   await wrepaint(state);
 };

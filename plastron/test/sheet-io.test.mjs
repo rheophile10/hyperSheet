@@ -110,7 +110,9 @@ const seedSheet = async (state, seg, cells) => {
   await resolveFn(state, "runCycle")(state);
 };
 
-const sheetSegs = (state) => Object.keys(state.cels.get("win.geom")?.v ?? {}).filter((k) => k.startsWith("sheet"));
+// gen-2: an opened sheet is a self-mounting window cel win.<seg>.state (the gen-1
+// win.geom placement map is gone — openAsSheet now delegates to sheetapp.sheetdoc).
+const sheetSegs = (state) => [...state.cels.keys()].filter((k) => /^win\.sheet\d+\.state$/.test(k)).map((k) => k.slice(4).replace(/\.state$/, ""));
 
 test("saveSheet(csv) -> openAsSheet round-trips a small sheet's VALUES", async () => {
   const { state, m } = await boot();
@@ -128,7 +130,7 @@ test("saveSheet(csv) -> openAsSheet round-trips a small sheet's VALUES", async (
   assert.equal(state.cels.get(`${seg}.B2`)?.v, 42, "numeric value parsed back as a number");
   assert.equal(state.cels.get(`${seg}.A3`)?.v, "with,comma", "quoted comma field round-trips");
   assert.equal(state.cels.get(`${seg}.B3`)?.v, 'q"q', "embedded quote round-trips");
-  assert.equal(state.cels.get("win.geom").v[seg]?.host, undefined, "opened as a standalone window");
+  assert.ok(state.cels.get(`win.${seg}.state`), "opened as a gen-2 standalone window");
 });
 
 test("saveSheet(甲) -> openAsSheet round-trips CELS + FORMULAS (the rich format)", async () => {
@@ -177,7 +179,7 @@ test("explorer.openSheet: an OPFS .csv opens as a new sheet window THROUGH sheet
   assert.ok(seg, "double-clicking the .csv opened a new sheet window");
   assert.equal(state.cels.get(`${seg}.A1`)?.v, "x", "the CSV's first cell loaded");
   assert.equal(state.cels.get(`${seg}.B3`)?.v, 4, "a numeric cell loaded as a number");
-  assert.equal(state.cels.get("win.geom").v[seg]?.host, undefined, "opened as a standalone window");
+  assert.ok(state.cels.get(`win.${seg}.state`), "opened as a gen-2 standalone window");
 });
 
 test("explorer.openSheet: a non-sheet .txt falls back to preview (no new sheet window)", async () => {
