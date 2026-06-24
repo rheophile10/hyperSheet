@@ -27,7 +27,6 @@ import * as formulaCompiler from "./甲骨坑/library/formula-compiler/index.js"
 import * as fileStore       from "./甲骨坑/library/file-store/index.js";
 import * as htmlTemplate    from "./甲骨坑/library/html-template-parser/index.js";
 import * as plastronDom     from "./甲骨坑/library/dom/index.js";
-import * as sheetHost       from "./甲骨坑/library/sheet-host/index.js";
 import * as sheets          from "./甲骨坑/library/sheets/index.js";
 import * as winapps         from "./甲骨坑/library/winapps/index.js";
 import * as windows         from "./甲骨坑/library/windows/index.js";
@@ -107,7 +106,6 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "file-store":       () => [...fileStore.cels],
   "html-template-parser": () => [...htmlTemplate.cels],
   "dom":     () => [...plastronDom.cels],
-  "sheet-host":       () => [...sheetHost.cels],
   "sheets":           () => [...sheets.cels],
   "winapps":          () => [...winapps.cels],
   "windows":          () => [...windows.cels],

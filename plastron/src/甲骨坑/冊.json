@@ -271,7 +271,6 @@
       "charts",
       "checkpoint",
       "sqlite",
-      "sheet-host",
       "docgraph",
       "xlsx",
       "music",
@@ -366,14 +365,6 @@
     "dependencies": [
       "sqlite",
       "sqlite-client"
-    ]
-  },
-  {
-    "name": "sheet-host",
-    "version": "0.0.1",
-    "description": "the spreadsheet view loop (sheetView renderer + mount) as a reusable capability, parameterized over a host view config",
-    "dependencies": [
-      "dom"
     ]
   },
   {

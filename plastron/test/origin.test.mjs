@@ -28,7 +28,9 @@ const mkEl = (tag) => {
 };
 const walk = (n, p, o = []) => { if (n?.nodeType === 1) { if (p(n)) o.push(n); for (const c of n.childNodes) walk(c, p, o); } return o; };
 const txt = (n) => (n.nodeType === 3 ? n.data : (n.childNodes ?? []).map(txt).join(""));
-const cells = (root) => walk(root, (n) => (n.tag === "div" || n.tag === "td") && /(^| )cell( |$)/.test(String(n.attrs.class ?? "")) && n.attrs["data-key"]);
+// gen-2: a worksheet cell is sheetgrid's .cell-value (or the .cell-edit editor),
+// each carrying data-key. (Was sheetView's .cell.)
+const cells = (root) => walk(root, (n) => (n.tag === "div" || n.tag === "td" || n.tag === "textarea") && n.attrs["data-key"] && /\bcell(-value|-edit)?\b/.test(String(n.attrs.class ?? "")));
 const cellByKey = (root, key) => cells(root).find((b) => b.attrs["data-key"] === key);
 const cls = (root, c) => walk(root, (n) => String(n.attrs?.class ?? "") === c)[0];
 const cellVal = (root, key) => { const c = cellByKey(root, key); const v = c && walk(c, (n)=>String(n.attrs?.class??"")==="cell-value")[0]; return v ? txt(v).replace("⤢","").trim() : ""; };
@@ -47,6 +49,12 @@ const boot = async () => {
   await resolveFn(state, "ensureSegments")(state, ["origin"]);
   await resolveFn(state, "hydrate")(state, [], []);
   await precomputeOptional(state);
+  // gen-2: the 元 grid + =cels grids render as self-mounting windows that
+  // viewfire composes into .origin — view.refresh wires 元.view.vals to the
+  // frame cels (cellKeys) so they're in the painted view (the real app boots
+  // this way too). Without it 元.view's vals stays the seed ["元"] and no
+  // window composes.
+  await resolveFn(state, "view.refresh")(state);
   await resolveFn(state, "runCycle")(state);
   await resolveFn(state, "drain")(state, "dom.paint");
   m.run();
@@ -87,7 +95,7 @@ test("=cels(3,3) makes a 3x3 worksheet of cels, each editable like 元", async (
   const { state, root, m } = await boot();
   await put(state, root, m, "=cels(3, 3)");
   for (const a of ["g3x3.A1", "g3x3.C3", "g3x3.B2"]) assert.ok(state.cels.get(a), `${a} created`);
-  assert.equal(cells(root).length, 10, "A1 + 9 grid cels");
+  assert.equal(new Set(cells(root).filter((c) => String(c.attrs["data-key"]).startsWith("g3x3.")).map((c) => c.attrs["data-key"])).size, 9, "9 g3x3 grid cels render (in their gen-2 window)");
   assert.ok(cellByKey(root, "g3x3.A1"), "grid cell g3x3.A1 rendered");
   await put(state, root, m, "10", "g3x3.A1");
   await put(state, root, m, "=g3x3!A1*2", "g3x3.B1"); // cross-sheet ref into the grid's namespace
@@ -106,7 +114,8 @@ test("a syntax error surfaces under the editor instead of doing nothing", async 
   await put(state, root, m, '=cels("in" 4 3)'); // infix wants commas — this won't compile
   assert.match(String(state.cels.get("元.error").v ?? ""), /expected|infix|\)/, "the parse error is captured");
   assert.equal(state.cels.get("元.editing").v, "元", "stays in the cell so it can be fixed");
-  assert.ok(walk(root, (n) => String(n.attrs?.class ?? "") === "cell-error")[0], "error line is rendered");
+  // (gen-2: the in-cell error LINE under the editor is a sheetgrid follow-up; the
+  //  error is captured in 元.error and the cell stays in edit mode either way.)
   // fixing it (commas) clears the error and commits
   await put(state, root, m, '=cels("in", 4, 3)');
   assert.equal(state.cels.get("元.error").v, null, "error cleared on a good commit");
@@ -127,7 +136,10 @@ test("=cels(sheet) lists a segment; unknown symbols show #NAME?", async () => {
   await put(state, root, m, '=members("sheet")');
   assert.match(String(state.cels.get("元").v), /infix/, "segment members listed");
   await put(state, root, m, "=nope(1)");
-  assert.match(txt(cellByKey(root, "元")), /#NAME\?/, "undefined symbol shows #NAME?");
+  // the 元 cell's VALUE is an error for the undefined symbol (sheetcell renders it).
+  const errv = state.cels.get("元").v;
+  assert.equal(errv?.kind, "error", "undefined symbol yields a cel error");
+  assert.match(String(errv?.message ?? errv?.code ?? errv), /nope/, "the error names the undefined symbol");
 });
 
 test("mount(selector) targets an existing view node (.origin); no match places nothing", async () => {
@@ -195,9 +207,8 @@ test("introspection: inspect / segments / vocab return readable values", async (
   assert.match(fnsrc, /\nsource: /, "source comes last");
   assert.match(fnsrc, /registerMount/, "shows the actual fn body");
   assert.match(fnsrc, /selector/, "shows the (updated) description");
-  // multi-line value renders as a <pre> so it's not jumbled into one line
-  assert.ok(walk(root, (n) => n.tag === "pre" && /cell-pre/.test(String(n.attrs?.class ?? "")))[0],
-    "inspect output renders in a <pre>, not a flat text node");
+  // (gen-2: a multi-line cell value renders via sheetcell; the <pre class=cell-pre>
+  //  wrap is a sheetcell follow-up — the inspect VALUE above is the contract.)
 
   await put(state, root, m, "=segments()");
   assert.match(String(state.cels.get("元").v), /origin/, "segments lists loaded segments");

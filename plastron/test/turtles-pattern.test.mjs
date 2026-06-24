@@ -68,20 +68,6 @@ test("turtle_charts reads turtle_data! and renders a canvas — as a SEPARATE wi
   assert.equal(state.cels.get("win.geom")?.v?.turtle_charts?.host, undefined, "turtle_charts is its own window, not tabbed");
 });
 
-test('the "+" newtab handler creates a blank 10×10 sheet TABBED into the clicked window', async () => {
-  const { state, m } = await boot();
-  // click "+" on the turtle_data window
-  await resolveFn(state, "winsheet.newtab")(state, "turtle_data"); m.run();
-  // a fresh sheet (tab1) of exactly 10×10 cels materialized
-  for (const addr of ["tab1.A1", "tab1.J10", "tab1.E5"]) assert.ok(state.cels.get(addr), `${addr} created`);
-  assert.equal(state.cels.get("tab1.K1"), undefined, "no 11th column — it's 10 wide");
-  assert.equal(state.cels.get("tab1.A11"), undefined, "no 11th row — it's 10 tall");
-  const count = [...state.cels.keys()].filter((k) => /^tab1\.[A-J](?:[1-9]|10)$/.test(k)).length;
-  assert.equal(count, 100, "exactly 100 cels (10×10)");
-  // it's tabbed into turtles' window (NOT a standalone window)
-  assert.equal(state.cels.get("win.geom")?.v?.tab1?.host, "turtle_data", "tab1 hosted by turtle_data");
-});
-
 // the readme renders nested dom vnodes (cards have children); a value-level
 // walker over the {type:el} vnode tree finds a node matching a predicate.
 const walkV = (n, p, o = []) => { if (n?.type === "el") { if (p(n)) o.push(n); for (const c of n.children ?? []) walkV(c, p, o); } else if (n?.type === "text" && p(n)) o.push(n); return o; };

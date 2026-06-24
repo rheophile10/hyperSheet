@@ -129,24 +129,69 @@
           "dom.paint"
         ],
         "inputMap": {
-          "editing": "元.editing",
-          "draft": "元.draft",
-          "mount": "元.mount",
-          "error": "元.error",
-          "keys": "元.cells",
           "vals": [
             "元"
-          ],
-          "srcs": "元.srcs",
-          "config": "元.viewConfig",
-          "geom": "win.geom",
-          "selected": "元.selected",
-          "tabdrag": "winsheet.tabdrag",
-          "vpmobile": "viewport.mobile"
+          ]
         },
-        "description": "the spreadsheet view. UNLOCKED — renders each cel as an editable cell; rework in place. Reads winsheet.tabdrag so the chip being dragged highlights in the drop-target blue."
+        "description": "the FRAME-FIRER (gen-2). Its inputMap.vals lists every whitelisted self-mounting frame cel (cellKeys); referencing vals makes them all deps so they fire + paint. Renders nothing itself — 元, =cels grids, docs, the wiki and the desktop chrome each self-mount their own win.<id>.frame. (Was the gen-1 sheetView render loop.)"
       },
-      "f": "(sheetView 元.viewConfig editing draft mount error keys vals srcs geom selected tabdrag vpmobile)"
+      "f": "(viewfire vals)"
+    },
+    {
+      "key": "元.content",
+      "celType": "FormulaCel",
+      "metadata": {
+        "key": "元.content",
+        "segment": "win.元",
+        "name": "content",
+        "parser": "f",
+        "description": "the 元 base sheet as a gen-2 worksheet body: a single-cell editable sheetgrid whose A1 is the bare 元 cel (the readme). Edit A1 to grow an app; =cels makes more worksheet windows."
+      },
+      "f": "(sheetgrid \"元\" (sheetcells \"元\" 元) (gridopts sheet.editing sheet.selected))"
+    },
+    {
+      "key": "win.元.state",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "win.元.state",
+        "segment": "win.元",
+        "name": "state",
+        "description": "the 元 window state (gen-2). Hidden at boot when the desktop hydrates (origin-main sets closed:1); the 🧮 Origin launcher raises it."
+      },
+      "v": {
+        "ref": "win.元.state",
+        "x": 140,
+        "y": 88,
+        "w": 600,
+        "h": 440,
+        "z": 1,
+        "min": 0,
+        "max": 0,
+        "closed": 0,
+        "title": "🧮 origin",
+        "tabs": [
+          {
+            "ref": "元.content",
+            "title": "元"
+          }
+        ],
+        "active": 0
+      }
+    },
+    {
+      "key": "win.元.frame",
+      "celType": "FormulaCel",
+      "metadata": {
+        "key": "win.元.frame",
+        "segment": "win.元",
+        "name": "frame",
+        "parser": "f",
+        "channel": [
+          "dom.paint"
+        ],
+        "description": "the 元 window's self-mounting gen-2 frame (replaces the sheetView render of 元 + win.geom)."
+      },
+      "f": "(mount \".origin\" (wframe win.元.state win.active 元.content))"
     },
     {
       "key": "cels",
@@ -1442,6 +1487,18 @@
         "name": "mount",
         "kind": "native",
         "description": "(target content) - pin a dom under another element of the sheet instead of in the cell that holds it. target is a selector matched against the view: \".sheet\" pins under the cells, \"div.cell\" under the first cell, \"#id\" by id; a bare word (\"top\"/\"bottom\") is a region anchor laid out around the sheet. Deleting the formula removes it."
+      }
+    },
+    {
+      "key": "viewfire",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "viewfire",
+        "segment": "origin",
+        "name": "viewfire",
+        "kind": "native",
+        "description": "(vals) - the gen-2 desktop compositor behind 元.view (replaces sheetView): vals is the cell values of every whitelisted self-mounting frame (cellKeys); look each up in the mount registry and splice the windows into the positioned .origin desktop, mounted at #app. Renders nothing of its own."
       }
     },
     {

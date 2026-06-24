@@ -63,9 +63,8 @@ if (shared) {
   // (apps not baked — a raw `bun index.html` without `bun bundle.ts`), leave 元
   // visible so the page isn't blank.
   if (state.cels.get("desktop.iconbar.frame")) {
-    const geom = (state.cels.get("win.geom")?.v ?? {}) as Record<string, { closed?: number }>;
-    await (resolve(state, "setValue"))(state, "win.geom",
-      { ...geom, ["元"]: { ...(geom["元"] ?? {}), closed: 1 } });
+    const cur = (state.cels.get("win.元.state")?.v ?? {}) as Record<string, unknown>;
+    await (resolve(state, "setValue"))(state, "win.元.state", { ...cur, closed: 1 });
     await (resolve(state, "runCycle"))(state);
   }
   // readme/keyboard/turtles are now sheetapp origin-user DOCUMENTS (installed to the

@@ -14,7 +14,7 @@ import {
 // `memo` attaches the diff's O(changed) short-circuit hint (see dom).
 import { el as makeEl, text as T } from "../../library/dom/index.js";
 import { frames as canvasFrames } from "../../library/plastron-canvas/index.js";
-import { registerMount } from "../../library/dom/utils/mounts.js";
+import { registerMount, lookupMount } from "../../library/dom/utils/mounts.js";
 import { BUILTIN_DOCS } from "../../library/sheet/utils/infix.js";
 import { encodeLink, decodeLink, encodeEncLink, decodeEncLink, ENC_METHOD,
   encryptPayload, decryptPayload,
@@ -55,6 +55,50 @@ const isVnode = (v: unknown): v is V =>
 // doesn't collide with user cels named "mount" in other hosts.
 const mount: Fn = (target: unknown, content: unknown): unknown =>
   registerMount(String(target ?? ".origin"), isVnode(content) ? content : T(content));
+
+// viewfire(vals) — the gen-2 desktop compositor that REPLACES sheetView in 元.view.
+// Self-mounting windows (元, =cels grids, docs, wiki, the desktop chrome) each call
+// `(mount ".origin" …)`, which registers a PLACEMENT and makes the frame cel's value
+// a mount handle. 元.view's inputMap.vals lists every whitelisted frame cel (cellKeys),
+// so this fn receives all those handles, looks each up, and splices the windows into
+// the positioned `.origin` desktop — the SAME placement composition sheetView did,
+// minus the grid (each worksheet is now its own self-mounting gen-2 window).
+// parseSel/findNode — splice each placement into the FIRST view node matching its
+// target selector (".origin", a previously-mounted ".readme"/".m-…", "div.cell", …),
+// so a cel can mount INSIDE another cel's handle. (Reimplemented from sheetView.)
+interface Sel { id?: string; tag?: string; class?: string }
+const parseSel = (sel: string): Sel | null => {
+  const s = sel.trim(); if (!s) return null;
+  if (s.startsWith("#")) return { id: s.slice(1) };
+  const m = s.match(/^([a-zA-Z][\w-]*)?\.([\w-]+)/);
+  if (m) return { tag: m[1] || undefined, class: m[2] };
+  if (/^[a-zA-Z][\w-]*$/.test(s)) return { tag: s };
+  return null;
+};
+const matchSel = (n: V, p: Sel): boolean => {
+  if (!n || n.type !== "el") return false;
+  if (p.id) return (n.attrs as { id?: unknown })?.id === p.id;
+  const cls = String((n.attrs as { class?: unknown })?.class ?? "").split(/\s+/);
+  if (p.class && !cls.includes(p.class)) return false;
+  if (p.tag && n.tag !== p.tag) return false;
+  return !!(p.class || p.tag);
+};
+const findNode = (root: V, p: Sel): V | null => {
+  if (matchSel(root, p)) return root;
+  for (const c of (root.children ?? [])) { const f = findNode(c as V, p); if (f) return f; }
+  return null;
+};
+const viewfire: Fn = ((valsArg?: unknown): unknown => {
+  const vals = Array.isArray(valsArg) ? valsArg : (valsArg === undefined ? [] : [valsArg]);
+  const originNode = el("div", { class: "origin", style: "position:relative;min-height:90vh;width:100%;padding-bottom:1rem" }, []);
+  for (const v of vals) {
+    const pl = lookupMount(v); if (!pl) continue;
+    const p = parseSel(pl.target); if (!p) continue;
+    const tgt = findNode(originNode, p);
+    if (tgt) ((tgt.children ??= []) as V[]).push(pl.vnode as V);
+  }
+  return { vnode: originNode, mount: "#app", listeners: [] };
+}) as Fn;
 
 // loose-typed adapter over the LIBRARY builder — origin's call sites pass plain
 // records; the painter stringifies, so the cast is safe.
@@ -187,30 +231,59 @@ const collectValues = (args: unknown[], i: number): [Record<string, unknown> | u
  *    cels("in", 4, 3, at("a1","apple"), at("b2","=1+1"))  → a sheet
  *      with initial cell contents (a value, or a formula like =1+1).
  *  Delete the formula → swept. */
+// ── gen-2 worksheet windows (replaces the sheetView/win.geom render loop) ─────
+const capR = (v: unknown): number => Math.max(1, Math.min(100, Math.floor(Number(v) || 1)));
+const capC = (v: unknown): number => Math.max(1, Math.min(50, Math.floor(Number(v) || 1)));
+const colLetterOf = (n: number): string => { let s = "", x = n + 1; while (x > 0) { s = String.fromCharCode(65 + (x - 1) % 26) + s; x = Math.floor((x - 1) / 26); } return s; };
+// the editable sheetgrid content formula for grid segment `seg` of r×c cells.
+const gridContentF = (seg: string, r: number, c: number): string => {
+  const refs: string[] = [];
+  for (let row = 0; row < r; row++) for (let col = 0; col < c; col++) { const a = `${colLetterOf(col)}${row + 1}`; refs.push(`'${seg}.${a}', ${seg}.${a}`); }
+  return `=sheetgrid('${seg}', sheetcells(${refs.join(", ")}), gridopts(sheet.editing, sheet.selected))`;
+};
+// a SELF-MOUNTING gen-2 workbook window over one or more grids (each a sheet tab).
+// Replaces the win.geom geometry a grid used to declare for sheetView.
+const gridWindowCels = (grids: { name: string; r: number; c: number }[], geom: WGeom | undefined, idx: number): Record<string, unknown> => {
+  const winName = grids[0]!.name; const lay = `win.${winName}`; const sref = `${lay}.state`;
+  const cels: Record<string, unknown> = {};
+  const sheets: { ref: string; title: string }[] = [];
+  for (const g of grids) {
+    const cref = `${lay}.view.${g.name}`;
+    cels[cref] = { celType: "FormulaCel", f: gridContentF(g.name, g.r, g.c), metadata: { name: `view.${g.name}`, parser: "infix", segment: lay } };
+    sheets.push({ ref: cref, title: g.name });
+  }
+  const off = idx * 30;
+  const x = geom?.x ?? 150 + off, y = geom?.y ?? 90 + off, w = geom?.w ?? 600, h = geom?.h ?? 420;
+  cels[sref] = { celType: "ValueCel", v: { ref: sref, x, y, w, h, z: 1, min: 0, max: 0, closed: 0, title: winName, sheets, asheet: 0, views: [], aview: 0, split: 0.58, full: "" }, metadata: { name: "state", segment: lay } };
+  cels[`${lay}.frame`] = { celType: "FormulaCel", f: `(mount ".origin" (wbframe ${sref} win.active ${sheets.map((s) => s.ref).join(" ")}))`, metadata: { name: "frame", parser: "f", segment: lay } };
+  return cels;
+};
+
 const celsGen: Fn = (...args: unknown[]): unknown => {
   if (typeof args[0] === "string") {
     // workbook: (name, rows, cols [, at()…])+ — at() markers belong to the
-    // preceding grid; the next string starts the next grid. A workbook's sheets
-    // all land in the generator's own segment (one closure), so they share memory.
+    // preceding grid; the next string starts the next grid. All grids tab into
+    // ONE gen-2 workbook window (sheets share its frame).
     const cels: Record<string, unknown> = {};
-    const geoms: Record<string, WGeom> = {};
+    const grids: { name: string; r: number; c: number }[] = [];
     let i = 0, n = 0;
     while (i < args.length && typeof args[i] === "string") {
       const nm = String(args[i]).trim() || `s${++n}`;
-      const [values, geom, ni] = collectValues(args, i + 3);
+      const [values, , ni] = collectValues(args, i + 3);
       Object.assign(cels, gridShape(args[i + 1], args[i + 2], nm, values).cels);
-      if (geom) geoms[nm] = geom;
+      grids.push({ name: nm, r: capR(args[i + 1]), c: capC(args[i + 2]) });
       i = ni;
     }
-    return { genesis: true, cels, ...(Object.keys(geoms).length ? { geoms } : {}) };
+    Object.assign(cels, gridWindowCels(grids, undefined, 0));
+    return { genesis: true, kind: "workbook", cels };
   }
   // numbers → one sheet: (rows, cols [, name] [, geom()] [, at()…]).
   const [rows, cols] = args;
   const named = typeof args[2] === "string" && args[2] !== "";
-  const name = named ? String(args[2])
-    : `g${Math.max(1, Math.min(100, Math.floor(Number(rows) || 1)))}x${Math.max(1, Math.min(50, Math.floor(Number(cols) || 1)))}`;
+  const name = named ? String(args[2]) : `g${capR(rows)}x${capC(cols)}`;
   const [values, geom] = collectValues(args, named ? 3 : 2);
-  return { genesis: true, kind: "workbook", ...gridShape(rows, cols, name, values), ...(geom ? { geoms: { [name]: geom } } : {}) };
+  const gs = gridShape(rows, cols, name, values);
+  return { genesis: true, kind: "workbook", layer: gs.layer, cels: { ...gs.cels, ...gridWindowCels([{ name, r: capR(rows), c: capC(cols) }], geom, 0) } };
 };
 
 /** doc(…parts) — compose an ENTIRE document from cels()/def() parts into
@@ -291,7 +364,7 @@ const cellKeys = (state: State): string[] => {
     // are the origin-application shell's self-mounting chrome frames (wallpaper,
     // icons, taskbar, state-graph button) — hydrated from the baked archive, so
     // loadArchive strips their generatedBy; whitelist them so they paint.
-    if (md.generatedBy || /^(?:win|wasm|desktop)\.[\w-]+\.(state|content|frame)$/.test(k)) out.push(k);
+    if (md.generatedBy || /^(?:win|wasm|desktop)\.[^.]+\.(state|content|frame)$/.test(k)) out.push(k);
   }
   return [out[0]!, ...out.slice(1).sort()];
 };
@@ -315,8 +388,6 @@ const rewireView = async (state: State, keys: string[]): Promise<void> => {
 // (#17 render half — the abandoned vaultKeys worksheet, future windows).
 const viewRefreshFn: Fn = (async (state: State): Promise<void> => {
   await rewireView(state, cellKeys(state));
-  const sync = resolveFn(state, "winsheet.syncBundles") as Fn | undefined;
-  if (sync) await sync(state);   // seeded tabs share memory (turtlecharts ← turtles)
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
 }) as Fn;
 
@@ -534,11 +605,6 @@ const commit: Fn = async (state: State, payload?: unknown, source?: unknown) => 
   await applyDeclaredGeom(state, key as string);
   // …rebuild the cell list (new grids in, swept cels out), re-fire, paint.
   await rewireView(state, cellKeys(state));
-  // a SEEDED tab (win.geom[seg].host) must grant shared memory like a runtime
-  // drop — bundle each host clique so a tabbed private sheet reads its host
-  // (turtlecharts reads turtles!). Idempotent; safe to call every commit.
-  const sync = resolveFn(state, "winsheet.syncBundles") as Fn | undefined;
-  if (sync) await sync(state);
   await (resolveFn(state, "runCycle") as Fn)(state);
   await drain(state, "dom.paint");
   return state;
@@ -1069,6 +1135,16 @@ const navFn: Fn = ((...args: unknown[]): VNode => {
   // desktop: floating app icons down the left edge (no panel chrome).
   return makeEl("div", { class: "pl-nav pl-nav-desktop", style: "position:fixed;left:.5rem;top:.6rem;z-index:40;display:flex;flex-direction:column;gap:.35rem" }, items.map(navIcon));
 }) as Fn;
+// restoreWindow(sref) — un-hide a gen-2 window (clear closed/min) + raise + repaint.
+// Replaces the gen-1 winsheet.restore/raise (which operated on the win.geom map).
+const restoreWindow = async (state: State, sref: string): Promise<void> => {
+  const cur = state.cels.get(sref)?.v;
+  if (!cur || typeof cur !== "object") return;
+  await (resolveFn(state, "setValue") as Fn)(state, sref, { ...(cur as Record<string, unknown>), closed: 0, min: 0 });
+  await (resolveFn(state, "window.raise") as Fn)(state, sref);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+};
+
 /** origin.navOpen — a nav leaf was clicked. A "=formula" spawns a new window
  *  (trusted preset, capped by the kernel); anything else is a window key → focus it. */
 const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> => {
@@ -1080,7 +1156,7 @@ const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> =
     // LRU/pin layer — a follow-up.)
     const seg = action.slice(4);
     if (isSegmentPending(state, seg)) await (resolveFn(state, "wake") as Fn)(state, seg);
-    try { await (resolveFn(state, "winsheet.raise") as Fn)(state, `${seg}.state`); } catch { /* not a windowed segment */ }
+    await restoreWindow(state, `win.${seg}.state`);   // gen-2: un-hide + raise its window
   } else if (action.startsWith("app:")) {
     // an ORIGIN-APPLICATION launcher: hydrate the app's segment from the store
     // (idempotent) and run its entry cel. "load the segment, then open it".
@@ -1140,9 +1216,9 @@ const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> =
     await runCycle(state);
     await drain(state, "dom.paint");
   } else {
-    // a window KEY (e.g. "元") — restore it (clears closed/min + raises + repaints),
+    // a window KEY (e.g. "元") — restore its gen-2 window (clear closed/min + raise),
     // so a launcher reopens a window the desktop boots hidden.
-    await (resolveFn(state, "winsheet.restore") as Fn)(state, action);
+    await restoreWindow(state, `win.${action}.state`);
   }
   return state;
 }) as Fn;
@@ -2234,6 +2310,7 @@ export const name = "origin" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["view.refresh",   viewRefreshFn],
   ["mount",          mount],
+  ["viewfire",       viewfire],
   ["origin.run",  commit],
   ["origin.edit",    edit],
   ["origin.select",  select],
