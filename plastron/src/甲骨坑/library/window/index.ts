@@ -398,6 +398,34 @@ const wbopen: Fn = ((id: unknown, title: unknown, sheetTabsArg: unknown, viewTab
   } };
 }) as Fn;
 
+// rebuild a workbook's self-mounting frame formula after its sheet/view stacks
+// change (so it references every content cell — same price as wframe's rebuildFrame).
+const rebuildWbFrame = async (s: State, ref: string): Promise<void> => {
+  const st = wbStateOf(s, ref); const fk = `${segOf(ref)}.frame`;
+  const f = wbFrameFormula(ref, st.sheets ?? [], st.views ?? []);
+  if (s.cels.get(fk)) await Promise.resolve((resolveFn(s, "setValue") as Fn)(s, fk, f));
+  else await Promise.resolve((resolveFn(s, "setCel") as Fn)(s, fk, { celType: "FormulaCel", f, metadata: { key: fk, segment: segOf(ref), name: "frame", parser: "f" } }));
+};
+// window.addView / window.addSheet — push a NEW tab onto a workbook's view (dom)
+// or sheet stack: { ref:<win.<id>.state>, viewRef:<contentCelKey>, title?, f?:<formula> }.
+// If `f` is given, the content cel is authored (a FormulaCel) first — so a formula
+// can OPEN a fresh dom window in the stack. The new tab is selected + the frame
+// rebuilt to reference its content cell (reactivity).
+const addPane = (paneKey: "views" | "sheets", activeKey: "aview" | "asheet"): Fn => (async (s: State, payload: unknown): Promise<void> => {
+  const p = (payload ?? {}) as { ref?: string; viewRef?: string; title?: string; icon?: string; f?: string };
+  if (!p.ref || !p.viewRef) return;
+  if (typeof p.f === "string") {
+    if (s.cels.get(p.viewRef)) await Promise.resolve((resolveFn(s, "setValue") as Fn)(s, p.viewRef, p.f));
+    else await Promise.resolve((resolveFn(s, "setCel") as Fn)(s, p.viewRef, { celType: "FormulaCel", f: p.f, metadata: { key: p.viewRef, segment: p.viewRef.split(".")[0], name: p.viewRef.split(".").slice(1).join("."), parser: "infix" } }));
+  }
+  const st = wbStateOf(s, p.ref);
+  const list = [...((st[paneKey] as Tab[] | undefined) ?? []), { ref: p.viewRef, title: p.title ?? p.viewRef, ...(p.icon ? { icon: p.icon } : {}) }];
+  await setState(s, p.ref, { [paneKey]: list, [activeKey]: list.length - 1 } as WinState);
+  await rebuildWbFrame(s, p.ref);
+}) as Fn;
+const addView = addPane("views", "aview");
+const addSheet = addPane("sheets", "asheet");
+
 export const name = "window" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["wframe", wframeFn], ["wopen", wopen], ["wbframe", wbframeFn], ["wbopen", wbopen],
@@ -405,4 +433,5 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["window.raise", raise], ["window.min", minimize], ["window.max", maximize], ["window.close", close], ["window.stop", stop],
   ["window.tab", tabSelect], ["window.tabClose", tabClose], ["window.dock", dock], ["window.reorder", reorder], ["window.undock", undock], ["window.tabGrab", tabGrab],
   ["window.sheetTab", sheetTab], ["window.viewTab", viewTab], ["window.paneFull", paneFull], ["window.splitGrab", splitGrab], ["window.splitMove", splitMove],
+  ["window.addView", addView], ["window.addSheet", addSheet],
 ]));

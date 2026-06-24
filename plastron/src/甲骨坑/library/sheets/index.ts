@@ -70,7 +70,7 @@ const sheetgrid: Fn = ((label: unknown, cells: unknown, opts?: unknown): V => {
     if (active === key) return editor(key, value);
     const shown = displayCell(value);
     const inner = shown.type === "text" ? el("span", { class: "cell-val-text" }, [shown]) : shown;
-    return el("div", { class: "cell-value", title: "click to select; double-click to edit", style: SX.cellValue }, [inner],
+    return el("div", { class: "cell-value", "data-key": key, title: "click to select; double-click to edit", style: SX.cellValue }, [inner],
       { click: { dispatch: SEL, payload: key }, dblclick: { dispatch: EDIT, payload: key } });
   };
 
@@ -89,8 +89,18 @@ const sheetgrid: Fn = ((label: unknown, cells: unknown, opts?: unknown): V => {
   return el("div", { class: "grid-scroll", style: SX.scroll }, [el("table", { class: "grid", style: SX.table }, [el("thead", {}, [head]), el("tbody", {}, rows)])]);
 }) as Fn;
 
+// gridopts(active, selected) — build the sheetgrid opts object from the editing /
+// selected cell-key cels (e.g. 元.editing / 元.selected) so a worksheet is EDITABLE
+// in a workbook tab: the active cell shows the inline editor, a click selects.
+// Handlers (edit/select/fire/commit) + the draft cel default to origin.* / 元.draft
+// inside sheetgrid; referencing the editing cels in the grid formula makes it
+// re-render reactively as the active/selected cell changes.
+const gridopts: Fn = ((active?: unknown, selected?: unknown): unknown =>
+  ({ active: typeof active === "string" ? active : null, selected: typeof selected === "string" ? selected : null })) as Fn;
+
 export const name = "sheets" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["sheetcell", sheetcell],
   ["sheetgrid", sheetgrid],
+  ["gridopts", gridopts],
 ]));

@@ -36,6 +36,28 @@
       "v": null
     },
     {
+      "key": "sheet.editing",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "sheet.editing",
+        "segment": "origin",
+        "name": "sheet.editing",
+        "description": "ASCII mirror of 元.editing (kept in sync by origin.edit/select/key) — the editing cell key a workbook grid formula can reference (infix cel keys are ASCII; the kanji 元.* can't appear in a formula)."
+      },
+      "v": null
+    },
+    {
+      "key": "sheet.selected",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "sheet.selected",
+        "segment": "origin",
+        "name": "sheet.selected",
+        "description": "ASCII mirror of 元.selected (kept in sync by origin.select/key) — the selected cell key a workbook grid formula can reference."
+      },
+      "v": null
+    },
+    {
       "key": "元.draft",
       "celType": "ValueCel",
       "metadata": {

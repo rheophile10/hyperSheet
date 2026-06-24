@@ -42,8 +42,10 @@ const gridKeysOf = (state: State, seg: string): string[] =>
 const singleGrid = (state: State, seg: string): string => {
   const keys = gridKeysOf(state, seg);
   // variadic 'seg.A1', seg.A1, … — infix has no array literal, and each ref makes
-  // the grid reactive to that cel.
-  return `sheetgrid('${seg}', sheetcells(${keys.map((k) => `'${k}', ${k}`).join(", ")}))`;
+  // the grid reactive to that cel. gridopts(元.editing, 元.selected) makes the grid
+  // EDITABLE (active cell → inline editor; click → select) and re-render reactively
+  // as the editing/selected cell changes (handlers default to origin.* in sheetgrid).
+  return `sheetgrid('${seg}', sheetcells(${keys.map((k) => `'${k}', ${k}`).join(", ")}), gridopts(sheet.editing, sheet.selected))`;
 };
 
 // sheetdoc(state, seg, title?, offset?) — open a worksheet window over the cels of

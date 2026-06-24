@@ -402,7 +402,7 @@ const edit: Fn = async (state: State, payload?: unknown, event?: unknown) => {
   const cur = state.cels.get("元.editing")?.v;
   const next = cur === key ? null : key;
   await (resolveFn(state, "setValueBatch") as Fn)(state,
-    [["元.editing", next], ["元.draft", next ? formatFormula(cellSource(state, next)) : ""], ["元.error", null]]);
+    [["元.editing", next], ["sheet.editing", next], ["元.draft", next ? formatFormula(cellSource(state, next)) : ""], ["元.error", null]]);
   // 元.editing is in 元.view's inputMap, so changing it re-fires the view — but
   // that re-fire must propagate through the cycle BEFORE we paint, or the first
   // drain repaints the stale vnode (editor not yet swapped in) and no second
@@ -423,7 +423,7 @@ const select: Fn = async (state: State, payload?: unknown, event?: unknown) => {
   const key = typeof payload === "string" ? payload : null;
   if (!key) return state;
   await (resolveFn(state, "setValueBatch") as Fn)(state,
-    [["元.selected", key], ["元.draft", formatFormula(cellSource(state, key))], ["元.error", null]]);
+    [["元.selected", key], ["sheet.selected", key], ["元.draft", formatFormula(cellSource(state, key))], ["元.error", null]]);
   await (resolveFn(state, "runCycle") as Fn)(state);
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
   return state;
@@ -506,14 +506,14 @@ const commit: Fn = async (state: State, payload?: unknown, source?: unknown) => 
     const msg = String((e as { message?: unknown })?.message ?? e).replace(/^setCel:\s*"[^"]*"\s*—\s*/, "");
     // keep the bad draft and force the cell into edit mode so the error
     // line is visible (it renders under the active editor).
-    await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", msg], ["元.editing", key]]);
+    await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", msg], ["元.editing", key], ["sheet.editing", key]]);
     await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
     return state;
   }
 
   // keep the selection on the committed cell and refresh the bar's draft to its
   // (now re-evaluated) source; clear inline editing.
-  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["元.error", null], ["元.selected", key], ["元.draft", src]]);
+  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["sheet.editing", null], ["元.error", null], ["元.selected", key], ["sheet.selected", key], ["元.draft", src]]);
   // fire generators so they enqueue, then commit structure + sweep. Loop until
   // quiescent: a genesis effect can in turn materialize cels whose own formulas
   // are requests (e.g. a seeded grid cell holding =db(…)) — keep draining until

@@ -24,6 +24,18 @@
     "kind": "native",
     "description": "(label, cells, opts?) - render a worksheet's cells as an editable Excel grid CONTENT vnode (corner label + column letters + row numbers + cells). `cells` is the host-aggregated list [{key,col,row,value,src}]; `opts` = {active, selected, draft, edit, select, fire, commit} (handler keys default to origin.*). The active cell shows an inline editor; others dispatch select/edit. SHEET-UNIQUE native renderer (the perf fast path); a window tab hosts the result so a sheet tabs next to any app."
    }
+  },
+  {
+   "key": "gridopts",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "gridopts",
+    "segment": "sheets",
+    "name": "gridopts",
+    "kind": "native",
+    "description": "(active, selected) - build the sheetgrid opts object from the editing/selected cell-key cels (e.g. 元.editing / 元.selected) so a worksheet is EDITABLE inside a workbook tab: the active cell shows the inline editor, a click selects. Reference the editing cels in the grid formula so it re-renders reactively. Handlers + draft default to origin.* / 元.draft inside sheetgrid."
+   }
   }
  ]
 }

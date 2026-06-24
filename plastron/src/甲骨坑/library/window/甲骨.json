@@ -163,6 +163,18 @@
    "celType": "LockedLambdaCel",
    "locked": true,
    "metadata": { "key": "window.splitMove", "segment": "window", "name": "window.splitMove", "kind": "native", "description": "(_, event) drag a workbook divider: set state.split to the pointer's fraction across the window (clamped 0.15..0.85)." }
+  },
+  {
+   "key": "window.addView",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.addView", "segment": "window", "name": "window.addView", "kind": "native", "description": "({ref, viewRef, title?, icon?, f?}) push a NEW dom-view tab onto a workbook's view stack (state.views) and select it. If `f` is given, the content cel `viewRef` is authored as a FormulaCel first — so a formula can OPEN a fresh dom window in the stack. Rebuilds the workbook frame to reference the new content cell." }
+  },
+  {
+   "key": "window.addSheet",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": { "key": "window.addSheet", "segment": "window", "name": "window.addSheet", "kind": "native", "description": "({ref, viewRef, title?, icon?, f?}) push a NEW worksheet tab onto a workbook's sheet stack (state.sheets) and select it. If `f` is given, the content cel `viewRef` is authored as a FormulaCel first. Rebuilds the workbook frame to reference the new content cell." }
   }
  ]
 }
