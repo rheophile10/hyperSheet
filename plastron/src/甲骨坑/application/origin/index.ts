@@ -658,7 +658,13 @@ const key: Fn = async (state: State, payload: unknown, event: unknown) => {
 const collectArchive = (state: State): { v: number; cells: [string, string][]; defs: [string, string, string][] } => {
   const keys = (state.cels.get("元.cells")?.v as string[] | undefined) ?? ["元"];
   const cells: [string, string][] = [];
-  for (const k of keys) { const s = cellSource(state, k); if (s !== "" && s !== README) cells.push([k, s]); }
+  // the view scan (cellKeys) pulls gen-2 window CHROME (win|wasm|desktop.<x>.state/
+  // content/frame) into 元.cells; those are derived self-mounting windows, not user
+  // data — skip them so an archive holds only grid/data cels (re-genesis rebuilds
+  // the windows). Archiving them re-commits a frame formula on restore (which mis-
+  // fires window.raise on a bare "win" ref) and never round-trips cleanly.
+  const CHROME = /^(?:win|wasm|desktop)\./;
+  for (const k of keys) { if (CHROME.test(k)) continue; const s = cellSource(state, k); if (s !== "" && s !== README) cells.push([k, s]); }
   const defs: [string, string, string][] = [];
   for (const [k, c] of state.cels) {
     if (c.celType === "EditableLambdaCel" && c.metadata.segment === "origin") {
