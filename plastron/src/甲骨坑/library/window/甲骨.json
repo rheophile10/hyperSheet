@@ -1,180 +1,364 @@
 {
- "name": "window",
- "cels": [
-  {
-   "key": "wframe",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "wframe",
-    "segment": "window",
-    "name": "wframe",
-    "kind": "native",
-    "description": "(state, active, ...contents) - render ONE window's chrome around the ACTIVE tab's content (contents[active]): titlebar (icon + name + minimize/fullscreen/close), a tab strip when the window has >=2 tabs, the body, and 8 resize handles (n/s/e/w + nw/ne/sw/se) so the window resizes from every edge and corner. `state` is the window state object { x,y,w,h,z,min,max,closed,title,icon,tabs:[{ref,title,icon}],active,dockedIn }; `active` is win.active; `contents` is one value per tab (the frame formula passes each tab's content cel). A window whose state has dockedIn set self-hides (its host renders it). Content-AGNOSTIC: a tab's content may be a sheet grid, a wasmcanvas, or any winapp body, so heterogeneous windows tab together."
-   }
-  },
-  {
-   "key": "wopen",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "wopen",
-    "segment": "window",
-    "name": "wopen",
-    "kind": "native",
-    "genesis": true,
-    "description": "(id, title, body, where?) - genesis a SELF-MOUNTING window: a content cel (= body, the app render), a state cel (one tab = its own content), and a frame cel `(mount '.origin' (wframe <state> win.active <content>))` that mounts itself into the desktop. `where` = geom(x,y,w,h) sizes it. There is NO separate desktop renderer - each top-level window draws itself; dock one into another with window.dock to tab them together."
-   }
-  },
-  {
-   "key": "window.grab",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.grab", "segment": "window", "name": "window.grab", "kind": "native", "description": "pointerdown on a titlebar: capture the pointer + record the move offset into window.drag." }
-  },
-  {
-   "key": "window.move",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.move", "segment": "window", "name": "window.move", "kind": "native", "description": "pointermove while dragging: write the window state cel's x/y." }
-  },
-  {
-   "key": "window.grabResize",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.grabResize", "segment": "window", "name": "window.grabResize", "kind": "native", "description": "pointerdown on a resize handle: capture the pointer + snapshot the start rect (x/y/w/h) and pointer (px/py) into window.drag (resize mode). Payload is { ref, dir } where dir is one of n/s/e/w/nw/ne/sw/se; a bare string ref is tolerated for backward compat and treated as dir 'se'." }
-  },
-  {
-   "key": "window.resizeMove",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.resizeMove", "segment": "window", "name": "window.resizeMove", "kind": "native", "description": "pointermove while resizing: resize per the grabbed direction, anchoring the opposite edge - e/w change width (w also moves x), n/s change height (n also moves y), corners combine. Writes the window state cel's x/y/w/h, clamped to min w>=160, h>=90." }
-  },
-  {
-   "key": "window.drop",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.drop", "segment": "window", "name": "window.drop", "kind": "native", "description": "pointerup: clear the transient window.drag state." }
-  },
-  {
-   "key": "window.raise",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.raise", "segment": "window", "name": "window.raise", "kind": "native", "description": "pointerdown anywhere in a window: focus it (win.active) and bump it to the top of the z-order (win.topz)." }
-  },
-  {
-   "key": "window.min",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.min", "segment": "window", "name": "window.min", "kind": "native", "description": "toggle the window's minimized flag (the frame hides; a launcher restores it)." }
-  },
-  {
-   "key": "window.max",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.max", "segment": "window", "name": "window.max", "kind": "native", "description": "toggle fullscreen: when set the frame fills the viewport." }
-  },
-  {
-   "key": "window.close",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.close", "segment": "window", "name": "window.close", "kind": "native", "description": "the red X: runs EACH tab's <seg>.flush contract cel (every tab is an app with its own save-then-teardown), then drops the window. A tab's flush is `<seg>.flush` derived from its content ref (or tab.flush)." }
-  },
-  {
-   "key": "window.stop",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.stop", "segment": "window", "name": "window.stop", "kind": "native", "description": "pointerdown on a titlebar/tab BUTTON: stopPropagation so the click does not start a window/tab drag." }
-  },
-  {
-   "key": "window.tab",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.tab", "segment": "window", "name": "window.tab", "kind": "native", "description": "({ref, index}) select a tab: set the window state cel's active index." }
-  },
-  {
-   "key": "window.tabClose",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.tabClose", "segment": "window", "name": "window.tabClose", "kind": "native", "description": "({ref, index}) close one tab: remove it from the window's tabs; closing the last tab closes the window." }
-  },
-  {
-   "key": "window.dock",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.dock", "segment": "window", "name": "window.dock", "kind": "native", "description": "({into, win}) COMBINE windows: pull an existing window `win` in as a tab of `into` (it is marked dockedIn → self-hides; the host renders it; tear-off restores it). Or ({into, tab}) append a raw tab { ref:<contentCel>, title, icon }. Rebuilds the host's self-mounting frame so it references the new content. Lets a sheet + DOOM share one tabbed frame." }
-  },
-  {
-   "key": "window.reorder",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.reorder", "segment": "window", "name": "window.reorder", "kind": "native", "description": "({ref, from, to}) move a tab within a window's tab order." }
-  },
-  {
-   "key": "window.undock",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.undock", "segment": "window", "name": "window.undock", "kind": "native", "description": "({ref, index}) TEAR OFF a tab (inverse of window.dock): remove it from `ref` + rebuild its frame. If the tab backs a real window (docked via window.dock), RESTORE it (clear dockedIn → it self-mounts again); otherwise mint a fresh standalone window + add it to win.list." }
-  },
-  {
-   "key": "window.tabGrab",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.tabGrab", "segment": "window", "name": "window.tabGrab", "kind": "native", "description": "pointerdown on a tab chip: record the grab (window.tabdrag) so a later move can reorder or a release outside can tear off." }
-  },
-  {
-   "key": "wbframe",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "wbframe", "segment": "window", "name": "wbframe", "kind": "native", "description": "(state, active, ...contents) - render a WORKBOOK window: two tab stacks at once - worksheets (left pane, tabs at bottom) and dom views (right pane, tabs on top) - split by a draggable divider, with per-pane fullscreen. state = { x,y,w,h,z,min,max,closed,title, sheets:[{ref,title,icon}], asheet, views:[{ref,title,icon}], aview, split:0..1, full:'L'|'R'|'' }. contents are one value per tab, sheets first then views (sliced by sheets.length)." }
-  },
-  {
-   "key": "wbopen",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "wbopen", "segment": "window", "name": "wbopen", "kind": "native", "genesis": true, "description": "(id, title, sheetTabs, viewTabs, where?) - genesis a SELF-MOUNTING workbook window: a state cel holding the two tab stacks + a frame cel `(mount '.origin' (wbframe <state> win.active <sheetRefs...> <viewRefs...>))`. sheetTabs/viewTabs are [{ref,title,icon}] over existing content cels. where = geom(x,y,w,h)." }
-  },
-  {
-   "key": "window.sheetTab",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.sheetTab", "segment": "window", "name": "window.sheetTab", "kind": "native", "description": "({ref, index}) select a worksheet tab in a workbook: set the state cel's asheet index." }
-  },
-  {
-   "key": "window.viewTab",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.viewTab", "segment": "window", "name": "window.viewTab", "kind": "native", "description": "({ref, index}) select a dom-view tab in a workbook: set the state cel's aview index." }
-  },
-  {
-   "key": "window.paneFull",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.paneFull", "segment": "window", "name": "window.paneFull", "kind": "native", "description": "({ref, pane}) toggle fullscreen for a workbook pane ('L' sheets / 'R' views): set state.full to pane, or '' (see both) if already fullscreen." }
-  },
-  {
-   "key": "window.splitGrab",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.splitGrab", "segment": "window", "name": "window.splitGrab", "kind": "native", "description": "(ref) pointerdown on a workbook divider: seed window.drag {ref, split:true} so the move resizes the split." }
-  },
-  {
-   "key": "window.splitMove",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.splitMove", "segment": "window", "name": "window.splitMove", "kind": "native", "description": "(_, event) drag a workbook divider: set state.split to the pointer's fraction across the window (clamped 0.15..0.85)." }
-  },
-  {
-   "key": "window.addView",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.addView", "segment": "window", "name": "window.addView", "kind": "native", "description": "({ref, viewRef, title?, icon?, f?}) push a NEW dom-view tab onto a workbook's view stack (state.views) and select it. If `f` is given, the content cel `viewRef` is authored as a FormulaCel first — so a formula can OPEN a fresh dom window in the stack. Rebuilds the workbook frame to reference the new content cell." }
-  },
-  {
-   "key": "window.addSheet",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": { "key": "window.addSheet", "segment": "window", "name": "window.addSheet", "kind": "native", "description": "({ref, viewRef, title?, icon?, f?}) push a NEW worksheet tab onto a workbook's sheet stack (state.sheets) and select it. If `f` is given, the content cel `viewRef` is authored as a FormulaCel first. Rebuilds the workbook frame to reference the new content cell." }
-  }
- ]
+  "name": "window",
+  "cels": [
+    {
+      "key": "wframe",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wframe",
+        "segment": "window",
+        "name": "wframe",
+        "kind": "native",
+        "description": "(state, active, ...contents) - render ONE window's chrome around the ACTIVE tab's content (contents[active]): titlebar (icon + name + minimize/fullscreen/close), a tab strip when the window has >=2 tabs, the body, and 8 resize handles (n/s/e/w + nw/ne/sw/se) so the window resizes from every edge and corner. `state` is the window state object { x,y,w,h,z,min,max,closed,title,icon,tabs:[{ref,title,icon}],active,dockedIn }; `active` is win.active; `contents` is one value per tab (the frame formula passes each tab's content cel). A window whose state has dockedIn set self-hides (its host renders it). Content-AGNOSTIC: a tab's content may be a sheet grid, a wasmcanvas, or any winapp body, so heterogeneous windows tab together."
+      }
+    },
+    {
+      "key": "wopen",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wopen",
+        "segment": "window",
+        "name": "wopen",
+        "kind": "native",
+        "genesis": true,
+        "description": "(id, title, body, where?) - genesis a SELF-MOUNTING window: a content cel (= body, the app render), a state cel (one tab = its own content), and a frame cel `(mount '.origin' (wframe <state> win.active <content>))` that mounts itself into the desktop. `where` = geom(x,y,w,h) sizes it. There is NO separate desktop renderer - each top-level window draws itself; dock one into another with window.dock to tab them together."
+      }
+    },
+    {
+      "key": "window.grab",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.grab",
+        "segment": "window",
+        "name": "window.grab",
+        "kind": "native",
+        "description": "pointerdown on a titlebar: capture the pointer + record the move offset into window.drag."
+      }
+    },
+    {
+      "key": "window.move",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.move",
+        "segment": "window",
+        "name": "window.move",
+        "kind": "native",
+        "description": "pointermove while dragging: write the window state cel's x/y."
+      }
+    },
+    {
+      "key": "window.grabResize",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.grabResize",
+        "segment": "window",
+        "name": "window.grabResize",
+        "kind": "native",
+        "description": "pointerdown on a resize handle: capture the pointer + snapshot the start rect (x/y/w/h) and pointer (px/py) into window.drag (resize mode). Payload is { ref, dir } where dir is one of n/s/e/w/nw/ne/sw/se; a bare string ref is tolerated for backward compat and treated as dir 'se'."
+      }
+    },
+    {
+      "key": "window.resizeMove",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.resizeMove",
+        "segment": "window",
+        "name": "window.resizeMove",
+        "kind": "native",
+        "description": "pointermove while resizing: resize per the grabbed direction, anchoring the opposite edge - e/w change width (w also moves x), n/s change height (n also moves y), corners combine. Writes the window state cel's x/y/w/h, clamped to min w>=160, h>=90."
+      }
+    },
+    {
+      "key": "window.drop",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.drop",
+        "segment": "window",
+        "name": "window.drop",
+        "kind": "native",
+        "description": "pointerup: clear the transient window.drag state."
+      }
+    },
+    {
+      "key": "window.raise",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.raise",
+        "segment": "window",
+        "name": "window.raise",
+        "kind": "native",
+        "description": "pointerdown anywhere in a window: focus it (win.active) and bump it to the top of the z-order (win.topz)."
+      }
+    },
+    {
+      "key": "window.min",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.min",
+        "segment": "window",
+        "name": "window.min",
+        "kind": "native",
+        "description": "toggle the window's minimized flag (the frame hides; a launcher restores it)."
+      }
+    },
+    {
+      "key": "window.max",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.max",
+        "segment": "window",
+        "name": "window.max",
+        "kind": "native",
+        "description": "toggle fullscreen: when set the frame fills the viewport."
+      }
+    },
+    {
+      "key": "window.close",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.close",
+        "segment": "window",
+        "name": "window.close",
+        "kind": "native",
+        "description": "the red X: runs EACH tab's <seg>.flush contract cel (every tab is an app with its own save-then-teardown), then drops the window. A tab's flush is `<seg>.flush` derived from its content ref (or tab.flush)."
+      }
+    },
+    {
+      "key": "window.stop",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.stop",
+        "segment": "window",
+        "name": "window.stop",
+        "kind": "native",
+        "description": "pointerdown on a titlebar/tab BUTTON: stopPropagation so the click does not start a window/tab drag."
+      }
+    },
+    {
+      "key": "window.tab",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.tab",
+        "segment": "window",
+        "name": "window.tab",
+        "kind": "native",
+        "description": "({ref, index}) select a tab: set the window state cel's active index."
+      }
+    },
+    {
+      "key": "window.tabClose",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.tabClose",
+        "segment": "window",
+        "name": "window.tabClose",
+        "kind": "native",
+        "description": "({ref, index}) close one tab: remove it from the window's tabs; closing the last tab closes the window."
+      }
+    },
+    {
+      "key": "window.dock",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.dock",
+        "segment": "window",
+        "name": "window.dock",
+        "kind": "native",
+        "description": "({into, win}) COMBINE windows: pull an existing window `win` in as a tab of `into` (it is marked dockedIn → self-hides; the host renders it; tear-off restores it). Or ({into, tab}) append a raw tab { ref:<contentCel>, title, icon }. Rebuilds the host's self-mounting frame so it references the new content. Lets a sheet + DOOM share one tabbed frame."
+      }
+    },
+    {
+      "key": "window.reorder",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.reorder",
+        "segment": "window",
+        "name": "window.reorder",
+        "kind": "native",
+        "description": "({ref, from, to}) move a tab within a window's tab order."
+      }
+    },
+    {
+      "key": "window.undock",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.undock",
+        "segment": "window",
+        "name": "window.undock",
+        "kind": "native",
+        "description": "({ref, index}) TEAR OFF a tab (inverse of window.dock): remove it from `ref` + rebuild its frame. If the tab backs a real window (docked via window.dock), RESTORE it (clear dockedIn → it self-mounts again); otherwise mint a fresh standalone window + add it to win.list."
+      }
+    },
+    {
+      "key": "window.tabGrab",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.tabGrab",
+        "segment": "window",
+        "name": "window.tabGrab",
+        "kind": "native",
+        "description": "pointerdown on a tab chip: record the grab (window.tabdrag) so a later move can reorder or a release outside can tear off."
+      }
+    },
+    {
+      "key": "wbframe",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wbframe",
+        "segment": "window",
+        "name": "wbframe",
+        "kind": "native",
+        "description": "(state, active, ...contents) - render a WORKBOOK window: two tab stacks at once - worksheets (left pane, tabs at bottom) and dom views (right pane, tabs on top) - split by a draggable divider, with per-pane fullscreen. state = { x,y,w,h,z,min,max,closed,title, sheets:[{ref,title,icon}], asheet, views:[{ref,title,icon}], aview, split:0..1, full:'L'|'R'|'' }. contents are one value per tab, sheets first then views (sliced by sheets.length)."
+      }
+    },
+    {
+      "key": "wbopen",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wbopen",
+        "segment": "window",
+        "name": "wbopen",
+        "kind": "native",
+        "genesis": true,
+        "description": "(id, title, sheetTabs, viewTabs, where?) - genesis a SELF-MOUNTING workbook window: a state cel holding the two tab stacks + a frame cel `(mount '.origin' (wbframe <state> win.active <sheetRefs...> <viewRefs...>))`. sheetTabs/viewTabs are [{ref,title,icon}] over existing content cels. where = geom(x,y,w,h)."
+      }
+    },
+    {
+      "key": "window.sheetTab",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.sheetTab",
+        "segment": "window",
+        "name": "window.sheetTab",
+        "kind": "native",
+        "description": "({ref, index}) select a worksheet tab in a workbook: set the state cel's asheet index."
+      }
+    },
+    {
+      "key": "window.viewTab",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.viewTab",
+        "segment": "window",
+        "name": "window.viewTab",
+        "kind": "native",
+        "description": "({ref, index}) select a dom-view tab in a workbook: set the state cel's aview index."
+      }
+    },
+    {
+      "key": "window.paneFull",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.paneFull",
+        "segment": "window",
+        "name": "window.paneFull",
+        "kind": "native",
+        "description": "({ref, pane}) toggle fullscreen for a workbook pane ('L' sheets / 'R' views): set state.full to pane, or '' (see both) if already fullscreen."
+      }
+    },
+    {
+      "key": "window.splitGrab",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.splitGrab",
+        "segment": "window",
+        "name": "window.splitGrab",
+        "kind": "native",
+        "description": "(ref) pointerdown on a workbook divider: seed window.drag {ref, split:true} so the move resizes the split."
+      }
+    },
+    {
+      "key": "window.splitMove",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.splitMove",
+        "segment": "window",
+        "name": "window.splitMove",
+        "kind": "native",
+        "description": "(_, event) drag a workbook divider: set state.split to the pointer's fraction across the window (clamped 0.15..0.85)."
+      }
+    },
+    {
+      "key": "window.addView",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.addView",
+        "segment": "window",
+        "name": "window.addView",
+        "kind": "native",
+        "description": "({ref, viewRef, title?, icon?, f?}) push a NEW dom-view tab onto a workbook's view stack (state.views) and select it. If `f` is given, the content cel `viewRef` is authored as a FormulaCel first — so a formula can OPEN a fresh dom window in the stack. Rebuilds the workbook frame to reference the new content cell."
+      }
+    },
+    {
+      "key": "window.addSheet",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.addSheet",
+        "segment": "window",
+        "name": "window.addSheet",
+        "kind": "native",
+        "description": "({ref, viewRef, title?, icon?, f?}) push a NEW worksheet tab onto a workbook's sheet stack (state.sheets) and select it. If `f` is given, the content cel `viewRef` is authored as a FormulaCel first. Rebuilds the workbook frame to reference the new content cell."
+      }
+    },
+    {
+      "key": "win.list",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "win.list",
+        "segment": "window",
+        "name": "win.list",
+        "description": "the gen-2 window registry: ordered list of open window state-cel refs. window.* handlers read/write it; the taskbar genesis re-derives from it. (Seeded here so any boot loading the window segment has it — origin re-seeds at boot too.)"
+      },
+      "v": []
+    },
+    {
+      "key": "win.active",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "win.active",
+        "segment": "window",
+        "name": "win.active",
+        "description": "the focus pointer — the state-cel ref of the front/active gen-2 window. window.raise writes it; wframe reads it to render the active border."
+      },
+      "v": ""
+    },
+    {
+      "key": "win.topz",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "win.topz",
+        "segment": "window",
+        "name": "win.topz",
+        "description": "the z-index fountain (seeded 100). window.raise bumps it and stamps the raised window so the latest raise sits on top."
+      },
+      "v": 100
+    }
+  ]
 }

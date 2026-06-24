@@ -132,6 +132,55 @@
         "description": "(dir?) - a file picker; the chosen file is written into OPFS (default /)."
       },
       "locked": true
+    },
+    {
+      "key": "explorerwin",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "explorerwin",
+        "segment": "file-explorer",
+        "name": "explorerwin",
+        "kind": "native",
+        "description": "() GENESIS: a gen-2 file-explorer WINDOW. Seeds explorer.cwd/.preview/.listing + the (explorer …) content formula, and a self-mounting wframe window (win.explorer.state/.content/.frame). The 📁 Files launcher calls it; origin.navOpen restoreWindow-s and explorer.refresh-es it on open.",
+        "genesis": true
+      },
+      "locked": true
+    },
+    {
+      "key": "explorer.cwd",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "explorer.cwd",
+        "segment": "file-explorer",
+        "name": "explorer.cwd",
+        "description": "the explorer window's current directory (singleton). explorer.nav writes it; the (explorer …) content formula reads it → re-fires the listing."
+      },
+      "v": "/"
+    },
+    {
+      "key": "explorer.preview",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "explorer.preview",
+        "segment": "file-explorer",
+        "name": "explorer.preview",
+        "description": "the path of the file shown in the explorer preview pane (singleton). explorer.open writes it."
+      },
+      "v": ""
+    },
+    {
+      "key": "explorer.listing",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "explorer.listing",
+        "segment": "file-explorer",
+        "name": "explorer.listing",
+        "description": "the explorer's materialized OPFS read ({entries, previewText}) at cwd (singleton). The nav/open/refresh handlers write it; the content formula renders from it."
+      },
+      "v": {
+        "entries": [],
+        "previewText": ""
+      }
     }
   ]
 }

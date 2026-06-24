@@ -175,7 +175,7 @@ const BTN = "font:.78rem ui-monospace,monospace;padding:.15rem .55rem;border:1px
 
 const wlink = (key: string, label?: string): V =>
   el("button", { class: "wk-link", style: LINK, title: key }, [T(label ?? key)],
-    { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "wiki.open", payload: key } });
+    { pointerdown: { dispatch: "window.stop" }, click: { dispatch: "wiki.open", payload: key } });
 
 const linkRow = (keys: string[]): V =>
   el("div", { style: "display:flex;flex-wrap:wrap;gap:.25rem .7rem;font:.85rem ui-monospace,monospace" },
@@ -192,9 +192,9 @@ const descEditor = (desc: string): V =>
       class: "wk-desc", rows: 2, placeholder: "describe this entry (saved to metadata.description — every render reads it: inspect, vocab, wiki, skill)",
       style: "width:100%;box-sizing:border-box;font:.8rem system-ui;padding:.3rem .45rem;border:1px dashed #8884;border-radius:.4rem;background:#8880;color:CanvasText;resize:vertical",
       value: desc,
-    }, [T(desc)], { input: { set: "wiki.descDraft", extract: "value" }, pointerdown: { dispatch: "winx.stop" } }),
+    }, [T(desc)], { input: { set: "wiki.descDraft", extract: "value" }, pointerdown: { dispatch: "window.stop" } }),
     el("div", { style: "margin-top:.2rem" }, [
-      el("button", { style: BTN }, [T("✎ save description")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "wiki.saveDesc" } }),
+      el("button", { style: BTN }, [T("✎ save description")], { pointerdown: { dispatch: "window.stop" }, click: { dispatch: "wiki.saveDesc" } }),
     ]),
   ]);
 
@@ -204,9 +204,9 @@ const noteEditor = (note: string): V =>
       class: "wk-note", rows: 3, placeholder: "your note on this entry — [[links]] welcome (saved to metadata.note)",
       style: "width:100%;box-sizing:border-box;font:.82rem ui-monospace,monospace;padding:.35rem .45rem;border:1px solid #8884;border-radius:.4rem;background:#8881;color:CanvasText;resize:vertical",
       value: note,
-    }, [T(note)], { input: { set: "wiki.noteDraft", extract: "value" }, pointerdown: { dispatch: "winx.stop" } }),
+    }, [T(note)], { input: { set: "wiki.noteDraft", extract: "value" }, pointerdown: { dispatch: "window.stop" } }),
     el("div", { style: "margin-top:.25rem" }, [
-      el("button", { style: BTN }, [T("save note")], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "wiki.saveNote" } }),
+      el("button", { style: BTN }, [T("save note")], { pointerdown: { dispatch: "window.stop" }, click: { dispatch: "wiki.saveNote" } }),
     ]),
   ]);
 
@@ -295,7 +295,7 @@ const articleVnode = (state: State, key: string): V => {
       const path = role === "kernel" ? "kernel/index.ts" : `${role === "application" ? "application" : "library"}/${seg}/index.ts`;
       body.push(el("div", { style: "margin:.3rem 0 0;font:.78rem system-ui;display:flex;gap:.7rem;align-items:center" }, [
         el("button", { style: BTN }, [T("⧉ open source in a window")],
-          { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "wiki.openSource", payload: key } }),
+          { pointerdown: { dispatch: "window.stop" }, click: { dispatch: "wiki.openSource", payload: key } }),
         el("a", {
           href: `https://github.com/rheophile10/plastron/blob/master/plastron/src/甲骨坑/${path}`,
           target: "_blank", style: "color:LinkText",

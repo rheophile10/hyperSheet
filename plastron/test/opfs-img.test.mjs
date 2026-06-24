@@ -40,7 +40,7 @@ test("fallback chain: first non-empty string wins; children fold", async () => {
 
 test("the shipped wallpaper: windows.wallpaper is locked data", async () => {
   const state = await boot();
-  await resolveFn(state, "ensureSegments")(state, ["windows"]);
+  await resolveFn(state, "ensureSegments")(state, ["dom"]);
   const wp = state.cels.get("windows.wallpaper");
   assert.ok(wp?.locked, "default wallpaper is locked library data");
   assert.match(String(wp.v).slice(0, 20), /^data:image/);

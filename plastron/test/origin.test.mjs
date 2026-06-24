@@ -254,7 +254,7 @@ test("grid(name,r,c,…) makes a workbook of named grids in one formula", async 
 test("editing 元's formula RE-DRAINS genesis: a genesis-producing formula re-creates its windows/cels", async () => {
   const { state, root, m } = await boot();
   // edit 元 to a genesis formula → its windows must appear
-  await put(state, root, m, '=winapp("hello", "Hello", "(dom \\"p\\" \\"hi\\")")');
+  await put(state, root, m, '=wopen("hello", "Hello", "(dom \\"p\\" \\"hi\\")")');
   assert.ok(state.cels.get("win.hello.state"), "the genesis re-created its window state cel");
   assert.ok(state.cels.get("win.hello.frame"), "…and its frame");
   // clear 元 → the genesis windows sweep, the seed welcome cell restores
@@ -296,8 +296,8 @@ test("xlsx wiring: xlsxexport(\"turtle_data\") exports the boot turtle_data shee
 test("a nav launcher reopens a window the ✕ closed (re-click the same icon)", async () => {
   const { state, root, m } = await boot();
   await resolveFn(state, "origin.run")(state, "元"); m.run(); // minimal boot desktop
-  const navOpen = resolveFn(state, "origin.navOpen"), winClose = resolveFn(state, "winx.close");
-  const action = '=winapp("hello", "Hello", "(dom \\"p\\" \\"hi\\")")';
+  const navOpen = resolveFn(state, "origin.navOpen"), winClose = resolveFn(state, "window.close");
+  const action = '=wopen("hello", "Hello", "(dom \\"p\\" \\"hi\\")")';
   const closedOf = () => state.cels.get("win.hello.state")?.v?.closed;
   // click the icon → the window opens (visible)
   await navOpen(state, action); m.run();

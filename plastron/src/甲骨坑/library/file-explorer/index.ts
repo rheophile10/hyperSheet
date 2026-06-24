@@ -297,10 +297,28 @@ const explorerRename: Fn = async (stateArg: unknown, path: unknown) => {
   return state;
 };
 
+// explorerwin() — GENESIS: a gen-2 file-explorer WINDOW (self-mounting wframe,
+// replaces the old library/windows winframe genesis). The explorer state cels
+// (explorer.cwd/.preview/.listing) are library SINGLETONS seeded with this
+// segment (one explorer window); the genesis just wires the WINDOW — a content
+// formula referencing them + a gen-2 window state (tabs:[{ref,title}]) whose
+// frame self-mounts via wframe. Clicking a folder (explorer.nav→explorer.cwd) or
+// file (explorer.open→preview) re-fires the listing (inputMap doctrine). The 📁
+// Files launcher calls this.
+const explorerwinFn: Fn = ((): unknown => {
+  const lay = "win.explorer", sref = `${lay}.state`, cref = `${lay}.content`;
+  return { genesis: true, kind: "window", layer: lay, cels: {
+    [cref]: { celType: "FormulaCel", f: "(explorer explorer.cwd explorer.preview explorer.listing)", metadata: { name: "content", parser: "f", segment: lay } },
+    [sref]: { celType: "ValueCel", v: { ref: sref, x: 90, y: 70, w: 460, h: 340, z: 1, min: 0, max: 0, closed: 0, title: "📁 Files", tabs: [{ ref: cref, title: "Files" }], active: 0 }, metadata: { name: "state", segment: lay } },
+    [`${lay}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (wframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f", segment: lay } },
+  } };
+}) as Fn;
+
 export const name = "file-explorer" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["explorer", explorerFn],
+  ["explorerwin", explorerwinFn],
   ["explorer.nav", explorerNav],
   ["explorer.open", explorerOpen],
   ["explorer.openSheet", explorerOpenSheet],

@@ -1195,10 +1195,10 @@ const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> =
     for (let i = 0; i < 6; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
     // un-hide the window this genesis owns: a repeat click reopens a window the ✕
     // had closed (or the – had minimized). The state cel survived regeneration, so
-    // reset closed/min + raise it via winx.show (a no-op for an already-open one).
+    // restoreWindow resets closed/min + raises it (a no-op for an already-open one).
     const req = state.cels.get(`${seg}.元`)?.v as { layer?: string } | undefined;
     const sref = req?.layer ? `${req.layer}.state` : undefined;
-    if (sref && state.cels.get(sref)) await (resolveFn(state, "winx.show") as Fn)(state, sref);
+    if (sref && state.cels.get(sref)) await restoreWindow(state, sref);
     // apply any geom() the genesis declared (=cels("sheet",…,geom(…)) etc.) — this
     // branch has its own settle loop, so it needs the same geom-application run does.
     await applyDeclaredGeom(state, `${seg}.元`);

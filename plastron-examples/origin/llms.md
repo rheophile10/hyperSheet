@@ -146,17 +146,17 @@ FILES (OPFS, in-browser)
   =write("/a.txt","hi")  =cat("/a.txt")  =ls("/")  =mkdir("/d")  =upload("/")
 
 WINDOWS / LAYOUT
-  =win(key,"title","body")     =jail(seed)     =doom()  (Doom in a wasm window, consent-gated)
+  =wopen(key,"title","body")   =jail(seed)     =doom()  (Doom in a wasm window, consent-gated)
   =cels("app",5,2, geom(40,40,520,360))   geom(x,y,w,h[,minW,minH]) sizes a sheet's own window
 
 APP = DATA SHEET + WINDOW (one pasteable, shareable formula)
-  =winapp(id, "Title", '=<formula>')   a draggable WINDOW whose body is a REACTIVE formula
-  =segment(part, part, …)              compose cels()/winapp()/def() parts into ONE formula
+  =wopen(id, "Title", '=<formula>')    a draggable WINDOW whose body is a REACTIVE formula
+  =segment(part, part, …)              compose cels()/wopen()/def() parts into ONE formula
   The idiomatic app is a data sheet + a window that reads it — one formula in, one link out:
     =segment(
       cels("todo", 4, 2, at("A1","Task"), at("B1","Status"),
         at("A2","Email Bob"), at("B2","To Do"), at("A3","Ship"), at("B3","Done")),
-      winapp("todo", "To Do",
+      wopen("todo", "To Do",
         "=dom('div', MAP(todo!A2:A3, LAMBDA(t, dom('div.card', t))))"))
   The window body reads the sheet by GLOBAL ref (todo!A2:A3) even though it is a different
   segment. Two string levels: top-level args are "…", the nested window body is '…'.
@@ -165,7 +165,7 @@ SEGMENTS — every workbook / window / app you make is a SEGMENT (a named layer)
   =segments()                  list the loaded segments
   =members("seg")              the cels in a segment
   =nav(viewport.mobile, item(…))  a navbar that switches between your segments/windows (see NAVBAR below)
-  Each =cels/=winapp/=doom/=jail MINTS a document segment (kind workbook/winapp/
+  Each =cels/=wopen/=doom/=jail MINTS a document segment (kind workbook/window/
   wasm/jail); the substrate (net/dom/origin/…) is reserved and not exported.
 
 NAVBAR / MENUS (a pasteable menu; one formula, mobile + desktop)
@@ -191,7 +191,7 @@ RESPONSIVE LAYOUT (the page is the product — use the whole viewport, don't cra
   should claim space: open a sized window, or size DOM to the viewport.
   - viewport.w / viewport.h / viewport.mobile / viewport.orient — reactive cels;
     a formula that references them RE-RUNS on resize. =viewport() = a one-shot {…}.
-  - =win("app", "App", body, viewport.w, viewport.h - 40)         fill the screen
+  - =wopen("app", "App", body, geom(0, 0, viewport.w, viewport.h - 40))   fill the screen
   - =IF(viewport.mobile, dom("h1","phone view"), bigDesktopUi)    branch on device
   Prefer a window or a sized canvas/dom over a widget squeezed into one tiny cell.
 

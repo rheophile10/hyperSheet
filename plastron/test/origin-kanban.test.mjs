@@ -71,7 +71,7 @@ const KANBAN = `=segment(
 		at("A4", 4), at("B4", "Ship release"), at("C4", "Done"),
 		at("A5", 5), at("B5", "Plan sprint"),  at("C5", "Doing"),
 		at("A6", 6), at("B6", "Review PR"),    at("C6", "To Do")),
-	winapp("kanban", "📋 Kanban",
+	wopen("kanban", "📋 Kanban",
 		'=LET(
 			cardOf, LAMBDA(id,
 				dom("div.kcard",

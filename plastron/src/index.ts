@@ -29,7 +29,6 @@ import * as htmlTemplate    from "./甲骨坑/library/html-template-parser/index
 import * as plastronDom     from "./甲骨坑/library/dom/index.js";
 import * as sheets          from "./甲骨坑/library/sheets/index.js";
 import * as winapps         from "./甲骨坑/library/winapps/index.js";
-import * as windows         from "./甲骨坑/library/windows/index.js";
 import * as windowSeg       from "./甲骨坑/library/window/index.js";
 import * as fileExplorer    from "./甲骨坑/library/file-explorer/index.js";
 import * as sheetIo         from "./甲骨坑/library/sheet-io/index.js";
@@ -106,7 +105,6 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "dom":     () => [...plastronDom.cels],
   "sheets":           () => [...sheets.cels],
   "winapps":          () => [...winapps.cels],
-  "windows":          () => [...windows.cels],
   "window":           () => [...windowSeg.cels],
   "file-explorer":    () => [...fileExplorer.cels],
   "sheet-io":         () => [...sheetIo.cels],

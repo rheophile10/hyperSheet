@@ -303,7 +303,7 @@ const fgviewFn: Fn = (id?: unknown, specArg?: unknown, posArg?: unknown, zoomArg
       class: off ? "fg-kind fg-kind-off" : "fg-kind",
       title: off ? `show ${kind} nodes` : `hide ${kind} nodes`,
       style: `font:.62rem ui-monospace,monospace;padding:.04rem .35rem;border-radius:.6rem;cursor:pointer;border:1px solid ${sample.accent ?? "#8885"};background:${off ? "transparent" : (sample.tint ?? "#8881")};color:CanvasText;opacity:${off ? ".45" : "1"};text-decoration:${off ? "line-through" : "none"}`,
-    }, [T(kind)], { pointerdown: { dispatch: "winx.stop" }, click: { dispatch: "fg.toggleKind", payload: { id: gid, kind } } });
+    }, [T(kind)], { pointerdown: { dispatch: "window.stop" }, click: { dispatch: "fg.toggleKind", payload: { id: gid, kind } } });
   }))] : [];
   // the scroll-containment convention (the maps-embed pattern): the graph
   // owns the wheel ONLY while armed — click in to arm (wheel zooms, the

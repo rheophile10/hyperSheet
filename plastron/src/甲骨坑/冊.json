@@ -276,7 +276,6 @@
       "music",
       "formula-compiler",
       "file-explorer",
-      "windows",
       "defn",
       "sheet",
       "sound",
@@ -326,34 +325,41 @@
     "name": "supabase-auth",
     "version": "0.0.1",
     "description": "Supabase GoTrue auth provider on top of the session store. supabase.auth(state, op, project, payload): op=signin (password grant), op=otp/magiclink, op=refresh (rotate via stored refresh token), op=signout. Reads public config cels sb.<project>.url / sb.<project>.anonkey; on sign-in hands tokens to session.put (the JWT never becomes a cel value) and surfaces the non-secret sb.<project>.auth status cel. IO via gated fetch; no service_role key.",
-    "dependencies": ["session"]
+    "dependencies": [
+      "session"
+    ]
   },
   {
     "name": "supabase",
     "version": "0.0.1",
     "description": "Supabase PostgREST data plane (cloud twin of the sqlite library). supabase.data(state, op, project, payload): select/insert/update/delete/rpc over REST, borrowing the user JWT from the session store as the bearer (anon when not signed in). Reads config cels sb.<project>.url / sb.<project>.anonkey. Writes bump sb.<project>.<table>.rev — reference it in a select formula to re-fire on change (the same cel realtime pushes bump). supabase.realtime subscribes a table to live postgres_changes over a Phoenix WebSocket, bumping the same rev cel on each push. Returns rows on success.",
-    "dependencies": ["session"]
+    "dependencies": [
+      "session"
+    ]
   },
   {
     "name": "supabase-storage",
     "version": "0.0.1",
     "description": "Supabase Storage (buckets) — the cloud twin of the file-store/OPFS library. supabase.storage(state, op, project, payload): upload/download/list/remove objects in a bucket, createBucket/listBuckets, over gated fetch with the session JWT (RLS-scoped). Reads config cels sb.<project>.url / sb.<project>.anonkey. No service_role.",
-    "dependencies": ["session"]
+    "dependencies": [
+      "session"
+    ]
+  },
+  {
+    "name": "supabase-demo",
+    "version": "0.0.1",
+    "description": "Worked Supabase example (the sqlite-demo analog). sbdemo.install lays down config + a reactive sbdemo.<p>.panel FormulaCel (auth status + live todo rev-count + subscription state via dom). Dispatch handlers sbdemo.signin/add/watch drive supabase.auth/data/realtime; the panel re-renders reactively, including on realtime pushes that bump sb.<p>.todos.rev.",
+    "dependencies": [
+      "supabase-auth",
+      "supabase",
+      "supabase-storage"
+    ]
   },
   {
     "name": "sqlite",
     "version": "0.0.1",
     "description": "in-browser SQLite via @sqlite.org/sqlite-wasm over the opfs-sahpool VFS, in a Worker (persistent, incremental writes, no COOP/COEP — Pages-safe). sqlite.command (open/sql/seed/schema): seed bulk-loads a JSON array into a table; schema introspects tables/columns/PK/FK; every write bumps a sqlite.<db>.rev cel so SELECT formulas re-fire. Browser-only (the sahpool VFS needs a Worker); the engine ships as sidecar files next to index.html.",
     "dependencies": []
-  },
-  {
-    "name": "windows",
-    "version": "0.0.1",
-    "description": "cels as draggable/resizable windows — frame render verb + drag/resize handlers + geometry-as-cels",
-    "dependencies": [
-      "dom",
-      "file-explorer"
-    ]
   },
   {
     "name": "window",
@@ -397,7 +403,8 @@
     "dependencies": [
       "dom",
       "file-store",
-      "sheet-io"
+      "sheet-io",
+      "window"
     ]
   },
   {

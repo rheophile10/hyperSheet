@@ -40,11 +40,11 @@ test("=cels mints a registered workbook segment (kind + role:user)", async () =>
   assert.equal(isSubstrateSegment(state, "books"), false, "not substrate");
 });
 
-test("=winapp → kind:winapp; =doom → kind:wasm; both role:user", async () => {
+test("=wopen → kind:window; =doom → kind:wasm; both role:user", async () => {
   const { state, put } = await boot();
-  await put('(winapp "dash" "Dashboard" "(dom \'h2\' \'hi\')")', "dash_gen");
+  await put('(wopen "dash" "Dashboard" "(dom \'h2\' \'hi\')")', "dash_gen");
   await put('=doom()', "doom_gen");
-  assert.equal(getSegmentManifest(state, "win.dash")?.kind, "winapp");
+  assert.equal(getSegmentManifest(state, "win.dash")?.kind, "window");
   assert.equal(getSegmentManifest(state, "wasm.doom")?.kind, "wasm");
   for (const s of ["win.dash", "wasm.doom"]) assert.equal(getSegmentManifest(state, s)?.role, "user", `${s} is role:user`);
   const docs = documentSegments(state);
@@ -53,7 +53,7 @@ test("=winapp → kind:winapp; =doom → kind:wasm; both role:user", async () =>
 
 test("the substrate stays role substrate (never role:user)", async () => {
   const { state } = await boot();
-  for (const sub of ["origin", "net", "dom", "windows", "kernel"]) {
+  for (const sub of ["origin", "net", "dom", "window", "kernel"]) {
     const m = getSegmentManifest(state, sub);
     assert.ok(m && m.role !== "user", `${sub} is substrate (role ${m?.role})`);
     assert.equal(isSubstrateSegment(state, sub), true, `${sub} is boot substrate`);

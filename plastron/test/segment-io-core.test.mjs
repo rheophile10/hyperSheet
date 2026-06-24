@@ -30,7 +30,7 @@ const boot = async () => {
 
 test("the bundled substrate is recognised as boot-set; minted segments are not", async () => {
   const { state } = await boot();
-  for (const sub of ["origin", "net", "dom", "windows", "kernel"]) {
+  for (const sub of ["origin", "net", "dom", "window", "kernel"]) {
     assert.ok(isSubstrateSegment(state, sub), `${sub} is substrate (boot set)`);
   }
   assert.ok(!isSubstrateSegment(state, "books"), "an un-minted name is not substrate");
@@ -42,14 +42,14 @@ test("documentSegments lists runtime-minted segments, never the substrate", asyn
   // its prior genesis (regeneration sweeps the old cels; cross-segment writes are
   // open now that 访 is gone, so the old isolation no longer keeps both alive).
   await put('(cels 2 2 "books" (at "B2" 7))', "books_gen");
-  await put('(winapp "dash" "Dashboard" "(dom \'h2\' \'hi\')")', "dash_gen");
+  await put('(wopen "dash" "Dashboard" "(dom \'h2\' \'hi\')")', "dash_gen");
 
   const docs = documentSegments(state);
   assert.ok(docs.includes("books"), "the workbook segment is a document segment");
-  assert.ok(docs.includes("win.dash"), "the winapp segment is a document segment");
+  assert.ok(docs.includes("win.dash"), "the wopen window segment is a document segment");
 
   // the substrate (and runtime INFRA like the base `win` namespace) must NOT leak
-  for (const sub of ["origin", "net", "dom", "windows", "win"]) {
+  for (const sub of ["origin", "net", "dom", "window", "win"]) {
     assert.ok(!docs.includes(sub), `${sub} must not appear in the export set`);
   }
 });
