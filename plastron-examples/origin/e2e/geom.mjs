@@ -1,7 +1,9 @@
 // e2e: cels(…, geom(x,y,w,h)) declares a worksheet window's geometry. A value in
 // (0,1] is a PROPORTION of the viewport (x/w → viewport.w, y/h → viewport.h); >1
-// is absolute pixels. The genesis writes it into win.geom[name] the FIRST time the
-// window materializes, and a later user drag/resize is preserved.
+// is absolute pixels. The genesis bakes it into the gen-2 window-state cel
+// win.<name>.state the FIRST time the window materializes (applyDeclaredGeom
+// converts proportions → px and sets a geomDeclared marker), and a later user
+// drag/resize is preserved (the marker gates re-application).
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 const PORT = 8791, dist = new URL("../dist", import.meta.url).pathname;
@@ -24,11 +26,12 @@ const run = (runKey, formula) => page.evaluate(async ([k, f]) => {
   await new Promise((r) => setTimeout(r, 100));
 }, [runKey, formula]);
 
-const geomOf = (seg) => page.evaluate((s) => globalThis.plastron.state.cels.get("win.geom")?.v?.[s] ?? null, seg);
+// gen-2: geometry lives on the window-state cel win.<seg>.state (x/y/w/h/minW/minH).
+const geomOf = (seg) => page.evaluate((s) => { const v = globalThis.plastron.state.cels.get(`win.${s}.state`)?.v; return v ? { x: v.x, y: v.y, w: v.w, h: v.h, minW: v.minW, minH: v.minH } : null; }, seg);
 const viewport = () => page.evaluate(() => ({ w: globalThis.plastron.state.cels.get("viewport.w")?.v, h: globalThis.plastron.state.cels.get("viewport.h")?.v }));
 // the rendered window element's box (width/height are exact; x/y carry the .origin offset)
 const winBox = (seg) => page.evaluate((s) => {
-  const w = [...document.querySelectorAll(".pl-window")].find((x) => x.getAttribute("data-win") === s);
+  const w = [...document.querySelectorAll(".pl-window")].find((x) => x.getAttribute("data-win") === `win.${s}.state`);
   if (!w) return null; const r = w.getBoundingClientRect();
   return { w: Math.round(r.width), h: Math.round(r.height) };
 }, seg);
@@ -57,17 +60,18 @@ await run("g3.run", '=cels("gsize", 2, 2, geom(0, 0, 0.5, 1), at("a1", "x"))');
 const g3 = await geomOf("gsize");
 ok(g3 && g3.x === 0 && g3.y === 0 && g3.w === 640 && g3.h === 800, "geom(0,0,0.5,1) → left half, full height", g3);
 
-// 4) a worksheet WITHOUT geom() gets no seeded geometry (content-sized).
+// 4) a worksheet WITHOUT geom() gets the DEFAULT window geometry (no geomDeclared
+// marker) — gen-2 windows always carry a size; geom() only overrides the default.
 await run("g4.run", '=cels("gnone", 2, 2, at("a1", "x"))');
-const g4 = await geomOf("gnone");
-ok(g4 === null || (g4.w === undefined && g4.h === undefined), "no geom() → no win.geom size entry (content-sized)", g4);
+const g4decl = await page.evaluate(() => globalThis.plastron.state.cels.get("win.gnone.state")?.v?.geomDeclared ?? false);
+ok(g4decl === false, "no geom() → window opens at the default geometry (geomDeclared unset)", g4decl);
 
-// 5) PRESERVE a user resize: drag gpx bigger, re-run its formula → geom does NOT clobber.
+// 5) PRESERVE a user resize: drag gpx bigger, re-run its formula → geom does NOT clobber
+// (the geomDeclared marker, set on first apply, gates re-application).
 await page.evaluate(() => {
   const { state, resolveFn } = globalThis.plastron;
-  const m = { ...(state.cels.get("win.geom")?.v ?? {}) };
-  m.gpx = { ...m.gpx, w: 999, h: 777 };   // simulate a user drag/resize
-  return resolveFn(state, "setValue")(state, "win.geom", m);
+  const st = state.cels.get("win.gpx.state")?.v ?? {};
+  return resolveFn(state, "setValue")(state, "win.gpx.state", { ...st, w: 999, h: 777 });   // simulate a user drag/resize
 });
 await run("g2.run", '=cels("gpx", 3, 3, geom(50, 60, 420, 300), at("a1", "x"))');   // re-open
 const g5 = await geomOf("gpx");

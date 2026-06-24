@@ -37,7 +37,7 @@ const isVnode = (v: unknown): v is V => !!v && typeof v === "object" && ((v as {
 interface Tab { ref: string; title?: string; icon?: string; flush?: string; win?: string }
 // `dockedIn` set ⇒ this window is a TAB inside another window (it self-hides; its host
 // renders it). Otherwise it is a top-level window that SELF-MOUNTS into .origin.
-interface WinState { ref?: string; x?: number; y?: number; w?: number; h?: number; z?: number; min?: number; max?: number; closed?: number; title?: string; icon?: string; tabs?: Tab[]; active?: number; dockedIn?: string }
+interface WinState { ref?: string; x?: number; y?: number; w?: number; h?: number; minW?: number; minH?: number; z?: number; min?: number; max?: number; closed?: number; title?: string; icon?: string; tabs?: Tab[]; active?: number; dockedIn?: string; geomDeclared?: boolean }
 interface DomEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void }; target?: { setPointerCapture?: (id: number) => void } }
 
 // ── shared state plumbing (painting is an explicit effect; drain after a write) ──
@@ -119,6 +119,7 @@ const wframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V 
   const x = s.max ? 0 : num(s.x, 80), y = s.max ? 0 : num(s.y, 80);
   const w = s.max ? num(gg.innerWidth, 1200) : num(s.w, 380);
   const h = s.max ? num(gg.innerHeight, 800) - 46 : num(s.h, 260);
+  const mw = num(s.minW, 0), mh = num(s.minH, 0);
   const z = num(s.z, 1);
   const tabs = Array.isArray(s.tabs) ? s.tabs : [];
   const activeIdx = tabs.length ? Math.max(0, Math.min(tabs.length - 1, num(s.active, 0))) : 0;
@@ -161,7 +162,7 @@ const wframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V 
     style: `position:absolute;${pos};touch-action:none;z-index:6${dir === "se" ? ";background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" : ""}`,
   }, [], { pointerdown: { dispatch: "window.grabResize", payload: { ref, dir } }, pointermove: { dispatch: "window.resizeMove" }, pointerup: { dispatch: "window.drop" } }));
 
-  return el("div", { class: "pl-window" + (isActive ? " active" : ""), "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:${isActive ? "2px solid #4a90d9" : "1px solid #8886"};border-radius:6px;background:Canvas;box-shadow:${isActive ? "0 6px 22px #4a90d966" : "0 4px 16px #0004"};overflow:hidden` }, children, { pointerdown: { dispatch: "window.raise", payload: ref } });
+  return el("div", { class: "pl-window" + (isActive ? " active" : ""), "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px${mw ? `;min-width:${mw}px` : ""}${mh ? `;min-height:${mh}px` : ""};z-index:${z};display:flex;flex-direction:column;border:${isActive ? "2px solid #4a90d9" : "1px solid #8886"};border-radius:6px;background:Canvas;box-shadow:${isActive ? "0 6px 22px #4a90d966" : "0 4px 16px #0004"};overflow:hidden` }, children, { pointerdown: { dispatch: "window.raise", payload: ref } });
 }) as Fn;
 
 // ── drag / resize / focus / state controls (operate on the state cel by ref) ──
@@ -326,6 +327,7 @@ const wbframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V
   const x = s.max ? 0 : num(s.x, 80), y = s.max ? 0 : num(s.y, 80);
   const w = s.max ? num(gg.innerWidth, 1200) : num(s.w, 640);
   const h = s.max ? num(gg.innerHeight, 800) - 46 : num(s.h, 440);
+  const mw = num(s.minW, 0), mh = num(s.minH, 0);
   const z = num(s.z, 1);
   const sheets = Array.isArray(s.sheets) ? s.sheets : [];
   const views = Array.isArray(s.views) ? s.views : [];
@@ -374,7 +376,7 @@ const wbframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V
     [leftPane, ...(full === "" ? [divider] : []), rightPane]);
   const children: V[] = [titlebar, row];
   if (!s.max) children.push(el("div", { class: "pl-resize", style: "position:absolute;right:0;bottom:0;width:15px;height:15px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 45%,#8886 45%,#8886 55%,transparent 55%)" }, [], { pointerdown: { dispatch: "window.grabResize", payload: { ref, dir: "se" } }, pointermove: { dispatch: "window.resizeMove" }, pointerup: { dispatch: "window.drop" } }));
-  return el("div", { class: "pl-window pl-workbook" + (isActive ? " active" : ""), "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:${z};display:flex;flex-direction:column;border:${isActive ? "2px solid #4a90d9" : "1px solid #8886"};border-radius:6px;background:Canvas;box-shadow:${isActive ? "0 6px 22px #4a90d966" : "0 4px 16px #0004"};overflow:hidden` }, children, { pointerdown: { dispatch: "window.raise", payload: ref } });
+  return el("div", { class: "pl-window pl-workbook" + (isActive ? " active" : ""), "data-win": ref, style: `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px${mw ? `;min-width:${mw}px` : ""}${mh ? `;min-height:${mh}px` : ""};z-index:${z};display:flex;flex-direction:column;border:${isActive ? "2px solid #4a90d9" : "1px solid #8886"};border-radius:6px;background:Canvas;box-shadow:${isActive ? "0 6px 22px #4a90d966" : "0 4px 16px #0004"};overflow:hidden` }, children, { pointerdown: { dispatch: "window.raise", payload: ref } });
 }) as Fn;
 
 // workbook tab / pane handlers (upstream writes to the state cel → re-render)

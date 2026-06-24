@@ -239,7 +239,7 @@ const colLetterOf = (n: number): string => { let s = "", x = n + 1; while (x > 0
 const gridContentF = (seg: string, r: number, c: number): string => {
   const refs: string[] = [];
   for (let row = 0; row < r; row++) for (let col = 0; col < c; col++) { const a = `${colLetterOf(col)}${row + 1}`; refs.push(`'${seg}.${a}', ${seg}.${a}`); }
-  return `=sheetgrid('${seg}', sheetcells(${refs.join(", ")}), gridopts(sheet.editing, sheet.selected))`;
+  return `=sheetpane(sheetbar(sheet.selected, sheet.draft), sheetgrid('${seg}', sheetcells(${refs.join(", ")}), gridopts(sheet.editing, sheet.selected)))`;
 };
 // a SELF-MOUNTING gen-2 workbook window over one or more grids (each a sheet tab).
 // Replaces the win.geom geometry a grid used to declare for sheetView.
@@ -266,16 +266,19 @@ const celsGen: Fn = (...args: unknown[]): unknown => {
     // ONE gen-2 workbook window (sheets share its frame).
     const cels: Record<string, unknown> = {};
     const grids: { name: string; r: number; c: number }[] = [];
-    let i = 0, n = 0;
+    let i = 0, n = 0; let geom: WGeom | undefined;
     while (i < args.length && typeof args[i] === "string") {
       const nm = String(args[i]).trim() || `s${++n}`;
-      const [values, , ni] = collectValues(args, i + 3);
+      const [values, g, ni] = collectValues(args, i + 3);
+      if (g) geom = g;                                            // a geom() arg sizes the workbook WINDOW (one per =cels)
       Object.assign(cels, gridShape(args[i + 1], args[i + 2], nm, values).cels);
       grids.push({ name: nm, r: capR(args[i + 1]), c: capC(args[i + 2]) });
       i = ni;
     }
-    Object.assign(cels, gridWindowCels(grids, undefined, 0));
-    return { genesis: true, kind: "workbook", cels };
+    Object.assign(cels, gridWindowCels(grids, geom, 0));
+    // gridWindowCels keys the window win.<grids[0].name>.state; surface the geom
+    // there so applyDeclaredGeom converts a fractional (0,1] geom to viewport px.
+    return { genesis: true, kind: "workbook", cels, ...(geom && grids[0] ? { geoms: { [grids[0].name]: geom } } : {}) };
   }
   // numbers → one sheet: (rows, cols [, name] [, geom()] [, at()…]).
   const [rows, cols] = args;
@@ -283,7 +286,12 @@ const celsGen: Fn = (...args: unknown[]): unknown => {
   const name = named ? String(args[2]) : `g${capR(rows)}x${capC(cols)}`;
   const [values, geom] = collectValues(args, named ? 3 : 2);
   const gs = gridShape(rows, cols, name, values);
-  return { genesis: true, kind: "workbook", layer: gs.layer, cels: { ...gs.cels, ...gridWindowCels([{ name, r: capR(rows), c: capC(cols) }], geom, 0) } };
+  // bake the geom into the window state (so absolute px applies even off the
+  // origin.run path), AND surface it under `geoms` so applyDeclaredGeom converts
+  // a fractional (0,1] geom to viewport-relative px after genesis.
+  return { genesis: true, kind: "workbook", layer: gs.layer,
+    cels: { ...gs.cels, ...gridWindowCels([{ name, r: capR(rows), c: capC(cols) }], geom, 0) },
+    ...(geom ? { geoms: { [name]: geom } } : {}) };
 };
 
 /** doc(…parts) — compose an ENTIRE document from cels()/def() parts into
@@ -473,7 +481,7 @@ const edit: Fn = async (state: State, payload?: unknown, event?: unknown) => {
   const cur = state.cels.get("元.editing")?.v;
   const next = cur === key ? null : key;
   await (resolveFn(state, "setValueBatch") as Fn)(state,
-    [["元.editing", next], ["sheet.editing", next], ["元.draft", next ? formatFormula(cellSource(state, next)) : ""], ["元.error", null]]);
+    [["元.editing", next], ["sheet.editing", next], ["元.draft", next ? formatFormula(cellSource(state, next)) : ""], ["sheet.draft", next ? formatFormula(cellSource(state, next)) : ""], ["元.error", null]]);
   // 元.editing is in 元.view's inputMap, so changing it re-fires the view — but
   // that re-fire must propagate through the cycle BEFORE we paint, or the first
   // drain repaints the stale vnode (editor not yet swapped in) and no second
@@ -494,7 +502,7 @@ const select: Fn = async (state: State, payload?: unknown, event?: unknown) => {
   const key = typeof payload === "string" ? payload : null;
   if (!key) return state;
   await (resolveFn(state, "setValueBatch") as Fn)(state,
-    [["元.selected", key], ["sheet.selected", key], ["元.draft", formatFormula(cellSource(state, key))], ["元.error", null]]);
+    [["元.selected", key], ["sheet.selected", key], ["元.draft", formatFormula(cellSource(state, key))], ["sheet.draft", formatFormula(cellSource(state, key))], ["元.error", null]]);
   await (resolveFn(state, "runCycle") as Fn)(state);
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
   return state;
@@ -519,27 +527,29 @@ const fire: Fn = async (state: State, payload?: unknown) => {
 // (ex / tryexample removed: the readme is now static copyable text — type an
 //  example into a cell and press ⚡ — so there are no per-row "try it" buttons.)
 
-// window geometry a genesis declared (cels(…, geom(x,y,w,h[,minW,minH]))) → win.geom.
-// `key` holds the genesis result {…, geoms}. A value in (0,1] is a PROPORTION of the
-// viewport (x/w of viewport.w, y/h of viewport.h); >1 is absolute pixels. Only set a
-// window with NO geom yet, so a user's later drag/resize is preserved. Shared by
-// origin.run AND the navOpen "=formula" launcher (both spawn geom-bearing windows).
+// window geometry a genesis declared (cels(…, geom(x,y,w,h[,minW,minH]))) → the
+// gen-2 window state cel win.<seg>.state. `key` holds the genesis result {…, geoms}.
+// A value in (0,1] is a PROPORTION of the viewport (x/w of viewport.w, y/h of
+// viewport.h); >1 is absolute pixels. Applied ONCE per window (a `geomDeclared`
+// marker on the state preserves a user's later drag/resize across re-open). Shared
+// by origin.run AND the navOpen "=formula" launcher (both spawn geom-bearing windows).
+// (Replaces the gen-1 win.geom map sheetView used to read.)
 const applyDeclaredGeom = async (state: State, key: string): Promise<void> => {
   const declared = (state.cels.get(key)?.v as { geoms?: Record<string, WGeom> } | undefined)?.geoms;
   if (!declared || !Object.keys(declared).length) return;
   const vw = Number(state.cels.get("viewport.w")?.v) || 1200, vh = Number(state.cels.get("viewport.h")?.v) || 800;
   const px = (v: number | undefined, dim: number): number | undefined => v == null ? undefined : (v > 0 && v <= 1 ? Math.round(v * dim) : v);
-  const cur = { ...((state.cels.get("win.geom")?.v as Record<string, WGeom>) ?? {}) };
-  let touched = false;
+  const setValue = resolveFn(state, "setValue") as Fn;
   for (const [seg, g] of Object.entries(declared)) {
-    if (cur[seg]) continue;
-    const r: WGeom = {};
-    if (g.x != null) r.x = px(g.x, vw); if (g.y != null) r.y = px(g.y, vh);
-    if (g.w != null) r.w = px(g.w, vw); if (g.h != null) r.h = px(g.h, vh);
-    if (g.minW != null) r.minW = px(g.minW, vw); if (g.minH != null) r.minH = px(g.minH, vh);
-    cur[seg] = r; touched = true;
+    const sref = `win.${seg}.state`;
+    const st = state.cels.get(sref)?.v as (Record<string, unknown> & { geomDeclared?: boolean }) | undefined;
+    if (!st || typeof st !== "object" || st.geomDeclared) continue;   // un-moved-once gate
+    const patch: Record<string, unknown> = { geomDeclared: true };
+    if (g.x != null) patch.x = px(g.x, vw); if (g.y != null) patch.y = px(g.y, vh);
+    if (g.w != null) patch.w = px(g.w, vw); if (g.h != null) patch.h = px(g.h, vh);
+    if (g.minW != null) patch.minW = px(g.minW, vw); if (g.minH != null) patch.minH = px(g.minH, vh);
+    await setValue(state, sref, { ...st, ...patch });
   }
-  if (touched) await (resolveFn(state, "setValue") as Fn)(state, "win.geom", cur);
 };
 
 /** commit (origin.run) — run a cell: set its content from the draft and
@@ -584,7 +594,7 @@ const commit: Fn = async (state: State, payload?: unknown, source?: unknown) => 
 
   // keep the selection on the committed cell and refresh the bar's draft to its
   // (now re-evaluated) source; clear inline editing.
-  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["sheet.editing", null], ["元.error", null], ["元.selected", key], ["sheet.selected", key], ["元.draft", src]]);
+  await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.editing", null], ["sheet.editing", null], ["元.error", null], ["元.selected", key], ["sheet.selected", key], ["元.draft", src], ["sheet.draft", src]]);
   // fire generators so they enqueue, then commit structure + sweep. Loop until
   // quiescent: a genesis effect can in turn materialize cels whose own formulas
   // are requests (e.g. a seeded grid cell holding =db(…)) — keep draining until
@@ -815,6 +825,7 @@ const otpEncryptHandler: Fn = async (state: State, target: unknown, event: unkno
     const { url } = await encodeOtpLink(src, picked.bytes, picked.name);
     await (resolveFn(state, "setValueBatch") as Fn)(state, [
       ["元.draft", url],
+      ["sheet.draft", url],
       ["元.error", `🔐 OTP link is in the formula bar. Pad "${picked.name}" is now spent — DELETE it from BOTH stacks (one pad, one message).`],
     ]);
   } catch (e) {
@@ -831,6 +842,7 @@ const otpDecryptHandler: Fn = async (state: State, url: unknown, event: unknown)
     const formula = await otpDecryptPayload(payload, picked.bytes);
     await (resolveFn(state, "setValueBatch") as Fn)(state, [
       ["元.draft", formula],
+      ["sheet.draft", formula],
       ["元.error", "🔓 Decrypted — the source is in the formula bar. Paste it into a cell to run it."],
     ]);
   } catch (e) {
