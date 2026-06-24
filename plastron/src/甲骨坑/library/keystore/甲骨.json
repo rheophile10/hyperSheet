@@ -4,85 +4,201 @@
     {
       "key": "keystore.status",
       "celType": "ValueCel",
-      "metadata": { "key": "keystore.status", "segment": "keystore", "name": "status", "description": "NON-secret reactive identity status: 'none' (no wallet), 'locked' (a persisted wallet exists, not unlocked), 'unlocked' (keyring in memory). Formulas reference this to gate UI (e.g. the formula bar / a 🔒 badge). The keyring + private keys live MODULE-SCOPE, never in a cel." },
+      "metadata": {
+        "key": "keystore.status",
+        "segment": "keystore",
+        "name": "status",
+        "description": "NON-secret reactive identity status: 'none' (no wallet), 'locked' (a persisted wallet exists, not unlocked), 'unlocked' (keyring in memory). Formulas reference this to gate UI (e.g. the formula bar / a 🔒 badge). The keyring + private keys live MODULE-SCOPE, never in a cel."
+      },
       "v": "none"
     },
     {
       "key": "keystore.name",
       "celType": "ValueCel",
-      "metadata": { "key": "keystore.name", "segment": "keystore", "name": "name", "description": "the wallet's profile display name (non-secret). Set via keystore.setName." },
+      "metadata": {
+        "key": "keystore.name",
+        "segment": "keystore",
+        "name": "name",
+        "description": "the wallet's profile display name (non-secret). Set via keystore.setName."
+      },
       "v": ""
     },
     {
       "key": "keystore.identity",
       "celType": "ValueCel",
-      "metadata": { "key": "keystore.identity", "segment": "keystore", "name": "identity", "description": "the current Ed25519 PUBLIC signing key (base64) when unlocked — your public identity, used in <seg>.writers + to verify your signed edits. Empty when locked. Public, cel-safe." },
+      "metadata": {
+        "key": "keystore.identity",
+        "segment": "keystore",
+        "name": "identity",
+        "description": "the current Ed25519 PUBLIC signing key (base64) when unlocked — your public identity, used in <seg>.writers + to verify your signed edits. Empty when locked. Public, cel-safe."
+      },
       "v": ""
     },
     {
       "key": "keystore.ecdhpub",
       "celType": "ValueCel",
-      "metadata": { "key": "keystore.ecdhpub", "segment": "keystore", "name": "ecdhpub", "description": "the current ECDH P-256 PUBLIC key (base64) when unlocked — recipients wrap a segment data key TO this. Empty when locked. Public, cel-safe." },
+      "metadata": {
+        "key": "keystore.ecdhpub",
+        "segment": "keystore",
+        "name": "ecdhpub",
+        "description": "the current ECDH P-256 PUBLIC key (base64) when unlocked — recipients wrap a segment data key TO this. Empty when locked. Public, cel-safe."
+      },
       "v": ""
+    },
+    {
+      "key": "keystore.sign",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "keystore.sign",
+        "segment": "keystore",
+        "name": "keystore.sign",
+        "kind": "native",
+        "description": "(message) -> {ok, sig, pub}. Ed25519-sign a message with the CURRENT signing key. pub identifies the key for verification (public verify = crypto.verify). Must be unlocked."
+      },
+      "locked": true
+    },
+    {
+      "key": "keystore.wrap",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "keystore.wrap",
+        "segment": "keystore",
+        "name": "keystore.wrap",
+        "kind": "native",
+        "description": "(dataKeyB64, toPubB64?) -> {ok, env, pub}. ECDH-wrap a symmetric data key to a recipient ecdh public key (default = my own = self-encryption). Store the returned pub; unwrap needs it. Must be unlocked."
+      },
+      "locked": true
+    },
+    {
+      "key": "keystore.unwrap",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "keystore.unwrap",
+        "segment": "keystore",
+        "name": "keystore.unwrap",
+        "kind": "native",
+        "description": "(env, withPubB64?) -> {ok, dataKey}. ECDH-unwrap with the held key whose ecdh pub matches withPub (default current; tries current+history so a now-retired key still opens). Must be unlocked."
+      },
+      "locked": true
     },
     {
       "key": "keystore.has",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "keystore.has", "segment": "keystore", "name": "keystore.has", "kind": "native", "description": "() -> bool. Is there a wallet (an unlocked keyring in memory OR a persisted keystore in OPFS)?" },
+      "metadata": {
+        "key": "keystore.has",
+        "segment": "keystore",
+        "name": "keystore.has",
+        "kind": "native",
+        "description": "() -> bool. Is there a wallet (an unlocked keyring in memory OR a persisted keystore in OPFS)?"
+      },
       "locked": true
     },
     {
       "key": "keystore.create",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "keystore.create", "segment": "keystore", "name": "keystore.create", "kind": "native", "description": "(passcode, name?) -> {ok, persisted, identity, phrase}. First-run: mint an EXTRACTABLE wallet keyring (ecdh P-256 + Ed25519), seal it (PBKDF2-HMAC-SHA-256 -> AES-256-GCM) under the passcode, persist to OPFS if available (else session-only), load into memory. Returns the 12-word recovery phrase. Passcode >=4 chars and UNRECOVERABLE (no backdoor)." },
+      "metadata": {
+        "key": "keystore.create",
+        "segment": "keystore",
+        "name": "keystore.create",
+        "kind": "native",
+        "description": "(passcode, name?) -> {ok, persisted, identity, phrase}. First-run: mint an EXTRACTABLE wallet keyring (ecdh P-256 + Ed25519), seal it (PBKDF2-HMAC-SHA-256 -> AES-256-GCM) under the passcode, persist to OPFS if available (else session-only), load into memory. Returns the 12-word recovery phrase. Passcode >=4 chars and UNRECOVERABLE (no backdoor)."
+      },
       "locked": true
     },
     {
       "key": "keystore.unlock",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "keystore.unlock", "segment": "keystore", "name": "keystore.unlock", "kind": "native", "description": "(passcode) -> {ok, identity}|{ok:false,error}. Read the persisted OPFS keystore, decrypt with the passcode, load the keyring into memory + write status cels. file:// has no persisted blob -> use keystore.import with a file." },
+      "metadata": {
+        "key": "keystore.unlock",
+        "segment": "keystore",
+        "name": "keystore.unlock",
+        "kind": "native",
+        "description": "(passcode) -> {ok, identity}|{ok:false,error}. Read the persisted OPFS keystore, decrypt with the passcode, load the keyring into memory + write status cels. file:// has no persisted blob -> use keystore.import with a file."
+      },
       "locked": true
     },
     {
       "key": "keystore.lock",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "keystore.lock", "segment": "keystore", "name": "keystore.lock", "kind": "native", "description": "() -> drop the in-memory keyring (sign-out). status -> 'locked' (if a blob persists) or 'none'." },
+      "metadata": {
+        "key": "keystore.lock",
+        "segment": "keystore",
+        "name": "keystore.lock",
+        "kind": "native",
+        "description": "() -> drop the in-memory keyring (sign-out). status -> 'locked' (if a blob persists) or 'none'."
+      },
       "locked": true
     },
     {
       "key": "keystore.reshuffle",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "keystore.reshuffle", "segment": "keystore", "name": "keystore.reshuffle", "kind": "native", "description": "() -> {ok, persisted, identity, history}. Mint a NEW current keypair; retire the old one into the history list (so docs sealed to it stay openable); re-seal + persist. Must be unlocked." },
+      "metadata": {
+        "key": "keystore.reshuffle",
+        "segment": "keystore",
+        "name": "keystore.reshuffle",
+        "kind": "native",
+        "description": "() -> {ok, persisted, identity, history}. Mint a NEW current keypair; retire the old one into the history list (so docs sealed to it stay openable); re-seal + persist. Must be unlocked."
+      },
       "locked": true
     },
     {
       "key": "keystore.changePasscode",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "keystore.changePasscode", "segment": "keystore", "name": "keystore.changePasscode", "kind": "native", "description": "(oldPasscode, newPasscode) -> {ok}|{ok:false,error}. Verify the old passcode (against the persisted blob), re-derive a new seal key, re-seal under the new passcode. New passcode >=4 chars, still unrecoverable." },
+      "metadata": {
+        "key": "keystore.changePasscode",
+        "segment": "keystore",
+        "name": "keystore.changePasscode",
+        "kind": "native",
+        "description": "(oldPasscode, newPasscode) -> {ok}|{ok:false,error}. Verify the old passcode (against the persisted blob), re-derive a new seal key, re-seal under the new passcode. New passcode >=4 chars, still unrecoverable."
+      },
       "locked": true
     },
     {
       "key": "keystore.setName",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "keystore.setName", "segment": "keystore", "name": "keystore.setName", "kind": "native", "description": "(name) -> set the profile display name, re-seal + persist. Must be unlocked." },
+      "metadata": {
+        "key": "keystore.setName",
+        "segment": "keystore",
+        "name": "keystore.setName",
+        "kind": "native",
+        "description": "(name) -> set the profile display name, re-seal + persist. Must be unlocked."
+      },
       "locked": true
     },
     {
       "key": "keystore.export",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "keystore.export", "segment": "keystore", "name": "keystore.export", "kind": "native", "description": "() -> the sealed keystore blob as a JSON string, for DOWNLOAD (the file:// backup / device-migration artifact). Already ciphertext under the passcode; no secret leaves." },
+      "metadata": {
+        "key": "keystore.export",
+        "segment": "keystore",
+        "name": "keystore.export",
+        "kind": "native",
+        "description": "() -> the sealed keystore blob as a JSON string, for DOWNLOAD (the file:// backup / device-migration artifact). Already ciphertext under the passcode; no secret leaves."
+      },
       "locked": true
     },
     {
       "key": "keystore.import",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "keystore.import", "segment": "keystore", "name": "keystore.import", "kind": "native", "description": "(blobString, passcode) -> {ok, identity, name}|{ok:false,error}. Load a keystore from a FILE (file:// / device migration): decrypt with the passcode, load into memory, persist to OPFS if available." },
+      "metadata": {
+        "key": "keystore.import",
+        "segment": "keystore",
+        "name": "keystore.import",
+        "kind": "native",
+        "description": "(blobString, passcode) -> {ok, identity, name}|{ok:false,error}. Load a keystore from a FILE (file:// / device migration): decrypt with the passcode, load into memory, persist to OPFS if available."
+      },
       "locked": true
     },
     {
       "key": "keystore.seedPhrase",
       "celType": "LockedLambdaCel",
-      "metadata": { "key": "keystore.seedPhrase", "segment": "keystore", "name": "keystore.seedPhrase", "kind": "native", "description": "() -> {ok, phrase}. The 12-word recovery phrase for the current wallet (display only; deterministic seed->key re-derivation is the documented follow-up - the working recovery in v1 is the exported passcode-locked file). Must be unlocked." },
+      "metadata": {
+        "key": "keystore.seedPhrase",
+        "segment": "keystore",
+        "name": "keystore.seedPhrase",
+        "kind": "native",
+        "description": "() -> {ok, phrase}. The 12-word recovery phrase for the current wallet (display only; deterministic seed->key re-derivation is the documented follow-up - the working recovery in v1 is the exported passcode-locked file). Must be unlocked."
+      },
       "locked": true
     }
   ]

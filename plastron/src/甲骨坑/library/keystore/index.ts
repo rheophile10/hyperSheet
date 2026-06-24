@@ -37,6 +37,7 @@ interface SubtleLike {
   deriveBits(alg: unknown, base: unknown, length: number): Promise<ArrayBuffer>;
   encrypt(alg: unknown, key: unknown, data: Uint8Array): Promise<ArrayBuffer>;
   decrypt(alg: unknown, key: unknown, data: Uint8Array): Promise<ArrayBuffer>;
+  sign(alg: unknown, key: unknown, data: Uint8Array): Promise<ArrayBuffer>;
 }
 interface CryptoLike { subtle: SubtleLike; getRandomValues<T extends ArrayBufferView>(a: T): T }
 const host = (): CryptoLike => {
@@ -103,6 +104,24 @@ const seedToPhrase = (seedB64: string): string => {
     out.push(WORDS[idx % WORDS.length]!);
   }
   return out.join(" ");
+};
+
+// ── key USE (sign / ECDH wrap-unwrap) — import stored bytes → CryptoKey at the
+// use site; the private bytes never leave this module. ─────────────────────────
+const impEcdhPriv = (b64: string): Promise<unknown> => host().subtle.importKey("pkcs8", b64dec(b64), ECDH, false, ["deriveBits"]);
+const impEcdhPub = (b64: string): Promise<unknown> => host().subtle.importKey("spki", b64dec(b64), ECDH, false, []);
+const impSignPriv = (b64: string): Promise<unknown> => host().subtle.importKey("pkcs8", b64dec(b64), ED, false, ["sign"]);
+// the AES key from ECDH(myPriv, theirPub) — symmetric in the pair (self: myPub).
+const sharedAes = async (myPrivB64: string, theirPubB64: string, usage: string[]): Promise<unknown> => {
+  const { subtle } = host();
+  const bits = await subtle.deriveBits({ name: "ECDH", public: await impEcdhPub(theirPubB64) }, await impEcdhPriv(myPrivB64), 256);
+  return subtle.importKey("raw", new Uint8Array(bits), { name: "AES-GCM" }, false, usage);
+};
+// find the keyring pair (current or retired) whose ecdh PUBLIC key matches.
+const findEcdh = (pubB64: string): Pair | null => {
+  if (!KEYRING) return null;
+  if (KEYRING.current.ecdhPub === pubB64) return KEYRING.current;
+  return KEYRING.history.find((h) => h.ecdhPub === pubB64) ?? null;
 };
 
 // ── module-scope wallet state (NEVER a cel) ─────────────────────────────────
@@ -248,8 +267,50 @@ const seedPhraseFn: Fn = (async (_state: State): Promise<unknown> => {
   return { ok: true, phrase: seedToPhrase(KEYRING.seed) };
 }) as Fn;
 
+// keystore.sign(state, message) — Ed25519-sign with the CURRENT signing key.
+// Returns { ok, sig (b64), pub (b64) } so a verifier knows which key. Public
+// verify is crypto.verify (no key needed). Must be unlocked.
+const signFn: Fn = (async (_s: State, msgArg?: unknown): Promise<unknown> => {
+  if (!KEYRING) return { ok: false, error: "keystore.sign: locked" };
+  const key = await impSignPriv(KEYRING.current.signPriv);
+  const sig = new Uint8Array(await host().subtle.sign({ name: "Ed25519" }, key, utf8(String(msgArg ?? ""))));
+  return { ok: true, sig: b64enc(sig), pub: KEYRING.current.signPub };
+}) as Fn;
+
+// keystore.wrap(state, dataKeyB64, toPubB64?) — ECDH-wrap a data key to a
+// recipient's ecdh pub (default = MY current ecdh pub = self-encryption). Returns
+// { ok, env, pub } — `pub` is the key it was wrapped to (store it; unwrap needs it).
+const wrapFn: Fn = (async (_s: State, dataKeyArg?: unknown, toPubArg?: unknown): Promise<unknown> => {
+  if (!KEYRING) return { ok: false, error: "keystore.wrap: locked" };
+  const toPub = String(toPubArg ?? KEYRING.current.ecdhPub);
+  const aes = await sharedAes(KEYRING.current.ecdhPriv, toPub, ["encrypt"]);
+  const iv = rand(12);
+  const ct = new Uint8Array(await host().subtle.encrypt({ name: "AES-GCM", iv }, aes, b64dec(String(dataKeyArg ?? ""))));
+  return { ok: true, env: `${b64enc(iv)}.${b64enc(ct)}`, pub: toPub };
+}) as Fn;
+
+// keystore.unwrap(state, env, withPubB64?) — ECDH-unwrap with the key whose ecdh
+// PUB is `withPub` (default current). Tries that exact pair from current+history,
+// so a sheet wrapped to a now-RETIRED key still opens. Returns { ok, dataKey }.
+const unwrapFn: Fn = (async (_s: State, envArg?: unknown, withPubArg?: unknown): Promise<unknown> => {
+  if (!KEYRING) return { ok: false, error: "keystore.unwrap: locked" };
+  const [ivB64, ctB64] = String(envArg ?? "").split(".");
+  if (!ivB64 || !ctB64) return { ok: false, error: "keystore.unwrap: bad envelope" };
+  const withPub = String(withPubArg ?? KEYRING.current.ecdhPub);
+  const pair = findEcdh(withPub);
+  if (!pair) return { ok: false, error: "keystore.unwrap: no held key matches (sealed to a key you don't have)" };
+  try {
+    const aes = await sharedAes(pair.ecdhPriv, withPub, ["decrypt"]);
+    const pt = new Uint8Array(await host().subtle.decrypt({ name: "AES-GCM", iv: b64dec(ivB64) }, aes, b64dec(ctB64)));
+    return { ok: true, dataKey: b64enc(pt) };
+  } catch { return { ok: false, error: "keystore.unwrap: decryption failed (wrong key / tampered)" }; }
+}) as Fn;
+
 export const name = "keystore" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
+  ["keystore.sign", signFn],
+  ["keystore.wrap", wrapFn],
+  ["keystore.unwrap", unwrapFn],
   ["keystore.has", hasFn],
   ["keystore.create", createFn],
   ["keystore.unlock", unlockFn],

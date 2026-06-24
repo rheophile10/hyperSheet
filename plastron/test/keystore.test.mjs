@@ -12,7 +12,7 @@ const { createInitialState, precomputeOptional, resolveFn } = await import("../d
 
 const boot = async () => {
   const state = createInitialState();
-  await resolveFn(state, "ensureSegments")(state, ["keystore", "file-store"]);
+  await resolveFn(state, "ensureSegments")(state, ["keystore", "file-store", "crypto"]);
   await resolveFn(state, "hydrate")(state, [], []);
   await precomputeOptional(state);
   await resolveFn(state, "runCycle")(state);
@@ -99,6 +99,52 @@ test("export → import round-trips the wallet through a file (the file:// path)
   assert.equal(good.ok, true);
   assert.equal(good.identity, id, "imported wallet has the same identity");
   assert.equal(good.name, "Erin");
+});
+
+test("sign: Ed25519 signature verifies with crypto.verify; tamper fails", async () => {
+  const s = await boot();
+  await R(s, "keystore.create")(s, "signpass", "Sig");
+  const r = await R(s, "keystore.sign")(s, "transfer 5 to bob");
+  assert.equal(r.ok, true);
+  assert.equal(r.pub, cel(s, "keystore.identity"), "sig carries the current identity pubkey");
+  assert.equal(await R(s, "crypto.verify")(r.pub, "transfer 5 to bob", r.sig), true, "valid signature verifies");
+  assert.equal(await R(s, "crypto.verify")(r.pub, "transfer 500 to bob", r.sig), false, "tampered message fails");
+});
+
+test("wrap → unwrap round-trips a data key to self", async () => {
+  const s = await boot();
+  await R(s, "keystore.create")(s, "wrappass");
+  const dk = await R(s, "crypto.datakey")();
+  const w = await R(s, "keystore.wrap")(s, dk);
+  assert.equal(w.ok, true);
+  assert.equal(w.pub, cel(s, "keystore.ecdhpub"), "wrapped to my current ecdh key");
+  const u = await R(s, "keystore.unwrap")(s, w.env, w.pub);
+  assert.equal(u.ok, true);
+  assert.equal(u.dataKey, dk, "unwrap recovers the exact data key");
+});
+
+test("unwrap still works after a RESHUFFLE (the retired key opens old envelopes)", async () => {
+  const s = await boot();
+  await R(s, "keystore.create")(s, "histpass");
+  const dk = await R(s, "crypto.datakey")();
+  const w = await R(s, "keystore.wrap")(s, dk);   // wrapped to the original key
+  await R(s, "keystore.reshuffle")(s);             // current key rotates; old → history
+  assert.notEqual(cel(s, "keystore.ecdhpub"), w.pub, "current key rotated");
+  const u = await R(s, "keystore.unwrap")(s, w.env, w.pub);
+  assert.equal(u.ok, true, "the retired key still unwraps");
+  assert.equal(u.dataKey, dk);
+  // a key we never held cannot unwrap
+  const bad = await R(s, "keystore.unwrap")(s, w.env, "AAAA-not-a-held-pubkey");
+  assert.equal(bad.ok, false);
+});
+
+test("sign/wrap/unwrap refuse when locked", async () => {
+  const s = await boot();
+  await R(s, "keystore.create")(s, "lockpass");
+  await R(s, "keystore.lock")(s);
+  assert.equal((await R(s, "keystore.sign")(s, "x")).ok, false);
+  assert.equal((await R(s, "keystore.wrap")(s, "AAAA")).ok, false);
+  assert.equal((await R(s, "keystore.unwrap")(s, "a.b")).ok, false);
 });
 
 test("seedPhrase returns 12 words when unlocked, refuses when locked", async () => {
