@@ -280,7 +280,9 @@
       "sheet",
       "sound",
       "builtins",
-      "sheetapp"
+      "sheetapp",
+      "keystore",
+      "profile"
     ],
     "role": "application"
   },
@@ -327,6 +329,16 @@
     "description": "the user identity WALLET (encrypted-collaborative-sheetapp Phase 1): a passcode-locked keyring of EXTRACTABLE keypairs (ecdh P-256 wrap + Ed25519 sign), sealed PBKDF2-HMAC-SHA-256 -> AES-256-GCM into a portable blob. create/unlock/lock/reshuffle(+history)/changePasscode/setName/export/import/seedPhrase. Dual-capability: persists the sealed blob to OPFS when available (served), else session-only with manual import/export (file://). Keyring + private keys live module-scope, never a cel; only non-secret status cels (keystore.status/.name/.identity/.ecdhpub) reach the graph.",
     "dependencies": [
       "file-store"
+    ]
+  },
+  {
+    "name": "profile",
+    "version": "0.0.1",
+    "description": "the identity-wallet UI (encrypted-collaborative-sheetapp Phase 1): a gen-2 profile WINDOW over the keystore library. profileui render verb + profile.* handlers (create/unlock/lock/reshuffle/changepass/setname/seed/import/importfile/export) bridge draft cels -> keystore.* -> a status message. profilewin() genesis opens it (app:profileapp launcher).",
+    "dependencies": [
+      "dom",
+      "keystore",
+      "window"
     ]
   },
   {
