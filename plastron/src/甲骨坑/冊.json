@@ -332,6 +332,16 @@
     ]
   },
   {
+    "name": "sheetkeys",
+    "version": "0.0.1",
+    "description": "per-segment crypto for the encrypted-collaborative-sheetapp (Phase 2): sheetkeys.hash (deterministic SHA-256 of a segment SOURCE cels, sources-only, with exclude patterns), and (next) sealsheet/opensheet. State-taking verbs over keystore + crypto + sheet-io.",
+    "dependencies": [
+      "keystore",
+      "crypto",
+      "sheet-io"
+    ]
+  },
+  {
     "name": "profile",
     "version": "0.0.1",
     "description": "the identity-wallet UI (encrypted-collaborative-sheetapp Phase 1): a gen-2 profile WINDOW over the keystore library. profileui render verb + profile.* handlers (create/unlock/lock/reshuffle/changepass/setname/seed/import/importfile/export) bridge draft cels -> keystore.* -> a status message. profilewin() genesis opens it (app:profileapp launcher).",

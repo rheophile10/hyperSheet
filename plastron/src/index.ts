@@ -56,6 +56,7 @@ import * as cryptoLib       from "./甲骨坑/library/crypto/index.js";
 import * as seal            from "./甲骨坑/library/seal/index.js";
 import * as session         from "./甲骨坑/library/session/index.js";
 import * as keystore        from "./甲骨坑/library/keystore/index.js";
+import * as sheetkeys       from "./甲骨坑/library/sheetkeys/index.js";
 import * as profile         from "./甲骨坑/library/profile/index.js";
 import * as supabaseAuth     from "./甲骨坑/library/supabase-auth/index.js";
 import * as sqlite          from "./甲骨坑/library/sqlite/index.js";
@@ -136,6 +137,7 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "seal":             () => [...seal.cels],
   "session":          () => [...session.cels],
   "keystore":         () => [...keystore.cels],
+  "sheetkeys":        () => [...sheetkeys.cels],
   "profile":          () => [...profile.cels],
   "supabase-auth":    () => [...supabaseAuth.cels],
   "sqlite":           () => [...sqlite.cels],

@@ -2052,6 +2052,9 @@ const segsFn:    Fn = () => ({ originSeg: "list" });
 const saveSegFn: Fn = (name: unknown) => ({ originSeg: "save", name: String(name ?? "") });
 const openSegFn: Fn = (name: unknown) => ({ originSeg: "open", name: String(name ?? "") });
 const delSegFn:  Fn = (name: unknown) => ({ originSeg: "del",  name: String(name ?? "") });
+// =hash(seg, …exclude) — a recent SHA-256 of a worksheet’s SOURCE cels (sources
+// only — derived cells excluded). Exclude trailing-* prefixes drop ephemeral ranges.
+const hashReqFn: Fn = (seg: unknown, ...exclude: unknown[]) => ({ originHash: { seg: String(seg ?? ""), exclude: exclude.map(String) } });
 
 // downloadSeg(name) — a ⬇ button for a saved sheet archive under /plastron/sheets.
 const downloadSegFn: Fn = (name: unknown): V => {
@@ -2358,6 +2361,11 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         } else if (op === "del") {
           await call("fs.delete", file); result = `deleted sheet "${nm}"`;
         } else result = `(unknown seg op: ${op})`;
+      } else if (req.originHash) {
+        // =hash(seg, …exclude) — deterministic SHA-256 of a segment’s SOURCE cels.
+        await ensureSegments(state, ["sheetkeys"]);
+        const h = req.originHash as { seg: string; exclude: string[] };
+        result = await (resolveFn(state, "sheetkeys.hash") as Fn)(state, h.seg, h.exclude);
       } else if (req.originDb) {
         result = await (resolveFn(state, "sqlite.command") as Fn)(state, String(req.originDb), String(req.name ?? "main"), String(req.query ?? ""));
       } else if (req.originGraph !== undefined) {
@@ -2518,6 +2526,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["touch",          touchFn],
   ["stat",           statFn],
   ["segs",           segsFn],
+  ["hash",           hashReqFn],
   ["saveSeg",        saveSegFn],
   ["openSeg",        openSegFn],
   ["delSeg",         delSegFn],

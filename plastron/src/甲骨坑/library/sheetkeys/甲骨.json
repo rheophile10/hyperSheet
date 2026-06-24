@@ -1,0 +1,11 @@
+{
+  "name": "sheetkeys",
+  "cels": [
+    {
+      "key": "sheetkeys.hash",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "sheetkeys.hash", "segment": "sheetkeys", "name": "sheetkeys.hash", "kind": "native", "description": "(state, seg, exclude?) -> hex SHA-256 of segment `seg`'s SOURCE cels (ValueCel value | FormulaCel formula-text), sorted by key, excluding `exclude` patterns (array or comma-string; trailing * = prefix). Derived FormulaCel values are inherently excluded (sources only). Deterministic across replicas. Used by =hash, sealsheet, and the change pipeline." },
+      "locked": true
+    }
+  ]
+}

@@ -962,6 +962,19 @@
       }
     },
     {
+      "key": "hash",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "hash",
+        "segment": "origin",
+        "name": "hash",
+        "kind": "native",
+        "emitsTo": "origin.effects",
+        "description": "(seg, ...exclude) - a recent SHA-256 (hex) of worksheet seg SOURCE cels (sources only; derived values excluded). Trailing-* exclude patterns drop ephemeral ranges."
+      },
+      "locked": true
+    },
+    {
       "key": "segs",
       "celType": "LockedLambdaCel",
       "locked": true,
