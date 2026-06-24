@@ -13,6 +13,18 @@
       "v": "worksheet"
     },
     {
+      "key": "sheetapp.save",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetapp.save",
+        "segment": "sheetapp",
+        "name": "sheetapp.save",
+        "kind": "native",
+        "description": "(state, ref) - the workbook 💾 button: derive the document from the window ref (win.<doc>.state) and saveUserSpace it (dehydrate its private closure to the OPFS segment store). Reopen from OPFS with origin.opendoc."
+      }
+    },
+    {
       "key": "sheetdoc",
       "celType": "LockedLambdaCel",
       "locked": true,

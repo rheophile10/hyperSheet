@@ -301,7 +301,8 @@ const wopen: Fn = ((id: unknown, title: unknown, body: unknown, where?: unknown)
 // view content cel; wbframe slices `contents` by sheets.length (lead = sheets, rest
 // = views). Realizes the sheetapp workbook DoD (cross-sheet refs + dom views +
 // fullscreen toggle).
-interface WbState extends WinState { sheets?: Tab[]; asheet?: number; views?: Tab[]; aview?: number; split?: number; full?: string }
+interface WbTool { icon?: string; title?: string; dispatch?: string }
+interface WbState extends WinState { sheets?: Tab[]; asheet?: number; views?: Tab[]; aview?: number; split?: number; full?: string; tools?: WbTool[] }
 const wbStateOf = (s: State, ref: string): WbState => stateOf(s, ref) as WbState;
 const wbFrameFormula = (ref: string, sheets: Tab[], views: Tab[]): string =>
   `(mount ".origin" (wbframe ${ref} win.active ${[...sheets, ...views].map((t) => t.ref).join(" ")}))`;
@@ -355,8 +356,13 @@ const wbframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V
 
   const ctrlBtn = (cls: string, glyph: string, ttl: string, dispatch: string, color?: string): V =>
     el("button", { class: cls, title: ttl, style: BTN + (color ? `;color:${color}` : "") }, [T(glyph)], { pointerdown: { dispatch: "window.stop" }, click: { dispatch, payload: ref } });
+  // app-supplied toolbar (e.g. sheetapp's 💾 Save) — generic: each tool dispatches
+  // its own verb with the window ref as payload, so `window` stays decoupled.
+  const tools = Array.isArray(s.tools) ? s.tools : [];
+  const toolBtn = (tl: WbTool): V => el("button", { class: "pl-wb-tool", title: tl.title ?? "", style: BTN }, [T(tl.icon ?? "•")], { pointerdown: { dispatch: "window.stop" }, click: { dispatch: String(tl.dispatch ?? ""), payload: ref } });
   const titlebar = el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
     el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto" }, [T((s.icon ? s.icon + " " : "📚 ") + (s.title ?? ref))]),
+    el("div", { class: "pl-wb-tools", style: "display:flex;flex:0 0 auto;gap:.1rem" }, tools.map(toolBtn)),
     el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
       ctrlBtn("pl-min-btn", "–", "minimize", "window.min"),
       s.max ? ctrlBtn("pl-win-btn", "◱", "mid size", "window.max") : ctrlBtn("pl-win-btn", "⛶", "fullscreen", "window.max"),

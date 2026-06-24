@@ -120,7 +120,9 @@ const renderWorkbook = async (state: State, primary: string, title: string): Pro
     };
     const sheetTabs = await mkTabs(segs.filter((s) => paneOf(state, s) === "sheet"));
     const vizTabs = await mkTabs(segs.filter((s) => paneOf(state, s) === "viz"));
-    const g = (resolveFn(state, "wbopen") as Fn)(primary, title, sheetTabs, vizTabs, { __geom: { x: 120, y: 64, w: 820, h: 540 } }) as { cels: Record<string, unknown> };
+    const g = (resolveFn(state, "wbopen") as Fn)(primary, title, sheetTabs, vizTabs, { __geom: { x: 120, y: 64, w: 820, h: 540 } }) as { cels: Record<string, { v?: Record<string, unknown> }> };
+    const sv = g.cels[`win.${primary}.state`]?.v;       // inject the workbook toolbar (💾 Save)
+    if (sv) sv.tools = [{ icon: "💾", title: "Save this workbook", dispatch: "sheetapp.save" }];
     await (resolveFn(state, "setCelBatch") as Fn)(state, g.cels);
   }
   await wireDocFlush(state, primary);                  // closing the window saves + evicts the doc
@@ -162,8 +164,23 @@ const newsheetFn: Fn = (async (state: State): Promise<State> => {
   return state;
 }) as Fn;
 
+// sheetapp.save(state, ref) — the workbook 💾 button: derive the document from the
+// window ref (win.<doc>.state) and saveUserSpace it (dehydrate its private closure
+// → the OPFS segment store). Reopen from OPFS later with origin.opendoc, or export
+// the stored archive for an external-file upload.
+const savewbFn: Fn = (async (state: State, refArg?: unknown): Promise<State> => {
+  const ref = String(refArg ?? "");
+  const doc = ref.replace(/^win\./, "").replace(/\.state$/, "");
+  if (!doc) return state;
+  await ensureSegments(state, ["segment-store", "user-space-ops"]);
+  const save = resolveFn(state, "saveUserSpace") as Fn | undefined;
+  if (typeof save === "function") await save(state, doc);
+  return state;
+}) as Fn;
+
 export const name = "sheetapp" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
+  ["sheetapp.save",   savewbFn],
   ["sheetdoc",        sheetdocFn],
   ["origin.opendoc",  opendocFn],
   ["origin.newsheet", newsheetFn],
