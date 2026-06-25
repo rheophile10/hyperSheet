@@ -64,7 +64,7 @@ try {
 
   // the 📡 / 🤝 toolbar buttons render in the workbook chrome
   const toolsA = await A.evaluate(() => (globalThis.plastron.state.cels.get("win.sheet1.state")?.v?.tools ?? []).map((t) => t.icon));
-  ok(toolsA.includes("📡") && toolsA.includes("🤝"), "📡 Go Live + 🤝 Grant buttons are in the toolbar", toolsA);
+  ok(toolsA.includes("🕸️") && toolsA.includes("🤝"), "📡 Go Live + 🤝 Grant buttons are in the toolbar", toolsA);
 
   // ════ 📡 Go Live on both — they meet in room "plastron-sheet1" via the relay ═
   await ev(A, "sheetapp.golive", ["win.sheet1.state"]);

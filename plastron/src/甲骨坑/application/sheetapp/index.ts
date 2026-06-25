@@ -128,7 +128,7 @@ const renderWorkbook = async (state: State, primary: string, title: string): Pro
       { icon: "💾", title: "Save this workbook", dispatch: "sheetapp.save" },
       { icon: "🔐", title: "Encrypt + download this workbook (.sealed)", dispatch: "sheetapp.seal" },
       { icon: "🔑", title: "Open an encrypted .sealed file with your key", dispatch: "sheetapp.openSealed" },
-      { icon: "📡", title: "Go live — collaborate on this sheet in real time", dispatch: "sheetapp.golive" },
+      { icon: "🕸️", title: "Go live — collaborate on this sheet in real time", dispatch: "sheetapp.golive" },
       { icon: "🤝", title: "Grant the connected peer write access + the sheet key", dispatch: "sheetapp.grant" },
     ];
     await (resolveFn(state, "setCelBatch") as Fn)(state, g.cels);
@@ -235,7 +235,7 @@ const setTitle = async (state: State, doc: string, title: string): Promise<void>
   if (cur) await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, title });
 };
 
-// sheetapp.golive(state, ref) — the 📡 button: take this workbook LIVE. Make the
+// sheetapp.golive(state, ref) — the 🕸️ button: take this workbook LIVE. Make the
 // doc collaborative (writers = [me] if unset, so edits route through the CRDT
 // pipeline + record ops), join a room derived from the doc name via the signaling
 // relay (peerjoin), and register the sheetsync inbound routes (sheetsync.connect).
