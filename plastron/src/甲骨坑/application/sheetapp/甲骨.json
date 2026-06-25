@@ -83,6 +83,30 @@
         "description": "() the workbook 🔓 button: pick a .sealed file, decrypt it with your identity (sheetkeys.opensheet), and open it as a workbook. Opens 👤 Profile if locked."
       },
       "locked": true
+    },
+    {
+      "key": "sheetapp.golive",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sheetapp.golive",
+        "segment": "sheetapp",
+        "name": "sheetapp.golive",
+        "kind": "native",
+        "description": "(state, ref) -> state. The 📡 toolbar button: take this workbook LIVE — make the doc collaborative (writers=[me] if unset, so edits route through the CRDT pipeline), join a room derived from the doc name via the signaling relay (peerjoin), and register the sheetsync inbound routes. Unlock your identity first."
+      },
+      "locked": true
+    },
+    {
+      "key": "sheetapp.grant",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sheetapp.grant",
+        "segment": "sheetapp",
+        "name": "sheetapp.grant",
+        "kind": "native",
+        "description": "(state, ref) -> state. The 🤝 toolbar button: grant the connected peer(s) write access — add each present peer (sheetsync.peers) to <doc>.writers and ECDH-wrap + send them the sheet data key + writers + current op-log (sheetsync.share). After this both peers' edits flow encrypted over WebRTC."
+      },
+      "locked": true
     }
   ]
 }

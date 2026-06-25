@@ -60,6 +60,51 @@
         "description": "(state, seg) -> boolean. Non-secret introspection: is this segment being synced (a data key is held in module scope)? The key itself is NEVER a cel."
       },
       "locked": true
+    },
+    {
+      "key": "sheetsync.hello",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sheetsync.hello",
+        "segment": "sheetsync",
+        "name": "sheetsync.hello",
+        "kind": "native",
+        "description": "(state) -> {ok, frame}. (Re)announce presence: emit a hello carrying my identity + ecdh pub so a peer can wrap a data key to me. Registered as peer's 'open' handler so it fires when the data channel opens."
+      },
+      "locked": true
+    },
+    {
+      "key": "sheetsync.peers",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "sheetsync.peers",
+        "segment": "sheetsync",
+        "name": "peers",
+        "description": "reactive list of present peers [{id, ecdh}] (both PUBLIC keys), maintained from inbound hello frames. The UI reads this for presence + as grant targets. The per-segment data key stays module-scope, never here."
+      },
+      "v": []
+    },
+    {
+      "key": "sheetsync.room",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "sheetsync.room",
+        "segment": "sheetsync",
+        "name": "room",
+        "description": "the live collaboration room currently joined (set by sheetapp.golive via peerjoin). Empty when offline."
+      },
+      "v": ""
+    },
+    {
+      "key": "sheetsync.relay",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "sheetsync.relay",
+        "segment": "sheetsync",
+        "name": "relay",
+        "description": "the WebSocket signaling relay URL used by sheetapp.golive to broker peer discovery (peerjoin a room). Overridable per deployment; default localhost dev relay."
+      },
+      "v": "ws://localhost:8787"
     }
   ]
 }

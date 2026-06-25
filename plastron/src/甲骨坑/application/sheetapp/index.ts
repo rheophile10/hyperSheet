@@ -128,6 +128,8 @@ const renderWorkbook = async (state: State, primary: string, title: string): Pro
       { icon: "💾", title: "Save this workbook", dispatch: "sheetapp.save" },
       { icon: "🔐", title: "Encrypt + download this workbook (.sealed)", dispatch: "sheetapp.seal" },
       { icon: "🔑", title: "Open an encrypted .sealed file with your key", dispatch: "sheetapp.openSealed" },
+      { icon: "📡", title: "Go live — collaborate on this sheet in real time", dispatch: "sheetapp.golive" },
+      { icon: "🤝", title: "Grant the connected peer write access + the sheet key", dispatch: "sheetapp.grant" },
     ];
     await (resolveFn(state, "setCelBatch") as Fn)(state, g.cels);
   }
@@ -220,11 +222,72 @@ const openSealedFn: Fn = (async (state: State): Promise<State> => {
   return state;
 }) as Fn;
 
+// the doc this window ref points at, + a guard that opens the profile window when
+// the identity is locked (collaboration needs a signing identity).
+const docOf = (ref: unknown): string => String(ref ?? "").replace(/^win\./, "").replace(/\.state$/, "");
+const needsUnlock = async (state: State): Promise<boolean> => {
+  if (state.cels.get("keystore.status")?.v === "unlocked") return false;
+  await (resolveFn(state, "origin.navOpen") as Fn)(state, "app:profileapp");
+  return true;
+};
+const setTitle = async (state: State, doc: string, title: string): Promise<void> => {
+  const sref = `win.${doc}.state`; const cur = state.cels.get(sref)?.v as Record<string, unknown> | undefined;
+  if (cur) await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, title });
+};
+
+// sheetapp.golive(state, ref) — the 📡 button: take this workbook LIVE. Make the
+// doc collaborative (writers = [me] if unset, so edits route through the CRDT
+// pipeline + record ops), join a room derived from the doc name via the signaling
+// relay (peerjoin), and register the sheetsync inbound routes (sheetsync.connect).
+// A peer who opens the same-named sheet + goes live lands in the same room.
+const goliveFn: Fn = (async (state: State, refArg?: unknown): Promise<State> => {
+  const doc = docOf(refArg); if (!doc) return state;
+  await ensureSegments(state, ["peer", "sheetsync", "keystore", "crypto", "sheetkeys", "crdt", "sheets"]);
+  if (await needsUnlock(state)) return state;
+  const me = String(state.cels.get("keystore.identity")?.v ?? "");
+  const writers = state.cels.get(`${doc}.writers`)?.v;
+  if (!Array.isArray(writers) || writers.length === 0) {
+    await (resolveFn(state, "setCel") as Fn)(state, `${doc}.writers`, { celType: "ValueCel", v: [me], metadata: { key: `${doc}.writers`, segment: doc, name: "writers" } });
+  }
+  const room = `plastron-${doc}`;
+  const relay = String(state.cels.get("sheetsync.relay")?.v ?? "ws://localhost:8787");
+  if (typeof resolveFn(state, "peerjoin") === "function") (resolveFn(state, "peerjoin") as Fn)(state, room, relay);
+  await (resolveFn(state, "sheetsync.connect") as Fn)(state);
+  await (resolveFn(state, "setValue") as Fn)(state, "sheetsync.room", room);
+  await setTitle(state, doc, `${doc} ● live`);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+}) as Fn;
+
+// sheetapp.grant(state, ref) — the 🤝 button: give the connected peer(s) write
+// access to this sheet. Add each present peer (sheetsync.peers) to <doc>.writers,
+// then ECDH-wrap + send them the sheet data key + writers + current op-log
+// (sheetsync.share). After this, both peers' edits flow encrypted over the wire.
+const grantFn: Fn = (async (state: State, refArg?: unknown): Promise<State> => {
+  const doc = docOf(refArg); if (!doc) return state;
+  await ensureSegments(state, ["peer", "sheetsync", "keystore", "crypto", "sheetkeys", "crdt"]);
+  if (await needsUnlock(state)) return state;
+  const peers = (state.cels.get("sheetsync.peers")?.v ?? []) as { id?: string; ecdh?: string }[];
+  if (!Array.isArray(peers) || peers.length === 0) { await setTitle(state, doc, `${doc} ● live (no peer yet)`); return state; }
+  const me = String(state.cels.get("keystore.identity")?.v ?? "");
+  const cur = (state.cels.get(`${doc}.writers`)?.v ?? []) as string[];
+  const writers = [...new Set([me, ...(Array.isArray(cur) ? cur.map(String) : []), ...peers.map((p) => String(p.id ?? "")).filter(Boolean)])];
+  await (resolveFn(state, "setCel") as Fn)(state, `${doc}.writers`, { celType: "ValueCel", v: writers, metadata: { key: `${doc}.writers`, segment: doc, name: "writers" } });
+  for (const p of peers) if (p.ecdh) await (resolveFn(state, "sheetsync.share") as Fn)(state, doc, p.ecdh);
+  await setTitle(state, doc, `${doc} ● live (${peers.length})`);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+}) as Fn;
+
 export const name = "sheetapp" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["sheetapp.save",   savewbFn],
   ["sheetapp.seal",   sealwbFn],
   ["sheetapp.openSealed", openSealedFn],
+  ["sheetapp.golive", goliveFn],
+  ["sheetapp.grant",  grantFn],
   ["sheetdoc",        sheetdocFn],
   ["origin.opendoc",  opendocFn],
   ["origin.newsheet", newsheetFn],

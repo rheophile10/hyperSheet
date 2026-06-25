@@ -156,6 +156,17 @@
         "description": "(room, relayUrl) - automatic signaling via a relay: join a room, the existing member offers + the newcomer answers, all brokered over WebSocket (no SDP copy/paste). Browser-only, 2-peer rooms."
       },
       "locked": true
+    },
+    {
+      "key": "peer.connected",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "peer.connected",
+        "segment": "peer",
+        "name": "connected",
+        "description": "reactive WebRTC connection status — true once a data channel has opened to a peer. Formulas/UI reference this to show a live/offline indicator. One connection per page (v1)."
+      },
+      "v": false
     }
   ]
 }

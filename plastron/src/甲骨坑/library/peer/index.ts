@@ -175,7 +175,14 @@ const dispatch = (state: State, m: unknown): void => {
 };
 
 const wire = (state: State, ch: RtcChan): void => {
-  ch.onopen = () => { transport = { send: (m: string) => ch.send(m) }; (globalThis as { __peerOpen?: boolean }).__peerOpen = true; };
+  ch.onopen = () => {
+    transport = { send: (m: string) => ch.send(m) };
+    (globalThis as { __peerOpen?: boolean }).__peerOpen = true;
+    // surface a reactive connection status + fire the registered "open" handler
+    // (sheetsync registers it to (re)announce presence now that the wire is live).
+    try { void (resolveFn(state, "setValue") as Fn)(state, "peer.connected", true); } catch { /* cel absent */ }
+    const ov = routes["open"]; if (ov) { try { void (resolveFn(state, ov) as Fn)(state); } catch { /* handler threw */ } }
+  };
   ch.onmessage = (e) => { if (typeof e.data !== "string" || e.data.length > MAX_MSG) { note("in", "?", "dropped:size"); return; } try { dispatch(state, JSON.parse(e.data)); } catch { /* malformed frame */ } };
 };
 const iceDone = (conn: RtcConn): Promise<void> => new Promise<void>((res) => {

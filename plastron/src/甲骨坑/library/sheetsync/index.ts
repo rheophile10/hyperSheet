@@ -139,14 +139,34 @@ const commitFn: Fn = (async (state: State, segArg?: unknown, keyArg?: unknown, s
   return { ok: true, hash: res.hash, layers: res.layers, frame };
 }) as Fn;
 
-// ── sheetsync.connect(state) — register inbound routes + announce presence ───
-// Wire the op/key/hello frame types to sheetsync.recv on the peer transport, and
-// emit a hello carrying my identity + ecdh pub so a peer can wrap a data key to me.
-const connectFn: Fn = (async (state: State): Promise<unknown> => {
-  if (has(state, "peer.route")) for (const t of ["op", "key", "hello"]) R(state, "peer.route", state, t, "sheetsync.recv");
+// publish the present peers to a reactive cel (id + ecdh pub — both public) so the
+// UI can show presence + a grant target. The data key stays module-scope.
+const publishPeers = async (state: State): Promise<void> => {
+  if (!state.cels.get("sheetsync.peers")) return;
+  const list = [...PEERS.entries()].map(([id, v]) => ({ id, ecdh: v.ecdh }));
+  await (resolveFn(state, "setValue") as Fn)(state, "sheetsync.peers", list);
+};
+
+// sheetsync.hello(state) — (re)announce presence: emit a hello carrying my identity
+// + ecdh pub so a peer can wrap a data key to me. Registered as peer's "open"
+// handler, so it fires the moment the data channel actually opens (tx before open
+// is a no-op). Returns the hello frame.
+const helloFn: Fn = (async (state: State): Promise<unknown> => {
   const frame = { t: "hello", pub: String(state.cels.get("keystore.identity")?.v ?? ""), ecdh: String(state.cels.get("keystore.ecdhpub")?.v ?? "") };
   tryTx(state, frame);
   return { ok: true, frame };
+}) as Fn;
+
+// ── sheetsync.connect(state) — register inbound routes + the open hook ───────
+// Wire op/key/hello → sheetsync.recv and "open" → sheetsync.hello on the peer
+// transport, then announce presence (a no-op until the channel opens, at which
+// point the "open" hook re-announces).
+const connectFn: Fn = (async (state: State): Promise<unknown> => {
+  if (has(state, "peer.route")) {
+    for (const t of ["op", "key", "hello"]) R(state, "peer.route", state, t, "sheetsync.recv");
+    R(state, "peer.route", state, "open", "sheetsync.hello");
+  }
+  return helloFn(state);
 }) as Fn;
 
 // ── sheetsync.share(state, seg, peerEcdhPub?) — grant a peer access ──────────
@@ -180,7 +200,7 @@ const recvFn: Fn = (async (state: State, frameArg?: unknown): Promise<string> =>
   if (!m || typeof m.t !== "string") return "dropped:malformed";
 
   if (m.t === "hello") {
-    if (m.pub && m.ecdh) PEERS.set(String(m.pub), { ecdh: String(m.ecdh) });
+    if (m.pub && m.ecdh) { PEERS.set(String(m.pub), { ecdh: String(m.ecdh) }); await publishPeers(state); }
     return "hello";
   }
 
@@ -226,6 +246,7 @@ export const name = "sheetsync" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["sheetsync.commit", commitFn],
   ["sheetsync.connect", connectFn],
+  ["sheetsync.hello", helloFn],
   ["sheetsync.share", shareFn],
   ["sheetsync.recv", recvFn],
   ["sheetsync.haskey", haskeyFn],
