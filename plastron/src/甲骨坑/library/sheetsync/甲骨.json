@@ -1,0 +1,11 @@
+{
+  "name": "sheetsync",
+  "cels": [
+    {
+      "key": "sheetsync.commit",
+      "celType": "LockedLambdaCel",
+      "metadata": { "key": "sheetsync.commit", "segment": "sheetsync", "name": "sheetsync.commit", "kind": "native", "description": "(state, seg, key, source) -> {ok, hash, layers}. The CRDT change pipeline (Phase 3): gate the author (writableBy), diff the segment SOURCE string before->after the edit, crdt.layer + keystore.sign, verify the signature + re-gate the signer, crdt.append to <seg>.crdt, fold the stack -> source cels (setCel) + runCycle (derived recompute locally), then stamp <seg>.hash. SOURCES only; one writer at a time; non-writers dropped. Loopback now; Phase 4 puts the op on a WebRTC channel." },
+      "locked": true
+    }
+  ]
+}

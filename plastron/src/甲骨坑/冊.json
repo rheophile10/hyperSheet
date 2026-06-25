@@ -306,6 +306,12 @@
     "dependencies": []
   },
   {
+    "name": "crdt",
+    "version": "0.0.1",
+    "description": "string-as-grow-only-stack-of-line-diffs. Verbs (diff/apply/layer/append/resolve) model a value as authorship-stamped (author, ts) line-level diff layers; resolve folds them from \"\" to current text or n edits up from 0. Convergent: every replica sorts (ts, author, id) identically. Pure (ts passed in, ids are content hashes). Edit-permission is external — the CRDT only records authorship.",
+    "dependencies": []
+  },
+  {
     "name": "seal",
     "version": "0.0.1",
     "description": "Layer-2 at-rest encryption of SEALED segments. seal.lock(password) derives a data key (PBKDF2-HMAC-SHA-256) and installs the kernel's state.sealCipher / state.sealDecipher hooks: a get-SEALED segment cel encrypts (AES-256-GCM) to a { __sealed: 'ivB64.cipherB64' } marker on dehydrate and decrypts back on hydrate; with no decipher (locked) the marker stays sealed and unreadable. seal.lock() with no arg clears the hooks. Synchronous zero-dep pure-JS AEAD + KDF (the kernel seal hooks run inline in the sync dehydrate/hydrate paths). The password / data key never become cel values and never enter an archive.",
@@ -339,6 +345,17 @@
       "keystore",
       "crypto",
       "sheet-io"
+    ]
+  },
+  {
+    "name": "sheetsync",
+    "version": "0.0.1",
+    "description": "the CRDT change pipeline (encrypted-collaborative-sheetapp Phase 3): sheetsync.commit runs a source edit through gate->diff->crdt.layer->sign->verify->gate->crdt.append->fold->setValue->runCycle. Sources only; one writer at a time. Loopback now; WebRTC in Phase 4.",
+    "dependencies": [
+      "crdt",
+      "keystore",
+      "sheetkeys",
+      "crypto"
     ]
   },
   {

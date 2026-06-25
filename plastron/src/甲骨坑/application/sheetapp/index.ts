@@ -45,7 +45,7 @@ const singleGrid = (state: State, seg: string): string => {
   // the grid reactive to that cel. gridopts(元.editing, 元.selected) makes the grid
   // EDITABLE (active cell → inline editor; click → select) and re-render reactively
   // as the editing/selected cell changes (handlers default to origin.* in sheetgrid).
-  return `sheetgrid('${seg}', sheetcells(${keys.map((k) => `'${k}', ${k}`).join(", ")}), gridopts(sheet.editing, sheet.selected))`;
+  return `sheetpane(sheetbar(sheet.selected, sheet.draft, writableBy(keystore.identity, ${seg}.writers)), sheetgrid('${seg}', sheetcells(${keys.map((k) => `'${k}', ${k}`).join(", ")}), gridopts(sheet.editing, sheet.selected)))`;
 };
 
 // sheetdoc(state, seg, title?, offset?) — open a worksheet window over the cels of
@@ -124,7 +124,11 @@ const renderWorkbook = async (state: State, primary: string, title: string): Pro
     const vizTabs = await mkTabs(segs.filter((s) => paneOf(state, s) === "viz"));
     const g = (resolveFn(state, "wbopen") as Fn)(primary, title, sheetTabs, vizTabs, { __geom: { x: 120, y: 64, w: 820, h: 540 } }) as { cels: Record<string, { v?: Record<string, unknown> }> };
     const sv = g.cels[`win.${primary}.state`]?.v;       // inject the workbook toolbar (💾 Save)
-    if (sv) sv.tools = [{ icon: "💾", title: "Save this workbook", dispatch: "sheetapp.save" }];
+    if (sv) sv.tools = [
+      { icon: "💾", title: "Save this workbook", dispatch: "sheetapp.save" },
+      { icon: "🔐", title: "Encrypt + download this workbook (.sealed)", dispatch: "sheetapp.seal" },
+      { icon: "🔑", title: "Open an encrypted .sealed file with your key", dispatch: "sheetapp.openSealed" },
+    ];
     await (resolveFn(state, "setCelBatch") as Fn)(state, g.cels);
   }
   await wireDocFlush(state, primary);                  // closing the window saves + evicts the doc
@@ -180,9 +184,47 @@ const savewbFn: Fn = (async (state: State, refArg?: unknown): Promise<State> => 
   return state;
 }) as Fn;
 
+// sheetapp.seal(state, ref) — the 🔒 button: envelope-encrypt this workbook's
+// document to your identity (sheetkeys.sealsheet) and DOWNLOAD it as <doc>.sealed.
+// Unlock your identity (👤 Profile) first; if locked, this opens the profile window.
+interface DLHost { document?: { createElement(t: string): { href: string; download: string; type?: string; accept?: string; click(): void; onchange?: ((e: unknown) => void) | null; files?: ArrayLike<{ text(): Promise<string> }> } }; URL?: { createObjectURL(b: unknown): string; revokeObjectURL(u: string): void }; Blob?: new (parts: unknown[], o: unknown) => unknown }
+const sealwbFn: Fn = (async (state: State, refArg?: unknown): Promise<State> => {
+  const doc = String(refArg ?? "").replace(/^win\./, "").replace(/\.state$/, "");
+  if (!doc) return state;
+  await ensureSegments(state, ["sheetkeys", "keystore", "crypto"]);
+  if (state.cels.get("keystore.status")?.v !== "unlocked") {
+    const pw = resolveFn(state, "profilewin") as Fn | undefined;
+    if (pw) await (resolveFn(state, "origin.navOpen") as Fn)(state, "app:profileapp");
+    return state;   // unlock, then press 🔒 again
+  }
+  const r = await (resolveFn(state, "sheetkeys.sealsheet") as Fn)(state, doc) as { ok: boolean; blob?: string };
+  const g = globalThis as DLHost;
+  if (r.ok && r.blob && g.document && g.URL?.createObjectURL && g.Blob) {
+    const url = g.URL.createObjectURL(new g.Blob([r.blob], { type: "application/json" }));
+    const a = g.document.createElement("a"); a.href = url; a.download = `${doc}.sealed`; a.click(); g.URL.revokeObjectURL(url);
+  }
+  return state;
+}) as Fn;
+
+// sheetapp.openSealed(state) — the 🔓 button: pick a .sealed file, decrypt it with
+// your identity (sheetkeys.opensheet), and open it as a workbook.
+const openSealedFn: Fn = (async (state: State): Promise<State> => {
+  await ensureSegments(state, ["sheetkeys", "keystore", "crypto"]);
+  if (state.cels.get("keystore.status")?.v !== "unlocked") { await (resolveFn(state, "origin.navOpen") as Fn)(state, "app:profileapp"); return state; }
+  const g = globalThis as DLHost;
+  if (!g.document) return state;
+  const inp = g.document.createElement("input") as unknown as { type: string; accept: string; click(): void; onchange: ((e: unknown) => void) | null; files?: ArrayLike<{ text(): Promise<string> }> };
+  inp.type = "file"; inp.accept = ".sealed,application/json";
+  inp.onchange = async () => { const f = inp.files?.[0]; if (!f) return; try { await (resolveFn(state, "sheetkeys.opensheet") as Fn)(state, await f.text()); } catch { /* not a sealed file */ } };
+  inp.click();
+  return state;
+}) as Fn;
+
 export const name = "sheetapp" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["sheetapp.save",   savewbFn],
+  ["sheetapp.seal",   sealwbFn],
+  ["sheetapp.openSealed", openSealedFn],
   ["sheetdoc",        sheetdocFn],
   ["origin.opendoc",  opendocFn],
   ["origin.newsheet", newsheetFn],

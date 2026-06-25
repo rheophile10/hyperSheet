@@ -74,7 +74,7 @@ test("hash of an empty/unknown segment is the empty-set digest, and '' for no se
 process.env.PLASTRON_FILE_STORE_ROOT ??= "./.plastron-fs-sheetkeys";
 const bootCrypto = async () => {
   const s = createInitialState();
-  await resolveFn(s, "ensureSegments")(s, ["sheetkeys", "keystore", "crypto", "file-store"]);
+  await resolveFn(s, "ensureSegments")(s, ["sheetkeys", "keystore", "crypto", "file-store", "sheets"]);
   await resolveFn(s, "hydrate")(s, [], []);
   await precomputeOptional(s);
   await resolveFn(s, "runCycle")(s);
@@ -140,6 +140,19 @@ test("writableBy: open when no allow-list, restricted to members otherwise", asy
   assert.equal(W("alice", ["alice", "bob"]), true, "member writes");
   assert.equal(W("carol", ["alice", "bob"]), false, "non-member is read-only");
   assert.equal(W("", ["alice"]), false, "locked/empty identity is never a writer of a restricted sheet");
+});
+
+test("sheetbar honours the writable gate: ⚡ + editable when writable, 🔒 + readonly when not", async () => {
+  const s = await bootCrypto();
+  const bar = (writable) => JSON.stringify(resolveFn(s, "sheetbar")("doc.A1", "=1+1", writable));
+  const open = bar(true);
+  assert.ok(open.includes("fx-fire") && !open.includes("fx-lock"), "writable → ⚡ fire button");
+  assert.ok(!open.includes("fx-readonly"), "writable → editable input");
+  const locked = bar(false);
+  assert.ok(locked.includes("fx-lock") && !locked.includes("fx-fire"), "not writable → 🔒, no ⚡");
+  assert.ok(locked.includes("fx-readonly") && locked.includes('"readonly"'), "not writable → readonly input (no commit binding)");
+  // default (undefined) stays editable — ordinary unencrypted sheets unaffected
+  assert.ok(bar(undefined).includes("fx-fire"), "default writable → editable");
 });
 
 test("sealing a sheet records the sealer as a writer, and it round-trips", async () => {

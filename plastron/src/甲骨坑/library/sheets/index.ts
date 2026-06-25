@@ -24,6 +24,18 @@ const SX = {
   td: "border:1px solid #8883;padding:0;height:1.9rem;text-align:left;vertical-align:top;cursor:cell",
   cellValue: "display:flex;align-items:flex-start;padding:.15rem .4rem;min-height:1.6rem;font-family:ui-monospace,monospace;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
   edit: "width:100%;box-sizing:border-box;min-height:2.4rem;resize:vertical;font-family:ui-monospace,monospace;font-size:.85rem;padding:.15rem .4rem;border:0;background:#4a90d922;white-space:pre-wrap;line-height:1.4",
+  // the formula bar (Excel edit surface): a cell-ref label ‖ ⚡ fire ‖ 📖 wiki ‖
+  // 🔗 topology ‖ a textarea bound to the draft cel. Sits above the grid (sheetpane
+  // stacks them). OPAQUE (Canvas) + position:sticky so a scrolling grid never bleeds
+  // through it or scrolls a classic scrollbar over it.
+  fxbar: "flex:0 0 auto;position:sticky;top:0;z-index:6;display:flex;align-items:stretch;gap:.3rem;padding:.25rem .35rem;background:Canvas;border-bottom:1px solid #8884;box-shadow:0 1px 0 #0001",
+  fxref: "flex:0 0 auto;align-self:center;min-width:2.4rem;text-align:center;font:600 .8rem ui-monospace,monospace;color:#888;padding:0 .25rem;white-space:nowrap",
+  fxbtn: "flex:0 0 auto;align-self:center;border:1px solid #8884;background:#8881;border-radius:.25rem;cursor:pointer;font-size:.95rem;line-height:1;padding:.15rem .4rem",
+  fxinput: "flex:1 1 auto;box-sizing:border-box;min-height:1.7rem;max-height:8rem;resize:vertical;font-family:ui-monospace,monospace;font-size:.82rem;line-height:1.35;padding:.18rem .4rem;border:1px solid #8884;border-radius:.2rem;background:Canvas;color:CanvasText;white-space:pre",
+  // overflow:hidden clips the pane to its window body so ONLY the grid scrolls —
+  // the outer body never grows a scrollbar that would run over the formula bar.
+  pane: "display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden",
+  paneBody: "flex:1 1 auto;overflow:auto;min-height:0",
 } as const;
 
 const colLetter = (c: number): string => { let s = "", n = c + 1; while (n > 0) { s = String.fromCharCode(65 + (n - 1) % 26) + s; n = Math.floor((n - 1) / 26); } return s; };
@@ -41,7 +53,7 @@ const displayCell = (v: unknown): V => {
 const sheetcell: Fn = ((value: unknown): V => displayCell(value)) as Fn;
 
 interface CellEntry { key?: string; col?: number; row?: number; value?: unknown; src?: unknown }
-interface GridOpts { active?: string; selected?: string; draft?: string; edit?: string; select?: string; fire?: string; commit?: string }
+interface GridOpts { active?: string; selected?: string; draft?: string; edit?: string; select?: string; fire?: string; commit?: string; wiki?: string; topo?: string }
 const num = (v: unknown, d = 0): number => { const n = Number(v); return Number.isFinite(n) ? n : d; };
 
 // sheetgrid(label, cells, opts?) — render a worksheet's cells as an editable Excel grid
@@ -98,9 +110,76 @@ const sheetgrid: Fn = ((label: unknown, cells: unknown, opts?: unknown): V => {
 const gridopts: Fn = ((active?: unknown, selected?: unknown): unknown =>
   ({ active: typeof active === "string" ? active : null, selected: typeof selected === "string" ? selected : null })) as Fn;
 
+// sheetbar(selected, draft, opts?) — the Excel FORMULA BAR: a cell-ref label, a ⚡
+// fire button, and a textarea that EDITS the selected cell's source. `selected` is
+// the selected cell KEY (e.g. "元" / "g3x3.A1"); `draft` is the source text to show
+// (seeded into the draft cel on select — reference an ASCII mirror like sheet.draft
+// in the formula so the bar re-renders on selection). The textarea's `input` writes
+// the live text into the draft cel (opts.draft, default "元.draft") WITHOUT re-rendering
+// the bar (so typing never churns the grid); Enter (keydown → opts.commit) and ⚡
+// (opts.fire) commit it to the selected cell. Stack it over a grid with sheetpane.
+const sheetbar: Fn = ((selected: unknown, draft: unknown, writable?: unknown, opts?: unknown): V => {
+  const o = (opts && typeof opts === "object") ? opts as GridOpts : {};
+  const DRAFT = o.draft ?? "元.draft", COMMIT = o.commit ?? "origin.key", FIRE = o.fire ?? "origin.fire";
+  const WIKI = o.wiki ?? "wiki.open", TOPO = o.topo ?? "origin.celtopo";
+  // gate: a RESTRICTED sheet (your identity isn't in <seg>.writers) is read-only.
+  // Default (writable undefined/true) keeps every ordinary sheet editable.
+  const canWrite = writable !== false;
+  const key = typeof selected === "string" && selected ? selected : null;
+  const ref = key ? (key.includes(".") ? key.slice(key.lastIndexOf(".") + 1) : key) : "";
+  const refSpan = el("span", { class: "fx-ref", style: SX.fxref, title: key ?? "" }, [T(ref)]);
+  const fireBtn = canWrite
+    ? el("button", { class: "fx-fire", title: "fire — run this formula (Enter)", style: SX.fxbtn }, [T("⚡")],
+        { click: { dispatch: FIRE, payload: key ?? "" } })
+    : el("span", { class: "fx-lock", title: "read-only — you are not a writer of this sheet", style: SX.fxbtn + ";cursor:default;opacity:.7" }, [T("🔒")]);
+  // 📖 wiki — open the docgraph article + metadata force-graph for THIS cell.
+  // 🔗 topology — open the runCycle dependency cone (everything up/downstream).
+  // Both are scoped to the selected cell (payload = its key); only shown when one
+  // is selected (no cell → nothing to document or trace).
+  const wikiBtn = el("button", { class: "fx-wiki", title: key ? `wiki — what is ${ref}?` : "wiki", style: SX.fxbtn }, [T("📖")],
+    { click: { dispatch: WIKI, payload: key ?? "" } });
+  const topoBtn = el("button", { class: "fx-topo", title: key ? `topology — what ${ref} depends on / feeds` : "topology", style: SX.fxbtn }, [T("🔗")],
+    { click: { dispatch: TOPO, payload: key ?? "" } });
+  const input = key
+    ? (canWrite
+        ? el("textarea", { class: "fx-input", style: SX.fxinput, rows: 1, value: String(draft ?? ""), "data-key": key, spellcheck: "false" }, [], {
+            input: { set: DRAFT, extract: "value" },
+            keydown: { dispatch: COMMIT, payload: key },   // origin.key: Enter commits to the selected cell
+          })
+        // restricted sheet: show the source but DON'T bind input/commit — read-only.
+        : el("textarea", { class: "fx-input fx-readonly", style: SX.fxinput + ";opacity:.7", rows: 1, value: String(draft ?? ""), "data-key": key, readonly: "", spellcheck: "false", title: "read-only — you are not a writer of this sheet" }, []))
+    : el("textarea", { class: "fx-input", style: SX.fxinput + ";color:#888;font-style:italic", rows: 1, readonly: "", placeholder: "select a cell to see and edit its formula" }, []);
+  const children = key ? [refSpan, fireBtn, wikiBtn, topoBtn, input] : [refSpan, fireBtn, input];
+  return el("div", { class: "sheet-fxbar", style: SX.fxbar }, children);
+}) as Fn;
+
+// sheetpane(bar, grid) — stack a formula bar over a grid in one CONTENT vnode (bar
+// fixed at top, grid scrolls below), so a worksheet window reads like Excel. Both
+// args are already-rendered vnodes; keeping the grid a separate cel-ref means typing
+// in the bar re-wraps here without re-running sheetgrid.
+const sheetpane: Fn = ((bar: unknown, grid: unknown): V =>
+  el("div", { class: "sheet-pane", style: SX.pane }, [
+    isVnode(bar) ? bar : T(bar == null ? "" : String(bar)),
+    el("div", { class: "sheet-pane-body", style: SX.paneBody }, [isVnode(grid) ? grid : T(grid == null ? "" : String(grid))]),
+  ])) as Fn;
+
+// writableBy(identity, writers) — PURE formula-bar gate (co-located with sheetbar
+// so it's loaded wherever a grid renders). A segment with NO writers list (the
+// common, unencrypted case) is OPEN; one WITH a list admits only its members; a
+// locked/empty identity is never a writer of a restricted sheet. The grid content
+// formula passes `(writableBy keystore.identity <seg>.writers)` to sheetbar.
+const writableBy: Fn = ((identity?: unknown, writers?: unknown): boolean => {
+  if (!Array.isArray(writers) || writers.length === 0) return true;   // no allow-list → open
+  const id = String(identity ?? "");
+  return id !== "" && writers.map(String).includes(id);
+}) as Fn;
+
 export const name = "sheets" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["sheetcell", sheetcell],
   ["sheetgrid", sheetgrid],
   ["gridopts", gridopts],
+  ["sheetbar", sheetbar],
+  ["sheetpane", sheetpane],
+  ["writableBy", writableBy],
 ]));

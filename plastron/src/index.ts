@@ -57,6 +57,8 @@ import * as seal            from "./甲骨坑/library/seal/index.js";
 import * as session         from "./甲骨坑/library/session/index.js";
 import * as keystore        from "./甲骨坑/library/keystore/index.js";
 import * as sheetkeys       from "./甲骨坑/library/sheetkeys/index.js";
+import * as crdt            from "./甲骨坑/library/crdt/index.js";
+import * as sheetsync       from "./甲骨坑/library/sheetsync/index.js";
 import * as profile         from "./甲骨坑/library/profile/index.js";
 import * as supabaseAuth     from "./甲骨坑/library/supabase-auth/index.js";
 import * as sqlite          from "./甲骨坑/library/sqlite/index.js";
@@ -138,6 +140,8 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "session":          () => [...session.cels],
   "keystore":         () => [...keystore.cels],
   "sheetkeys":        () => [...sheetkeys.cels],
+  "crdt":             () => [...crdt.cels],
+  "sheetsync":        () => [...sheetsync.cels],
   "profile":          () => [...profile.cels],
   "supabase-auth":    () => [...supabaseAuth.cels],
   "sqlite":           () => [...sqlite.cels],

@@ -1,0 +1,50 @@
+{
+  "name": "crdt",
+  "cels": [
+    {
+      "key": "crdt.diff",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "crdt.diff", "segment": "crdt", "name": "crdt.diff", "kind": "native",
+        "description": "(before, after) — minimal LINE-LEVEL diff between two strings as an array of hunks { at, del, ins:[lines] }: at line `at`, delete `del` lines and insert `ins`. One result covers multiple lines. Invariant: (crdt.apply before (crdt.diff before after)) === after."
+      },
+      "locked": true
+    },
+    {
+      "key": "crdt.apply",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "crdt.apply", "segment": "crdt", "name": "crdt.apply", "kind": "native",
+        "description": "(text, ops) — apply an array of hunks { at, del, ins } to a string and return the new string. Total/defensive: clamps out-of-range at/del so a stale hunk never throws (it just lands as close as it can). Hunks apply high-index-first so earlier `at` stay valid."
+      },
+      "locked": true
+    },
+    {
+      "key": "crdt.layer",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "crdt.layer", "segment": "crdt", "name": "crdt.layer", "kind": "native",
+        "description": "(before, after, author, ts [, parent]) — one diff-stack layer: { id, author, ts, parent, ops } where ops = (diff before after) and id = `ts.author.<hash(ops)>` (deterministic; identical edits dedup). ts is caller-supplied (pass a Lamport counter or a `now` cel) so the verb stays pure & replayable. parent = id of the head this edit saw (causality)."
+      },
+      "locked": true
+    },
+    {
+      "key": "crdt.append",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "crdt.append", "segment": "crdt", "name": "crdt.append", "kind": "native",
+        "description": "(stack, record) — grow-only insert of a layer into a diff stack, returning a NEW array sorted by (ts, author, id) and deduped by id. Idempotent: re-appending the same record (same id) is a no-op. The stack is the CRDT value; hold it in a ValueCel."
+      },
+      "locked": true
+    },
+    {
+      "key": "crdt.resolve",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "crdt.resolve", "segment": "crdt", "name": "crdt.resolve", "kind": "native",
+        "description": "(stack [, n]) — fold a diff stack from the empty string over its layers (sorted by ts, author, id) to the current text. With n, apply only the first n layers — n edits up from 0 (time-travel / undo). Every replica folds the same set the same way → convergent. =crdt.resolve(msg.stack) renders live text; recomputes whenever the stack cel changes."
+      },
+      "locked": true
+    }
+  ]
+}

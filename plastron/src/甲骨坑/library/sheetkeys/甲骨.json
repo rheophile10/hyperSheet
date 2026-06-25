@@ -36,18 +36,6 @@
         "description": "(state, blobString) -> {ok, seg, hash}. keystore.unwrap (tries current+history) -> crypto.decrypt -> restore the segment cels -> open as a gen-2 workbook (sheetdoc). A blob sealed to a key you do not hold fails cleanly. Must be unlocked."
       },
       "locked": true
-    },
-    {
-      "key": "writableBy",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "writableBy",
-        "segment": "sheetkeys",
-        "name": "writableBy",
-        "kind": "native",
-        "description": "(identity, writers) -> bool. PURE formula-bar gate: a segment with no writers list is OPEN; one WITH a writers list admits only its members; a locked/empty identity is never a writer of a restricted sheet. The grid formula calls (writableBy keystore.identity <seg>.writers)."
-      },
-      "locked": true
     }
   ]
 }

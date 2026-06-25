@@ -59,6 +59,30 @@
         "kind": "native",
         "description": "(state) - the Sheet app: create a fresh blank worksheet DOCUMENT (a new origin-user segment of sheetapp), seed an empty grid, and render it. Save with origin.savedoc."
       }
+    },
+    {
+      "key": "sheetapp.seal",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sheetapp.seal",
+        "segment": "sheetapp",
+        "name": "sheetapp.seal",
+        "kind": "native",
+        "description": "(ref) the workbook 🔒 button: envelope-encrypt this document to your identity (sheetkeys.sealsheet) and download <doc>.sealed. Opens 👤 Profile if your wallet is locked."
+      },
+      "locked": true
+    },
+    {
+      "key": "sheetapp.openSealed",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sheetapp.openSealed",
+        "segment": "sheetapp",
+        "name": "sheetapp.openSealed",
+        "kind": "native",
+        "description": "() the workbook 🔓 button: pick a .sealed file, decrypt it with your identity (sheetkeys.opensheet), and open it as a workbook. Opens 👤 Profile if locked."
+      },
+      "locked": true
     }
   ]
 }

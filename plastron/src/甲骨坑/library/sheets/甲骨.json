@@ -1,41 +1,77 @@
 {
- "name": "sheets",
- "cels": [
-  {
-   "key": "sheetcell",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "sheetcell",
-    "segment": "sheets",
-    "name": "sheetcell",
-    "kind": "native",
-    "description": "(value) - render ONE spreadsheet cell value to a vnode: a number/string as text, a vnode (a formula that built dom/canvas/a chart) in place, a cel error as its code. The leaf of the grid."
-   }
-  },
-  {
-   "key": "sheetgrid",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "sheetgrid",
-    "segment": "sheets",
-    "name": "sheetgrid",
-    "kind": "native",
-    "description": "(label, cells, opts?) - render a worksheet's cells as an editable Excel grid CONTENT vnode (corner label + column letters + row numbers + cells). `cells` is the host-aggregated list [{key,col,row,value,src}]; `opts` = {active, selected, draft, edit, select, fire, commit} (handler keys default to origin.*). The active cell shows an inline editor; others dispatch select/edit. SHEET-UNIQUE native renderer (the perf fast path); a window tab hosts the result so a sheet tabs next to any app."
-   }
-  },
-  {
-   "key": "gridopts",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "gridopts",
-    "segment": "sheets",
-    "name": "gridopts",
-    "kind": "native",
-    "description": "(active, selected) - build the sheetgrid opts object from the editing/selected cell-key cels (e.g. 元.editing / 元.selected) so a worksheet is EDITABLE inside a workbook tab: the active cell shows the inline editor, a click selects. Reference the editing cels in the grid formula so it re-renders reactively. Handlers + draft default to origin.* / 元.draft inside sheetgrid."
-   }
-  }
- ]
+  "name": "sheets",
+  "cels": [
+    {
+      "key": "sheetcell",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetcell",
+        "segment": "sheets",
+        "name": "sheetcell",
+        "kind": "native",
+        "description": "(value) - render ONE spreadsheet cell value to a vnode: a number/string as text, a vnode (a formula that built dom/canvas/a chart) in place, a cel error as its code. The leaf of the grid."
+      }
+    },
+    {
+      "key": "sheetgrid",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetgrid",
+        "segment": "sheets",
+        "name": "sheetgrid",
+        "kind": "native",
+        "description": "(label, cells, opts?) - render a worksheet's cells as an editable Excel grid CONTENT vnode (corner label + column letters + row numbers + cells). `cells` is the host-aggregated list [{key,col,row,value,src}]; `opts` = {active, selected, draft, edit, select, fire, commit} (handler keys default to origin.*). The active cell shows an inline editor; others dispatch select/edit. SHEET-UNIQUE native renderer (the perf fast path); a window tab hosts the result so a sheet tabs next to any app."
+      }
+    },
+    {
+      "key": "gridopts",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "gridopts",
+        "segment": "sheets",
+        "name": "gridopts",
+        "kind": "native",
+        "description": "(active, selected) - build the sheetgrid opts object from the editing/selected cell-key cels (e.g. 元.editing / 元.selected) so a worksheet is EDITABLE inside a workbook tab: the active cell shows the inline editor, a click selects. Reference the editing cels in the grid formula so it re-renders reactively. Handlers + draft default to origin.* / 元.draft inside sheetgrid."
+      }
+    },
+    {
+      "key": "sheetbar",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetbar",
+        "segment": "sheets",
+        "name": "sheetbar",
+        "kind": "native",
+        "description": "(selected, draft, opts?) - the Excel FORMULA BAR vnode: a cell-ref label, a ⚡ fire button, and a textarea that edits the selected cell's source. `selected` is the selected cell key, `draft` the source text to show (seed an ASCII mirror like sheet.draft so the bar re-renders on selection). The textarea's input writes the live text to the draft cel (opts.draft, default 元.draft) without re-rendering; Enter (opts.commit, default origin.key) and ⚡ (opts.fire, default origin.fire) commit it. Stack over a grid with sheetpane."
+      }
+    },
+    {
+      "key": "sheetpane",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetpane",
+        "segment": "sheets",
+        "name": "sheetpane",
+        "kind": "native",
+        "description": "(bar, grid) - stack a formula bar over a grid in one CONTENT vnode (bar fixed at top, grid scrolls below) so a worksheet window reads like Excel. Both args are already-rendered vnodes."
+      }
+    },
+    {
+      "key": "writableBy",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "writableBy",
+        "segment": "sheets",
+        "name": "writableBy",
+        "kind": "native",
+        "description": "(identity, writers) -> bool. PURE formula-bar gate: a segment with no writers list is OPEN; one WITH a list admits only its members; a locked/empty identity is never a writer of a restricted sheet. The grid formula calls (writableBy keystore.identity <seg>.writers) and passes it to sheetbar."
+      },
+      "locked": true
+    }
+  ]
 }

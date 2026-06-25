@@ -1188,10 +1188,6 @@ const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> =
     // paints its own windows, so just dispatch it.
     const fn = resolveFn(state, action.slice(3)) as Fn | undefined;
     if (fn) await fn(state);
-  } else if (action.startsWith("open:")) {
-    // a FILE launcher (e.g. open:/readme.f) — read the formula-source file from
-    // OPFS and run it into windows. One action for readme/keyboard/turtles/…
-    await openFile(state, action.slice(5));
   } else if (/^[=(]/.test(action)) {
     // A "=formula" launcher (=winapp/=chatapp/=consentpanel/=doom/…). Spawn it into
     // a STABLE segment keyed by the action so re-clicking the icon reuses the SAME
@@ -1246,41 +1242,6 @@ const navOpenFn: Fn = (async (state: State, payload?: unknown): Promise<State> =
 //  app list lives in apps/desktop.json. nav/item/navIcon stay — desktop.icons uses
 //  navFn for its mobile branch; origin.navOpen stays — icons dispatch through it.)
 
-// openFile(state, opfsPath) — read a stored formula-source FILE from OPFS and run
-// it into windows (origin.run sniffs the parser, so an s-expr readme and an infix
-// keyboard both work). Backs the navpanel's `open:/<path>.f` launchers (📖 Readme,
-// 🎹 Keyboard, 📊 Turtles — one parameterized action, not a verb per file). The
-// source is a REAL file (seedStarter materialized it from the bundle's starter/),
-// so it's discoverable + editable in 📁 Files. Commits into a `launch.<file>`
-// holding cell — UNIQUE per file (so opening readme doesn't sweep keyboard) and in
-// the `launch` namespace (outside every worksheet, so the formula bar stays empty
-// until a cell is clicked) — then RAISES the worksheet windows it created so the
-// opened app comes to the top / active.
-const openFile = async (state: State, opfsPath: string): Promise<State> => {
-  await ensureSegments(state, ["file-store"]);
-  const f = String(await ((resolveFn(state, "fs.readText") as Fn)(opfsPath) as Promise<string>).catch(() => ""));
-  if (!f) return state;
-  const base = (opfsPath.split("/").pop() || opfsPath).replace(/\.[^.]*$/, "");
-  await (resolveFn(state, "origin.run") as Fn)(state, `launch.${base}`, f);   // source-arg form (commits + settles)
-  // RESTORE each worksheet the formula created (clear closed/min + raise) so a
-  // re-clicked launcher REOPENS a window the ✕ had closed. Its NAME is the first
-  // quoted string after `cels` in BOTH the infix `cels("name", …)` and s-expr
-  // `(cels R C "name" …)` forms. Last one restored wins focus.
-  const restore = resolveFn(state, "winsheet.restore") as Fn | undefined;
-  if (restore) for (const m of f.matchAll(/\bcels\b[^"]*?"([^"]+)"/g)) { try { await restore(state, m[1]); } catch { /* not windowed */ } }
-  await (resolveFn(state, "view.refresh") as Fn)(state);
-  await (resolveFn(state, "runCycle") as Fn)(state);
-  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
-  return state;
-};
-
-// (origin.seedStarter removed — readme/keyboard/turtles are now sheetapp origin-user
-//  DOCUMENTS installed to the segment-store by boot.run, not .f files seeded to OPFS.)
-
-// (Legacy origin.reseed removed — it backed the old 元.f "↻ reseed" button, which
-//  is gone with the old desktop genesis. Re-importing starter files is a dev concern;
-//  the apps now live in the segment-store and reinstall on boot.)
-
 // ── INSTALL + boot (origin-application machinery) ───────────────────────────
 // The desktop and every app is an origin-application SEGMENT. Three tiers keep
 // persist, load, and render separate (the user's "save/load shouldn't auto-add
@@ -1325,12 +1286,12 @@ const appInstall: Fn = (async (state: State, archiveArg?: unknown): Promise<stri
   return `app.install — installed: [${installed.join(", ")}]${skipped.length ? `; skipped: [${skipped.join(", ")}]` : ""}`;
 }) as Fn;
 
-// installBakedApps — first-run twin of seedStarter for APPLICATION segments:
-// read the inert #plastron-apps manifest the bundle baked into the page (a
-// { "<name>": <archive> } map) and origin.install each entry. Like seedStarter it
-// touches OPFS only, never state. Pass `manifest` to bypass the DOM read (tests
-// / headless). No-op off-DOM or without a filesystem backend. A broken baked app
-// must not brick boot — failures are logged, not thrown.
+// installBakedApps — first-run install of the baked APPLICATION + document
+// segments: read the inert #plastron-apps manifest the bundle baked into the page
+// (a { "<name>": <archive> } map) and origin.install each entry. Touches OPFS
+// only, never state. Pass `manifest` to bypass the DOM read (tests / headless).
+// No-op off-DOM or without a filesystem backend. A broken baked app must not brick
+// boot — failures are logged, not thrown.
 const installBakedApps: Fn = (async (state: State, manifestArg?: unknown): Promise<string[]> => {
   const backend = state.cels.get("file-store.backend")?.v;
   if (backend === "none" || backend === undefined) return [];
@@ -1380,6 +1341,16 @@ const launch: Fn = (async (state: State, appArg?: unknown): Promise<State> => {
     // rescan the view's cell list so the app's self-mounting frames (the desktop
     // chrome, a window's frame) enter it and paint (cellKeys whitelists them).
     await (resolveFn(state, "view.refresh") as Fn)(state);
+    // a freshly-launched file-explorer (app:filesapp → =explorerwin()) opens with
+    // an EMPTY listing — its genesis seeds explorer.listing empty and only a nav/
+    // upload refreshes it. The navOpen "=formula" path runs explorer.refresh on
+    // open; the app: launch path lands HERE, so mirror it: if the entry opened the
+    // explorer, do the initial OPFS read of the cwd so existing files show at once.
+    const entryF = String((state.cels.get(`${app}.entry`) as { f?: string } | undefined)?.f ?? "");
+    if (/\bexplorerwin\b/.test(entryF)) {
+      const exRefresh = resolveFn(state, "explorer.refresh") as Fn | undefined;
+      if (exRefresh) await exRefresh(state);
+    }
     await runCycle(state);
     await drain(state, "dom.paint");
   }
@@ -1944,7 +1915,7 @@ const savedocFn: Fn = (async (state: State, nameArg?: unknown): Promise<State> =
 //  reopen it from 📁 Files or with =open(). Reload = a clean desktop.)
 
 // (origin.seedWallpaper removed: the desktop background is rendered by a FORMULA
-//  — 元.f's `(img desktop.A2 windows.wallpaper …)` mount — straight from the
+//  — 元's `(img desktop.A2 windows.wallpaper …)` mount — straight from the
 //  shipped windows.wallpaper data-URI, so no boot-time OPFS write is needed. Set
 //  a custom background by editing the cell, e.g. desktop.A2 → a path/url.)
 
@@ -2052,7 +2023,7 @@ const segsFn:    Fn = () => ({ originSeg: "list" });
 const saveSegFn: Fn = (name: unknown) => ({ originSeg: "save", name: String(name ?? "") });
 const openSegFn: Fn = (name: unknown) => ({ originSeg: "open", name: String(name ?? "") });
 const delSegFn:  Fn = (name: unknown) => ({ originSeg: "del",  name: String(name ?? "") });
-// =hash(seg, …exclude) — a recent SHA-256 of a worksheet’s SOURCE cels (sources
+// =hash(seg, …exclude) — a recent SHA-256 of a worksheet's SOURCE cels (sources
 // only — derived cells excluded). Exclude trailing-* prefixes drop ephemeral ranges.
 const hashReqFn: Fn = (seg: unknown, ...exclude: unknown[]) => ({ originHash: { seg: String(seg ?? ""), exclude: exclude.map(String) } });
 
@@ -2362,7 +2333,7 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
           await call("fs.delete", file); result = `deleted sheet "${nm}"`;
         } else result = `(unknown seg op: ${op})`;
       } else if (req.originHash) {
-        // =hash(seg, …exclude) — deterministic SHA-256 of a segment’s SOURCE cels.
+        // =hash(seg, …exclude) — deterministic SHA-256 of a segment's SOURCE cels.
         await ensureSegments(state, ["sheetkeys"]);
         const h = req.originHash as { seg: string; exclude: string[] };
         result = await (resolveFn(state, "sheetkeys.hash") as Fn)(state, h.seg, h.exclude);

@@ -69,6 +69,17 @@
       "v": ""
     },
     {
+      "key": "sheet.draft",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "sheet.draft",
+        "segment": "origin",
+        "name": "sheet.draft",
+        "description": "ASCII mirror of 元.draft for DISPLAY — seeded with the selected cell's source on select/edit/commit so a formula bar (sheetbar) can reference it. NOT written on each keystroke (the bar's input writes 元.draft directly), so the bar never re-renders mid-edit."
+      },
+      "v": ""
+    },
+    {
       "key": "元.error",
       "celType": "ValueCel",
       "metadata": {
@@ -147,7 +158,7 @@
         "parser": "f",
         "description": "the 元 base sheet as a gen-2 worksheet body: a single-cell editable sheetgrid whose A1 is the bare 元 cel (the readme). Edit A1 to grow an app; =cels makes more worksheet windows."
       },
-      "f": "(sheetgrid \"元\" (sheetcells \"元\" 元) (gridopts sheet.editing sheet.selected))"
+      "f": "(sheetpane (sheetbar sheet.selected sheet.draft) (sheetgrid \"元\" (sheetcells \"元\" 元) (gridopts sheet.editing sheet.selected)))"
     },
     {
       "key": "win.元.state",
@@ -453,7 +464,7 @@
         "segment": "origin",
         "name": "installBakedApps",
         "kind": "native",
-        "description": "(state, manifest?) - first-run twin of seedStarter for APPLICATION segments: read the inert #plastron-apps manifest the bundle baked into the page (a { name: archive } map) and app.install each entry (OPFS only, never state). Pass `manifest` to bypass the DOM read (tests/headless). No-op off-DOM or without a filesystem. A broken baked app is logged, not thrown."
+        "description": "(state, manifest?) - first-run install of the baked APPLICATION + document segments: read the inert #plastron-apps manifest the bundle baked into the page (a { name: archive } map) and app.install each entry (OPFS only, never state). Pass `manifest` to bypass the DOM read (tests/headless). No-op off-DOM or without a filesystem. A broken baked app is logged, not thrown."
       }
     },
     {
@@ -539,6 +550,18 @@
         "name": "desktop.stategraph",
         "kind": "native",
         "description": "(state) - open a force-graph of the whole state in a real window-segment window (drag/resize/minimize/fullscreen/close via wframe): one node per segment, sized by how much memory it uses, origin-application segments tinted distinctly. Reuses the forcegraph segment (fg.set + fgview)."
+      }
+    },
+    {
+      "key": "origin.celtopo",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "origin.celtopo",
+        "segment": "origin",
+        "name": "origin.celtopo",
+        "kind": "native",
+        "description": "(state, key?) - open the runCycle dependency CONE of a cel (defaults to the selected cell) as a force-graph window: upstream deps (blue) it depends on + downstream dependents (green) that depend on it + the cel itself pinned (gold), edges = inputMap propagation arrows. The 🔗 button on the formula bar dispatches it; clicking a node re-centers. Reuses the forcegraph segment (fg.set + fgview)."
       }
     },
     {
@@ -969,8 +992,8 @@
         "segment": "origin",
         "name": "hash",
         "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(seg, ...exclude) - a recent SHA-256 (hex) of worksheet seg SOURCE cels (sources only; derived values excluded). Trailing-* exclude patterns drop ephemeral ranges."
+        "description": "(seg, ...exclude) - a recent SHA-256 (hex) of worksheet `seg`s SOURCE cels (ValueCel value | FormulaCel formula-text; derived values excluded - sources only, so it is deterministic across replicas). Trailing-* exclude patterns drop ephemeral/IO ranges. =hash(\"budget\") / =hash(\"budget\", \"budget.live*\").",
+        "emitsTo": "origin.effects"
       },
       "locked": true
     },
