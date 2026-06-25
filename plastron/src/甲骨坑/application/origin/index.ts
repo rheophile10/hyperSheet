@@ -577,19 +577,42 @@ const commit: Fn = async (state: State, payload?: unknown, source?: unknown) => 
   if (prior?.definedBy) md.definedBy = prior.definedBy;
   if (prior?.origin) md.origin = prior.origin;
   if (spec.parser) md.parser = spec.parser;
-  try {
-    await setCel(state, key, { celType: spec.celType, f: spec.f, v: spec.v, metadata: md });
-  } catch (e) {
-    // A parse/compile error (e.g. `=sheets("in" 4 3)` — infix wants commas)
-    // throws OUT of setCel, which would abort the commit before any paint —
-    // so the cell looked like it did nothing. Surface the message under the
-    // editor and stay in the cell so it can be fixed.
-    const msg = String((e as { message?: unknown })?.message ?? e).replace(/^setCel:\s*"[^"]*"\s*—\s*/, "");
-    // keep the bad draft and force the cell into edit mode so the error
-    // line is visible (it renders under the active editor).
+
+  // Collaborative / encrypted sheets route the edit through the CRDT change
+  // pipeline (sheetsync.commit) instead of a plain setCel: gate the author
+  // (writableBy), record a SIGNED op on the segment's grow-only diff-stack, fold
+  // it back to the source cel, and — when the sheet is being synced — encrypt +
+  // broadcast the op to connected peers. A sheet is "under sheetsync" once it has
+  // a writers list or a crdt op-log (i.e. it was sealed / shared / committed
+  // before). 元 and ordinary grids keep the plain path. The error surface is the
+  // same (message under the editor, stay in the cell), so a gate/lock rejection
+  // reads like a parse error.
+  const seg = String(prior?.segment ?? (key.includes(".") ? key.slice(0, key.indexOf(".")) : "origin"));
+  const ssCommit = resolveFn(state, "sheetsync.commit") as Fn | undefined;
+  const synced = key !== "元" && !!ssCommit && (!!state.cels.get(`${seg}.crdt`) || !!state.cels.get(`${seg}.writers`));
+  const surfaceErr = async (msg: string): Promise<State> => {
     await (resolveFn(state, "setValueBatch") as Fn)(state, [["元.error", msg], ["元.editing", key], ["sheet.editing", key]]);
     await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
     return state;
+  };
+  if (synced && ssCommit) {
+    let r: { ok?: boolean; error?: string };
+    try { r = await ssCommit(state, seg, key, src) as { ok?: boolean; error?: string }; }
+    catch (e) { r = { ok: false, error: String((e as { message?: unknown })?.message ?? e) }; }
+    // sheetsync.commit already setCel'd the source, folded, and ran a cycle on
+    // success; on failure (not a writer / locked / parse) surface + stay put.
+    if (!r?.ok) return surfaceErr(String(r?.error ?? "rejected").replace(/^[a-z]+:\s*/, ""));
+  } else {
+    try {
+      await setCel(state, key, { celType: spec.celType, f: spec.f, v: spec.v, metadata: md });
+    } catch (e) {
+      // A parse/compile error (e.g. `=sheets("in" 4 3)` — infix wants commas)
+      // throws OUT of setCel, which would abort the commit before any paint —
+      // so the cell looked like it did nothing. Surface the message under the
+      // editor and stay in the cell so it can be fixed.
+      const msg = String((e as { message?: unknown })?.message ?? e).replace(/^setCel:\s*"[^"]*"\s*—\s*/, "");
+      return surfaceErr(msg);
+    }
   }
 
   // keep the selection on the committed cell and refresh the bar's draft to its
