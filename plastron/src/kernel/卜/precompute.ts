@@ -447,15 +447,26 @@ const warnManifestDrift = (
   cels: Map<Key, Cel>,
   adjacency: Map<Key, Set<Key>>,
 ): void => {
+  // Only BUNDLE-managed segments (role kernel/library/application) carry a
+  // dependency manifest worth keeping honest. Runtime/user segments — the desktop
+  // chrome, window instances (win.<x>), user sheets — are role "user" (or have no
+  // manifest at all); you can't put them in a `dependencies` array, so an edge
+  // touching one on EITHER end is not actionable drift. Lint bundle↔bundle only.
+  const roleOf = new Map<Key, string | undefined>();
+  for (const cel of cels.values()) {
+    if (cel.celType === "SegmentCel") roleOf.set((cel as SegmentCel).v.name, (cel as SegmentCel).v.role);
+  }
+  const isBundle = (seg: Key): boolean => { const r = roleOf.get(seg); return r !== undefined && r !== "user"; };
   const undeclared: string[] = [];
   for (const cel of cels.values()) {
     if (cel.celType !== "SegmentCel") continue;
     const m = (cel as SegmentCel).v;
+    if (m.role === "user") continue;                       // runtime/user source — not bundle-managed
     const declared = new Set(m.dependencies ?? []);
     const observed = adjacency.get(m.name);
     if (!observed) continue;
     for (const dep of observed) {
-      if (!declared.has(dep)) undeclared.push(`${m.name} → ${dep}`);
+      if (!declared.has(dep) && isBundle(dep)) undeclared.push(`${m.name} → ${dep}`);  // only deps on real bundle segments
     }
   }
   if (undeclared.length === 0) return;
