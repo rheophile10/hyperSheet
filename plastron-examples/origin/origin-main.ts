@@ -54,21 +54,29 @@ if (shared) {
 } else {
   // desktop boot: install the baked origin-application archives into OPFS, then
   // open the desktop shell (wallpaper + draggable icons + taskbar + state graph)
-  // — the cutover from the legacy 元-genesis desktop. The old 元.f seed stays for
-  // the 🧮 Origin launcher (which reopens the base spreadsheet).
-  await (resolve(state, "boot.run"))(state, { open: "desktop" });
+  // — the cutover from the legacy 元-genesis desktop. The base 元 readme seed stays
+  // for the ▣ Origin launcher (which reopens the base spreadsheet).
+  // No persistent storage (file:// with no OPFS, or an OPFS-less browser) means
+  // the baked apps can't be installed to the segment store — boot.run throws.
+  // Degrade instead of white-screening: catch it, leave the base 元 spreadsheet
+  // visible, and let keys + sheets move via manual import/export. (The CRDT +
+  // crypto pipeline runs entirely in memory and needs no storage backend.)
+  try {
+    await (resolve(state, "boot.run"))(state, { open: "desktop" });
+  } catch (e) {
+    console.warn("desktop boot skipped (no storage backend?):", (e as { message?: string })?.message ?? e);
+  }
   // Once the desktop shell is up, hide the base 元 grid — the desktop chrome is
   // rendered by .origin mounts that paint independently of the grid window, and
-  // the 🧮 Origin launcher restores 元 on demand. If the desktop didn't hydrate
-  // (apps not baked — a raw `bun index.html` without `bun bundle.ts`), leave 元
-  // visible so the page isn't blank.
+  // the ▣ Origin launcher restores 元 on demand. If the desktop didn't hydrate
+  // (apps not baked, or no storage backend), leave 元 visible so the page isn't blank.
   if (state.cels.get("desktop.iconbar.frame")) {
     const cur = (state.cels.get("win.元.state")?.v ?? {}) as Record<string, unknown>;
     await (resolve(state, "setValue"))(state, "win.元.state", { ...cur, closed: 1 });
     await (resolve(state, "runCycle"))(state);
   }
-  // readme/keyboard/turtles are now sheetapp origin-user DOCUMENTS (installed to the
-  // store by boot.run), opened via their desktop icons — no .f files seeded.
+  // readme/keyboard/turtles are sheetapp origin-user DOCUMENTS (installed to the
+  // segment store by boot.run), opened via their desktop icons.
   await (resolve(state, "drain"))(state, "dom.paint");
 }
 
