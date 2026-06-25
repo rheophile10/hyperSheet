@@ -283,6 +283,9 @@ const grantFn: Fn = (async (state: State, refArg?: unknown): Promise<State> => {
   const writers = [...new Set([me, ...(Array.isArray(cur) ? cur.map(String) : []), ...peers.map((p) => String(p.id ?? "")).filter(Boolean)])];
   await (resolveFn(state, "setCel") as Fn)(state, `${doc}.writers`, { celType: "ValueCel", v: writers, metadata: { key: `${doc}.writers`, segment: doc, name: "writers" } });
   for (const p of peers) if (p.ecdh) await (resolveFn(state, "sheetsync.share") as Fn)(state, doc, p.ecdh);
+  // tell the WHOLE mesh the new writer set (so peers other than the grantee accept
+  // the new writer's edits) — a signed, grow-only writers update.
+  await (resolveFn(state, "sheetsync.announceWriters") as Fn)(state, doc);
   await setTitle(state, doc, `${doc} ● live (${peers.length})`);
   await (resolveFn(state, "runCycle") as Fn)(state);
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");

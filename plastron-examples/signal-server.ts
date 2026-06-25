@@ -8,7 +8,7 @@
 //   any other message is RELAYED verbatim to the other members of the room
 //   (offer/answer carry non-trickle SDP, so no separate ICE relay is needed).
 
-interface WSData { room?: string }
+interface WSData { room?: string; id?: string }
 type Sock = { send: (m: string) => void; data: WSData };
 
 export const startSignalServer = (port = 8787): { stop: () => void; port: number } => {
@@ -21,11 +21,12 @@ export const startSignalServer = (port = 8787): { stop: () => void; port: number
     },
     websocket: {
       message(ws: Sock, raw: string) {
-        let m: { t?: string; room?: string };
+        let m: { t?: string; room?: string; id?: string };
         try { m = JSON.parse(String(raw)); } catch { return; }
         if (m.t === "join" && typeof m.room === "string") {
           const set = rooms.get(m.room) ?? rooms.set(m.room, new Set()).get(m.room)!;
-          for (const peer of set) peer.send(JSON.stringify({ t: "peer-joined" }));  // notify existing members
+          ws.data.id = typeof m.id === "string" ? m.id : undefined;
+          for (const peer of set) peer.send(JSON.stringify({ t: "peer-joined", id: ws.data.id }));  // tell existing members the newcomer's id → each offers to it (full mesh)
           set.add(ws); ws.data.room = m.room;
           ws.send(JSON.stringify({ t: "joined", n: set.size }));
           return;

@@ -105,6 +105,18 @@
         "description": "the WebSocket signaling relay URL used by sheetapp.golive to broker peer discovery (peerjoin a room). Overridable per deployment; default localhost dev relay."
       },
       "v": "ws://localhost:8787"
+    },
+    {
+      "key": "sheetsync.announceWriters",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sheetsync.announceWriters",
+        "segment": "sheetsync",
+        "name": "sheetsync.announceWriters",
+        "kind": "native",
+        "description": "(state, seg) -> {ok, frame}. Broadcast the current <seg>.writers as a SIGNED 'writers' frame so every peer in the mesh converges on who may write. Grow-only union; a peer accepts it only if the signer is already a writer (bootstrap when it has none). Called by sheetapp.grant after adding a new writer."
+      },
+      "locked": true
     }
   ]
 }

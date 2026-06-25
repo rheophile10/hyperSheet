@@ -104,15 +104,14 @@ const applyFn: Fn = (async (state: State, msg: unknown): Promise<string> => {
 // peer.broadcast — outbound: filter changed keys to the shared namespace, ship
 // each cel's VALUE (never structure, never an executable shape, never a secret).
 const broadcastFn: Fn = ((state: State, changed: unknown): number => {
-  if (!transport || applying) return 0;       // no peer, or mid-inbound-apply (echo guard)
+  if (applying) return 0;                     // mid-inbound-apply (echo guard)
   const keys = Array.isArray(changed) ? changed.map(String) : [];
   let n = 0;
   for (const k of keys) {
     if (!inAllow(k) || isSecretKey(state, k)) continue;
     const v = state.cels.get(k)?.v;
     if (isQuarantined(v)) continue;                 // never ship executable shapes
-    transport.send(JSON.stringify({ t: "set", k, v }));
-    note("out", k, "sent"); n++;
+    if (sendAll(JSON.stringify({ t: "set", k, v }))) { note("out", k, "sent"); n++; }
   }
   return n;
 }) as Fn;
@@ -148,11 +147,12 @@ const logFn: Fn = ((): string => {
   return log.map((e) => `${e.dir === "in" ? "←" : "→"} ${e.k} [${e.d}]`).join("\n");
 }) as Fn;
 
-// ── WebRTC transport + manual signaling (stage 2) ────────────────────────────
-// Browser-only. In Bun (no RTCPeerConnection) the verbs no-op so the suite is
-// unaffected; a two-page Playwright e2e brokers the offer/answer + asserts a
-// setValue propagates A→B through the security gate. ICE: host candidates only
-// (localhost), gathered non-trickle into the SDP, so no STUN/TURN needed.
+// ── WebRTC MESH transport + signaling ────────────────────────────────────────
+// Browser-only (Bun has no RTCPeerConnection → the verbs no-op). N-WAY: a MAP of
+// connections, one RTCDataChannel per peer (full mesh). `peer.connect` still
+// injects a single FAKE transport for the security-core tests; `sendAll` fans a
+// frame out to the fake transport AND every open mesh channel. ICE: host
+// candidates only (localhost), gathered non-trickle into the SDP — no STUN/TURN.
 interface RtcChan { send(m: string): void; onopen: (() => void) | null; onmessage: ((e: { data: string }) => void) | null }
 interface RtcConn {
   createDataChannel(label: string): RtcChan;
@@ -162,8 +162,19 @@ interface RtcConn {
   addEventListener(t: string, f: () => void): void; removeEventListener(t: string, f: () => void): void;
   ondatachannel: ((e: { channel: RtcChan }) => void) | null;
 }
-let pc: RtcConn | null = null;
+interface Conn { pc: RtcConn; ch: RtcChan | null }
+const conns = new Map<string, Conn>();                    // peerId → connection (full mesh)
+let myId = "";
+let anon = 0;
 const rtc = (): (new (cfg: unknown) => RtcConn) | undefined => (globalThis as { RTCPeerConnection?: new (cfg: unknown) => RtcConn }).RTCPeerConnection;
+
+// fan a frame out to the injected fake transport (if any) AND every open channel.
+const sendAll = (s: string): number => {
+  let n = 0;
+  if (transport) { try { transport.send(s); n++; } catch { /* */ } }
+  for (const c of conns.values()) if (c.ch) { try { c.ch.send(s); n++; } catch { /* closed */ } }
+  return n;
+};
 
 // route an inbound frame: a registered type → its verb; everything else → the
 // security-core gate (peer.apply). Keeps the shared.* path unchanged.
@@ -174,12 +185,12 @@ const dispatch = (state: State, m: unknown): void => {
   void applyFn(state, m);
 };
 
-const wire = (state: State, ch: RtcChan): void => {
+// wire ONE peer's data channel: on open mark it live + fire the "open" hook (so a
+// higher segment re-announces presence to the whole mesh); on message dispatch.
+const wire = (state: State, peerId: string, ch: RtcChan): void => {
   ch.onopen = () => {
-    transport = { send: (m: string) => ch.send(m) };
+    const c = conns.get(peerId); if (c) c.ch = ch;
     (globalThis as { __peerOpen?: boolean }).__peerOpen = true;
-    // surface a reactive connection status + fire the registered "open" handler
-    // (sheetsync registers it to (re)announce presence now that the wire is live).
     try { void (resolveFn(state, "setValue") as Fn)(state, "peer.connected", true); } catch { /* cel absent */ }
     const ov = routes["open"]; if (ov) { try { void (resolveFn(state, ov) as Fn)(state); } catch { /* handler threw */ } }
   };
@@ -192,53 +203,63 @@ const iceDone = (conn: RtcConn): Promise<void> => new Promise<void>((res) => {
   setTimeout(res, 3000);                                  // fallback if gathering stalls
 });
 
-// peerOffer() — mint an SDP offer (copy it to the other browser).
-const offerFn: Fn = (async (state: State): Promise<string> => {
+// per-peer connection halves. The offerer creates the channel; the answerer waits
+// for ondatachannel. Each is stored in `conns` under the peer's id.
+const offerTo = async (state: State, peerId: string): Promise<string> => {
   const R = rtc(); if (!R) return "(peer: no WebRTC here)";
-  pc = new R({ iceServers: [] });
-  wire(state, pc.createDataChannel("plastron"));
+  const pc = new R({ iceServers: [] });
+  conns.set(peerId, { pc, ch: null });
+  wire(state, peerId, pc.createDataChannel("plastron"));
   await pc.setLocalDescription(await pc.createOffer());
   await iceDone(pc);
   return JSON.stringify(pc.localDescription);
-}) as Fn;
-
-// peerAnswer(offer) — accept an offer, return the answer (copy back).
-const answerFn: Fn = (async (state: State, offer: unknown): Promise<string> => {
+};
+const answerTo = async (state: State, peerId: string, offer: unknown): Promise<string> => {
   const R = rtc(); if (!R) return "(peer: no WebRTC here)";
-  pc = new R({ iceServers: [] });
-  pc.ondatachannel = (e) => wire(state, e.channel);
+  const pc = new R({ iceServers: [] });
+  conns.set(peerId, { pc, ch: null });
+  pc.ondatachannel = (e) => wire(state, peerId, e.channel);
   await pc.setRemoteDescription(JSON.parse(String(offer)));
   await pc.setLocalDescription(await pc.createAnswer());
   await iceDone(pc);
   return JSON.stringify(pc.localDescription);
-}) as Fn;
+};
+const acceptFrom = async (peerId: string, answer: unknown): Promise<void> => {
+  const c = conns.get(peerId); if (!c) return;
+  await c.pc.setRemoteDescription(JSON.parse(String(answer)));
+};
 
-// peerAccept(answer) — finalize on the offerer side; the channel opens.
-const acceptFn: Fn = (async (_state: State, answer: unknown): Promise<string> => {
-  if (!pc) return "(peer: no pending connection)";
-  await pc.setRemoteDescription(JSON.parse(String(answer)));
-  return "peer: accepted";
-}) as Fn;
+// MANUAL signaling (single peer, copy/paste the SDP) — keyed under "manual".
+const offerFn: Fn = (async (state: State): Promise<string> => offerTo(state, "manual")) as Fn;
+const answerFn: Fn = (async (state: State, offer: unknown): Promise<string> => answerTo(state, "manual", offer)) as Fn;
+const acceptFn: Fn = (async (_state: State, answer: unknown): Promise<string> => { await acceptFrom("manual", answer); return "peer: accepted"; }) as Fn;
 
-// peerJoin(room, relayUrl) — automatic signaling via a relay (no SDP copy/paste).
-// Connect to the room; when a peer arrives the existing member OFFERS, the
-// newcomer ANSWERS — all brokered over the WebSocket (offer/answer carry
-// non-trickle SDP, so no ICE relay). 2-peer rooms (v1). Browser-only (WebRTC).
+// peerjoin(room, relayUrl) — AUTOMATIC mesh signaling via a relay (no SDP paste).
+// Each peer has a stable id (its identity, or an anon fallback). When a newcomer
+// arrives the relay tells the EXISTING members its id; each existing member OFFERS
+// to it (addressed from→to over the relay), the newcomer ANSWERS each. So an
+// N-peer room converges to a full mesh, with no glare (newcomers never offer).
 interface WSish { send(m: string): void; onopen: (() => void) | null; onmessage: ((e: { data: string }) => void) | null }
 const joinFn: Fn = ((state: State, room: unknown, relayUrl: unknown): string => {
   const WS = (globalThis as { WebSocket?: new (u: string) => WSish }).WebSocket;
   if (!WS) return "(peer: no WebSocket here)";
   const r = String(room ?? "plastron");
+  myId = String(state.cels.get("keystore.identity")?.v ?? "") || `anon-${++anon}`;
   const ws = new WS(String(relayUrl ?? "ws://localhost:8787"));
-  ws.onopen = () => ws.send(JSON.stringify({ t: "join", room: r }));
+  ws.onopen = () => ws.send(JSON.stringify({ t: "join", room: r, id: myId }));
   ws.onmessage = (e) => {
-    let m: { t?: string; sdp?: string };
+    let m: { t?: string; id?: string; from?: string; to?: string; sdp?: string };
     try { m = JSON.parse(e.data); } catch { return; }
-    if (m.t === "peer-joined") void (offerFn as (s: State) => Promise<string>)(state).then((sdp) => ws.send(JSON.stringify({ t: "offer", sdp })));
-    else if (m.t === "offer") void (answerFn as (s: State, o: unknown) => Promise<string>)(state, m.sdp).then((sdp) => ws.send(JSON.stringify({ t: "answer", sdp })));
-    else if (m.t === "answer") void (acceptFn as (s: State, a: unknown) => Promise<string>)(state, m.sdp);
+    if (m.t === "peer-joined" && m.id && m.id !== myId) {
+      void offerTo(state, m.id).then((sdp) => ws.send(JSON.stringify({ t: "offer", from: myId, to: m.id, sdp })));
+    } else if (m.t === "offer" && m.to === myId && m.from) {
+      const from = m.from;
+      void answerTo(state, from, m.sdp).then((sdp) => ws.send(JSON.stringify({ t: "answer", from: myId, to: from, sdp })));
+    } else if (m.t === "answer" && m.to === myId && m.from) {
+      void acceptFrom(m.from, m.sdp);
+    }
   };
-  return `peer: joining "${r}"`;
+  return `peer: joining "${r}" as ${myId.slice(0, 8)}`;
 }) as Fn;
 
 // peer.route(state, type, verbKey) — register an inbound frame type → handler verb.
@@ -254,10 +275,9 @@ const routeFn: Fn = ((_state: State, t: unknown, verbKey: unknown): string => {
 // peer.tx(state, msg) — send a RAW frame string over the live transport (for a
 // higher segment's own protocol, e.g. an encrypted CRDT op). Returns whether sent.
 const txFn: Fn = ((_state: State, msg: unknown): boolean => {
-  if (!transport) return false;
   const s = typeof msg === "string" ? msg : JSON.stringify(msg);
   if (s.length > MAX_MSG) { note("out", "?", "dropped:size"); return false; }
-  transport.send(s); note("out", "tx", "sent"); return true;
+  const n = sendAll(s); if (n) note("out", "tx", "sent"); return n > 0;
 }) as Fn;
 
 export const name = "peer" as const;
