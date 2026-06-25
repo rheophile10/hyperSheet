@@ -250,7 +250,15 @@ const goliveFn: Fn = (async (state: State, refArg?: unknown): Promise<State> => 
     await (resolveFn(state, "setCel") as Fn)(state, `${doc}.writers`, { celType: "ValueCel", v: [me], metadata: { key: `${doc}.writers`, segment: doc, name: "writers" } });
   }
   const room = `plastron-${doc}`;
-  const relay = String(state.cels.get("sheetsync.relay")?.v ?? "ws://localhost:8787");
+  // relay: respect an explicitly-set sheetsync.relay; but when it's the localhost
+  // DEFAULT, derive it from the page's own host so a LAN/second-device client
+  // (served from http://<lan-ip>:5174) reaches the relay at ws://<lan-ip>:8787
+  // rather than its own localhost.
+  const DEFAULT_RELAY = "ws://localhost:8787";
+  const relayCel = String(state.cels.get("sheetsync.relay")?.v ?? "");
+  const loc = (globalThis as { location?: { hostname?: string } }).location?.hostname;
+  const relay = (relayCel && relayCel !== DEFAULT_RELAY) ? relayCel
+    : (loc && loc !== "localhost" && loc !== "127.0.0.1" ? `ws://${loc}:8787` : DEFAULT_RELAY);
   if (typeof resolveFn(state, "peerjoin") === "function") (resolveFn(state, "peerjoin") as Fn)(state, room, relay);
   await (resolveFn(state, "sheetsync.connect") as Fn)(state);
   await (resolveFn(state, "setValue") as Fn)(state, "sheetsync.room", room);
