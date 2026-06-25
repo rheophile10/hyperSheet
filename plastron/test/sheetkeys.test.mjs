@@ -130,3 +130,29 @@ test("sealsheet/opensheet refuse when the wallet is locked", async () => {
   assert.equal((await resolveFn(s, "sheetkeys.sealsheet")(s, "L")).ok, false, "seal refused when locked");
   assert.equal((await resolveFn(s, "sheetkeys.opensheet")(s, blob)).ok, false, "open refused when locked");
 });
+
+// ── writers gate ──────────────────────────────────────────────────────────────
+test("writableBy: open when no allow-list, restricted to members otherwise", async () => {
+  const s = await bootCrypto();
+  const W = resolveFn(s, "writableBy");
+  assert.equal(W("anyone", undefined), true, "no writers list → open");
+  assert.equal(W("anyone", []), true, "empty list → open");
+  assert.equal(W("alice", ["alice", "bob"]), true, "member writes");
+  assert.equal(W("carol", ["alice", "bob"]), false, "non-member is read-only");
+  assert.equal(W("", ["alice"]), false, "locked/empty identity is never a writer of a restricted sheet");
+});
+
+test("sealing a sheet records the sealer as a writer, and it round-trips", async () => {
+  const s = await bootCrypto();
+  const me = s.cels.get("keystore.identity")?.v;
+  await put(s, "w.A1", { celType: "ValueCel", v: 1 });
+  const { blob } = await resolveFn(s, "sheetkeys.sealsheet")(s, "w");
+  assert.deepEqual(s.cels.get("w.writers")?.v, [me], "sealer added to <seg>.writers");
+  // the writers list is sealed IN (it's a seg cel) and restores on open
+  await resolveFn(s, "setCel")(s, "w.writers", { celType: "ValueCel", v: ["someone-else"], metadata: { key: "w.writers", segment: "w", name: "writers" } });
+  await resolveFn(s, "sheetkeys.opensheet")(s, blob);
+  assert.deepEqual(s.cels.get("w.writers")?.v, [me], "opensheet restored the sealed writers list");
+  // and the gate agrees: I can write, a stranger cannot
+  assert.equal(resolveFn(s, "writableBy")(me, s.cels.get("w.writers")?.v), true);
+  assert.equal(resolveFn(s, "writableBy")("stranger", s.cels.get("w.writers")?.v), false);
+});
