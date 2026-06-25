@@ -52,7 +52,7 @@ const mk = (page) => ({
   commit: (seg, key, src) => page.evaluate(([seg, key, src]) => globalThis.plastron.resolveFn(globalThis.plastron.state, "sheetsync.commit")(globalThis.plastron.state, seg, key, src), [seg, key, src]),
   cel: (k) => page.evaluate((k) => globalThis.plastron.state.cels.get(k)?.v ?? null, k),
   celType: (k) => page.evaluate((k) => globalThis.plastron.state.cels.get(k)?.celType ?? null, k),
-  resolve: (seg) => page.evaluate((seg) => { const s = globalThis.plastron.state; return globalThis.plastron.resolveFn(s, "crdt.resolve")(s.cels.get(`${seg}.crdt`)?.v ?? []); }, seg),
+  map: (seg) => page.evaluate((seg) => globalThis.plastron.state.cels.get(`${seg}.crdt`)?.v ?? {}, seg),
   verb: (k, ...a) => page.evaluate(([k, a]) => globalThis.plastron.resolveFn(globalThis.plastron.state, k)(globalThis.plastron.state, ...a), [k, a]),
   setCel: (k, spec) => page.evaluate(([k, spec]) => globalThis.plastron.resolveFn(globalThis.plastron.state, "setCel")(globalThis.plastron.state, k, { metadata: { key: k, segment: k.split(".")[0] }, ...spec }), [k, spec]),
 });
@@ -78,25 +78,25 @@ try {
   ok(bootInfo.createRes?.ok === true, "A. keystore.create mints a wallet", bootInfo.createRes);
   ok(bootInfo.status === "unlocked" && typeof bootInfo.identity === "string" && bootInfo.identity.length > 0, "A. identity unlocked (Ed25519 public present)", bootInfo);
 
-  // ════ B. the CRDT pipeline: edit → folds → op-log grows → hash advances ════
+  // ════ B. the LWW pipeline: edit → projects → map records a winner → hash ════
   const r1 = await P.commit("doc", "doc.A1", "5");
-  ok(r1.ok === true && r1.layers === 1, "B. first commit: ok, one crdt layer", r1);
-  ok((await P.cel("doc.A1")) === 5, "B. the edit folded into the source cel (5)", await P.cel("doc.A1"));
+  ok(r1.ok === true && (await P.map("doc"))["doc.A1"]?.val === 5, "B. first commit: ok, map records doc.A1=5", r1);
+  ok((await P.cel("doc.A1")) === 5, "B. the edit projected into the source cel (5)", await P.cel("doc.A1"));
   ok(/^[0-9a-f]{64}$/.test(r1.hash ?? ""), "B. a 64-hex source hash is stamped", r1.hash);
 
   const r2 = await P.commit("doc", "doc.B1", "=doc.A1*2");
-  ok(r2.ok === true && r2.layers === 2, "B. formula commit: stack grows to 2", r2);
+  ok(r2.ok === true && Object.keys(await P.map("doc")).length === 2, "B. formula commit: map now has 2 cells", r2);
   ok((await P.celType("doc.B1")) === "FormulaCel" && (await P.cel("doc.B1")) === 10, "B. formula restored + derived locally (B1=10)", { t: await P.celType("doc.B1"), v: await P.cel("doc.B1") });
 
   const r3 = await P.commit("doc", "doc.A1", "20");
-  ok(r3.layers === 3 && (await P.cel("doc.A1")) === 20, "B. re-edit A1=20: stack grows to 3", r3);
+  ok(Object.keys(await P.map("doc")).length === 2 && (await P.cel("doc.A1")) === 20, "B. re-edit A1=20: in-place (still 2 cells), latest wins", r3);
   ok((await P.cel("doc.B1")) === 40, "B. downstream formula RE-derived locally (B1=40)", await P.cel("doc.B1"));
   ok(r3.hash !== r1.hash, "B. the source hash advanced with the change", { a: r1.hash, b: r3.hash });
 
-  // ════ C. SOURCES ONLY — the op-log holds formula TEXT, never derived values ═
-  const folded = await P.resolve("doc");
-  ok(folded.includes("doc.B1\tf\t=doc.A1*2"), "C. op-log carries the formula SOURCE text", folded.slice(0, 200));
-  ok(!/doc\.B1\tv\t40/.test(folded), "C. the derived value (40) is NOT in the op-log", folded.slice(0, 200));
+  // ════ C. SOURCES ONLY — the map holds formula TEXT, never derived values ════
+  const map = await P.map("doc");
+  ok(map["doc.B1"]?.kind === "f" && map["doc.B1"]?.val === "=doc.A1*2", "C. the map carries the formula SOURCE text", map["doc.B1"]);
+  ok(typeof map["doc.B1"]?.val === "string", "C. B1's map value is the TEXT, not the derived 40 (which lives only in the cell)", { mapVal: map["doc.B1"]?.val, cellVal: await P.cel("doc.B1") });
 
   // ════ D. writers GATE — restrict a fresh seg to a stranger, my commit drops ═
   await P.commit("gate", "gate.A1", "1");                                  // creates gate (me = open writer)

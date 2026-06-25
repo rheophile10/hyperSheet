@@ -9,7 +9,7 @@
         "segment": "sheetsync",
         "name": "sheetsync.commit",
         "kind": "native",
-        "description": "(state, seg, key, source) -> {ok, hash, layers}. The CRDT change pipeline (Phase 3): gate the author (writableBy), diff the segment SOURCE string before->after the edit, crdt.layer + keystore.sign, verify the signature + re-gate the signer, crdt.append to <seg>.crdt, fold the stack -> source cels (setCel) + runCycle (derived recompute locally), then stamp <seg>.hash. SOURCES only; one writer at a time; non-writers dropped. Loopback now; Phase 4 puts the op on a WebRTC channel."
+        "description": "(state, seg, key, source) -> {ok, hash, cells, frame?}. Per-cell LWW-Map CRDT: mint an op {key,kind,val,ts,author,id} (val = formula TEXT for kind 'f', or a literal value AS-IS for kind 'v' — number/string/bool/null/object/list, never stringified), sign it, gate+merge into the <seg>.crdt winner-map (per-key last-writer-wins by ts,author,id), project the winning cell, runCycle. If the seg is synced (a data key is held) encrypt + broadcast the op; `frame` is the encrypted op for tests. SOURCES only; non-writers dropped."
       },
       "locked": true
     },
@@ -33,7 +33,7 @@
         "segment": "sheetsync",
         "name": "sheetsync.share",
         "kind": "native",
-        "description": "(state, seg, peerEcdhPub?) -> {ok, frame}. Grant a peer access to a synced segment: mint the segment data key if absent, ECDH-wrap it to the peer's ecdh pub (keystore.wrapTo), and send a 'key' frame carrying { wrapped key, writers list, encrypted current op-log }. The data key + op-log travel encrypted; writers are public identities. Returns the key frame."
+        "description": "(state, seg, peerEcdhPub?) -> {ok, frame}. Grant a peer: mint the seg data key if absent, ECDH-wrap it to the peer's ecdh pub (keystore.wrapTo), and send a 'key' frame { wrapped key, writers, ENCRYPTED current MAP snapshot }. The map merges on the peer by the same per-key LWW rule as a single op."
       },
       "locked": true
     },
@@ -45,7 +45,7 @@
         "segment": "sheetsync",
         "name": "sheetsync.recv",
         "kind": "native",
-        "description": "(state, frame) -> decision string. The inbound dispatch (peer.route target). hello -> record peer ecdh; key -> unwrap data key + adopt writers + fold the shared op-log; op -> decrypt with the segment data key, verify signature, gate writableBy, append + fold. SOURCES only; non-writers + bad signatures dropped."
+        "description": "(state, frame) -> decision string. Inbound dispatch. hello -> record peer ecdh; key -> unwrap data key + adopt writers + LWW-merge the map snapshot; op -> decrypt, verify signature, check author==signer, gate writableBy, LWW-merge into <seg>.crdt + project the cell. Idempotent (stale/duplicate ops lose the merge)."
       },
       "locked": true
     },

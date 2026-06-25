@@ -129,13 +129,14 @@ try {
   // dispatches. On a collaborative sheet (doc has writers + a crdt log) origin's
   // commit routes the edit through sheetsync → signs, records a CRDT op, encrypts,
   // and broadcasts. Convergence on B proves the wiring (a plain setCel wouldn't ship).
-  const beforeLayers = ((await cel(A, "doc.crdt")) ?? []).length;
+  const beforeA1 = (await cel(A, "doc.crdt"))?.["doc.A1"]?.val;
   await A.evaluate(async () => {
     const s = globalThis.plastron.state, F = (k) => globalThis.plastron.resolveFn(s, k);
     await F("setValue")(s, "元.draft", "314");        // type 314 into the formula bar
     await F("origin.fire")(s, "doc.A1");               // press ⚡
   });
-  ok(((await cel(A, "doc.crdt")) ?? []).length === beforeLayers + 1, "F. origin.fire recorded a new CRDT op (not a plain setCel)", { before: beforeLayers, after: ((await cel(A, "doc.crdt")) ?? []).length });
+  const afterA1 = (await cel(A, "doc.crdt"))?.["doc.A1"]?.val;
+  ok(afterA1 === 314 && beforeA1 !== 314, "F. origin.fire recorded a new LWW op in the map (not a plain setCel)", { before: beforeA1, after: afterA1 });
   ok(await poll(B, "doc.A1", 314), "F. the ⚡ edit converged to B over WebRTC (doc.A1 = 314)", await cel(B, "doc.A1"));
 
   ok(errs.length === 0, `no page errors${errs.length ? ": " + errs.slice(0, 2).join(" | ") : ""}`);

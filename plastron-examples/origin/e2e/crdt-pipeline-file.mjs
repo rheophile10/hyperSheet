@@ -53,7 +53,7 @@ const mk = (page) => ({
   commit: (seg, key, src) => page.evaluate(([seg, key, src]) => globalThis.plastron.resolveFn(globalThis.plastron.state, "sheetsync.commit")(globalThis.plastron.state, seg, key, src), [seg, key, src]),
   cel: (k) => page.evaluate((k) => globalThis.plastron.state.cels.get(k)?.v ?? null, k),
   celType: (k) => page.evaluate((k) => globalThis.plastron.state.cels.get(k)?.celType ?? null, k),
-  resolve: (seg) => page.evaluate((seg) => { const s = globalThis.plastron.state; return globalThis.plastron.resolveFn(s, "crdt.resolve")(s.cels.get(`${seg}.crdt`)?.v ?? []); }, seg),
+  map: (seg) => page.evaluate((seg) => globalThis.plastron.state.cels.get(`${seg}.crdt`)?.v ?? {}, seg),
   verb: (k, ...a) => page.evaluate(([k, a]) => globalThis.plastron.resolveFn(globalThis.plastron.state, k)(globalThis.plastron.state, ...a), [k, a]),
   setCel: (k, spec) => page.evaluate(([k, spec]) => globalThis.plastron.resolveFn(globalThis.plastron.state, "setCel")(globalThis.plastron.state, k, { metadata: { key: k, segment: k.split(".")[0] }, ...spec }), [k, spec]),
 });
@@ -82,20 +82,20 @@ try {
   ok(bootInfo.createRes?.persisted === false, "A. the wallet is NOT persisted (no storage)", bootInfo.createRes);
   ok(bootInfo.status === "unlocked" && (bootInfo.identity ?? "").length > 0, "A. identity unlocked in memory", bootInfo);
 
-  // ════ B. the CRDT pipeline runs entirely in memory ═══════════════════════
+  // ════ B. the LWW pipeline runs entirely in memory ════════════════════════
   const r1 = await P.commit("doc", "doc.A1", "5");
-  ok(r1.ok === true && r1.layers === 1, "B. commit folds with no storage backend", r1);
-  ok((await P.cel("doc.A1")) === 5, "B. the edit folded into the source cel (5)", await P.cel("doc.A1"));
+  ok(r1.ok === true && (await P.map("doc"))["doc.A1"]?.val === 5, "B. commit applies with no storage backend", r1);
+  ok((await P.cel("doc.A1")) === 5, "B. the edit projected into the source cel (5)", await P.cel("doc.A1"));
   ok(/^[0-9a-f]{64}$/.test(r1.hash ?? ""), "B. a source hash is stamped (in-memory)", r1.hash);
   const r2 = await P.commit("doc", "doc.B1", "=doc.A1*2");
-  ok(r2.layers === 2 && (await P.cel("doc.B1")) === 10, "B. formula commit derives locally (B1=10)", { l: r2.layers, b1: await P.cel("doc.B1") });
-  const r3 = await P.commit("doc", "doc.A1", "20");
-  ok(r3.layers === 3 && (await P.cel("doc.B1")) === 40, "B. re-edit re-derives downstream (B1=40)", { l: r3.layers, b1: await P.cel("doc.B1") });
+  ok(Object.keys(await P.map("doc")).length === 2 && (await P.cel("doc.B1")) === 10, "B. formula commit derives locally (B1=10)", { cells: Object.keys(await P.map("doc")).length, b1: await P.cel("doc.B1") });
+  await P.commit("doc", "doc.A1", "20");
+  ok(Object.keys(await P.map("doc")).length === 2 && (await P.cel("doc.B1")) === 40, "B. re-edit re-derives downstream (B1=40)", { cells: Object.keys(await P.map("doc")).length, b1: await P.cel("doc.B1") });
 
   // ════ C. SOURCES ONLY ════════════════════════════════════════════════════
-  const folded = await P.resolve("doc");
-  ok(folded.includes("doc.B1\tf\t=doc.A1*2"), "C. op-log carries the formula SOURCE text", folded.slice(0, 160));
-  ok(!/doc\.B1\tv\t40/.test(folded), "C. the derived value is NOT in the op-log", folded.slice(0, 160));
+  const map = await P.map("doc");
+  ok(map["doc.B1"]?.kind === "f" && map["doc.B1"]?.val === "=doc.A1*2", "C. the map carries the formula SOURCE text", map["doc.B1"]);
+  ok(typeof map["doc.B1"]?.val === "string", "C. the derived value is NOT in the op map", { mapVal: map["doc.B1"]?.val, cellVal: await P.cel("doc.B1") });
 
   // ════ D. writers GATE ════════════════════════════════════════════════════
   await P.commit("gate", "gate.A1", "1");
