@@ -53,3 +53,16 @@ graphify-out/
 
 # e2e test screenshots (regenerated each run)
 plastron-examples/origin/e2e/*.png
+
+# Supabase / LLM provider secrets — NEVER commit project refs or API keys.
+# Real project URL + anon key go in a gitignored local config or runtime cels;
+# the xAI/provider key lives ONLY in Supabase function secrets (server-side).
+**/supabase/.env
+**/supabase/.temp/
+**/supabase/.branches/
+**/functions/**/.env
+.env.production
+*.secret
+*.secret.*
+*.local.json
+secrets.json
