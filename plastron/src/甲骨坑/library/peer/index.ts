@@ -21,6 +21,13 @@ interface Transport { send: (msg: string) => void }
 let transport: Transport | null = null;       // null until a peer connects
 let applying = false;                         // true while applying an INBOUND write — suppresses the echo re-broadcast (A→B→A loop guard)
 
+// Inbound ROUTE table: message-type → verb key. The default ("set") is the
+// security-core gate (peer.apply). Higher segments register their own frame
+// types (e.g. sheetsync registers "op"/"key"/"hello" → "sheetsync.recv") so a
+// CRDT op rides the SAME data channel without going through the shared.* gate —
+// it carries its own authenticity (signature) + encryption + writers gate.
+const routes: Record<string, string> = {};
+
 // Module-scope governance state (mirrors net's allowlist/log pattern).
 let allowlist: string[] = ["shared."];        // shared namespaces; default-deny outside
 interface LogRow { dir: "in" | "out"; k: string; d: string }
@@ -158,9 +165,18 @@ interface RtcConn {
 let pc: RtcConn | null = null;
 const rtc = (): (new (cfg: unknown) => RtcConn) | undefined => (globalThis as { RTCPeerConnection?: new (cfg: unknown) => RtcConn }).RTCPeerConnection;
 
+// route an inbound frame: a registered type → its verb; everything else → the
+// security-core gate (peer.apply). Keeps the shared.* path unchanged.
+const dispatch = (state: State, m: unknown): void => {
+  const t = (m && typeof (m as { t?: unknown }).t === "string") ? (m as { t: string }).t : "";
+  const verb = routes[t];
+  if (verb) { try { void (resolveFn(state, verb) as Fn)(state, m); } catch { /* handler threw */ } return; }
+  void applyFn(state, m);
+};
+
 const wire = (state: State, ch: RtcChan): void => {
   ch.onopen = () => { transport = { send: (m: string) => ch.send(m) }; (globalThis as { __peerOpen?: boolean }).__peerOpen = true; };
-  ch.onmessage = (e) => { if (typeof e.data !== "string" || e.data.length > MAX_MSG) { note("in", "?", "dropped:size"); return; } try { void applyFn(state, JSON.parse(e.data)); } catch { /* malformed frame */ } };
+  ch.onmessage = (e) => { if (typeof e.data !== "string" || e.data.length > MAX_MSG) { note("in", "?", "dropped:size"); return; } try { dispatch(state, JSON.parse(e.data)); } catch { /* malformed frame */ } };
 };
 const iceDone = (conn: RtcConn): Promise<void> => new Promise<void>((res) => {
   if (conn.iceGatheringState === "complete") return res();
@@ -218,6 +234,25 @@ const joinFn: Fn = ((state: State, room: unknown, relayUrl: unknown): string => 
   return `peer: joining "${r}"`;
 }) as Fn;
 
+// peer.route(state, type, verbKey) — register an inbound frame type → handler verb.
+// peer.route(state, type, "") unregisters. Returns the live route table as text.
+const routeFn: Fn = ((_state: State, t: unknown, verbKey: unknown): string => {
+  const type = String(t ?? "");
+  const verb = String(verbKey ?? "");
+  if (type) { if (verb) routes[type] = verb; else delete routes[type]; }
+  const rows = Object.entries(routes).map(([k, v]) => `  ${k} → ${v}`);
+  return "peer.route (inbound frame types):\n" + (rows.length ? rows.join("\n") : "  (only the default shared.* gate)");
+}) as Fn;
+
+// peer.tx(state, msg) — send a RAW frame string over the live transport (for a
+// higher segment's own protocol, e.g. an encrypted CRDT op). Returns whether sent.
+const txFn: Fn = ((_state: State, msg: unknown): boolean => {
+  if (!transport) return false;
+  const s = typeof msg === "string" ? msg : JSON.stringify(msg);
+  if (s.length > MAX_MSG) { note("out", "?", "dropped:size"); return false; }
+  transport.send(s); note("out", "tx", "sent"); return true;
+}) as Fn;
+
 export const name = "peer" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
@@ -225,6 +260,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["peer.broadcast", broadcastFn],
   ["cascade.observe", broadcastFn],
   ["peer.connect", connectFn],
+  ["peer.route", routeFn],
+  ["peer.tx", txFn],
   ["peersend", sendFn],
   ["peerallow", allowFn],
   ["peerlog", logFn],

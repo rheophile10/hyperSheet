@@ -306,11 +306,42 @@ const unwrapFn: Fn = (async (_s: State, envArg?: unknown, withPubArg?: unknown):
   } catch { return { ok: false, error: "keystore.unwrap: decryption failed (wrong key / tampered)" }; }
 }) as Fn;
 
+// keystore.wrapTo(state, dataKeyB64, theirEcdhPubB64) — ECDH-wrap a data key to a
+// PEER's ecdh pub (true peer key-exchange, unlike wrap which is self-only). The
+// shared AES is ECDH(my priv, their pub); the peer recovers it as ECDH(their priv,
+// my pub). Returns { ok, env, fromPub } — fromPub is MY ecdh pub the peer unwraps with.
+const wrapToFn: Fn = (async (_s: State, dataKeyArg?: unknown, theirPubArg?: unknown): Promise<unknown> => {
+  if (!KEYRING) return { ok: false, error: "keystore.wrapTo: locked" };
+  const theirPub = String(theirPubArg ?? "");
+  if (!theirPub) return { ok: false, error: "keystore.wrapTo: recipient ecdh pub required" };
+  const aes = await sharedAes(KEYRING.current.ecdhPriv, theirPub, ["encrypt"]);
+  const iv = rand(12);
+  const ct = new Uint8Array(await host().subtle.encrypt({ name: "AES-GCM", iv }, aes, b64dec(String(dataKeyArg ?? ""))));
+  return { ok: true, env: `${b64enc(iv)}.${b64enc(ct)}`, fromPub: KEYRING.current.ecdhPub };
+}) as Fn;
+
+// keystore.unwrapFrom(state, env, theirEcdhPubB64) — ECDH-unwrap a peer-wrapped key
+// using MY current ecdh priv + THEIR ecdh pub (the wrapper's fromPub). Returns { ok, dataKey }.
+const unwrapFromFn: Fn = (async (_s: State, envArg?: unknown, theirPubArg?: unknown): Promise<unknown> => {
+  if (!KEYRING) return { ok: false, error: "keystore.unwrapFrom: locked" };
+  const [ivB64, ctB64] = String(envArg ?? "").split(".");
+  if (!ivB64 || !ctB64) return { ok: false, error: "keystore.unwrapFrom: bad envelope" };
+  const theirPub = String(theirPubArg ?? "");
+  if (!theirPub) return { ok: false, error: "keystore.unwrapFrom: sender ecdh pub required" };
+  try {
+    const aes = await sharedAes(KEYRING.current.ecdhPriv, theirPub, ["decrypt"]);
+    const pt = new Uint8Array(await host().subtle.decrypt({ name: "AES-GCM", iv: b64dec(ivB64) }, aes, b64dec(ctB64)));
+    return { ok: true, dataKey: b64enc(pt) };
+  } catch { return { ok: false, error: "keystore.unwrapFrom: decryption failed (wrong key / tampered)" }; }
+}) as Fn;
+
 export const name = "keystore" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["keystore.sign", signFn],
   ["keystore.wrap", wrapFn],
   ["keystore.unwrap", unwrapFn],
+  ["keystore.wrapTo", wrapToFn],
+  ["keystore.unwrapFrom", unwrapFromFn],
   ["keystore.has", hasFn],
   ["keystore.create", createFn],
   ["keystore.unlock", unlockFn],

@@ -82,6 +82,30 @@
       "locked": true
     },
     {
+      "key": "keystore.wrapTo",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "keystore.wrapTo",
+        "segment": "keystore",
+        "name": "keystore.wrapTo",
+        "kind": "native",
+        "description": "(state, dataKeyB64, theirEcdhPubB64) -> {ok, env, fromPub}. ECDH-wrap a symmetric data key to a PEER's ecdh public key (true peer key-exchange, unlike wrap which is self-only). Shared AES = ECDH(my priv, their pub); peer recovers via unwrapFrom(env, fromPub). Must be unlocked."
+      },
+      "locked": true
+    },
+    {
+      "key": "keystore.unwrapFrom",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "keystore.unwrapFrom",
+        "segment": "keystore",
+        "name": "keystore.unwrapFrom",
+        "kind": "native",
+        "description": "(state, env, theirEcdhPubB64) -> {ok, dataKey}. ECDH-unwrap a peer-wrapped key with MY current ecdh priv + the wrapper's ecdh pub (their fromPub). Must be unlocked."
+      },
+      "locked": true
+    },
+    {
       "key": "keystore.has",
       "celType": "LockedLambdaCel",
       "metadata": {

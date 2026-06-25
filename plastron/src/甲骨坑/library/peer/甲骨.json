@@ -38,6 +38,30 @@
       "locked": true
     },
     {
+      "key": "peer.route",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "peer.route",
+        "segment": "peer",
+        "name": "peer.route",
+        "kind": "native",
+        "description": "(state, type, verbKey) -> string. Register an inbound frame type -> handler verb (verbKey='' unregisters). The default 'set' frame stays on the security-core gate (peer.apply); sheetsync registers 'op'/'key'/'hello' -> sheetsync.recv so encrypted CRDT ops ride the same data channel with their own signature + encryption + writers gate."
+      },
+      "locked": true
+    },
+    {
+      "key": "peer.tx",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "peer.tx",
+        "segment": "peer",
+        "name": "peer.tx",
+        "kind": "native",
+        "description": "(state, msg) -> boolean. Send a RAW frame (string or JSON-able) over the live WebRTC transport, for a higher segment's own protocol (e.g. an encrypted CRDT op). Returns whether it was sent (false if no peer connected). Size-capped."
+      },
+      "locked": true
+    },
+    {
       "key": "peersend",
       "celType": "LockedLambdaCel",
       "metadata": {
