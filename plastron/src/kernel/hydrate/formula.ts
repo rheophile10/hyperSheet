@@ -180,6 +180,13 @@ export const compileCelBody = async (
       const have = new Set(cel.metadata.channel ?? []);
       for (const k of compiled.channels) have.add(k);
       cel.metadata.channel = [...have];
+      // a precompute that ran BEFORE this merge left a stale (possibly
+      // EMPTY) _channelHandlers — enqueueChannels would loop over nothing
+      // and the cel's first fire would silently never enqueue (bit a
+      // sparse-born grid cel whose first compile declares origin.effects).
+      // Drop it: enqueue falls back to metadata.channel until the next
+      // precompute rebuilds the handler list from the merged set.
+      (cel as { _channelHandlers?: unknown })._channelHandlers = undefined;
     }
   }
   writeBackCompilerKey(cel, compilerKey);

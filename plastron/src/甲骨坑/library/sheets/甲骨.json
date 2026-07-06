@@ -22,7 +22,7 @@
         "segment": "sheets",
         "name": "sheetgrid",
         "kind": "native",
-        "description": "(label, cells, opts?) - render a worksheet's cells as an editable Excel grid CONTENT vnode (corner label + column letters + row numbers + cells). `cells` is the host-aggregated list [{key,col,row,value,src}]; `opts` = {active, selected, draft, edit, select, fire, commit} (handler keys default to origin.*). The active cell shows an inline editor; others dispatch select/edit. SHEET-UNIQUE native renderer (the perf fast path); a window tab hosts the result so a sheet tabs next to any app."
+        "description": "(label, cells, opts?, dims?, colw?, rowh?) - render a worksheet's cells as an editable Excel grid CONTENT vnode (corner label + column letters + row numbers + cells). `cells` is the host-aggregated list [{key,col,row,value,src}]; `opts` = {active, selected, draft, edit, select, fire, commit} (handler keys default to origin.*); `dims` ({rows,cols} - the <seg>.dims cel) sets the sparse rendered range; `colw`/`rowh` are the sparse size dicts (<seg>.colw {letter:px} / <seg>.rowh {row:px}) - headers grow Excel-style resize handles (drag the edge; double-click resets). The active cell shows an inline editor; others dispatch select/edit. SHEET-UNIQUE native renderer (the perf fast path); a window tab hosts the result so a sheet tabs next to any app."
       }
     },
     {
@@ -72,6 +72,159 @@
         "description": "(identity, writers) -> bool. PURE formula-bar gate: a segment with no writers list is OPEN; one WITH a list admits only its members; a locked/empty identity is never a writer of a restricted sheet. The grid formula calls (writableBy keystore.identity <seg>.writers) and passes it to sheetbar."
       },
       "locked": true
+    },
+    {
+      "key": "signedIn",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "signedIn",
+        "segment": "sheets",
+        "name": "signedIn",
+        "kind": "native",
+        "description": "(auth) -> boolean. PURE: is a Supabase auth status object signed-in ({status:'signed-in'})? Tolerant of a missing cel (undefined -> false). Grid formulas pass (signedIn sb.<project>.auth) to sheetbar to gate the 🔮 ask-grok button."
+      },
+      "locked": true
+    },
+    {
+      "key": "renameOverlay",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "renameOverlay",
+        "segment": "sheets",
+        "name": "renameOverlay",
+        "kind": "native",
+        "description": "(ui, draft) -> a floating rename box (an input bound to the draft cel; Enter / the button apply via sheetapp.applyrename) shown at ui.x,ui.y when ui.open. Opened by right-click/double-click on a worksheet tab."
+      }
+    },
+    {
+      "key": "sheet.resizedrag",
+      "celType": "ValueCel",
+      "v": null,
+      "metadata": {
+        "key": "sheet.resizedrag",
+        "segment": "sheets",
+        "name": "sheet.resizedrag",
+        "description": "the in-flight header-edge resize ({seg, kind: col|row, key, p0, size0}) - seeded by sheet.resizeGrab, read by sheet.resizeMove, cleared by sheet.resizeDrop. null when no resize is in progress. Transient UI state; never archived with a document."
+      }
+    },
+    {
+      "key": "sheet.resizeGrab",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheet.resizeGrab",
+        "segment": "sheets",
+        "name": "sheet.resizeGrab",
+        "kind": "native",
+        "description": "(state, {seg, kind: col|row, key}, event) - pointerdown on a column header's right edge / row header's bottom edge: capture the pointer, LAZILY mint the <seg>.colw / <seg>.rowh size cel (ValueCel dict, segment = the sheet's, so it archives with the doc) + rewrite the grid formulas to reference it, and snapshot the drag into sheet.resizedrag. The window.grab of the sheet grid."
+      }
+    },
+    {
+      "key": "sheet.resizeMove",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheet.resizeMove",
+        "segment": "sheets",
+        "name": "sheet.resizeMove",
+        "kind": "native",
+        "description": "(state, _, event) - pointermove during a header-edge resize: clamp (min 24px col / 16px row) and write the new size into <seg>.colw/<seg>.rowh LIVE - the grid formula references the size cel, so each write re-renders the grid through the graph, then drains dom.paint. No-op unless sheet.resizedrag is set."
+      }
+    },
+    {
+      "key": "sheet.resizeDrop",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheet.resizeDrop",
+        "segment": "sheets",
+        "name": "sheet.resizeDrop",
+        "kind": "native",
+        "description": "(state) - pointerup after a header-edge resize: clear sheet.resizedrag. The size already landed in <seg>.colw/<seg>.rowh during the move."
+      }
+    },
+    {
+      "key": "sheet.resizeReset",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheet.resizeReset",
+        "segment": "sheets",
+        "name": "sheet.resizeReset",
+        "kind": "native",
+        "description": "(state, {seg, kind: col|row, key}) - double-click a header resize handle: remove that one column/row override from <seg>.colw/<seg>.rowh so it returns to the default size."
+      }
+    },
+    {
+      "key": "kvsheet",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "kvsheet",
+        "segment": "sheets",
+        "name": "kvsheet",
+        "kind": "native",
+        "description": "(seg, keys?, opts?, ...pairs) - a KEY-VALUE worksheet over NAMED cels (kv-sheet.md): one row per name in the `<seg>.keys` roster (name -> editable value -> retire), plus an add-row composer (name + value + add; { and [ values parse as JSON, = mints a formula). `keys` is the roster cel's value (0 bootstraps empty); `opts` the selected-key cel's value (row highlight; clicking a name dispatches origin.select so the formula bar shows its source); `pairs` are ('<seg>.<name>', <seg>.<name>) references spliced by kv.mint/kv.retire so every row's value is live. Start with =view(\"params\", kvsheet('<seg>', 0, sheet.selected)) - the first add mints the roster and rewires the formula."
+      }
+    },
+    {
+      "key": "kv.name",
+      "celType": "ValueCel",
+      "v": "",
+      "metadata": {
+        "key": "kv.name",
+        "segment": "sheets",
+        "name": "kv.name",
+        "description": "the kvsheet composer's NAME draft - the composer's name input writes it live; kv.mint reads + clears it. Transient UI state."
+      }
+    },
+    {
+      "key": "kv.value",
+      "celType": "ValueCel",
+      "v": "",
+      "metadata": {
+        "key": "kv.value",
+        "segment": "sheets",
+        "name": "kv.value",
+        "description": "the kvsheet composer's VALUE draft - the composer's value input writes it live; kv.mint reads + clears it. Transient UI state."
+      }
+    },
+    {
+      "key": "kv.mint",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "kv.mint",
+        "segment": "sheets",
+        "name": "kv.mint",
+        "kind": "native",
+        "description": "(state, seg, event?) - the kvsheet composer's add (the + button, or Enter in its value input): mint `<seg>.<name>` from the kv.name/kv.value drafts by the entry rules (= formula, {/[ JSON, numeric, string), ensure + append to the `<seg>.keys` roster, and REWRITE every kvsheet view formula so the new cel is a spliced live reference (the reactive-set rule). Re-minting an existing name replaces the cel."
+      }
+    },
+    {
+      "key": "kv.set",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "kv.set",
+        "segment": "sheets",
+        "name": "kv.set",
+        "kind": "native",
+        "description": "(state, celKey, event) - a kvsheet row value commit (change, or Enter in the row input): apply the entry rules to the input text. Same tier -> setValue; a value<->formula tier change replaces the cel and cycles so the new formula fires."
+      }
+    },
+    {
+      "key": "kv.retire",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "kv.retire",
+        "segment": "sheets",
+        "name": "kv.retire",
+        "kind": "native",
+        "description": "(state, {seg, name}) - a kvsheet row's retire button: remove the name from the `<seg>.keys` roster, rewrite the view formulas, then retire the cel outright (no guardrails - deletion doctrine). A surviving formula that referenced it traps undefined-symbol."
+      }
     }
   ]
 }

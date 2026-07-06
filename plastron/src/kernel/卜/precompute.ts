@@ -172,11 +172,18 @@ const precomputeBody = (state: State): void => {
   // Channels — gather ChannelCels and (re)build each one's live
   // Channel. cel._channel always points at a fresh handler whose
   // closure captures the current cel-registry lookups for drain/dispose.
+  // IN-FLIGHT work carries over: a precompute can run BETWEEN a cel's
+  // enqueue and the drain (e.g. a mid-commit topo change — sparse grid
+  // birth triggers regrid/genesis precomputes), and rebuilding the
+  // Channel without its queue silently dropped those items (a request
+  // cel then never landed).
   const channels = new Map<Key, ChannelCel>();
   for (const cel of cels.values()) {
     if (cel.celType !== "ChannelCel") continue;
     const ccel = cel as ChannelCel;
+    const pending = ccel._channel?._queue;
     ccel._channel = buildChannel(ccel, state);
+    if (pending?.length) for (const item of pending) ccel._channel.enqueue(item);
     channels.set(ccel.metadata.key, ccel);
   }
 

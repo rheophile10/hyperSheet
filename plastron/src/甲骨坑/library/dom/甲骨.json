@@ -26,6 +26,29 @@
       "locked": true
     },
     {
+      "key": "dom.replayers",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "dom.replayers",
+        "segment": "dom",
+        "name": "replayers",
+        "description": "the dom replay REGISTRY (01-rendering.md): data-attr -> replayer cel key. After each patch the painter walks spec-carrying <canvas> elements and dispatches each to the FIRST replayer whose attr it carries. New media register by writing this cel - no painter change. A replayer key that does not resolve yet (its segment not loaded) is skipped silently."
+      },
+      "v": { "data-ops": "replay.canvas2d", "data-scene": "replay.scene" }
+    },
+    {
+      "key": "replay.canvas2d",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "replay.canvas2d",
+        "segment": "dom",
+        "name": "replay.canvas2d",
+        "kind": "native",
+        "description": "(el, state) - the 2-D replayer: parse the element's data-ops draw-spec and replay it onto the 2d context (plastron-canvas vocabulary); animated ops (frames/draggable) get a self-cancelling rAF loop. The per-element half of the old drawCanvases walk."
+      },
+      "locked": true
+    },
+    {
       "key": "dom.diffVNodes",
       "celType": "LockedLambdaCel",
       "metadata": {
@@ -116,7 +139,7 @@
         "segment": "dom",
         "name": "on",
         "kind": "native",
-        "description": "(event handlerKey [payload]) - bind a dom event to a handler cel; pass as a child of dom(). =dom(\"button\", on(\"click\", \"vault.lock\"), \"lock\"). The handler runs (state, payload, event)."
+        "description": "(event handlerKey [payload]) - bind a dom event to a handler cel; pass as a child of dom(). =dom(\"button\", on(\"click\", \"origin.tone\", 440), \"\u266a\"). The handler runs (state, payload, event)."
       }
     },
     {

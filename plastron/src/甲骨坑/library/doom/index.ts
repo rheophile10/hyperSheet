@@ -1,6 +1,7 @@
 import type { State, Fn, 甲骨, Cel } from "../../../types/index.js";
 import { bindNativeFns, resolveFn, ensureSegments } from "../../../kernel/index.js";
 import { wasmappGenesis } from "../winapps-wasm/index.js";
+import { fetchAsset } from "../asset-loader/index.js";
 import { createDoomHarness, type DoomHarness } from "./doom-harness.js";
 import seed from "./甲骨.json" with { type: "json" };
 
@@ -60,12 +61,10 @@ export const boot = async (stateArg: State): Promise<void> => {
   _booting = true;
 
 
-  const fetchBytes = async (name: string): Promise<Uint8Array> => {
-    setOut(state, `fetching ${name}…`);
-    const r = await (globalThis as { fetch: typeof fetch }).fetch(ASSETS + name);
-    if (!r.ok) throw new Error(`doom: ${name} HTTP ${r.status}`);
-    return new Uint8Array(await r.arrayBuffer());
-  };
+  // asset-loader: fetch base+name, OPFS-cached so the 28 MB WAD downloads once
+  // and reloads instantly. ASSETS preserves the __doomAssets e2e override.
+  const fetchBytes = (name: string): Promise<Uint8Array> =>
+    fetchAsset(state, name, { base: ASSETS, onProgress: (m) => setOut(state, m) });
 
   try {
     const wadBytes = await fetchBytes(WAD);
@@ -132,12 +131,12 @@ export const boot = async (stateArg: State): Promise<void> => {
   }
 };
 const bootFn: Fn = (async (state: State): Promise<State> => { await boot(state); return state; }) as Fn;
-const stopFn: Fn = (async (state: State): Promise<State> => { _harness?.stop?.(); _harness = null; _booting = false; setOut(state, "stopped"); return state; }) as Fn;
+// (doom.stop removed: teardown is the internal harness hook on window close /
+// content-cel flush — nothing dispatched the verb.)
 
 export const name = "doom" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["doom", doomFn],
   ["doom.arm", arm],
   ["doom.boot", bootFn],
-  ["doom.stop", stopFn],
 ]));

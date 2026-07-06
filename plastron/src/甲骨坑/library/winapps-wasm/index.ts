@@ -1,6 +1,6 @@
 import type { State, Key, Fn, VNode, AttrValue, EventBinding, 甲骨, Cel } from "../../../types/index.js";
 import { resolveFn, bindNativeFns } from "../../../kernel/index.js";
-import { el as makeEl } from "../dom/index.js";
+import { el as makeEl, text } from "../dom/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 const el = (tag: string, attrs: Record<string, unknown>, children: VNode[], events?: Record<string, unknown>): VNode =>
@@ -66,24 +66,78 @@ export const wasmKey = (state: State, id: string, event: KeyEvent): boolean => {
 };
 
 // ── the canvas renderer (the thing keys land on) ────────────────────────────
-/** wasmcanvas(id, engine?, active?) — the window body: a focusable <canvas id=
- *  "wasm-<id>"> the engine's onInstantiate grabs BY ID. Focus/blur toggle
- *  wasm.<id>.active (so key routing targets the focused game); keydown/keyup
- *  dispatch wasmwin.key (active-gated routing into the engine's inbox). The
- *  engine value is accepted so the formula re-renders when the engine (re)loads. */
-export const wasmcanvas = (id: unknown, _engine?: unknown, _active?: unknown): VNode => {
-  const i = String(id ?? "w");
-  return el("div", { class: "wasm-host", style: "width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden" }, [
-    el("canvas", {
-      id: `wasm-${i}`, "data-wasm": i, tabindex: "0", width: "640", height: "400",
-      style: "max-width:100%;max-height:100%;image-rendering:pixelated;outline:none;cursor:pointer",
-    }, [], {
-      focus:   { dispatch: "wasmwin.focus", payload: i },
-      blur:    { dispatch: "wasmwin.blur",  payload: i },
-      keydown: { dispatch: "wasmwin.key",   payload: i },
-      keyup:   { dispatch: "wasmwin.key",   payload: i },
-    }),
+const OVERLAY_STYLE =
+  "position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;" +
+  "background:#000;color:#eee;font-family:system-ui,sans-serif;text-align:center;padding:16px;box-sizing:border-box";
+
+/** Boot status (the `.out` cel) → a loading/error overlay vnode, or null once the
+ *  engine is running (so the bare canvas shows). The engine streams its boot
+ *  through `.out` (fetching… → creating harness… → starting… → running, or
+ *  `#ERROR(…)` on failure); the content formula passes that here so a missing
+ *  asset surfaces as a readable card instead of a silent black canvas. */
+const bootOverlay = (status: unknown): VNode | null => {
+  const s = status == null ? "" : String(status);
+  if (s.startsWith("#ERROR")) {
+    const detail = s.replace(/^#ERROR\(/, "").replace(/\)$/, "");
+    const notFound = /HTTP (404|0|5\d\d)|not found|Failed to fetch|NetworkError/i.test(detail);
+    return el("div", { class: "wasm-overlay wasm-overlay-error", style: OVERLAY_STYLE }, [
+      el("div", { style: "font-size:40px;line-height:1" }, [text("💀")]),
+      el("div", { style: "font-weight:600;font-size:16px;margin-top:10px" }, [text("DOOM could not load")]),
+      el("div", { style: "font-size:13px;opacity:.85;margin-top:6px;max-width:90%" }, [
+        text(notFound ? "Game files were not found — doom.wasm / freedoom1.wad are missing from the server." : detail),
+      ]),
+      el("div", { class: "wasm-overlay-detail", style: "font-size:11px;opacity:.5;margin-top:10px;font-family:monospace;word-break:break-all;max-width:90%" }, [text(detail)]),
+    ]);
+  }
+  // loading: the known boot messages (empty/armed before the first fetch, the
+  // asset-loader's fetching/cached/saved, then creating harness…/starting…).
+  const loading = s === "" || s === "armed" ||
+    /^(fetching|cached|saved) /.test(s) || s === "creating harness…" || s === "starting…";
+  if (!loading) return null; // running / stopped / exited / engine data → no overlay
+  const label =
+    s === "" || s === "armed" ? "Gathering files…" :
+    /^fetching (.+)…$/.test(s) ? `Downloading ${s.replace(/^fetching (.+)…$/, "$1")}…` :
+    /^cached (.+)$/.test(s) ? `Loading ${s.replace(/^cached (.+)$/, "$1")} (cached)…` :
+    /^saved (.+)$/.test(s) ? `Caching ${s.replace(/^saved (.+)$/, "$1")}…` :
+    s === "creating harness…" ? "Starting engine…" :
+    s === "starting…" ? "Launching…" : "Loading…";
+  // a stepped bar — no byte-progress is available, so advance through the known
+  // boot stages (the WAD is the big download, so it gets the widest band).
+  const pct =
+    /freedoom1\.wad/.test(s) ? (/^fetching/.test(s) ? 30 : 50) :
+    /doom\.wasm/.test(s) ? (/^fetching/.test(s) ? 66 : 74) :
+    s === "creating harness…" ? 86 :
+    s === "starting…" ? 95 : 12;
+  return el("div", { class: "wasm-overlay wasm-overlay-loading", style: OVERLAY_STYLE }, [
+    el("div", { style: "font-weight:600;font-size:15px" }, [text(label)]),
+    el("div", { style: "width:60%;max-width:280px;height:8px;border-radius:4px;background:#222;margin-top:14px;overflow:hidden" }, [
+      el("div", { class: "wasm-overlay-bar", style: `width:${pct}%;height:100%;background:#b33;transition:width .3s ease` }, []),
+    ]),
   ]);
+};
+
+/** wasmcanvas(id, status?) — the window body: a focusable <canvas id="wasm-<id>">
+ *  the engine's onInstantiate grabs BY ID, plus a boot overlay driven by `status`
+ *  (the engine's `.out` cel). Focus/blur toggle wasm.<id>.active (so key routing
+ *  targets the focused game); keydown/keyup dispatch wasmwin.key (active-gated
+ *  routing into the engine's inbox). Passing `.out` makes the body re-render on
+ *  every boot status change — so loading progress and load failures are visible,
+ *  not a silent black canvas. The canvas stays mounted under the overlay (the
+ *  harness needs it by id; the overlay just covers it until the engine runs). */
+export const wasmcanvas = (id: unknown, status?: unknown): VNode => {
+  const i = String(id ?? "w");
+  const canvas = el("canvas", {
+    id: `wasm-${i}`, "data-wasm": i, tabindex: "0", width: "640", height: "400",
+    style: "max-width:100%;max-height:100%;image-rendering:pixelated;outline:none;cursor:pointer",
+  }, [], {
+    focus:   { dispatch: "wasmwin.focus", payload: i },
+    blur:    { dispatch: "wasmwin.blur",  payload: i },
+    keydown: { dispatch: "wasmwin.key",   payload: i },
+    keyup:   { dispatch: "wasmwin.key",   payload: i },
+  });
+  const overlay = bootOverlay(status);
+  return el("div", { class: "wasm-host", style: "position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden" },
+    overlay ? [canvas, overlay] : [canvas]);
 };
 
 // ── focus / key handlers (dispatch targets the canvas wires) ────────────────
@@ -120,7 +174,7 @@ export const wasmappGenesis = (id: string, title: string, engineCel: string, opt
     [`${L}.in`]:     { celType: "ValueCel", v: null, metadata: { name: "in", segment: L } },   // graph → engine (+ keystrokes)
     [`${L}.out`]:    { celType: "ValueCel", v: null, metadata: { name: "out", segment: L } },   // engine → graph
     [`${L}.active`]: { celType: "ValueCel", v: 0, metadata: { name: "active", segment: L } },    // focused?
-    [cref]:  { celType: "FormulaCel", f: `(wasmcanvas "${i}")`, metadata: { name: "content", parser: "f", segment: L } },
+    [cref]:  { celType: "FormulaCel", f: `(wasmcanvas "${i}" ${L}.out)`, metadata: { name: "content", parser: "f", segment: L } },  // refs .out → re-renders on every boot status (loading bar / error card)
     [sref]:  { celType: "ValueCel", v: { ref: sref, x: opts.x ?? 90, y: opts.y ?? 70, w: opts.w ?? 640, h: opts.h ?? 420, z: 1, min: 0, max: 0, closed: 0, title: t, tabs: [{ ref: cref, title: t, ...(opts.icon ? { icon: opts.icon } : {}) }], active: 0 }, metadata: { name: "state" } },
     [`${L}.frame`]: { celType: "FormulaCel", f: `(mount ".origin" (wframe ${sref} win.active ${cref}))`, metadata: { name: "frame", parser: "f", segment: L } },
   } };
@@ -129,8 +183,8 @@ export const wasmappGenesis = (id: string, title: string, engineCel: string, opt
 const wasmapp: Fn = ((id: unknown, title: unknown, engineCel: unknown, opts?: unknown): unknown =>
   wasmappGenesis(String(id ?? "w"), String(title ?? id ?? "w"), String(engineCel ?? ""), (opts && typeof opts === "object") ? opts as WGeom : {})) as Fn;
 
-// wasmcanvas as a formula-callable verb (the content formula calls it).
-const wasmcanvasFn: Fn = ((id: unknown, engine?: unknown, active?: unknown): VNode => wasmcanvas(id, engine, active)) as Fn;
+// wasmcanvas as a formula-callable verb (the content formula calls it with .out).
+const wasmcanvasFn: Fn = ((id: unknown, status?: unknown): VNode => wasmcanvas(id, status)) as Fn;
 
 export const name = "winapps-wasm" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([

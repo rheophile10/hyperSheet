@@ -45,8 +45,6 @@ const repaint = (s: State): Promise<unknown> => Promise.resolve((resolveFn(s, "d
 const stateOf = (s: State, ref: string): WinState => { const v = s.cels.get(ref)?.v; return (v && typeof v === "object" && !Array.isArray(v)) ? { ...(v as WinState) } : {}; };
 const setState = (s: State, ref: string, patch: WinState): Promise<unknown> =>
   Promise.resolve((resolveFn(s, "setValue") as Fn)(s, ref, { ...stateOf(s, ref), ...patch })).then(() => repaint(s));
-// putV — write a cel, creating it (ValueCel) if it doesn't exist yet (win.list /
-// win.topz / win.active / window.drag / a torn-off window's new state cel).
 const putV = async (s: State, k: string, v: unknown): Promise<void> => {
   if (s.cels.get(k)) await Promise.resolve((resolveFn(s, "setValue") as Fn)(s, k, v));
   else await Promise.resolve((resolveFn(s, "setCel") as Fn)(s, k, { celType: "ValueCel", v, metadata: { key: k, segment: "window" } }));
@@ -142,8 +140,7 @@ const wframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V 
     ]),
   ], { pointerdown: { dispatch: "window.grab", payload: ref }, pointermove: { dispatch: "window.move" }, pointerup: { dispatch: "window.drop" } });
 
-  // tab strip — only when ≥2 tabs. Each chip: click selects, its ✕ closes the tab,
-  // pointerdown starts a tab drag (reorder / tear-off, wired later).
+  // tab strip — only when ≥2 tabs. Each chip: click selects, its ✕ closes the tab.
   const tabStrip = tabs.length >= 2 ? el("div", { class: "pl-tabs", style: "flex:0 0 auto;display:flex;gap:.15rem;padding:.25rem .3rem 0;background:#8881;overflow-x:auto" },
     tabs.map((tb, i) => el("button", {
       class: "pl-tab" + (i === activeIdx ? " active" : ""), "data-tab": tb.ref, "data-idx": String(i),
@@ -151,7 +148,7 @@ const wframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V 
     }, [
       T((tb.icon ? tb.icon + " " : "") + (tb.title ?? tb.ref)),
       el("span", { class: "pl-tab-x", title: "close tab", style: "margin-left:.45rem;opacity:.6" }, [T("✕")], { pointerdown: { dispatch: "window.stop" }, click: { dispatch: "window.tabClose", payload: { ref, index: i } } }),
-    ], { pointerdown: { dispatch: "window.tabGrab", payload: { ref, index: i } }, click: { dispatch: "window.tab", payload: { ref, index: i } } }))
+    ], { click: { dispatch: "window.tab", payload: { ref, index: i } } }))
   ) : null;
 
   const children: V[] = [titlebar];
@@ -191,7 +188,33 @@ const resizeMove: Fn = (async (s: State, _p: unknown, e?: DomEvt): Promise<void>
   await setState(s, d.ref, { x, y, w, h });
 }) as Fn;
 const drop: Fn = (async (s: State): Promise<void> => { await putV(s, "window.drag", null); }) as Fn;
-const raise: Fn = (async (s: State, ref: unknown): Promise<void> => { const r = String(ref); await putV(s, "win.active", r); await setState(s, r, { z: await nextZ(s) }); }) as Fn;
+// enroll — keep win.list (the desktop taskbar's source of truth) in sync: every
+// raised window joins it; a destroyed window leaves it. The taskbar genesis
+// ((desktop.taskbarGenesis win.list win.active)) re-derives its frame formula
+// from the list, splicing each window's state cel in — so chips track
+// min/title/close reactively. Windows previously only enrolled on TEAR-OFF,
+// which is why the shipped taskbar rendered empty.
+const enroll = async (s: State, ref: string, present: boolean): Promise<void> => {
+  const list = listOf(s);
+  if (present === list.includes(ref)) return;                 // already in sync
+  const next = present ? [...list, ref] : list.filter((x) => x !== ref);
+  await putV(s, "win.list", next);
+  // Rewrite the desktop taskbar's frame formula to splice the new window set —
+  // same move dock/undock make for tab changes. (The taskbarGenesis formula
+  // re-derives its REQUEST on the win.list cascade, but a value-tier write
+  // never enqueues the genesis channel, so the request would sit unlanded.)
+  if (s.cels.get("desktop.taskbar.frame")) {
+    // Only ASCII-keyed refs can ride an infix formula (cel keys in formulas
+    // are [\w.-]+) — the 元 window enrolls in win.list but is filtered from
+    // the splice, exactly as the old taskbarGenesis did.
+    const refs = next.filter((x) => /^[\w.-]+$/.test(x));
+    const f = `=mount('.origin', taskbarBar(win.active${refs.length ? ", " + refs.join(", ") : ""}))`;
+    await Promise.resolve((resolveFn(s, "setCel") as Fn)(s, "desktop.taskbar.frame",
+      { celType: "FormulaCel", f, metadata: { key: "desktop.taskbar.frame", name: "frame", parser: "infix", segment: "desktop.taskbar" } }));
+    await Promise.resolve((resolveFn(s, "runCycle") as Fn)(s));
+  }
+};
+const raise: Fn = (async (s: State, ref: unknown): Promise<void> => { const r = String(ref); await putV(s, "win.active", r); await enroll(s, r, true); await setState(s, r, { z: await nextZ(s) }); }) as Fn;
 const minimize: Fn = (async (s: State, ref: unknown): Promise<void> => { const r = String(ref); const st = stateOf(s, r); await setState(s, r, { min: st.min ? 0 : 1 }); }) as Fn;
 const maximize: Fn = (async (s: State, ref: unknown): Promise<void> => { const r = String(ref); const st = stateOf(s, r); await setState(s, r, { max: st.max ? 0 : 1, z: await nextZ(s) }); }) as Fn;
 // close — run EACH tab's <seg>.flush (every tab is an app with its own teardown),
@@ -204,11 +227,14 @@ const close: Fn = (async (s: State, ref: unknown): Promise<void> => {
   // sheetapp doc save-on-close hook (win.<doc>.flush) still fires on close.
   const wf = resolveFn(s, `${segOf(r)}.flush`) as Fn | undefined;
   if (typeof wf === "function") { try { await wf(s); } catch { /* best-effort save */ } }
+  // a flush may DESTROY the window's cels outright (sheetapp's doc-close sweep)
+  // — nothing left to mark closed.
+  if (!s.cels.get(r)) { await enroll(s, r, false); return; }
   await setState(s, r, { closed: 1 });
 }) as Fn;
 const stop: Fn = ((_s: State, _p: unknown, e?: { stopPropagation?: () => void }): void => { try { e?.stopPropagation?.(); } catch { /* off-DOM */ } }) as Fn;
 
-// ── tabs: select / close / dock (combine windows) / reorder / tear-off ────────
+// ── tabs: select / close / dock (combine windows) / tear-off ─────────────────
 const clampActive = (len: number, a: number, removed: number): number => Math.max(0, Math.min(len - 1, a > removed ? a - 1 : a));
 const tabSelect: Fn = (async (s: State, payload: unknown): Promise<void> => { const p = payload as { ref?: string; index?: number }; if (!p?.ref) return; await setState(s, p.ref, { active: num(p.index, 0) }); }) as Fn;
 const tabClose: Fn = (async (s: State, payload: unknown): Promise<void> => {
@@ -238,13 +264,10 @@ const dock: Fn = (async (s: State, payload: unknown): Promise<void> => {
   if (p.win) await setState(s, p.win, { dockedIn: p.into });
   await rebuildFrame(s, p.into);
 }) as Fn;
-const reorder: Fn = (async (s: State, payload: unknown): Promise<void> => {
-  const p = payload as { ref?: string; from?: number; to?: number }; if (!p?.ref) return;
-  const st = stateOf(s, p.ref); const tabs = [...(st.tabs ?? [])]; const from = num(p.from), to = num(p.to);
-  if (from < 0 || from >= tabs.length || to < 0 || to >= tabs.length) return;
-  const [m] = tabs.splice(from, 1); tabs.splice(to, 0, m!); await setState(s, p.ref, { tabs, active: to });
-  await rebuildFrame(s, p.ref);
-}) as Fn;
+// (window.reorder + window.tabGrab removed: the tab-drag DnD wiring never
+// landed — tabGrab only seeded a window.tabdrag cel nothing read, and no
+// handler ever dispatched reorder. Re-introduce both WITH the drag wiring
+// if tab reordering ships.)
 // undock(ref, index) — tear a tab OUT (inverse of dock): remove it from `ref` + rebuild
 // `ref`'s frame. If the tab backs a real window (tab.win — docked via dock), RESTORE it
 // (clear dockedIn → it self-mounts again at its own geometry). Otherwise mint a fresh
@@ -264,11 +287,6 @@ const undock: Fn = (async (s: State, payload: unknown): Promise<void> => {
   const list = listOf(s); if (!list.includes(newRef)) await putV(s, "win.list", [...list, newRef]);
   await repaint(s);
 }) as Fn;
-// tabGrab — pointerdown on a chip; records the grab so a later move can reorder /
-// a release outside can tear off. (Reorder/tear-off DnD wiring lands with the
-// desktop view; for now the grab just seeds window.tabdrag.)
-const tabGrab: Fn = (async (s: State, payload: unknown, e?: DomEvt): Promise<void> => { const p = payload as { ref?: string; index?: number }; if (!p?.ref) return; capture(e); await putV(s, "window.tabdrag", { ref: p.ref, index: num(p.index, 0) }); }) as Fn;
-
 // ── the constructor ──────────────────────────────────────────────────────────
 // wopen(id, title, body, where?) — genesis a SELF-MOUNTING window:
 //   win.<id>.content  FormulaCel = body (the app's render)
@@ -310,10 +328,18 @@ const wbFrameFormula = (ref: string, sheets: Tab[], views: Tab[]): string =>
 
 const TABBTN = (on: boolean, top: boolean): string =>
   `flex:0 0 auto;border:1px solid #8884;border-${top ? "bottom" : "top"}:0;border-radius:${top ? ".3rem .3rem 0 0" : "0 0 .3rem .3rem"};background:${on ? "Canvas" : "#8882"};color:CanvasText;cursor:pointer;font:600 .72rem ui-monospace,monospace;padding:.16rem .5rem;white-space:nowrap;opacity:${on ? "1" : ".7"}`;
-const tabRow = (tabs: Tab[], active: number, dispatch: string, ref: string, top: boolean, fullBtn: V): V =>
-  el("div", { class: top ? "pl-wb-vtabs" : "pl-wb-stabs", style: `flex:0 0 auto;display:flex;gap:.15rem;padding:${top ? "0 .3rem .15rem" : ".15rem .3rem 0"};background:#8881;overflow-x:auto;align-items:center` },
-    [...tabs.map((tb, i) => el("button", { class: "pl-wb-tab" + (i === active ? " active" : ""), "data-idx": String(i), style: TABBTN(i === active, top) },
-      [T((tb.icon ? tb.icon + " " : "") + (tb.title ?? tb.ref))], { click: { dispatch, payload: { ref, index: i } } })), fullBtn]);
+// tabRow — the bottom tab strip for a pane. Same code for BOTH books: the celBook
+// (worksheets) and the cardBook (dom views). BOTH books grow by FORMULA only —
+// =sheet(name) for worksheets, =view(name) / =append for dom views; there is no
+// "+" button (structure authored by formula is the document's recipe). `addable`
+// gates the worksheet-tab rename affordances (dblclick / right-click → tabmenu).
+const tabRow = (tabs: Tab[], active: number, dispatch: string, ref: string, fullBtn: V, addable: boolean): V =>
+  el("div", { class: "pl-wb-stabs", style: `flex:0 0 auto;display:flex;gap:.15rem;padding:.15rem .3rem 0;background:#8881;overflow-x:auto;align-items:center` },
+    [...tabs.map((tb, i) => el("button", { class: "pl-wb-tab" + (i === active ? " active" : ""), "data-idx": String(i), "data-tab": tb.ref, style: TABBTN(i === active, false) },
+      [T((tb.icon ? tb.icon + " " : "") + (tb.title ?? tb.ref))],
+      // double-click / right-click a worksheet tab → rename it (sheetapp.tabmenu).
+      { click: { dispatch, payload: { ref, index: i } }, ...(addable ? { dblclick: { dispatch: "sheetapp.tabmenu", payload: { ref, index: i } }, contextmenu: { dispatch: "sheetapp.tabmenu", payload: { ref, index: i } } } : {}) })),
+      fullBtn]);
 
 // wbframe(state, active, …contents) — render one workbook window.
 const wbframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V => {
@@ -345,15 +371,18 @@ const wbframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V
   const fullBtn = (pane: string): V => el("button", { class: "pl-wb-full", title: "fullscreen this pane", style: "margin-left:auto;border:0;background:transparent;cursor:pointer;font:.8rem ui-monospace,monospace;padding:0 .35rem;opacity:.7" },
     [T(full === pane ? "🗗" : "⛶")], { pointerdown: { dispatch: "window.stop" }, click: { dispatch: "window.paneFull", payload: { ref, pane } } });
 
+  // celBook (worksheets) — grids; the "+" adds a sheet, right-click renames it.
   const leftPane = el("div", { class: "pl-wb-left", style: `display:flex;flex-direction:column;min-width:0;min-height:0;${full === "L" ? "flex:1 1 100%" : full === "R" ? "display:none" : `flex:0 0 ${(split * 100).toFixed(1)}%`}` }, [
     el("div", { class: "pl-wb-sbody", style: "flex:1 1 auto;overflow:auto;min-height:0;padding:.3rem" }, [bodyOf(sheetBodies[asheet])]),
-    tabRow(sheets, asheet, "window.sheetTab", ref, false, fullBtn("L")),
+    tabRow(sheets, asheet, "window.sheetTab", ref, fullBtn("L"), true),
   ]);
   const divider = el("div", { class: "pl-wb-divider", style: "flex:0 0 6px;cursor:col-resize;background:#8883;touch-action:none" }, [],
     { pointerdown: { dispatch: "window.splitGrab", payload: ref }, pointermove: { dispatch: "window.splitMove" }, pointerup: { dispatch: "window.drop" } });
+  // cardBook (dom views) — grown by formulas (=view/=append), no "+" button.
+  // White interior; tabs on the BOTTOM, same code/look as the celBook.
   const rightPane = el("div", { class: "pl-wb-right", style: `display:flex;flex-direction:column;min-width:0;min-height:0;${full === "R" ? "flex:1 1 100%" : full === "L" ? "display:none" : "flex:1 1 auto"}` }, [
-    tabRow(views, aview, "window.viewTab", ref, true, fullBtn("R")),
-    el("div", { class: "pl-wb-vbody", style: "flex:1 1 auto;overflow:auto;min-height:0;padding:.3rem;background:#0000000a" }, [bodyOf(viewBodies[aview])]),
+    el("div", { class: "pl-wb-vbody", style: "flex:1 1 auto;overflow:auto;min-height:0;padding:.3rem;background:#fff;color:#111" }, [bodyOf(viewBodies[aview])]),
+    tabRow(views, aview, "window.viewTab", ref, fullBtn("R"), false),
   ]);
 
   const ctrlBtn = (cls: string, glyph: string, ttl: string, dispatch: string, color?: string): V =>
@@ -428,12 +457,17 @@ const addPane = (paneKey: "views" | "sheets", activeKey: "aview" | "asheet"): Fn
 const addView = addPane("views", "aview");
 const addSheet = addPane("sheets", "asheet");
 
+// window.rebuildFrame(ref) — re-author the workbook frame formula from its current
+// sheets/views state (so a rename/re-key that swapped a content-cel ref refreshes
+// the panes). Exposed for sheetapp.renamesheet.
+const rebuildFrameFn: Fn = (async (s: State, ref: unknown): Promise<void> => { if (ref) await rebuildWbFrame(s, String(ref)); }) as Fn;
+
 export const name = "window" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["wframe", wframeFn], ["wopen", wopen], ["wbframe", wbframeFn], ["wbopen", wbopen],
   ["window.grab", grab], ["window.move", move], ["window.grabResize", grabResize], ["window.resizeMove", resizeMove], ["window.drop", drop],
   ["window.raise", raise], ["window.min", minimize], ["window.max", maximize], ["window.close", close], ["window.stop", stop],
-  ["window.tab", tabSelect], ["window.tabClose", tabClose], ["window.dock", dock], ["window.reorder", reorder], ["window.undock", undock], ["window.tabGrab", tabGrab],
+  ["window.tab", tabSelect], ["window.tabClose", tabClose], ["window.dock", dock], ["window.undock", undock],
   ["window.sheetTab", sheetTab], ["window.viewTab", viewTab], ["window.paneFull", paneFull], ["window.splitGrab", splitGrab], ["window.splitMove", splitMove],
-  ["window.addView", addView], ["window.addSheet", addSheet],
+  ["window.addView", addView], ["window.addSheet", addSheet], ["window.rebuildFrame", rebuildFrameFn],
 ]));

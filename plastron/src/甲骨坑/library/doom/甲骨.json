@@ -37,18 +37,6 @@
     "kind": "native",
     "description": "(state) - the browser boot: consent-gate the asset load, fetch doom.wasm + WAD, createDoomHarness, hydrate the kind:wasm engine cel, start the RAF tick loop."
    }
-  },
-  {
-   "key": "doom.stop",
-   "celType": "LockedLambdaCel",
-   "locked": true,
-   "metadata": {
-    "key": "doom.stop",
-    "segment": "doom",
-    "name": "doom.stop",
-    "kind": "native",
-    "description": "(state) - stop the engine (cancel the RAF loop + dispose the harness)."
-   }
   }
  ]
 }

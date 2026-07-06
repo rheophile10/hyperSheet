@@ -7,7 +7,7 @@
 // nothing here may ever throw into the painter's flush.
 // ============================================================================
 
-interface CanvasLike {
+export interface CanvasLike {
   nodeType?: number;
   tagName?: string;
   width?: number;
@@ -155,7 +155,7 @@ const replay = (ctx: Ctx2D, ops: Op[], w: number, h: number, t = 0): void => {
   }
 };
 
-const collect = (node: CanvasLike, out: CanvasLike[]): void => {
+export const collect = (node: CanvasLike, out: CanvasLike[]): void => {
   if (!node) return;
   if (node.nodeType !== undefined && node.nodeType !== 1) return; // skip text/comment nodes
   if (node.tagName === "CANVAS") out.push(node);
@@ -176,47 +176,56 @@ const clock = (): number => {
   return typeof p?.now === "function" ? p.now() : 0;
 };
 
+/** Replay one <canvas data-ops> element's draw-spec onto its 2-D context.
+ *  The per-element half of drawCanvases — also the `replay.canvas2d`
+ *  replayer in the dom replay registry (01-rendering.md). Guarded: a draw
+ *  failure never breaks a flush. An animated canvas (frames/draggable ops)
+ *  gets a self-cancelling rAF loop. */
+export const drawCanvas = (cv: CanvasLike): void => {
+  try {
+    if (typeof cv.getContext !== "function" || typeof cv.getAttribute !== "function") return;
+    const rawAttr = cv.getAttribute("data-ops");
+    if (!rawAttr) return;
+    let ops: Op[];
+    try { ops = JSON.parse(rawAttr) as Op[]; } catch { return; }
+    if (!Array.isArray(ops)) return;
+    const ctx = cv.getContext("2d") as Ctx2D | null;
+    if (!ctx) return;
+
+    if (ops.some(isAnimated) && raf) {
+      const dragOp = ops.find((o) => o?.op === "draggable");
+      const newDrag = (): Drag => ({ x: n(dragOp!.x), y: n(dragOp!.y), w: n(dragOp!.w), h: n(dragOp!.h), dragging: false, ox: 0, oy: 0 });
+      const existing = anim.get(cv as object);
+      if (existing) {
+        existing.ops = ops; // loop already running — swap ops
+        // element reused (e.g. an animated canvas became a draggable one):
+        // wire up drag now, since the loop won't be re-created.
+        if (dragOp && !existing.drag) { existing.drag = newDrag(); attachDrag(cv, existing as { ops: Op[]; drag: Drag }); }
+        return;
+      }
+      const state: { ops: Op[]; drag?: Drag } = { ops };
+      if (dragOp) { state.drag = newDrag(); attachDrag(cv, state as { ops: Op[]; drag: Drag }); }
+      anim.set(cv as object, state);
+      const frame = (): void => {
+        if (cv.isConnected === false) { anim.delete(cv as object); return; } // gone from DOM → stop
+        if (state.drag) for (const o of state.ops) if (o?.op === "draggable") { o.x = state.drag.x; o.y = state.drag.y; }
+        try { replay(cv.getContext!("2d") as Ctx2D, state.ops, n(cv.width, 0), n(cv.height, 0), clock()); } catch { /* keep looping */ }
+        raf(frame);
+      };
+      frame();
+    } else {
+      replay(ctx, ops, n(cv.width, 0), n(cv.height, 0));
+    }
+  } catch { /* a draw failure must never break the paint */ }
+};
+
 /** Replay draw-spec ops onto every <canvas data-ops> under `root`. Called by
- *  the painter after applyPatch; guarded so it can never break a flush. An
- *  animated canvas (frames/draggable ops) gets a self-cancelling rAF loop. */
+ *  the painter after applyPatch (the legacy no-registry path); guarded so it
+ *  can never break a flush. */
 export const drawCanvases = (root: unknown): void => {
   try {
     const found: CanvasLike[] = [];
     collect(root as CanvasLike, found);
-    for (const cv of found) {
-      if (typeof cv.getContext !== "function" || typeof cv.getAttribute !== "function") continue;
-      const rawAttr = cv.getAttribute("data-ops");
-      if (!rawAttr) continue;
-      let ops: Op[];
-      try { ops = JSON.parse(rawAttr) as Op[]; } catch { continue; }
-      if (!Array.isArray(ops)) continue;
-      const ctx = cv.getContext("2d") as Ctx2D | null;
-      if (!ctx) continue;
-
-      if (ops.some(isAnimated) && raf) {
-        const dragOp = ops.find((o) => o?.op === "draggable");
-        const newDrag = (): Drag => ({ x: n(dragOp!.x), y: n(dragOp!.y), w: n(dragOp!.w), h: n(dragOp!.h), dragging: false, ox: 0, oy: 0 });
-        const existing = anim.get(cv as object);
-        if (existing) {
-          existing.ops = ops; // loop already running — swap ops
-          // element reused (e.g. an animated canvas became a draggable one):
-          // wire up drag now, since the loop won't be re-created.
-          if (dragOp && !existing.drag) { existing.drag = newDrag(); attachDrag(cv, existing as { ops: Op[]; drag: Drag }); }
-          continue;
-        }
-        const state: { ops: Op[]; drag?: Drag } = { ops };
-        if (dragOp) { state.drag = newDrag(); attachDrag(cv, state as { ops: Op[]; drag: Drag }); }
-        anim.set(cv as object, state);
-        const frame = (): void => {
-          if (cv.isConnected === false) { anim.delete(cv as object); return; } // gone from DOM → stop
-          if (state.drag) for (const o of state.ops) if (o?.op === "draggable") { o.x = state.drag.x; o.y = state.drag.y; }
-          try { replay(cv.getContext!("2d") as Ctx2D, state.ops, n(cv.width, 0), n(cv.height, 0), clock()); } catch { /* keep looping */ }
-          raf(frame);
-        };
-        frame();
-      } else {
-        replay(ctx, ops, n(cv.width, 0), n(cv.height, 0));
-      }
-    }
+    for (const cv of found) drawCanvas(cv);
   } catch { /* a draw failure must never break the paint */ }
 };

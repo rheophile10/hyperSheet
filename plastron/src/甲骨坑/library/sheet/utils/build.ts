@@ -3,7 +3,7 @@ import {
   inflateCel, compileCelBody, resolveSchemas, precompute, precomputeOptional, resolveFn,
 } from "../../../../kernel/index.js";
 import { addrFrom, cellKey } from "./address.js";
-import { isDefinitionSource } from "./infix.js";
+import { isDefinitionSource, parseJsonEntry } from "./infix.js";
 
 // ============================================================================
 // Sheet grid factory + action fns. buildSheet generates the data layer — an
@@ -24,6 +24,11 @@ const isFormulaSource = (s: string): boolean =>
 
 const literal = (s: string): unknown => {
   if (s === "") return "";
+  // `{`/`[` content that parses as JSON enters as the object/array VALUE
+  // (leading-char rule: `=` infix, `(` S-expr, `{`/`[` JSON); it dehydrates
+  // back to the same JSON in the archive. Unparseable stays a string.
+  const j = parseJsonEntry(s);
+  if (j) return j.v;
   return Number.isNaN(Number(s)) ? s : Number(s);
 };
 

@@ -93,12 +93,19 @@ test("store.has is true for a stored name and false otherwise", async () => {
   assert.equal(await call("store.has", "never-stored"), false);
 });
 
-test("store.list returns one {name, latest} row per stored segment", async () => {
+test("store.list returns one {name, latest, app?} row per stored segment", async () => {
   await call("store.put", "a", "1.0.0", manifestOf("a", "1.0.0"), segmentOf("a"));
   await call("store.put", "a", "1.1.0", manifestOf("a", "1.1.0"), segmentOf("a"));
   await call("store.put", "b", "2.0.0", manifestOf("b", "2.0.0"), segmentOf("b"));
+  await call("store.put", "lib", "3.0.0", manifestOf("lib", "3.0.0", { role: "library", applications: [] }), segmentOf("lib"));
   const rows = (await call("store.list")).sort((x, y) => x.name.localeCompare(y.name));
-  assert.deepEqual(rows, [{ name: "a", latest: "1.1.0" }, { name: "b", latest: "2.0.0" }]);
+  // user-space DOCUMENTS carry their parent app (the 📂 picker filters on it);
+  // library/application segments stay {name, latest}.
+  assert.deepEqual(rows, [
+    { name: "a", latest: "1.1.0", app: "spreadsheet" },
+    { name: "b", latest: "2.0.0", app: "spreadsheet" },
+    { name: "lib", latest: "3.0.0" },
+  ]);
 });
 
 test("store.get of a name with nothing stored returns undefined", async () => {

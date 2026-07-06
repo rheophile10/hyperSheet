@@ -311,7 +311,7 @@ const fgviewFn: Fn = (id?: unknown, specArg?: unknown, posArg?: unknown, zoomArg
   return el("div", {
     class: armed ? "fg-box fg-armed" : "fg-box", "data-fg": gid,
     title: armed ? "scroll zooms · move the pointer out to release" : "drag nodes · click to enable scroll-zoom",
-    style: `position:relative;width:100%;height:340px;border:1px solid ${armed ? "#4a90d9" : "#8883"};border-radius:.5rem;overflow:hidden;background:#8880;box-shadow:${armed ? "0 0 0 2px #4a90d933" : "none"}`,
+    style: `position:relative;width:100%;height:100%;min-height:340px;border:1px solid ${armed ? "#4a90d9" : "#8883"};border-radius:.5rem;overflow:hidden;background:#8880;box-shadow:${armed ? "0 0 0 2px #4a90d933" : "none"}`,
   }, [
     { type: "el", tag: "canvas", attrs: { width: FG_W, height: FG_H, "data-ops": JSON.stringify(ops) },
       style: { width: "100%", height: "100%", display: "block" }, children: [] } as V,

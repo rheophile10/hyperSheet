@@ -46,9 +46,9 @@ const toolbar: Fn = ((...kids: unknown[]): V => {
 //     assets   each file: where to FETCH it (url) + where it lands in OPFS (opfs)
 //              + an optional SHA-256 hex (sha) verified on download
 //
-// app.install(manifest)  — download each missing asset to its opfs path (idempotent;
+// app.assets(manifest)  — download each missing asset to its opfs path (idempotent;
 //                          sha-verified if given). manifest may be the object or a URL
-//                          to its JSON. Returns a one-line status. app.installed(m) —
+//                          to its JSON. Returns a one-line status. app.assets.ready(m) —
 //                          true iff every asset is already present.
 interface Asset { url: string; opfs: string; sha?: string }
 interface Manifest { name?: string; version?: string; readme?: string; assets?: Asset[] }
@@ -98,6 +98,6 @@ export const name = "winapps" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["toolbtn", toolbtn],
   ["toolbar", toolbar],
-  ["app.install", installFn],
-  ["app.installed", installedFn],
+  ["app.assets", installFn],
+  ["app.assets.ready", installedFn],
 ]));

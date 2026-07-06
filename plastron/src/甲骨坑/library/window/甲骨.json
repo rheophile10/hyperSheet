@@ -183,18 +183,6 @@
       }
     },
     {
-      "key": "window.reorder",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "window.reorder",
-        "segment": "window",
-        "name": "window.reorder",
-        "kind": "native",
-        "description": "({ref, from, to}) move a tab within a window's tab order."
-      }
-    },
-    {
       "key": "window.undock",
       "celType": "LockedLambdaCel",
       "locked": true,
@@ -204,18 +192,6 @@
         "name": "window.undock",
         "kind": "native",
         "description": "({ref, index}) TEAR OFF a tab (inverse of window.dock): remove it from `ref` + rebuild its frame. If the tab backs a real window (docked via window.dock), RESTORE it (clear dockedIn → it self-mounts again); otherwise mint a fresh standalone window + add it to win.list."
-      }
-    },
-    {
-      "key": "window.tabGrab",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "window.tabGrab",
-        "segment": "window",
-        "name": "window.tabGrab",
-        "kind": "native",
-        "description": "pointerdown on a tab chip: record the grab (window.tabdrag) so a later move can reorder or a release outside can tear off."
       }
     },
     {
@@ -359,6 +335,18 @@
         "description": "the z-index fountain (seeded 100). window.raise bumps it and stamps the raised window so the latest raise sits on top."
       },
       "v": 100
+    },
+    {
+      "key": "window.rebuildFrame",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "window.rebuildFrame",
+        "segment": "window",
+        "name": "window.rebuildFrame",
+        "kind": "native",
+        "description": "(state, ref) -> re-author a workbook frame formula from its current sheets/views state. For sheetapp.renamesheet after a re-key swaps a content-cel ref."
+      }
     }
   ]
 }

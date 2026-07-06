@@ -1,11 +1,17 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, resolveFn } from "../dist/index.js";
-import { unzipBytes } from "../dist/甲骨坑/library/segment-archive/utils/zip.js";
+import {
+  buildArchive, loadArchive, unzipBytes,
+  includeAll, includeForApplication, includeForLibrary, includeForUser,
+} from "../dist/甲骨坑/library/segment-archive/index.js";
 
 // segment-archive — tiered + whole-workspace export/import as a role-foldered
 // .zip (the .甲 archive), over dehydrate/hydrate + the zero-dep zip core. The
 // kernel closure is always excluded; deps resolve against the booted kernel.
+// Exercises the importable fns directly (the verb wrappers were removed):
+// an export is buildArchive(state, includeFor…(state, name)); import is
+// loadArchive(state, bytes, opts?).
 
 const lib = {
   name: "mathlib", version: "1.0.0", dependencies: [], role: "library",
@@ -32,12 +38,11 @@ const bootWorkspace = async () => {
   await hydrate(state, [lib, app, doc1, doc2], [lib, app, doc1, doc2].map(manifest));
   return state;
 };
-const op = (state, k) => resolveFn(state, k);
 const paths = async (bytes) => (await unzipBytes(bytes)).map((e) => e.path).sort();
 
 test("export-all packs every non-kernel segment into role folders; kernel excluded", async () => {
   const a = await bootWorkspace();
-  const bytes = await op(a, "segment-archive.export-all")(a);
+  const bytes = await buildArchive(a, includeAll(a));
   assert.equal(bytes[0], 0x50); assert.equal(bytes[1], 0x4b); // "PK" — a real zip
 
   const p = await paths(bytes);
@@ -57,11 +62,11 @@ test("export-all packs every non-kernel segment into role folders; kernel exclud
 
 test("export-all → import into a fresh kernel restores segments + cel values", async () => {
   const a = await bootWorkspace();
-  const bytes = await op(a, "segment-archive.export-all")(a);
+  const bytes = await buildArchive(a, includeAll(a));
 
   const b = createInitialState();
   assert.equal(b.segments.has("calc"), false, "fresh kernel has none of the workspace");
-  await op(b, "segment-archive.import")(b, bytes);
+  await loadArchive(b, bytes);
 
   for (const n of ["mathlib", "calc", "doc1", "doc2"]) assert.ok(b.segments.has(n), `${n} loaded`);
   assert.equal(b.cels.get("math.pi").v, 3.14);
@@ -72,48 +77,48 @@ test("export-all → import into a fresh kernel restores segments + cel values",
 
 test("export-library packs just the library (self-contained)", async () => {
   const a = await bootWorkspace();
-  const bytes = await op(a, "segment-archive.export-library")(a, "mathlib");
+  const bytes = await buildArchive(a, includeForLibrary(a, "mathlib"));
   const p = await paths(bytes);
   assert.deepEqual(p.filter((x) => x.endsWith("segment.json")), ["libraries/mathlib@1.0.0/segment.json"]);
 
   const c = createInitialState();
-  await op(c, "segment-archive.import")(c, bytes);
+  await loadArchive(c, bytes);
   assert.ok(c.segments.has("mathlib"));
   assert.equal(c.segments.has("calc"), false, "library export carries no app");
 });
 
 test("export-application packs the app + its library deps (runnable)", async () => {
   const a = await bootWorkspace();
-  const bytes = await op(a, "segment-archive.export-application")(a, "calc");
+  const bytes = await buildArchive(a, includeForApplication(a, "calc"));
   const p = (await paths(bytes)).filter((x) => x.endsWith("segment.json")).sort();
   assert.deepEqual(p, ["applications/calc@1.0.0/segment.json", "libraries/mathlib@1.0.0/segment.json"]);
   assert.ok(!p.some((x) => x.includes("doc")), "app export carries no user documents");
 
   const d = createInitialState();
-  await op(d, "segment-archive.import")(d, bytes);
+  await loadArchive(d, bytes);
   assert.ok(d.segments.has("calc") && d.segments.has("mathlib"));
 });
 
 test("export-user packs only the user-space; the app is referenced, present on import", async () => {
   const a = await bootWorkspace();
-  const userBytes = await op(a, "segment-archive.export-user")(a, "doc1");
+  const userBytes = await buildArchive(a, includeForUser(a, "doc1"));
   const p = (await paths(userBytes)).filter((x) => x.endsWith("segment.json"));
   assert.deepEqual(p, ["user/doc1@1.0.0/segment.json"], "only the user-space is packed");
 
   // Import requires the app present first (it would be bundled in a real app).
-  const appBytes = await op(a, "segment-archive.export-application")(a, "calc");
+  const appBytes = await buildArchive(a, includeForApplication(a, "calc"));
   const e = createInitialState();
-  await op(e, "segment-archive.import")(e, appBytes); // calc + mathlib
-  await op(e, "segment-archive.import")(e, userBytes); // doc1, dep on calc resolves
+  await loadArchive(e, appBytes); // calc + mathlib
+  await loadArchive(e, userBytes); // doc1, dep on calc resolves
   assert.deepEqual(e.cels.get("doc1.data").v, [1, 2, 3]);
 });
 
 test("import onlyRoles filters which roles are hydrated", async () => {
   const a = await bootWorkspace();
-  const bytes = await op(a, "segment-archive.export-all")(a);
+  const bytes = await buildArchive(a, includeAll(a));
 
   const f = createInitialState();
-  await op(f, "segment-archive.import")(f, bytes, { onlyRoles: ["library"] });
+  await loadArchive(f, bytes, { onlyRoles: ["library"] });
   assert.ok(f.segments.has("mathlib"), "library imported");
   assert.equal(f.segments.has("calc"), false, "application skipped by onlyRoles");
   assert.equal(f.segments.has("doc1"), false, "user-space skipped by onlyRoles");

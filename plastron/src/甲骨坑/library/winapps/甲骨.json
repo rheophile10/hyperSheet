@@ -26,25 +26,25 @@
    }
   },
   {
-   "key": "app.install",
+   "key": "app.assets",
    "celType": "LockedLambdaCel",
    "locked": true,
    "metadata": {
-    "key": "app.install",
+    "key": "app.assets",
     "segment": "winapps",
-    "name": "app.install",
+    "name": "app.assets",
     "kind": "native",
-    "description": "(manifest) - install an app's ASSETS to OPFS from an assets manifest { name, version, readme?, assets:[{url, opfs, sha?}] } (object or a URL to its JSON). Downloads each MISSING asset to its opfs path (idempotent), verifying SHA-256 when given. Returns a one-line status. The foundation for origin-applications defined in formula-cels: install to OPFS, then load from OPFS into state. Network + OPFS IO."
+    "description": "(manifest) - install an app's ASSETS to OPFS from an assets manifest { name, version, readme?, assets:[{url, opfs, sha?}] } (object or a URL to its JSON). Downloads each MISSING asset to its opfs path (idempotent), verifying SHA-256 when given. Returns a one-line status. The foundation for origin-applications defined in formula-cels: install to OPFS, then load from OPFS into state. Network + OPFS IO. (Renamed from app.install — 'install' now belongs solely to origin.install, the archive-to-store installer.)"
    }
   },
   {
-   "key": "app.installed",
+   "key": "app.assets.ready",
    "celType": "LockedLambdaCel",
    "locked": true,
    "metadata": {
-    "key": "app.installed",
+    "key": "app.assets.ready",
     "segment": "winapps",
-    "name": "app.installed",
+    "name": "app.assets.ready",
     "kind": "native",
     "description": "(manifest) - true iff every asset in the manifest is already present in OPFS (a formula can branch on it: install when false, load when true)."
    }

@@ -10,7 +10,7 @@
     "segment": "winapps-wasm",
     "name": "wasmapp",
     "kind": "native",
-    "description": "(id, title, engineCel, opts?) - genesis a wasm app as a SELF-MOUNTING window on the new tabbable frame: the graph<->engine bridge cels (wasm.<id>.in/.out/.active), a <canvas> content cel (wasmcanvas id), a window state cel (one tab = the canvas), and a (mount '.origin' (wframe …)) frame. So a wasm window (DOOM) tabs next to a sheet. opts = geom {x,y,w,h,icon}. The engine instance is grabbed by canvas id at boot; pair with winapps app.install (assets → OPFS) + a harness provider to keep the app mostly formula-cells."
+    "description": "(id, title, engineCel, opts?) - genesis a wasm app as a SELF-MOUNTING window on the new tabbable frame: the graph<->engine bridge cels (wasm.<id>.in/.out/.active), a <canvas> content cel (wasmcanvas id), a window state cel (one tab = the canvas), and a (mount '.origin' (wframe …)) frame. So a wasm window (DOOM) tabs next to a sheet. opts = geom {x,y,w,h,icon}. The engine instance is grabbed by canvas id at boot; pair with winapps app.assets (assets → OPFS) + a harness provider to keep the app mostly formula-cells."
    }
   },
   {
@@ -22,7 +22,7 @@
     "segment": "winapps-wasm",
     "name": "wasmcanvas",
     "kind": "native",
-    "description": "(id, engine?, active?) - the body of a wasm window: a focusable <canvas id=\"wasm-<id>\"> the engine grabs by id. Focus/blur toggle wasm.<id>.active; keydown/keyup route to the engine (active-gated)."
+    "description": "(id, status?) - the body of a wasm window: a focusable <canvas id=\"wasm-<id>\"> the engine grabs by id, plus a boot overlay driven by status (the engine's .out cel): a loading bar while fetching/starting, or a 'could not load' card on #ERROR. Focus/blur toggle wasm.<id>.active; keydown/keyup route to the engine (active-gated)."
    }
   },
   {

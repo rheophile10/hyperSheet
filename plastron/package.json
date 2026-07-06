@@ -9,9 +9,11 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "bun scripts/verb-call-graph.mjs && bun scripts/generate-llms.mjs && tsc",
     "check": "tsc --noEmit",
-    "test": "tsc && bun test"
+    "test": "tsc && bun test",
+    "graph": "bun scripts/verb-call-graph.mjs",
+    "llms": "bun scripts/generate-llms.mjs"
   },
   "dependencies": {
     "@jitl/quickjs-singlefile-cjs-release-sync": "^0.32.0",
@@ -26,7 +28,7 @@
     "@types/node": "^22.19.19",
     "typescript": "~5.9.3"
   },
-  "description": "A polyglot reactive cel substrate that self-hosts as a spreadsheet — deployable as a single index.html.",
+  "description": "A polyglot reactive cel substrate that self-hosts as a spreadsheet \u2014 deployable as a single index.html.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rheophile10/plastron.git",

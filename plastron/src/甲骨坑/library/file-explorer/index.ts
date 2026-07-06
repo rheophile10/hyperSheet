@@ -72,7 +72,11 @@ const renderExplorer = (cwd: string, entries: { name: string; isDir: boolean }[]
     const full = joinPath(cwd, e.name);
     if (e.isDir) {
       rows.push(el("div", { class: "fe-row fe-dir", style: rowStyle },
-        [T(`📁 ${e.name}/`)], { click: { dispatch: "explorer.nav", payload: full } }));
+        [el("span", { class: "fe-name", style: "flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" },
+           [T(`📁 ${e.name}/`)], { click: { dispatch: "explorer.nav", payload: full } }),
+         el("span", { class: "fe-acts", style: "display:flex;gap:.1rem;flex:0 0 auto" }, [
+           feAction("🗑", `delete ${e.name}/ (recursive)`, "explorer.rmdir", full),
+         ])]));
     } else {
       // file row: clickable name (preview) + per-file actions (delete/rename/download)
       rows.push(el("div", { class: "fe-row fe-file" + (full === preview ? " fe-sel" : ""), style: rowStyle + (full === preview ? ";background:#4a90d955" : "") },
@@ -277,6 +281,21 @@ const explorerDelete: Fn = async (stateArg: unknown, path: unknown) => {
   return state;
 };
 
+// explorer.rmdir — the 🗑 on a DIRECTORY row: confirm (when a DOM confirm
+// exists), recursively remove the tree, drop any preview under it, refresh.
+const explorerRmdir: Fn = async (stateArg: unknown, path: unknown) => {
+  const state = stateArg as State;
+  const p = String(path ?? "");
+  if (!p) return state;
+  const confirm = (globalThis as { confirm?: (m: string) => boolean }).confirm;
+  if (typeof confirm === "function" && !confirm(`Delete ${p}/ and everything under it?`)) return state;
+  await ensureSegments(state, ["file-store"]);
+  await ((resolveFn(state, "fs.rmdir") as Fn)(p, { recursive: true }) as Promise<unknown>).catch(() => {});
+  if (String(state.cels.get("explorer.preview")?.v ?? "").startsWith(p + "/")) await setOrCreate(state, "explorer.preview", "");
+  await refreshExplorer(state);
+  return state;
+};
+
 // explorer.rename — prompt for a new NAME (same dir), fs.rename, follow the
 // preview if it moved, then refresh. No-op off-DOM (no prompt available).
 type DomPrompt = { prompt?: (msg: string, def?: string) => string | null };
@@ -324,6 +343,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["explorer.openSheet", explorerOpenSheet],
   ["explorer.refresh", explorerRefresh],
   ["explorer.delete", explorerDelete],
+  ["explorer.rmdir",  explorerRmdir],
   ["explorer.rename", explorerRename],
   ["explorer.download", downloadHandler],
   ["explorer.upload", uploadHandler],

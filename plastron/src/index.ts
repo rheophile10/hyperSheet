@@ -19,6 +19,8 @@ import * as lambdaSource    from "./甲骨坑/library/lambda-source/index.js";
 import * as jsCommonSchema  from "./甲骨坑/library/js-common-schema/index.js";
 import * as jsCompiler      from "./甲骨坑/library/js-compiler/index.js";
 import * as builtins        from "./甲骨坑/library/builtins/index.js";
+import * as collections     from "./甲骨坑/library/collections/index.js";
+import * as guide           from "./甲骨坑/library/guide/index.js";
 import * as watCompiler     from "./甲骨坑/library/wat-compiler/index.js";
 import * as wasmBytes       from "./甲骨坑/library/wasm-bytes/index.js";
 import * as pyCompiler      from "./甲骨坑/library/py-compiler/index.js";
@@ -52,18 +54,27 @@ import * as plastronCanvas  from "./甲骨坑/library/plastron-canvas/index.js";
 import * as vizCore         from "./甲骨坑/library/viz-core/index.js";
 import * as charts          from "./甲骨坑/library/charts/index.js";
 import * as net             from "./甲骨坑/library/net/index.js";
+import * as crdt            from "./甲骨坑/library/crdt/index.js";
 import * as cryptoLib       from "./甲骨坑/library/crypto/index.js";
 import * as seal            from "./甲骨坑/library/seal/index.js";
 import * as session         from "./甲骨坑/library/session/index.js";
 import * as keystore        from "./甲骨坑/library/keystore/index.js";
 import * as sheetkeys       from "./甲骨坑/library/sheetkeys/index.js";
-import * as crdt            from "./甲骨坑/library/crdt/index.js";
 import * as sheetsync       from "./甲骨坑/library/sheetsync/index.js";
 import * as profile         from "./甲骨坑/library/profile/index.js";
 import * as supabaseAuth     from "./甲骨坑/library/supabase-auth/index.js";
+import * as supabaseData     from "./甲骨坑/library/supabase/index.js";
+import * as supabaseStorage  from "./甲骨坑/library/supabase-storage/index.js";
+import * as supabaseDemo      from "./甲骨坑/library/supabase-demo/index.js";
+import * as grok            from "./甲骨坑/library/grok/index.js";
 import * as sqlite          from "./甲骨坑/library/sqlite/index.js";
 import * as docgraph        from "./甲骨坑/library/docgraph/index.js";
 import * as forcegraph      from "./甲骨坑/library/forcegraph/index.js";
+import * as scheduler       from "./甲骨坑/library/scheduler/index.js";
+import * as ecs             from "./甲骨坑/library/ecs/index.js";
+import * as plastronGpu     from "./甲骨坑/library/plastron-gpu/index.js";
+import * as bufferSchema    from "./甲骨坑/library/buffer-schema/index.js";
+import * as assetLoader     from "./甲骨坑/library/asset-loader/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
 import * as sheetapp        from "./甲骨坑/application/sheetapp/index.js";
 import * as sound           from "./甲骨坑/library/sound/index.js";
@@ -100,6 +111,8 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "js-common-schema": () => [...jsCommonSchema.cels],
   "js-compiler":      () => [...jsCompiler.cels],
   "builtins":         () => [...builtins.cels],
+  "collections":      () => [...collections.cels],
+  "guide":            () => [...guide.cels],
   "wat-compiler":     () => [...watCompiler.cels],
   "wasm-bytes":       () => [...wasmBytes.cels],
   "py-compiler":      () => [...pyCompiler.cels],
@@ -135,18 +148,27 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "viz-core":         () => [...vizCore.cels],
   "charts":           () => [...charts.cels],
   "net":              () => [...net.cels],
+  "crdt":             () => [...crdt.cels],
   "crypto":           () => [...cryptoLib.cels],
   "seal":             () => [...seal.cels],
   "session":          () => [...session.cels],
   "keystore":         () => [...keystore.cels],
   "sheetkeys":        () => [...sheetkeys.cels],
-  "crdt":             () => [...crdt.cels],
   "sheetsync":        () => [...sheetsync.cels],
   "profile":          () => [...profile.cels],
   "supabase-auth":    () => [...supabaseAuth.cels],
+  "supabase":         () => [...supabaseData.cels],
+  "grok":             () => [...grok.cels],
+  "supabase-storage": () => [...supabaseStorage.cels],
+  "supabase-demo":    () => [...supabaseDemo.cels],
   "sqlite":           () => [...sqlite.cels],
   "docgraph":         () => [...docgraph.cels],
   "forcegraph":       () => [...forcegraph.cels],
+  "scheduler":        () => [...scheduler.cels],
+  "ecs":              () => [...ecs.cels],
+  "plastron-gpu":     () => [...plastronGpu.cels],
+  "buffer-schema":    () => [...bufferSchema.cels],
+  "asset-loader":     () => [...assetLoader.cels],
 };
 
 // application/ segments. origin is the freespace host application,

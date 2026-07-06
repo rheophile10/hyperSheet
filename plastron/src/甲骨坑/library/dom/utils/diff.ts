@@ -89,6 +89,11 @@ export const diffVNodes = (prev: VNode | null, next: VNode, eq: DiffEq): Patch =
   const p = prev as VElement;
   const n = next;
   if (p.tag !== n.tag) return { kind: "replace", node: n };
+  // A <canvas> is only reusable within ONE context kind: a 2D-ops canvas
+  // (data-ops, from canvas()) can never become a WebGL scene canvas
+  // (data-scene, from scene()) — getContext() of a second type throws.
+  // The formula already declares the kind via its verb; honor it here.
+  if (n.tag === "canvas" && canvasKind(p.attrs) !== canvasKind(n.attrs)) return { kind: "replace", node: n };
 
   const out: PatchEl = { kind: "el" };
   const attrs = diffRecord(p.attrs, n.attrs);
@@ -103,6 +108,12 @@ export const diffVNodes = (prev: VNode | null, next: VNode, eq: DiffEq): Patch =
   if (!out.attrs && !out.style && !out.events && !out.children) return NOOP;
   return out;
 };
+
+// Which context family a <canvas> vnode belongs to, from the attrs its
+// authoring verb stamped: canvas() → data-ops (2D), scene() → data-scene
+// (WebGL). Unknown canvases key by neither and reuse as before.
+const canvasKind = (attrs?: Record<string, unknown>): string =>
+  attrs && "data-scene" in attrs ? "webgl" : attrs && "data-ops" in attrs ? "2d" : "";
 
 const diffRecord = (
   a: Record<string, AttrValue> | undefined,

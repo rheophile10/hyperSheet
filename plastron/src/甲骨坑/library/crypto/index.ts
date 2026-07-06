@@ -186,26 +186,9 @@ const unwrapFn: Fn = (async (myHandle: unknown, senderPubB64: unknown, envelope:
 // what's in the keystore without ever surfacing a private key.
 const keysFn: Fn = (async (): Promise<CryptoKeyHandle[]> => (await getKeyStore().list()).map(handleOf)) as Fn;
 
-// The fixed keystore id for THE identity key — one stable Ed25519 signing
-// identity per host. A constant id makes ensure idempotent: it persists in
-// IndexedDB across reloads and re-resolves to the SAME public key.
-const IDENTITY_ID = "identity" as const;
-
-// crypto.identity() — idempotently mint-or-load THE identity signing keypair
-// (Ed25519). First call (empty keystore) generates a NON-EXTRACTABLE key under
-// the stable id; later calls load the existing one. Returns its CryptoKeyHandle
-// (id + public). The private key never surfaces — only the handle/public does.
-const identityFn: Fn = (async (): Promise<CryptoKeyHandle> => {
-  const store = getKeyStore();
-  const existing = await store.get(IDENTITY_ID);
-  if (existing) return handleOf(existing);
-  const { subtle } = cryptoHost();
-  const pair = await subtle.generateKey(ED, false, ["sign", "verify"]) as KeyPairLike;
-  const pubBuf = await subtle.exportKey("raw", pair.publicKey) as ArrayBuffer;
-  const entry: KeyEntry = { id: IDENTITY_ID, kind: "sign", privateKey: pair.privateKey, publicKey: pair.publicKey, publicKeyB64: b64.enc(pubBuf), createdAt: Date.now() };
-  await store.put(entry);
-  return handleOf(entry);
-}) as Fn;
+// (crypto.identity removed: the extractable keystore wallet — keystore.create/
+// unlock — is THE identity now; nothing consumed the old non-extractable
+// IndexedDB identity keypair.)
 
 // crypto.forget(handle) — drop a key from the keystore (rotation / revoke).
 const forgetFn: Fn = (async (handle: unknown): Promise<boolean> => {
@@ -287,7 +270,6 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["crypto.wrap", wrapFn],
   ["crypto.unwrap", unwrapFn],
   ["crypto.keys", keysFn],
-  ["crypto.identity", identityFn],
   ["crypto.forget", forgetFn],
   ["crypto.prfAvailable", prfAvailableFn],
   ["crypto.prfWrapKey", prfWrapKeyFn],

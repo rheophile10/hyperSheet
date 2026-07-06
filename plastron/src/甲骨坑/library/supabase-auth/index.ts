@@ -1,5 +1,6 @@
 import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
 import { bindNativeFns, resolveFn } from "../../../kernel/index.js";
+import { sbConfig } from "../supabase/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -31,11 +32,9 @@ const authKey = (project: string): string => `sb.${project}.auth`;
 
 // read the public config cels for a project (throws → caught → graceful string).
 const readConfig = (state: State, project: string): { url: string; anonKey: string } => {
-  const url = state.cels.get(`sb.${project}.url`)?.v;
-  const anonKey = state.cels.get(`sb.${project}.anonkey`)?.v;
-  if (typeof url !== "string" || !url) throw new Error(`missing sb.${project}.url cel (set the project URL)`);
-  if (typeof anonKey !== "string" || !anonKey) throw new Error(`missing sb.${project}.anonkey cel (set the publishable key)`);
-  return { url: url.replace(/\/+$/, ""), anonKey };
+  const cfg = sbConfig(state, project);
+  if (!cfg) throw new Error(`missing supabase config — set the sb.${project} dict cel ({"url":"…","anonkey":"…"}) or the sb.${project}.url / .anonkey cels`);
+  return cfg;
 };
 
 // create-or-update the reactive non-secret auth status cel.

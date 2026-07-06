@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 
-// winapps app.install / app.installed — fetch an assets manifest's files to OPFS,
+// winapps app.assets / app.assets.ready — fetch an assets manifest's files to OPFS,
 // idempotently, sha-verified. The foundation for origin-applications that install
 // to OPFS then load from OPFS (e.g. DOOM's WAD).
 process.env.PLASTRON_FILE_STORE_ROOT ??= "./.plastron-fs";
@@ -37,7 +37,7 @@ const mockFetch = (manifestForUrl = {}) => { globalThis.fetch = async (url) => {
 test("install downloads missing assets to OPFS; installed reports presence; re-install is idempotent", async () => {
   mockFetch();
   const manifest = { name: "demo", version: "v1", assets: [{ url: "https://x/asset.bin", opfs: `${PREFIX}/asset.bin` }] };
-  const installed = resolveFn(state, "app.installed"), install = resolveFn(state, "app.install");
+  const installed = resolveFn(state, "app.assets.ready"), install = resolveFn(state, "app.assets");
   const read = resolveFn(state, "fs.read");
 
   assert.equal(await installed(state, manifest), false, "not installed yet");
@@ -52,7 +52,7 @@ test("install downloads missing assets to OPFS; installed reports presence; re-i
 
 test("install verifies SHA-256 when given, and throws on mismatch", async () => {
   mockFetch();
-  const install = resolveFn(state, "app.install");
+  const install = resolveFn(state, "app.assets");
   const goodSha = await sha256hex(FAKE);
   await install(state, { assets: [{ url: "https://x/ok.bin", opfs: `${PREFIX}/ok.bin`, sha: goodSha }] });
   assert.deepEqual(new Uint8Array(await resolveFn(state, "fs.read")(`${PREFIX}/ok.bin`)), FAKE, "good sha installs");
@@ -67,6 +67,6 @@ test("install verifies SHA-256 when given, and throws on mismatch", async () => 
 test("a manifest can be a URL (its JSON is fetched first)", async () => {
   const url = "https://x/app.json";
   mockFetch({ [url]: { name: "byurl", assets: [{ url: "https://x/m.bin", opfs: `${PREFIX}/m.bin` }] } });
-  await resolveFn(state, "app.install")(state, url);
+  await resolveFn(state, "app.assets")(state, url);
   assert.equal(await resolveFn(state, "fs.exists")(`${PREFIX}/m.bin`), true, "asset from a URL-manifest installed");
 });

@@ -37,7 +37,7 @@ const widgetArchive = (v = 7) => ({
   manifests: [{ name: "widget", version: "1.0.0", description: "test widget app", role: "application", dependencies: [] }],
 });
 
-test("app.install persists an archive to the store WITHOUT adding cels to state", async () => {
+test("origin.install persists an archive to the store WITHOUT adding cels to state", async () => {
   const state = await boot();
   assert.equal(state.cels.has("widget.X"), false, "precondition: not in state");
 
@@ -53,7 +53,7 @@ test("app.install persists an archive to the store WITHOUT adding cels to state"
   assert.equal(rec.manifest.role, "application", "stored manifest role preserved");
 });
 
-test("app.install is idempotent (re-install of a stored app is skipped)", async () => {
+test("origin.install is idempotent (re-install of a stored app is skipped)", async () => {
   const state = await boot();
   await fn(state, "origin.install")(state, widgetArchive());
   const status = await fn(state, "origin.install")(state, widgetArchive(99));
@@ -62,7 +62,7 @@ test("app.install is idempotent (re-install of a stored app is skipped)", async 
   assert.equal(rec.segment.cels[0].v, 7, "the original (not the v99 re-install) is kept");
 });
 
-test("app.install accepts a JSON string and rejects an incomplete archive", async () => {
+test("origin.install accepts a JSON string and rejects an incomplete archive", async () => {
   const state = await boot();
   await fn(state, "origin.install")(state, JSON.stringify(widgetArchive()));
   assert.equal(await fn(state, "store.has")(state, "widget"), true, "JSON-string form installs");
@@ -142,4 +142,25 @@ test("the Sheet icon (do:origin.newsheet) creates a new worksheet document", asy
   await fn(state, "origin.navOpen")(state, "do:origin.newsheet");
   // newsheet (now owned by the sheetapp segment) opens a fresh worksheet doc window
   assert.ok([...state.cels.keys()].some((k) => /^win\.sheet\d+\.state$/.test(k)), "a new worksheet window opened");
+});
+
+test("re-install is VERSION-aware: same version skips, bumped version upgrades, force re-puts", async () => {
+  const state = await boot();
+  const archive = (version) => ({
+    formatVersion: 1,
+    segments: [{ name: "demo-doc", cels: [{ key: "demo-doc.A1", celType: "ValueCel", v: version, metadata: { key: "demo-doc.A1", segment: "demo-doc" } }] }],
+    manifests: [{ name: "demo-doc", version, description: "t", dependencies: [], role: "user-space", applications: ["sheetapp"] }],
+  });
+  const install = resolveFn(state, "origin.install");
+  // first install lands
+  assert.match(String(await install(state, archive("0.1.0"))), /installed: \[demo-doc\]/);
+  // same version again → skipped (idempotent boot)
+  assert.match(String(await install(state, archive("0.1.0"))), /skipped: \[demo-doc\]/);
+  // BUMPED version → upgrades on a returning profile (the stale-baked-docs fix)
+  assert.match(String(await install(state, archive("0.2.0"))), /installed: \[demo-doc\]/);
+  const idx = await resolveFn(state, "store.readIndex")(state);
+  assert.deepEqual(idx.segments["demo-doc"].versions.sort(), ["0.1.0", "0.2.0"]);
+  assert.equal(idx.segments["demo-doc"].latest, "0.2.0");
+  // FORCE re-puts an existing version (factory refresh path)
+  assert.match(String(await install(state, archive("0.2.0"), true)), /installed: \[demo-doc\]/);
 });

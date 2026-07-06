@@ -40,7 +40,9 @@ test("a (params) => body formula compiles to a verb; params bind to call args", 
 
 test("the body may call other verbs — a dom-composing formula verb", async () => {
   const state = await boot();
-  const box = await define(state, "formula", "box", '(m, x) => (dom "div.box" m x)');
+  // (named `boxcard`, not `box` — plastron-gpu owns the `box` geometry
+  // constructor now, and locked vocabulary cels refuse redefinition.)
+  const box = await define(state, "formula", "boxcard", '(m, x) => (dom "div.box" m x)');
   const v = box("grid", "hi");
   assert.equal(v?.type, "el");
   assert.equal(v?.tag, "div");

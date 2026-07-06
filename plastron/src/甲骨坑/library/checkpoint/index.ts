@@ -2,7 +2,7 @@ import type {
   甲骨, Cel, ChannelEnqueue, Fn, Key, State,
 } from "../../../types/index.js";
 import {
-  bindNativeFns, resolveFn, disposeCel, precompute, kernelClosureOf,
+  bindNativeFns, resolveFn, disposeCel, precompute, precomputeOptional, kernelClosureOf,
   appendError, makeCelError,
 } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
@@ -110,8 +110,9 @@ const restore: Fn = async (state: State, nameArg?: unknown) => {
   // rehydrate the snapshot — the wake path rebuilds compiled fns
   const hydrate = resolveFn(state, "hydrate") as Fn;
   await hydrate(state, snap.segments, snap.manifests);
-  const precomputeOptional = resolveFn(state, "precomputeOptional") as Fn | undefined;
-  if (precomputeOptional) await precomputeOptional(state);
+  // precomputeOptional is a kernel EXPORT, not a cel — a resolveFn lookup here
+  // returned undefined and silently skipped this pass on every restore.
+  await precomputeOptional(state);
   await (resolveFn(state, "runCycle") as Fn)(state);
   return state;
 };

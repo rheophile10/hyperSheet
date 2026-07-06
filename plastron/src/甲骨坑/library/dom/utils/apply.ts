@@ -170,6 +170,31 @@ const applyPatchToChild = (
   }
 };
 
+// autofocus on a DYNAMICALLY inserted element: the HTML attribute only auto-fires
+// on initial page load, so re-rendered editors (the inline cell editor, the rename
+// box) never got focus. After the element lands in the DOM (next frame) we focus it
+// ourselves — but NOT if the user is already typing in a different control (don't
+// steal focus mid-edit). Text controls get the caret placed at the end.
+const scheduleFocus = (el: ElementLike, doc: DocLike): void => {
+  const w = (doc as { defaultView?: { requestAnimationFrame?: (cb: () => void) => void } }).defaultView;
+  const run = (): void => {
+    const elf = el as { focus?: () => void; value?: unknown; setSelectionRange?: (a: number, b: number) => void };
+    if (typeof elf.focus !== "function") return;
+    const active = (doc as { activeElement?: { tagName?: string; isContentEditable?: boolean } }).activeElement;
+    const tag = String(active?.tagName ?? "").toUpperCase();
+    const editing = tag === "INPUT" || tag === "TEXTAREA" || !!active?.isContentEditable;
+    if (editing && active !== (el as unknown)) return;   // user is typing elsewhere — leave it
+    elf.focus();
+    if (elf.value != null && typeof elf.setSelectionRange === "function") {
+      const n = String(elf.value).length; try { elf.setSelectionRange(n, n); } catch { /* non-text control */ }
+    }
+  };
+  if (w && typeof w.requestAnimationFrame === "function") w.requestAnimationFrame(run);
+  else if (typeof queueMicrotask === "function") queueMicrotask(run);
+};
+
+const isAutofocus = (val: unknown): boolean => val === "" || val === true || val === "true" || val === "autofocus";
+
 const createNode = (v: VNode, reg: ListenerRegistry, state: State, doc: DocLike, svg = false): NodeLike => {
   if (v.type === "text") return doc.createTextNode((v as VText).text);
   const ve = v as VElement;
@@ -179,6 +204,7 @@ const createNode = (v: VNode, reg: ListenerRegistry, state: State, doc: DocLike,
   if (ve.style) for (const [k, val] of Object.entries(ve.style)) writeStyle(el, k, val);
   if (ve.events) attachEvents(el, ve.events, reg, state);
   if (ve.children) for (const c of ve.children) el.appendChild(createNode(c, reg, state, doc, inSvg));
+  if (ve.attrs && isAutofocus(ve.attrs.autofocus)) scheduleFocus(el, doc);
   return el;
 };
 

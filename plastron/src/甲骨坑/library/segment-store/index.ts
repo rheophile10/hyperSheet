@@ -177,7 +177,10 @@ const get: Fn = async (stateArg: unknown, nameArg: unknown, versionArg?: unknown
 
 const list: Fn = async (stateArg: unknown) => {
   const idx = await readIndex(stateArg as State);
-  return Object.entries(idx.segments).map(([name, entry]) => ({ name, latest: entry.latest }));
+  // `app` marks a DOCUMENT (installed under an application) — pickers use it
+  // to tell openable docs from library/application segments.
+  return Object.entries(idx.segments).map(([name, entry]) =>
+    ({ name, latest: entry.latest, ...(entry.app ? { app: entry.app } : {}) }));
 };
 
 const del: Fn = async (stateArg: unknown, nameArg: unknown, versionArg?: unknown) => {

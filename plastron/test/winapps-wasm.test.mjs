@@ -35,7 +35,7 @@ test("wasmapp: a self-mounting wasm window on the NEW frame + the graph↔engine
   assert.equal(g.cels["wasm.doom.active"].v, 0);
 
   // content is the focusable canvas (winapps-wasm's wasmcanvas verb)
-  assert.equal(g.cels["wasm.doom.content"].f, '(wasmcanvas "doom")');
+  assert.equal(g.cels["wasm.doom.content"].f, '(wasmcanvas "doom" wasm.doom.out)');
 
   // window state: one tab = the canvas, with geometry
   const ws = g.cels["wasm.doom.state"].v;
@@ -113,6 +113,45 @@ test("wasmcanvas: a focusable <canvas id=wasm-<id>> dispatching wasmwin.focus/bl
   assert.deepEqual(canvas.events.keyup, { dispatch: "wasmwin.key", payload: "doom" });
 });
 
+const overlayOf = (vnode) => (vnode.children || []).find((c) => c?.attrs?.class?.includes?.("wasm-overlay"));
+const hasClass = (n, cls) => { let f = false; const walk = (x) => { if (!x || f) return; if (x.attrs?.class?.includes?.(cls)) f = true; (x.children || []).forEach(walk); }; walk(n); return f; };
+const overlayText = (vnode) => {
+  let out = "";
+  const walk = (n) => { if (!n) return; if (n.type === "text") out += n.text; (n.children || []).forEach(walk); };
+  walk(overlayOf(vnode));
+  return out;
+};
+
+test("wasmcanvas: a loading overlay covers the canvas while booting (status drives it)", () => {
+  for (const status of [null, "", "armed", "fetching freedoom1.wad…", "creating harness…", "starting…"]) {
+    const v = wasmcanvas("doom", status);
+    assert.equal(v.children[0].tag, "canvas", `canvas stays child[0] (status=${JSON.stringify(status)})`);
+    const ov = overlayOf(v);
+    assert.ok(ov && ov.attrs.class.includes("wasm-overlay-loading"), `loading overlay shown for ${JSON.stringify(status)}`);
+    assert.ok(hasClass(ov, "wasm-overlay-bar"), "loading bar present");
+  }
+  assert.match(overlayText(wasmcanvas("doom", null)), /Gathering files/, "initial status → Gathering files…");
+  assert.match(overlayText(wasmcanvas("doom", "fetching freedoom1.wad…")), /Downloading freedoom1\.wad/, "fetching → Downloading <file>");
+});
+
+test("wasmcanvas: no overlay once running (the bare canvas shows)", () => {
+  const v = wasmcanvas("doom", "running");
+  assert.equal(v.children.length, 1, "only the canvas, no overlay");
+  assert.equal(v.children[0].tag, "canvas");
+  assert.equal(overlayOf(v), undefined, "no overlay when running");
+});
+
+test("wasmcanvas: an error overlay surfaces 'could not load' on #ERROR (missing assets)", () => {
+  const v = wasmcanvas("doom", "#ERROR(doom: asset.fetch: freedoom1.wad HTTP 404)");
+  assert.equal(v.children[0].tag, "canvas", "canvas still present (harness needs it by id)");
+  const ov = overlayOf(v);
+  assert.ok(ov && ov.attrs.class.includes("wasm-overlay-error"), "error overlay shown");
+  const txt = overlayText(v);
+  assert.match(txt, /DOOM could not load/, "states it could not load");
+  assert.match(txt, /not found/i, "404 → a 'not found' message");
+  assert.match(txt, /HTTP 404/, "keeps the raw detail for debugging");
+});
+
 test("wasmFocus + wasmKeyHandler: focus marks active, then a keydown delivers into the inbox", async () => {
   const state = await boot();
   await seedBridge(state, "doom");
@@ -162,7 +201,7 @@ test("wasmappGenesis: seeds the canvas window + bridge cels (keys, content formu
   assert.equal(g.cels["wasm.doom.active"].v, 0);
 
   // content formula calls (wasmcanvas "<id>")
-  assert.equal(g.cels["wasm.doom.content"].f, '(wasmcanvas "doom")');
+  assert.equal(g.cels["wasm.doom.content"].f, '(wasmcanvas "doom" wasm.doom.out)');
 
   // window state references the content cel as its (one) tab
   const ws = g.cels["wasm.doom.state"].v;

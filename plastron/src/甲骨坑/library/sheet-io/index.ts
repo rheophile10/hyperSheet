@@ -197,32 +197,12 @@ const openAsSheet = async (state: State, bytes: Uint8Array, name: string): Promi
   return seg;
 };
 
-// ── verb surface ──────────────────────────────────────────────────────────────
-// sheetio.save({ seg, fmt }) — serialize, write to OPFS (best-effort) + return the
-// SaveOut so a host can offer a download. sheetio.open({ bytes, name }) → seg.
-const sheetioSave: Fn = (async (state: State, payload: unknown): Promise<SaveOut | null> => {
-  const p = payload as { seg?: string; fmt?: string } | undefined;
-  const seg = String(p?.seg ?? ""), fmt = String(p?.fmt ?? "");
-  if (!seg || !fmt) return null;
-  const out = await saveSheet(state, seg, fmt);
-  const fsWrite = resolveFn(state, "fs.write") as Fn | undefined;
-  const ensure = resolveFn(state, "ensureSegments") as Fn | undefined;
-  if (fsWrite) { try { if (ensure) await ensure(state, ["file-store"]); await fsWrite(`/${out.filename}`, out.bytes); } catch { /* no fs here */ } }
-  return out;
-}) as Fn;
-const sheetioOpen: Fn = (async (state: State, payload: unknown): Promise<string | null> => {
-  const p = payload as { bytes?: Uint8Array; name?: string } | undefined;
-  if (!p?.bytes || !p?.name) return null;
-  return openAsSheet(state, p.bytes, String(p.name));
-}) as Fn;
-
 export const name = "sheet-io" as const;
 
-// direct surface for hosts (e.g. the explorer double-click) + tests, skipping cel
-// dispatch — they already hold the bytes / want the new segment name back.
+// The importable surface IS the surface: every consumer (file-explorer's
+// double-click, the windowing stack, tests) imports these TS fns directly.
+// (The sheetio.save / sheetio.open verb wrappers were removed — nothing
+// dispatched them; serialization stays a library capability, not a verb.)
 export { saveSheet, openAsSheet, toCsv, parseCsv, csvToCells, toJia, jiaToCells, gridCells };
 
-export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
-  ["sheetio.save", sheetioSave],
-  ["sheetio.open", sheetioOpen],
-]));
+export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>());

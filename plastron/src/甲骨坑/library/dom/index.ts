@@ -4,6 +4,7 @@ import { diffVNodes } from "./utils/diff.js";
 import { applyPatch } from "./utils/apply.js";
 import { applyListenerDelta } from "./utils/events.js";
 import { paintDrain } from "./utils/paint.js";
+import { drawCanvas } from "./utils/canvas.js";
 import { dom, style, attr, on, img } from "./utils/vocab.js";
 import { dragGrab, dragOver, dragDrop } from "./utils/drag.js";
 import seed from "./甲骨.json" with { type: "json" };
@@ -20,6 +21,7 @@ export const name = "dom" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["dom.paint.drain",        paintDrain as unknown as Fn],
+  ["replay.canvas2d",        drawCanvas as unknown as Fn],
   ["dom.diffVNodes",         diffVNodes as unknown as Fn],
   ["dom.applyPatch",         applyPatch as unknown as Fn],
   ["dom.applyListenerDelta", applyListenerDelta as unknown as Fn],

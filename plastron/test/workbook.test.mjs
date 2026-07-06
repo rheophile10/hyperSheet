@@ -57,19 +57,20 @@ test("wbopen genesis: state holds both tab stacks + a frame referencing every co
   assert.ok(frame.startsWith('(mount ".origin" (wbframe win.book.state win.active'), "self-mounting wbframe");
 });
 
-test("wbframe renders BOTH panes: sheet tabs (bottom) + view tabs (top), active bodies", async () => {
+test("wbframe renders BOTH panes: sheet tabs + view tabs both at the BOTTOM (same row class), active bodies", async () => {
   const state = await boot();
   await seed(state);
   const v = wbframe(state);
   // both panes present
-  assert.equal(byClass(v, "pl-wb-left").length, 1, "left (sheets) pane");
-  assert.equal(byClass(v, "pl-wb-right").length, 1, "right (views) pane");
+  assert.equal(byClass(v, "pl-wb-left").length, 1, "left (sheets / celBook) pane");
+  assert.equal(byClass(v, "pl-wb-right").length, 1, "right (views / cardBook) pane");
   assert.equal(byClass(v, "pl-wb-divider").length, 1, "divider shown when not fullscreen");
-  // a chip per sheet and per view
-  const stabs = byClass(v, "pl-wb-stabs")[0];
-  const vtabs = byClass(v, "pl-wb-vtabs")[0];
+  // both tab rows use the same class now (bottom tabs, same look); [0]=sheets, [1]=views
+  const rows = byClass(v, "pl-wb-stabs");
+  const stabs = rows[0];
+  const vtabs = rows[1];
   assert.ok(vtxt(stabs).includes("Data") && vtxt(stabs).includes("Calc"), "sheet tab chips");
-  assert.ok(vtxt(vtabs).includes("Dashboard") && vtxt(vtabs).includes("Report"), "view tab chips");
+  assert.ok(vtabs && vtxt(vtabs).includes("Dashboard") && vtxt(vtabs).includes("Report"), "view tab chips");
   // active sheet + active view bodies rendered
   assert.equal(byClass(v, "sheetA").length, 1, "active sheet (Data) body");
   assert.equal(byClass(v, "dashA").length, 1, "active view (Dashboard) body");

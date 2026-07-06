@@ -1,1585 +1,1728 @@
 {
-  "name": "origin",
-  "cels": [
-    {
-      "key": "元",
-      "celType": "FormulaCel",
-      "metadata": {
-        "key": "元",
-        "segment": "origin",
-        "name": "元",
-        "description": "cell A1 — the origin cell. the desktop itself is now the `desktop` origin-application (wallpaper, icons, taskbar, state graph); 元 is the base spreadsheet cell the 🧮 Origin launcher restores. a cell whose output renders elsewhere shows its SOURCE here. type a formula in any cell to grow an app. (kept the default `f` parser — 元 is boot substrate, so it must not depend on the infix compiler which ships in the sheet segment.)",
-        "parser": "f"
-      },
-      "f": "(dom \"div\" (style \"padding\" \"1.2rem\" \"font\" \".92rem ui-monospace,monospace\" \"max-width\" \"42rem\" \"line-height\" \"1.5\") (dom \"h2\" \"🧮 origin\") \"a reactive spreadsheet that is also a desktop. type a formula in any cell to grow an app. the desktop icons launch apps, right-click the background for display settings, and the round 🕸 button opens the live state graph.\")"
-    },
-    {
-      "key": "元.mount",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "元.mount",
-        "segment": "origin",
-        "name": "元.mount",
-        "description": "where the sheet view mounts. the host's one knob; null hides it."
-      },
-      "v": "#app"
-    },
-    {
-      "key": "元.editing",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "元.editing",
-        "segment": "origin",
-        "name": "元.editing",
-        "description": "key of the cell currently being edited (null = none)."
-      },
-      "v": null
-    },
-    {
-      "key": "sheet.editing",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "sheet.editing",
-        "segment": "origin",
-        "name": "sheet.editing",
-        "description": "ASCII mirror of 元.editing (kept in sync by origin.edit/select/key) — the editing cell key a workbook grid formula can reference (infix cel keys are ASCII; the kanji 元.* can't appear in a formula)."
-      },
-      "v": null
-    },
-    {
-      "key": "sheet.selected",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "sheet.selected",
-        "segment": "origin",
-        "name": "sheet.selected",
-        "description": "ASCII mirror of 元.selected (kept in sync by origin.select/key) — the selected cell key a workbook grid formula can reference."
-      },
-      "v": null
-    },
-    {
-      "key": "元.draft",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "元.draft",
-        "segment": "origin",
-        "name": "元.draft",
-        "description": "the edit input's in-progress text."
-      },
-      "v": ""
-    },
-    {
-      "key": "sheet.draft",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "sheet.draft",
-        "segment": "origin",
-        "name": "sheet.draft",
-        "description": "ASCII mirror of 元.draft for DISPLAY — seeded with the selected cell's source on select/edit/commit so a formula bar (sheetbar) can reference it. NOT written on each keystroke (the bar's input writes 元.draft directly), so the bar never re-renders mid-edit."
-      },
-      "v": ""
-    },
-    {
-      "key": "元.error",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "元.error",
-        "segment": "origin",
-        "name": "元.error",
-        "description": "compile/parse error for the cell being edited (null = none); shown under the active editor so a bad formula doesn't fail silently."
-      },
-      "v": null
-    },
-    {
-      "key": "元.selected",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "元.selected",
-        "segment": "origin",
-        "name": "元.selected",
-        "description": "key of the currently SELECTED cell (Excel single-click). The cell keeps rendering its VALUE; the formula bar shows this cell's source and edits commit here. null = no selection."
-      },
-      "v": null
-    },
-    {
-      "key": "元.cells",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "元.cells",
-        "segment": "origin",
-        "name": "元.cells",
-        "description": "ordered spreadsheet cell keys: 元 (A1) + genesis-created grid cels."
-      },
-      "v": [
-        "元"
-      ]
-    },
-    {
-      "key": "元.srcs",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "元.srcs",
-        "segment": "origin",
-        "name": "元.srcs",
-        "description": "cell SOURCES parallel to 元.cells — the view shows a cell's source when its value renders elsewhere (a mount)."
-      },
-      "v": [
-        "(mount \".origin\"\n  (dom \"div.readme\" (style \"max-width\" \"47rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.5 ui-monospace, monospace\")\n    (canvas 560 92 (style \"display\" \"block\" \"border-radius\" \".4rem\" \"margin\" \"0 auto .35rem\") (rect 0 0 560 92 \"#16161f\") (text 18 42 \"plastron 🐢\" \"#f5f5f7\" \"bold 25px system-ui\") (text 18 70 \"a spreadsheet tool on an index.html — steal and use this anywhere\" \"#8a8a99\" \"12px system-ui\"))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"this readme is the formula in the cel above. drag that cell's corner to resize it, or replace its contents with your own formulas. for more cels, use a cels formula:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cels(8, 5)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a worksheet of editable cels\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cels(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a workbook of named sheets\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cels(\\\"in\\\", 4, 3, at(\\\"a1\\\", \\\"apple\\\"), at(\\\"b2\\\", \\\"=1+1\\\"))\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a sheet with initial cell values & formulas\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"or make a single new cel beside this one:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cel(\\\"monkey\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a new cel holding the value monkey\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cel(\\\"cel(\\\\\\\"banana\\\\\\\")\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a new cel holding a formula (that makes another cel)\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"you can make your own functions and use them in formulas after:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"define a function — js or py (first py use downloads pyodide, ~10MB)\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=double(21)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"call it → 42\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"you can make dom objects with formulas — and a little universe running on canvas:\")\n    (canvas 300 170 (style \"display\" \"block\" \"border-radius\" \".4rem\" \"margin\" \"0 auto .35rem\") (rect 0 0 300 170 \"#0a0a18\") (circle 150 85 12 \"#ffd34e\") (orbit 150 85 34 4 3 \"#7fd0ff\") (orbit 150 85 58 6 6 \"#e6677a\") (orbit 150 85 84 5 11 \"#9fe89f\"))\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"hi\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a styled dom element\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=canvas(300,170, rect(0,0,300,170,\\\"#0a0a18\\\"), circle(150,85,12,\\\"#ffd34e\\\"), orbit(150,85,34,4,3,\\\"#7fd0ff\\\"), orbit(150,85,58,6,6,\\\"#e6677a\\\"), orbit(150,85,84,5,11,\\\"#9fe89f\\\"))\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"↑ that animated solar system\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"inspect functions and the plastron segments they came from:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=inspect(\\\"mount\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a function's signature + source\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=segments()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"the plastron segments loaded\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"talk to grok — with an api key:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=grok(\\\"say hi in 5 words\\\", key)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a chat completion (key = a cel holding your api key)\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"save your work:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=save()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"persist this sheet to your browser — reload and it's back\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"share your whole app as one formula — paste a friend's doc(...) into the cel above to run it:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=seed()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"serialize this ENTIRE document to one doc(...) formula you can save or send\"))))\n    (dom \"p.fx-repo\" (style \"margin\" \".9rem 0 0\") (dom \"a\" (attr \"href\" \"https://github.com/rheophile10/plastron\" \"target\" \"_blank\") (style \"color\" \"LinkText\") \"github.com/rheophile10/plastron →\"))))"
-      ]
-    },
-    {
-      "key": "元.view",
-      "celType": "FormulaCel",
-      "metadata": {
-        "key": "元.view",
-        "segment": "origin",
-        "name": "元.view",
-        "parser": "f",
-        "schema": "render-spec",
-        "channel": [
-          "dom.paint"
-        ],
-        "inputMap": {
-          "vals": [
-            "元"
-          ]
-        },
-        "description": "the FRAME-FIRER (gen-2). Its inputMap.vals lists every whitelisted self-mounting frame cel (cellKeys); referencing vals makes them all deps so they fire + paint. Renders nothing itself — 元, =cels grids, docs, the wiki and the desktop chrome each self-mount their own win.<id>.frame. (Was the gen-1 sheetView render loop.)"
-      },
-      "f": "(viewfire vals)"
-    },
-    {
-      "key": "元.content",
-      "celType": "FormulaCel",
-      "metadata": {
-        "key": "元.content",
-        "segment": "win.元",
-        "name": "content",
-        "parser": "f",
-        "description": "the 元 base sheet as a gen-2 worksheet body: a single-cell editable sheetgrid whose A1 is the bare 元 cel (the readme). Edit A1 to grow an app; =cels makes more worksheet windows."
-      },
-      "f": "(sheetpane (sheetbar sheet.selected sheet.draft) (sheetgrid \"元\" (sheetcells \"元\" 元) (gridopts sheet.editing sheet.selected)))"
-    },
-    {
-      "key": "win.元.state",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "win.元.state",
-        "segment": "win.元",
-        "name": "state",
-        "description": "the 元 window state (gen-2). Hidden at boot when the desktop hydrates (origin-main sets closed:1); the 🧮 Origin launcher raises it."
-      },
-      "v": {
-        "ref": "win.元.state",
-        "x": 140,
-        "y": 88,
-        "w": 600,
-        "h": 440,
-        "z": 1,
-        "min": 0,
-        "max": 0,
-        "closed": 0,
-        "title": "🧮 origin",
-        "tabs": [
-          {
-            "ref": "元.content",
-            "title": "元"
-          }
-        ],
-        "active": 0
-      }
-    },
-    {
-      "key": "win.元.frame",
-      "celType": "FormulaCel",
-      "metadata": {
-        "key": "win.元.frame",
-        "segment": "win.元",
-        "name": "frame",
-        "parser": "f",
-        "channel": [
-          "dom.paint"
-        ],
-        "description": "the 元 window's self-mounting gen-2 frame (replaces the sheetView render of 元 + win.geom)."
-      },
-      "f": "(mount \".origin\" (wframe win.元.state win.active 元.content))"
-    },
-    {
-      "key": "cels",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "cels",
-        "segment": "origin",
-        "name": "cels",
-        "kind": "native",
-        "genesis": true,
-        "description": "genesis: worksheets of editable cels, each like 元. TOP-LEVEL ONLY — a genesis builds the sheet; it is never a child of dom()/canvas() (nested it stringifies to \"[object Object]\" and never materializes). cels(rows, cols) makes one sheet (auto-named g<r>x<c>); cels(rows, cols, \"name\") names it; cels(\"in\", 4, 3, \"out\", 4, 3) makes a WORKBOOK; cels(\"in\", 4, 3, at(\"a1\", \"apple\"), at(\"b2\", \"cel(\\\"monkey\\\")\")) fills cells with initial values/formulas. To chart a grid, put the chart in a cell OF that grid: at(\"A5\", '=canvas(360,200, barchart(sales!A2:A4, sales!B2:B4))'). delete the formula -> swept."
-      }
-    },
-    {
-      "key": "at",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "at",
-        "segment": "origin",
-        "name": "at",
-        "kind": "native",
-        "description": "at(addr, content) - one cell's initial content for a cels() grid, e.g. cels(\"in\", 4, 3, at(\"a1\", \"apple\"))."
-      }
-    },
-    {
-      "key": "geom",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "geom",
-        "segment": "origin",
-        "name": "geom",
-        "kind": "native",
-        "description": "geom(x, y, w, h [, minW, minH]) - a cels() grid's WINDOW geometry, CSS-style: x/y = left/top, w/h = the (proportional) width/height, minW/minH = min-width/min-height FLOORS the window never renders or resizes below (like CSS width:50%; min-width:340px). A value in (0,1] is a PROPORTION of the viewport (→ viewport.w/.h); >1 is absolute pixels. e.g. cels(\"app\", 4, 4, geom(0.1, 0.1, 0.5, 0.4, 340, 200), at(\"a1\", …)). Written into win.geom[name] the first time the window materializes; a later user drag/resize is preserved."
-      }
-    },
-    {
-      "key": "doc",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "doc",
-        "segment": "origin",
-        "name": "doc",
-        "kind": "native",
-        "genesis": true,
-        "description": "DEPRECATED legacy alias of seg/甲. genesis: compose a whole document from cels()/def()/cel() parts in one formula, e.g. doc(cels(\"in\",2,2,at(\"a1\",\"x\")), def(\"f\",\"js\",\"x=>x\")). What seed() emits — paste it into 元 to recreate an app."
-      }
-    },
-    {
-      "key": "seed",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "seed",
-        "segment": "origin",
-        "name": "seed",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "() - serialize the WHOLE document to a single recreating formula (a doc(...) / cels(...) you can paste into 元). Callable from any cel; its value becomes the seed source."
-      }
-    },
-    {
-      "key": "export",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "export",
-        "segment": "origin",
-        "name": "export",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(segment?, form?) - serialize a document segment (or, with no arg, the WHOLE document stack); the boot substrate is never included. form \"archive\" (default) = a lossless 甲骨 json string for =import(); form \"formula\" = the re-minting formula (=cels(...)/=def(...)) for a workbook/function segment. Whole-doc formula is also =seed()/=link()."
-      }
-    },
-    {
-      "key": "import",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "import",
-        "segment": "origin",
-        "name": "import",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(src) - load an archive json string (or a =formula) into the document stack: ADD a new segment, or wholesale-REPLACE a same-named one. Refuses a boot-set name (net/dom/origin/…). =import(\"{...}\")"
-      }
-    },
-    {
-      "key": "origin.run",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.run",
-        "segment": "origin",
-        "name": "origin.run",
-        "kind": "native",
-        "description": "(state, cellKey) - set the cell's content from the draft and re-evaluate; rebuild the cell list (new grids in, swept out); 元 un-deletable (empty restores readme)."
-      }
-    },
-    {
-      "key": "origin.edit",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.edit",
-        "segment": "origin",
-        "name": "origin.edit",
-        "kind": "native",
-        "description": "(state, cellKeyOrForceSpec) - start INLINE editing a cell (seed draft with its source); the Excel double-click path (single-click SELECTS via origin.select). Payload is the cell key, or { key, force: true } to start editing past the form-control guard."
-      }
-    },
-    {
-      "key": "origin.select",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.select",
-        "segment": "origin",
-        "name": "origin.select",
-        "kind": "native",
-        "description": "(state, cellKey, event) - SELECT a cell (Excel single-click): set 元.selected + 元.selectedSrc + seed 元.draft from its source, WITHOUT swapping it to the inline editor, so the grid keeps showing the value while the formula bar shows the source. A click on a form control a formula rendered is left alone."
-      }
-    },
-    {
-      "key": "origin.fire",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.fire",
-        "segment": "origin",
-        "name": "origin.fire",
-        "kind": "native",
-        "description": "(state, cellKey?) - FIRE (re-evaluate) the selected cell (or the given key): a FormulaCel re-applies its source via setValue (recompile + re-cascade); a ValueCel re-writes its own value (re-cascades dependents). Wired to the 🔫 button on the formula bar."
-      }
-    },
-    {
-      "key": "ex",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "ex",
-        "segment": "origin",
-        "name": "ex",
-        "kind": "native",
-        "description": "(formula, target) - a try-it payload pairing an example formula with the cell key it should run in. Used inside the readme's yellow-lightning buttons: (on \"click\" \"tryexample\" (ex \"=cels(8, 5)\" \"readme.B2\")). Returns a marker the painter hands to tryexample verbatim as the click payload."
-      }
-    },
-    {
-      "key": "tryexample",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "tryexample",
-        "segment": "origin",
-        "name": "tryexample",
-        "kind": "native",
-        "description": "(state, exPayload) - the readme 'try it' handler. Clicking a yellow ⚡ next to an example copies that example's formula into a scratch cell beside the readme (its B-column target) and evaluates it, so the result appears. Implemented by seeding 元.draft with the formula then running origin.run on the target cell, which sniffs the source into a FormulaCel, writes it, re-evaluates, and repaints."
-      }
-    },
-    {
-      "key": "origin.key",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.key",
-        "segment": "origin",
-        "name": "origin.key",
-        "kind": "native",
-        "description": "(state, cellKey, event) - Enter commits the draft."
-      }
-    },
-    {
-      "key": "origin.effects",
-      "celType": "ChannelCel",
-      "metadata": {
-        "key": "origin.effects",
-        "segment": "origin",
-        "name": "origin.effects",
-        "drain": "origin.drain",
-        "description": "load/cels requests commit here (effects at drain)."
-      },
-      "v": {
-        "drain": "origin.drain"
-      },
-      "locked": true
-    },
-    {
-      "key": "origin.drain",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.drain",
-        "segment": "origin",
-        "name": "origin.drain",
-        "kind": "native",
-        "description": "(items) - execute cels (segment listing) requests; result text replaces the request as the cel's value."
-      }
-    },
-    {
-      "key": "members",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "members",
-        "segment": "origin",
-        "name": "members",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(segment) - readable listing of a segment's cels (skill first; locked marked)."
-      }
-    },
-    {
-      "key": "inspect",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "inspect",
-        "segment": "origin",
-        "name": "inspect",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(key) - the cel's full definition (celType, value, formula, metadata) as readable JSON."
-      }
-    },
-    {
-      "key": "segments",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "segments",
-        "segment": "origin",
-        "name": "segments",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "() - every loaded segment with role, version, dependencies."
-      }
-    },
-    {
-      "key": "origin.install",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.install",
-        "segment": "origin",
-        "name": "origin.install",
-        "kind": "native",
-        "description": "(state, archive) - persist an origin-application segment ARCHIVE (dumpSegments shape {segments,manifests}, object or JSON string) into the OPFS segment-store via store.putRaw WITHOUT loading it into state. Idempotent at name granularity (an already-stored app is skipped). The ONLY way the archive's cels reach state is a later origin.launch (hydrate-closure); install never hydrates. Returns a status string. (Distinct from winapps' app.install, which fetches asset FILES.)"
-      }
-    },
-    {
-      "key": "installBakedApps",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "installBakedApps",
-        "segment": "origin",
-        "name": "installBakedApps",
-        "kind": "native",
-        "description": "(state, manifest?) - first-run install of the baked APPLICATION + document segments: read the inert #plastron-apps manifest the bundle baked into the page (a { name: archive } map) and app.install each entry (OPFS only, never state). Pass `manifest` to bypass the DOM read (tests/headless). No-op off-DOM or without a filesystem. A broken baked app is logged, not thrown."
-      }
-    },
-    {
-      "key": "origin.launch",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.launch",
-        "segment": "origin",
-        "name": "origin.launch",
-        "kind": "native",
-        "description": "(state, app) - open an installed origin-application by name: hydrate its segment closure from the store (idempotent), then run its conventional ENTRY cel `<app>.entry` so it materializes its window(s). The navbar/icon click path. The app must already be installed (boot.run installs the baked set)."
-      }
-    },
-    {
-      "key": "boot.run",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "boot.run",
-        "segment": "origin",
-        "name": "boot.run",
-        "kind": "native",
-        "description": "(state, opts?) - the origin-application boot sequence: install every baked app archive into the store (OPFS, not state), then launch the desktop shell. Tests pass {manifest, open} to drive it headlessly; open:false installs only."
-      }
-    },
-    {
-      "key": "taskbarBar",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "taskbarBar",
-        "segment": "origin",
-        "name": "taskbarBar",
-        "kind": "native",
-        "description": "(active, ...states) - render the desktop bottom taskbar: one chip per non-closed, non-docked window, the active one bordered, a minimized one dimmed. Receives each window's state VALUE; click → desktop.taskClick. Built reactively by desktop.taskbarGenesis."
-      }
-    },
-    {
-      "key": "desktop.taskbarGenesis",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.taskbarGenesis",
-        "segment": "origin",
-        "name": "desktop.taskbarGenesis",
-        "kind": "native",
-        "genesis": true,
-        "description": "(list, active) - re-derive the taskbar from win.list. A FormulaCel (desktop.taskbarGenesis win.list win.active) re-fires when the window set or focus changes and returns a genesis whose desktop.taskbar.frame splices in each window's state cel by name, so the bar tracks min/raise/title reactively."
-      }
-    },
-    {
-      "key": "desktop.taskClick",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.taskClick",
-        "segment": "origin",
-        "name": "desktop.taskClick",
-        "kind": "native",
-        "description": "(state, ref) - click a taskbar chip: a minimized window restores (clear min + raise); the active one minimizes; any other open one raises."
-      }
-    },
-    {
-      "key": "desktop.graphbtn",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.graphbtn",
-        "segment": "origin",
-        "name": "desktop.graphbtn",
-        "kind": "native",
-        "description": "() - the round lower-left desktop button that opens the state force-graph (dispatches desktop.stategraph)."
-      }
-    },
-    {
-      "key": "desktop.stategraph",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.stategraph",
-        "segment": "origin",
-        "name": "desktop.stategraph",
-        "kind": "native",
-        "description": "(state) - open a force-graph of the whole state in a real window-segment window (drag/resize/minimize/fullscreen/close via wframe): one node per segment, sized by how much memory it uses, origin-application segments tinted distinctly. Reuses the forcegraph segment (fg.set + fgview)."
-      }
-    },
-    {
-      "key": "origin.celtopo",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.celtopo",
-        "segment": "origin",
-        "name": "origin.celtopo",
-        "kind": "native",
-        "description": "(state, key?) - open the runCycle dependency CONE of a cel (defaults to the selected cell) as a force-graph window: upstream deps (blue) it depends on + downstream dependents (green) that depend on it + the cel itself pinned (gold), edges = inputMap propagation arrows. The 🔗 button on the formula bar dispatches it; clicking a node re-centers. Reuses the forcegraph segment (fg.set + fgview)."
-      }
-    },
-    {
-      "key": "desktop.graphNode",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.graphNode",
-        "segment": "origin",
-        "name": "desktop.graphNode",
-        "kind": "native",
-        "description": "(state, seg) - click a state-graph node: open that segment in the app editor (origin.editapp) to edit its cels' sources."
-      }
-    },
-    {
-      "key": "desktop.bg",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.bg",
-        "segment": "origin",
-        "name": "desktop.bg",
-        "kind": "native",
-        "description": "(src, fallback) - the desktop wallpaper image. img() hydrates a /path src to an objectURL via file-store, so src can be an OPFS path or a data-URI; fallback covers an empty wallpaper. Right-click opens display settings (desktop.bgmenu)."
-      }
-    },
-    {
-      "key": "desktop.bgmenu",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.bgmenu",
-        "segment": "origin",
-        "name": "desktop.bgmenu",
-        "kind": "native",
-        "description": "(state) - right-click the wallpaper: refresh the /wallpapers/ image list and open (or raise) the display-settings window."
-      }
-    },
-    {
-      "key": "desktop.settingsView",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.settingsView",
-        "segment": "origin",
-        "name": "desktop.settingsView",
-        "kind": "native",
-        "description": "(current, files) - the display-settings window body: a wallpaper preview, a file-IO import button, and a chip per image under /wallpapers/ (click → desktop.setWallpaper)."
-      }
-    },
-    {
-      "key": "desktop.refreshWallpapers",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.refreshWallpapers",
-        "segment": "origin",
-        "name": "desktop.refreshWallpapers",
-        "kind": "native",
-        "description": "(state) - list /wallpapers/ into the desktop.wallpapers cel (the settings grid references it, so it updates reactively). Creates the folder if missing."
-      }
-    },
-    {
-      "key": "desktop.setWallpaper",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.setWallpaper",
-        "segment": "origin",
-        "name": "desktop.setWallpaper",
-        "kind": "native",
-        "description": "(state, path) - point the desktop.wallpaper cel at an OPFS path; the bg img + painter load it. Reactive repaint."
-      }
-    },
-    {
-      "key": "desktop.importWallpaper",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.importWallpaper",
-        "segment": "origin",
-        "name": "desktop.importWallpaper",
-        "kind": "native",
-        "description": "(state, _, event) - file-IO import: read the picked File, write it under /wallpapers/, then select it as the wallpaper. Browser-only (File API)."
-      }
-    },
-    {
-      "key": "desktop.icons",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.icons",
-        "segment": "origin",
-        "name": "desktop.icons",
-        "kind": "native",
-        "description": "(iconpos, mobile, ...items) - desktop: free-positioned, draggable app icons (positions persisted in desktop.iconpos by label); mobile: today's collapsible nav. items are item(label, action); a click LAUNCHES via origin.navOpen."
-      }
-    },
-    {
-      "key": "desktop.iconGrab",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.iconGrab",
-        "segment": "origin",
-        "name": "desktop.iconGrab",
-        "kind": "native",
-        "description": "(state, label, event) - pointerdown on a desktop icon: capture the pointer + record the grab offset in desktop.icondrag."
-      }
-    },
-    {
-      "key": "desktop.iconMove",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.iconMove",
-        "segment": "origin",
-        "name": "desktop.iconMove",
-        "kind": "native",
-        "description": "(state, _, event) - pointermove while dragging an icon: update desktop.iconpos[label] to the pointer position; repaint."
-      }
-    },
-    {
-      "key": "desktop.iconDrop",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.iconDrop",
-        "segment": "origin",
-        "name": "desktop.iconDrop",
-        "kind": "native",
-        "description": "(state) - pointerup: record how far the icon moved (desktop.iconLastMoved, so a drag suppresses the click) and clear desktop.icondrag."
-      }
-    },
-    {
-      "key": "desktop.iconClick",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "desktop.iconClick",
-        "segment": "origin",
-        "name": "desktop.iconClick",
-        "kind": "native",
-        "description": "(state, action) - launch the icon's app via origin.navOpen UNLESS the pointer dragged (a drag is not a click)."
-      }
-    },
-    {
-      "key": "sheetcells",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "sheetcells",
-        "segment": "origin",
-        "name": "sheetcells",
-        "kind": "native",
-        "description": "(keys, vals) - zip a key list + value list into sheetgrid entries {key,col,row,value}, deriving col/row from each key's A1 suffix. The host formula passes the keys (strings) + the cel values (a list referencing each cel, so the grid is reactive)."
-      }
-    },
-    {
-      "key": "origin.editapp",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.editapp",
-        "segment": "origin",
-        "name": "origin.editapp",
-        "kind": "native",
-        "description": "(state, app) - open another segment's cels as an editable source list (its formulas/definition): each cel as key → editable source; Enter commits. Click a node in the state force-graph to edit that segment. sheetapp-as-editor."
-      }
-    },
-    {
-      "key": "origin.editAppCel",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.editAppCel",
-        "segment": "origin",
-        "name": "origin.editAppCel",
-        "kind": "native",
-        "description": "(state, {app,key}, event) - commit an edited cel source from the app editor (on Enter): rewrite the cel's source, then refresh the editor."
-      }
-    },
-    {
-      "key": "origin.savedoc",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.savedoc",
-        "segment": "origin",
-        "name": "origin.savedoc",
-        "kind": "native",
-        "description": "(state, name) - record the document's cel states: saveUserSpace dehydrates the origin-user segment's private closure and store.put's it under the app's documents/ subfolder."
-      }
-    },
-    {
-      "key": "vocab",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "vocab",
-        "segment": "origin",
-        "name": "vocab",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(segment?) - the values + functions usable in formulas (callable lambdas/compilers + value cels) with descriptions; no arg = across all loaded segments."
-      }
-    },
-    {
-      "key": "viewport",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "viewport",
-        "segment": "origin",
-        "name": "viewport",
-        "kind": "native",
-        "description": "() - current page metrics {w, h, mobile, orient} as a one-shot snapshot. For REACTIVE layout reference the cels instead: viewport.w / viewport.h / viewport.mobile / viewport.orient update on window resize, so a formula re-runs to relayout — =IF(viewport.mobile, dom(\"h1\",\"phone\"), win(\"app\",\"App\",body)) or =win(\"app\",\"App\",body, viewport.w, viewport.h - 40)."
-      }
-    },
-    {
-      "key": "origin.viewportSync",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.viewportSync",
-        "segment": "origin",
-        "name": "viewportSync",
-        "kind": "native",
-        "description": "(host) writes live page metrics into the viewport.* cels so formulas that reference them re-run; the host calls it at boot and on resize."
-      }
-    },
-    {
-      "key": "origin.clockSync",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.clockSync",
-        "segment": "origin",
-        "name": "clockSync",
-        "kind": "native",
-        "description": "(host) writes the current time into the clock (HH:MM) + clock.full cels so a formula referencing them (e.g. a taskbar) re-renders; the host calls it on an interval. Reference `clock` in a formula instead of a banned NOW()."
-      }
-    },
-    {
-      "key": "item",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "item",
-        "segment": "origin",
-        "name": "item",
-        "kind": "native",
-        "description": "(label, action, ...children) - one navigation menu node for nav(). label is text/emoji; action is a window KEY (clicking focuses that window) or a '=formula' (clicking spawns a new window running it), or omit action for a pure submenu parent. children are more item()s (WordPress-style nesting). e.g. item(\"📊 Charts\", item(\"🥧 Pie\", '=cels(3,2, ...piechart...)'))."
-      }
-    },
-    {
-      "key": "nav",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "nav",
-        "segment": "origin",
-        "name": "nav",
-        "kind": "native",
-        "description": "([mobile], ...items) - a navigation menu from item() nodes. Pass viewport.mobile as the first arg so it AUTO-SWITCHES: a collapsible left sidebar (☰) on mobile, desktop icon-launchers otherwise (it re-renders on rotate/resize). Nesting collapses via native <details>. e.g. =nav(viewport.mobile, item(\"📁 Files\",\"files\"), item(\"📊 Charts\", item(\"🥧 Pie\", '=cels(3,2,at(\"A1\",\"x\"))')))."
-      }
-    },
-    {
-      "key": "origin.navOpen",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.navOpen",
-        "segment": "origin",
-        "name": "navOpen",
-        "kind": "native",
-        "description": "dispatch target for a clicked nav leaf: a '=formula' action spawns a new window (trusted, capped by the kernel); any other action is a window key and focuses that window."
-      }
-    },
-    {
-      "key": "def",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "def",
-        "segment": "origin",
-        "name": "def",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(name, kind, source) - define a callable function from source in a compiler kind (\"js\" works out of the box). =def(\"double\", \"js\", \"x => x * 2\") then call it: =double(21) -> 42."
-      }
-    },
-    {
-      "key": "cdn",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "cdn",
-        "segment": "origin",
-        "name": "cdn",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(url) - load an external script/library from a URL via the kernel loadScript primitive. =cdn(\"https://cdn.jsdelivr.net/npm/canvas-confetti\") then call what it exposes."
-      }
-    },
-    {
-      "key": "ls",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "ls",
-        "segment": "origin",
-        "name": "ls",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(path?) - list a directory in OPFS (default /). dirs show a trailing /."
-      }
-    },
-    {
-      "key": "tree",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "tree",
-        "segment": "origin",
-        "name": "tree",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(path?) - recursive directory tree in OPFS (default /)."
-      }
-    },
-    {
-      "key": "mkdir",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "mkdir",
-        "segment": "origin",
-        "name": "mkdir",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(path) - make a directory in OPFS (recursive)."
-      }
-    },
-    {
-      "key": "rm",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "rm",
-        "segment": "origin",
-        "name": "rm",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(path) - remove a file or directory from OPFS (auto file-vs-dir)."
-      }
-    },
-    {
-      "key": "mv",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "mv",
-        "segment": "origin",
-        "name": "mv",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(from, to) - move/rename a file or directory in OPFS."
-      }
-    },
-    {
-      "key": "cat",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "cat",
-        "segment": "origin",
-        "name": "cat",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(path) - read a text file from OPFS into the cell."
-      }
-    },
-    {
-      "key": "write",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "write",
-        "segment": "origin",
-        "name": "write",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(path, text) - write text to a file in OPFS (create/overwrite)."
-      }
-    },
-    {
-      "key": "touch",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "touch",
-        "segment": "origin",
-        "name": "touch",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(path) - create an empty file in OPFS if it does not exist."
-      }
-    },
-    {
-      "key": "stat",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "stat",
-        "segment": "origin",
-        "name": "stat",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(path) - size / isDir / mtime of an OPFS path."
-      }
-    },
-    {
-      "key": "hash",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "hash",
-        "segment": "origin",
-        "name": "hash",
-        "kind": "native",
-        "description": "(seg, ...exclude) - a recent SHA-256 (hex) of worksheet `seg`s SOURCE cels (ValueCel value | FormulaCel formula-text; derived values excluded - sources only, so it is deterministic across replicas). Trailing-* exclude patterns drop ephemeral/IO ranges. =hash(\"budget\") / =hash(\"budget\", \"budget.live*\").",
-        "emitsTo": "origin.effects"
-      },
-      "locked": true
-    },
-    {
-      "key": "segs",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "segs",
-        "segment": "origin",
-        "name": "segs",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "() - list sheets saved to OPFS (=saveSeg/openSeg/delSeg manage them)."
-      }
-    },
-    {
-      "key": "saveSeg",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "saveSeg",
-        "segment": "origin",
-        "name": "saveSeg",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(name) - save the whole current sheet to an OPFS file under /plastron/sheets."
-      }
-    },
-    {
-      "key": "openSeg",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "openSeg",
-        "segment": "origin",
-        "name": "openSeg",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(name) - restore a sheet previously saved with saveSeg from OPFS."
-      }
-    },
-    {
-      "key": "delSeg",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "delSeg",
-        "segment": "origin",
-        "name": "delSeg",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(name) - delete a saved sheet from OPFS."
-      }
-    },
-    {
-      "key": "downloadSeg",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "downloadSeg",
-        "segment": "origin",
-        "name": "downloadSeg",
-        "kind": "native",
-        "description": "(name) - a button that downloads a saved sheet (.json) from OPFS."
-      }
-    },
-    {
-      "key": "db",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "db",
-        "segment": "origin",
-        "name": "db",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(name?) - open/create a sqlite database in OPFS (default main). returns a handle for sql()/tables()."
-      }
-    },
-    {
-      "key": "sql",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "sql",
-        "segment": "origin",
-        "name": "sql",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(db, query) - run SQL against a db handle; SELECT returns rows, writes persist to OPFS."
-      }
-    },
-    {
-      "key": "tables",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "tables",
-        "segment": "origin",
-        "name": "tables",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(db) - list the tables in a db."
-      }
-    },
-    {
-      "key": "dbseed",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "dbseed",
-        "segment": "origin",
-        "name": "dbseed",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(db, rows, table) - bulk-load a JSON array of row objects into a table. e.g. =dbseed(mydb, A1:C9, \"turtles\")"
-      }
-    },
-    {
-      "key": "schema",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "schema",
-        "segment": "origin",
-        "name": "schema",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(db) - introspect the database: tables, columns, primary keys and foreign keys (the basis for the visual query builder)."
-      }
-    },
-    {
-      "key": "dbexport",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "dbexport",
-        "segment": "origin",
-        "name": "dbexport",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(db, path) - serialize the database to a portable .db blob and write it to a file-store path (browsable / downloadable). e.g. =dbexport(mydb, \"/exports/mydb.db\")"
-      }
-    },
-    {
-      "key": "dbimport",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "dbimport",
-        "segment": "origin",
-        "name": "dbimport",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(db, path) - load a .db file from a file-store path INTO the database, replacing its contents. e.g. =dbimport(mydb, \"/exports/mydb.db\")"
-      }
-    },
-    {
-      "key": "interlinked",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "interlinked",
-        "segment": "origin",
-        "name": "interlinked",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(seg) - force-directed graph of a grid segment's cels (nodes) + their inputMap deps (edges), drawn on canvas."
-      }
-    },
-    {
-      "key": "simulate",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "simulate",
-        "segment": "origin",
-        "name": "simulate",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(fnName, n?) - def-driven animation: run a def'd frame fn (i -> [x, y]) n times and play the trajectory on an animated canvas."
-      }
-    },
-    {
-      "key": "save",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "save",
-        "segment": "origin",
-        "name": "save",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(name?) - persist your sheet (cell sources + def'd functions) to this browser's localStorage. =save() then reload and it's back; =save(\"v2\") for a named slot."
-      }
-    },
-    {
-      "key": "open",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "open",
-        "segment": "origin",
-        "name": "open",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(name?) - restore a saved sheet from localStorage. =open() loads the default slot; =open(\"v2\") a named one."
-      }
-    },
-    {
-      "key": "link",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "link",
-        "segment": "origin",
-        "name": "link",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(target?, base?) - a shareable URL that rebuilds a plastron from the page address (#f= hash, deflate+base64url). =link() encodes the WHOLE sheet; =link(\"元\") encodes one cell's source; =link(\"\", \"\") makes a relative #f= that works from a file. Paste the URL anywhere — it survives a tweet (t.co shortens it)."
-      }
-    },
-    {
-      "key": "unlink",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "unlink",
-        "segment": "origin",
-        "name": "unlink",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(url) - decode a =link() URL (or bare #f= payload) back to its formula source, as text. The inverse of link. Does NOT run it — paste the source into a cell yourself."
-      }
-    },
-    {
-      "key": "encrypt",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "encrypt",
-        "segment": "origin",
-        "name": "encrypt",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(passphrase?, target?, base?) - like link, but AES-256-GCM the source behind a passphrase. The URL parameter names the method: https://plastron.ca/#aes256gcm=<ciphertext>. =encrypt() encrypts the WHOLE sheet; =encrypt(\"\", \"元\") one cell. Omit the passphrase to be PROMPTED (so it never lands in the sheet). Pipeline: deflate → AES-256-GCM (PBKDF2-SHA256, 600k) → base64url; AES-256 is quantum-resistant. The URL is opaque; share the passphrase out-of-band. Caveat: the decrypted formula lives in browser memory — run a local index.html offline for high stakes."
-      }
-    },
-    {
-      "key": "decrypt",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "decrypt",
-        "segment": "origin",
-        "name": "decrypt",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(url, passphrase?) - decode a =encrypt() URL (or bare #aes256gcm= payload) back to its formula source, as text. The inverse of encrypt. Omit the passphrase to be PROMPTED. Does NOT run it — paste the source into a cell yourself. A wrong passphrase or tampered link yields an error (GCM authenticates)."
-      }
-    },
-    {
-      "key": "otpEncrypt",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "otpEncrypt",
-        "segment": "origin",
-        "name": "otpEncrypt",
-        "kind": "native",
-        "description": "(target?) - ONE-TIME-PAD encrypt with UNCONDITIONAL secrecy (perfect, quantum-immune). Renders a file picker: choose a pad file of random bytes (≥ message length + 32) shared with your peer. Produces https://plastron.ca/#otp=<padName>.<ciphertext> — ciphertext = formula XOR pad, plus a one-time Carter-Wegman MAC for unconditional integrity. NO compression (would leak length info). One pad file = ONE message: DELETE it from both stacks after use; never reuse a pad. target \"\" = whole sheet; a cell key = its source."
-      }
-    },
-    {
-      "key": "otpDecrypt",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "otpDecrypt",
-        "segment": "origin",
-        "name": "otpDecrypt",
-        "kind": "native",
-        "description": "(url) - decode a =otpEncrypt() #otp= link. Renders a file picker for the matching pad (the URL names which pad). Returns the formula source as text in the formula bar; does NOT run it. A wrong pad or tampered message fails the MAC check. Delete the pad after use."
-      }
-    },
-    {
-      "key": "otpLoader",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "otpLoader",
-        "segment": "origin",
-        "name": "otpLoader",
-        "kind": "native",
-        "description": "(padId, payload) - the boot view a #otp= URL renders as 元: a file picker to load the named pad and decrypt the shared plastron (kernel stays LOCKED). Used by bootFromHash; not usually called by hand."
-      }
-    },
-    {
-      "key": "origin.otpEncrypt",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.otpEncrypt",
-        "segment": "origin",
-        "name": "origin.otpEncrypt",
-        "kind": "native",
-        "description": "(state, target, event) - dispatch target: XOR the source with the picked pad → an #otp= URL in the formula bar; warns to delete the spent pad."
-      }
-    },
-    {
-      "key": "origin.otpDecrypt",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.otpDecrypt",
-        "segment": "origin",
-        "name": "origin.otpDecrypt",
-        "kind": "native",
-        "description": "(state, url, event) - dispatch target: decrypt an #otp= payload with the picked pad → the formula source in the formula bar (does not run it)."
-      }
-    },
-    {
-      "key": "origin.otpUnlock",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.otpUnlock",
-        "segment": "origin",
-        "name": "origin.otpUnlock",
-        "kind": "native",
-        "description": "(state, payload, event) - boot dispatch target: load the pad → decrypt → the shared formula becomes 元 (still jailed/locked)."
-      }
-    },
-    {
-      "key": "kernel",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "kernel",
-        "segment": "origin",
-        "name": "kernel",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(seed, preset?) - spawn a QUARANTINED child plastron from a seed formula in a fresh segment (app1, app2, …). preset = locked (default) | compute | net | trusted, capped by THIS kernel's trust. The child's cells live under <seg>.*; gated capabilities (code/net/storage) come back #DENIED unless the preset grants them. A #f= share URL is just a locked seed."
-      }
-    },
-    {
-      "key": "jail",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "jail",
-        "segment": "origin",
-        "name": "jail",
-        "kind": "native",
-        "emitsTo": "origin.effects",
-        "description": "(seed) - render a SANDBOXED iframe running the seed formula as its OWN kernel. allow-scripts but no allow-same-origin → opaque origin: it cannot touch localStorage, the parent page, or other tabs. The browser's real Layer-A jail for untrusted plastrons."
-      }
-    },
-    {
-      "key": "jailask",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "jailask",
-        "segment": "origin",
-        "name": "jailask",
-        "kind": "native",
-        "description": "(payload) - JAIL ONLY: round-trip a request to the PARENT over the postMessage bridge and return its reply. The jail has no keys/network of its own; the parent mediates (e.g. an LLM call). Outside a jail it is a no-op."
-      }
-    },
-    {
-      "key": "origin.savepage",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.savepage",
-        "segment": "origin",
-        "name": "origin.savepage",
-        "kind": "native",
-        "description": "(state) - download the running plastron as a single self-contained 龜甲.html you can re-open or redeploy anywhere. Wired to the ⬇ 龜甲 button in the desktop's upper-right corner."
-      }
-    },
-    {
-      "key": "origin.tone",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.tone",
-        "segment": "origin",
-        "name": "origin.tone",
-        "kind": "native",
-        "description": "(state, freq) - play ONE Web Audio oscillator note at the given frequency (Hz). Loads the sound segment on first use. Wire it to a button: (on \"click\" \"origin.tone\" 440)."
-      }
-    },
-    {
-      "key": "origin.music",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.music",
-        "segment": "origin",
-        "name": "origin.music",
-        "kind": "native",
-        "description": "(state) - play a short melody (Ode to Joy) via the Web Audio sound segment. Browser audio is autoplay-gated, so trigger it from a click."
-      }
-    },
-    {
-      "key": "origin.compose",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.compose",
-        "segment": "origin",
-        "name": "origin.compose",
-        "kind": "native",
-        "description": "(state) - start 'Symphony of Cels', an ORIGINAL generative phase piece (pentatonic voices at incommensurate periods, evolving harmony). Web Audio autoplay-gated → start from a click. origin.composeStop ends it."
-      }
-    },
-    {
-      "key": "origin.composeStop",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.composeStop",
-        "segment": "origin",
-        "name": "origin.composeStop",
-        "kind": "native",
-        "description": "(state) - stop the generative piece started by origin.compose."
-      }
-    },
-    {
-      "key": "origin.playmelody",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.playmelody",
-        "segment": "origin",
-        "name": "origin.playmelody",
-        "kind": "native",
-        "description": "(state, seg) - read column A of sheet seg as a RANGE of note frequencies (Hz) and play them in sequence. Type numbers down a column to write a tune; wire a button: on(\"click\",\"origin.playmelody\",\"melody\")."
-      }
-    },
-    {
-      "key": "origin.tile",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.tile",
-        "segment": "origin",
-        "name": "origin.tile",
-        "kind": "native",
-        "description": "(state, segs?) - auto-layout worksheet windows: size each to its CONTENT (capped to the viewport) and PACK them non-overlapping instead of stacked. segs = a list/comma-string, or all open windows."
-      }
-    },
-    {
-      "key": "origin.autoload",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.autoload",
-        "segment": "origin",
-        "name": "origin.autoload",
-        "kind": "native",
-        "description": "(state) - restore the default saved sheet on boot; the host calls this after hydrate."
-      }
-    },
-    {
-      "key": "origin.seedWallpaper",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.seedWallpaper",
-        "segment": "origin",
-        "name": "origin.seedWallpaper",
-        "kind": "native",
-        "description": "(state) - write the shipped wallpaper (windows.wallpaper data-URI) into an OPFS file at /desktop/wallpaper.<ext> and point desktop.A2 at it, so the desktop background LOADS FROM A FILE in OPFS, not a hard-coded constant. Idempotent; preserves a user-set wallpaper path. Host-called once after boot."
-      }
-    },
-    {
-      "key": "origin.seedIndexHtml",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "origin.seedIndexHtml",
-        "segment": "origin",
-        "name": "origin.seedIndexHtml",
-        "kind": "native",
-        "description": "(state) - seed the page's OWN served HTML (document.documentElement.outerHTML) into OPFS at /plastron/index.html so the file explorer isn't empty — it shows 'the index.html that plastron makes'. Best-effort; no-op off-DOM or when the file-store backend is none. Host-called once after boot. NOTE: only OPFS contents are reachable from the browser sandbox — the full repo tree is not."
-      }
-    },
-    {
-      "key": "view.refresh",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "view.refresh",
-        "segment": "origin",
-        "name": "view.refresh",
-        "kind": "native",
-        "description": "host hook called by settleStructural after out-of-band structure materializes — rebuilds 元.cells + repaints"
-      },
-      "locked": true
-    },
-    {
-      "key": "元.viewConfig",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "元.viewConfig",
-        "segment": "origin",
-        "name": "元.viewConfig"
-      },
-      "v": {
-        "base": "元",
-        "draftCel": "元.draft",
-        "editHandler": "origin.edit",
-        "keyHandler": "origin.key"
-      }
-    },
-    {
-      "key": "mount",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "mount",
-        "segment": "origin",
-        "name": "mount",
-        "kind": "native",
-        "description": "(target content) - pin a dom under another element of the sheet instead of in the cell that holds it. target is a selector matched against the view: \".sheet\" pins under the cells, \"div.cell\" under the first cell, \"#id\" by id; a bare word (\"top\"/\"bottom\") is a region anchor laid out around the sheet. Deleting the formula removes it."
-      }
-    },
-    {
-      "key": "viewfire",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "viewfire",
-        "segment": "origin",
-        "name": "viewfire",
-        "kind": "native",
-        "description": "(vals) - the gen-2 desktop compositor behind 元.view (replaces sheetView): vals is the cell values of every whitelisted self-mounting frame (cellKeys); look each up in the mount registry and splice the windows into the positioned .origin desktop, mounted at #app. Renders nothing of its own."
-      }
-    },
-    {
-      "key": "win.layout",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "win.layout",
-        "segment": "origin",
-        "description": "Desktop layout argument: \"rowflow\" (default) lays WIDE windows in rows that wrap and overflow downward; \"masonry\" packs them into narrow screen-width columns; \"free\" leaves them. 元 leads top-left. Set visibly via segment(\"rowflow\"|\"masonry\"|\"free\", ...)."
-      },
-      "v": "rowflow"
-    },
-    {
-      "key": "win.geom",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "win.geom",
-        "segment": "origin",
-        "name": "win.geom",
-        "description": "per-window geometry (x/y/w/h/z) and tab relationships (host) keyed by sheet segment. readme is seeded BIG and roughly centered (x 300, y 90, w 860, h 680) so the welcome card lands front-and-centre; chat/turtlecharts carry only host so they tab into clients/turtles."
-      },
-      "v": {}
-    },
-    {
-      "key": "winsheet.drag",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "winsheet.drag",
-        "segment": "origin",
-        "name": "winsheet.drag"
-      },
-      "v": null
-    },
-    {
-      "key": "segment",
-      "celType": "LockedLambdaCel",
-      "locked": true,
-      "metadata": {
-        "key": "segment",
-        "segment": "origin",
-        "name": "segment",
-        "kind": "native",
-        "genesis": true,
-        "description": "genesis: compose a SEGMENT (document) from cels()/winapp()/chatapp()/def()/cel() parts in one formula, e.g. =segment(...). (was doc.)"
-      }
-    }
-  ]
+ "name": "origin",
+ "cels": [
+  {
+   "key": "元",
+   "celType": "FormulaCel",
+   "metadata": {
+    "key": "元",
+    "segment": "origin",
+    "name": "元",
+    "description": "cell A1 — the origin cell. the desktop itself is now the `desktop` origin-application (wallpaper, icons, taskbar, state graph); 元 is the base spreadsheet cell the 🧮 Origin launcher restores. a cell whose output renders elsewhere shows its SOURCE here. type a formula in any cell to grow an app. (kept the default `f` parser — 元 is boot substrate, so it must not depend on the infix compiler which ships in the sheet segment.)",
+    "parser": "f"
+   },
+   "f": "(dom \"div\" (style \"padding\" \"1.2rem\" \"font\" \".92rem ui-monospace,monospace\" \"max-width\" \"42rem\" \"line-height\" \"1.5\") (dom \"h2\" \"🧮 origin\") \"a reactive spreadsheet that is also a desktop. type a formula in any cell to grow an app. the desktop icons launch apps, right-click the background for display settings, and the round 🕸 button opens the live state graph.\")"
+  },
+  {
+   "key": "元.mount",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "元.mount",
+    "segment": "origin",
+    "name": "元.mount",
+    "description": "where the sheet view mounts. the host's one knob; null hides it."
+   },
+   "v": "#app"
+  },
+  {
+   "key": "元.editing",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "元.editing",
+    "segment": "origin",
+    "name": "元.editing",
+    "description": "key of the cell currently being edited (null = none)."
+   },
+   "v": null
+  },
+  {
+   "key": "sheet.editing",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "sheet.editing",
+    "segment": "origin",
+    "name": "sheet.editing",
+    "description": "ASCII mirror of 元.editing (kept in sync by origin.edit/select/key) — the editing cell key a workbook grid formula can reference (infix cel keys are ASCII; the kanji 元.* can't appear in a formula)."
+   },
+   "v": null
+  },
+  {
+   "key": "sheet.selected",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "sheet.selected",
+    "segment": "origin",
+    "name": "sheet.selected",
+    "description": "ASCII mirror of 元.selected (kept in sync by origin.select/key) — the selected cell key a workbook grid formula can reference."
+   },
+   "v": null
+  },
+  {
+   "key": "元.draft",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "元.draft",
+    "segment": "origin",
+    "name": "元.draft",
+    "description": "the edit input's in-progress text."
+   },
+   "v": ""
+  },
+  {
+   "key": "sheet.draft",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "sheet.draft",
+    "segment": "origin",
+    "name": "sheet.draft",
+    "description": "ASCII mirror of 元.draft for DISPLAY — seeded with the selected cell's source on select/edit/commit so a formula bar (sheetbar) can reference it. NOT written on each keystroke (the bar's input writes 元.draft directly), so the bar never re-renders mid-edit."
+   },
+   "v": ""
+  },
+  {
+   "key": "元.error",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "元.error",
+    "segment": "origin",
+    "name": "元.error",
+    "description": "compile/parse error for the cell being edited (null = none); shown under the active editor so a bad formula doesn't fail silently."
+   },
+   "v": null
+  },
+  {
+   "key": "元.selected",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "元.selected",
+    "segment": "origin",
+    "name": "元.selected",
+    "description": "key of the currently SELECTED cell (Excel single-click). The cell keeps rendering its VALUE; the formula bar shows this cell's source and edits commit here. null = no selection."
+   },
+   "v": null
+  },
+  {
+   "key": "元.cells",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "元.cells",
+    "segment": "origin",
+    "name": "元.cells",
+    "description": "ordered spreadsheet cell keys: 元 (A1) + genesis-created grid cels."
+   },
+   "v": [
+    "元"
+   ]
+  },
+  {
+   "key": "元.srcs",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "元.srcs",
+    "segment": "origin",
+    "name": "元.srcs",
+    "description": "cell SOURCES parallel to 元.cells — the view shows a cell's source when its value renders elsewhere (a mount)."
+   },
+   "v": [
+    "(mount \".origin\"\n  (dom \"div.readme\" (style \"max-width\" \"47rem\" \"margin\" \"0 auto\" \"padding\" \"1.1rem 1.3rem\" \"border\" \"1px solid #8884\" \"border-radius\" \".7rem\" \"background\" \"#8881\" \"font\" \"13px/1.5 ui-monospace, monospace\")\n    (canvas 560 92 (style \"display\" \"block\" \"border-radius\" \".4rem\" \"margin\" \"0 auto .35rem\") (rect 0 0 560 92 \"#16161f\") (text 18 42 \"plastron 🐢\" \"#f5f5f7\" \"bold 25px system-ui\") (text 18 70 \"a spreadsheet tool on an index.html — steal and use this anywhere\" \"#8a8a99\" \"12px system-ui\"))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"this readme is the formula in the cel above. drag that cell's corner to resize it, or replace its contents with your own formulas. for more cels, use a cels formula:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cels(8, 5)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a worksheet of editable cels\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cels(\\\"in\\\", 4, 3, \\\"out\\\", 4, 3)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a workbook of named sheets\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cels(\\\"in\\\", 4, 3, at(\\\"a1\\\", \\\"apple\\\"), at(\\\"b2\\\", \\\"=1+1\\\"))\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a sheet with initial cell values & formulas\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"or make a single new cel beside this one:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cel(\\\"monkey\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a new cel holding the value monkey\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=cel(\\\"cel(\\\\\\\"banana\\\\\\\")\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a new cel holding a formula (that makes another cel)\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"you can make your own functions and use them in formulas after:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=def(\\\"double\\\", \\\"js\\\", \\\"x => x * 2\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"define a function — js or py (first py use downloads pyodide, ~10MB)\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=double(21)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"call it → 42\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"you can make dom objects with formulas — and a little universe running on canvas:\")\n    (canvas 300 170 (style \"display\" \"block\" \"border-radius\" \".4rem\" \"margin\" \"0 auto .35rem\") (rect 0 0 300 170 \"#0a0a18\") (circle 150 85 12 \"#ffd34e\") (orbit 150 85 34 4 3 \"#7fd0ff\") (orbit 150 85 58 6 6 \"#e6677a\") (orbit 150 85 84 5 11 \"#9fe89f\"))\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=dom(\\\"h2\\\", style(\\\"color\\\", \\\"tomato\\\"), \\\"hi\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a styled dom element\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=canvas(300,170, rect(0,0,300,170,\\\"#0a0a18\\\"), circle(150,85,12,\\\"#ffd34e\\\"), orbit(150,85,34,4,3,\\\"#7fd0ff\\\"), orbit(150,85,58,6,6,\\\"#e6677a\\\"), orbit(150,85,84,5,11,\\\"#9fe89f\\\"))\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"↑ that animated solar system\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"inspect functions and the plastron segments they came from:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=inspect(\\\"mount\\\")\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a function's signature + source\")) (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=segments()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"the plastron segments loaded\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"talk to grok — with an api key:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=grok(\\\"say hi in 5 words\\\", key)\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"a chat completion (key = a cel holding your api key)\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"save your work:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=save()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"persist this sheet to your browser — reload and it's back\"))))\n    (dom \"p.fx-say\" (style \"margin\" \".7rem 0 .25rem\" \"font-family\" \"system-ui\") \"share your whole app as one formula — paste a friend's doc(...) into the cel above to run it:\")\n    (dom \"table.fx\" (style \"border-collapse\" \"collapse\" \"width\" \"100%\" \"margin\" \"0 0 .2rem\") (dom \"tbody\" (dom \"tr\" (dom \"td.fx-code\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"font-family\" \"ui-monospace, monospace\" \"color\" \"CanvasText\" \"white-space\" \"pre-wrap\" \"word-break\" \"break-word\") \"=seed()\") (dom \"td.fx-desc\" (style \"border\" \"1px solid #8884\" \"padding\" \".22rem .5rem\" \"vertical-align\" \"top\" \"font-size\" \".8rem\" \"color\" \"GrayText\" \"font-family\" \"system-ui\" \"white-space\" \"normal\") \"serialize this ENTIRE document to one doc(...) formula you can save or send\"))))\n    (dom \"p.fx-repo\" (style \"margin\" \".9rem 0 0\") (dom \"a\" (attr \"href\" \"https://github.com/rheophile10/plastron\" \"target\" \"_blank\") (style \"color\" \"LinkText\") \"github.com/rheophile10/plastron →\"))))"
+   ]
+  },
+  {
+   "key": "元.view",
+   "celType": "FormulaCel",
+   "metadata": {
+    "key": "元.view",
+    "segment": "origin",
+    "name": "元.view",
+    "parser": "f",
+    "schema": "render-spec",
+    "channel": [
+     "dom.paint"
+    ],
+    "inputMap": {
+     "vals": [
+      "元"
+     ]
+    },
+    "description": "the FRAME-FIRER (gen-2). Its inputMap.vals lists every whitelisted self-mounting frame cel (cellKeys); referencing vals makes them all deps so they fire + paint. Renders nothing itself — 元, =cels grids, docs, the wiki and the desktop chrome each self-mount their own win.<id>.frame. (Was the gen-1 sheetView render loop.)"
+   },
+   "f": "(viewfire vals)"
+  },
+  {
+   "key": "元.content",
+   "celType": "FormulaCel",
+   "metadata": {
+    "key": "元.content",
+    "segment": "win.元",
+    "name": "content",
+    "parser": "f",
+    "description": "the 元 base sheet as a gen-2 worksheet body: a single-cell editable sheetgrid whose A1 is the bare 元 cel (the readme). Edit A1 to grow an app; =cels makes more worksheet windows."
+   },
+   "f": "(sheetpane (sheetbar sheet.selected sheet.draft) (sheetgrid \"元\" (sheetcells \"元\" 元) (gridopts sheet.editing sheet.selected sheet.draft)))"
+  },
+  {
+   "key": "win.元.state",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "win.元.state",
+    "segment": "win.元",
+    "name": "state",
+    "description": "the 元 window state (gen-2). Hidden at boot when the desktop hydrates (origin-main sets closed:1); the 🧮 Origin launcher raises it."
+   },
+   "v": {
+    "ref": "win.元.state",
+    "x": 140,
+    "y": 88,
+    "w": 600,
+    "h": 440,
+    "z": 1,
+    "min": 0,
+    "max": 0,
+    "closed": 0,
+    "title": "🧮 origin",
+    "tabs": [
+     {
+      "ref": "元.content",
+      "title": "元"
+     }
+    ],
+    "active": 0
+   }
+  },
+  {
+   "key": "win.元.frame",
+   "celType": "FormulaCel",
+   "metadata": {
+    "key": "win.元.frame",
+    "segment": "win.元",
+    "name": "frame",
+    "parser": "f",
+    "channel": [
+     "dom.paint"
+    ],
+    "description": "the 元 window's self-mounting gen-2 frame (replaces the sheetView render of 元 + win.geom)."
+   },
+   "f": "(mount \".origin\" (wframe win.元.state win.active 元.content))"
+  },
+  {
+   "key": "cels",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "cels",
+    "segment": "origin",
+    "name": "cels",
+    "kind": "native",
+    "genesis": true,
+    "description": "genesis: worksheets of editable cels, each like 元. TOP-LEVEL ONLY — a genesis builds the sheet; it is never a child of dom()/canvas() (nested it stringifies to \"[object Object]\" and never materializes). cels(rows, cols) makes one sheet (auto-named g<r>x<c>); cels(rows, cols, \"name\") names it; cels(\"in\", 4, 3, \"out\", 4, 3) makes a WORKBOOK; cels(\"in\", 4, 3, at(\"a1\", \"apple\"), at(\"b2\", \"cel(\\\"monkey\\\")\")) fills cells with initial values/formulas. To chart a grid, put the chart in a cell OF that grid: at(\"A5\", '=canvas(360,200, barchart(sales!A2:A4, sales!B2:B4))'). delete the formula -> swept."
+   }
+  },
+  {
+   "key": "at",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "at",
+    "segment": "origin",
+    "name": "at",
+    "kind": "native",
+    "description": "at(addr, content) - one cell's initial content for a cels() grid, e.g. cels(\"in\", 4, 3, at(\"a1\", \"apple\"))."
+   }
+  },
+  {
+   "key": "geom",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "geom",
+    "segment": "origin",
+    "name": "geom",
+    "kind": "native",
+    "description": "geom(x, y, w, h [, minW, minH]) - a cels() grid's WINDOW geometry, CSS-style: x/y = left/top, w/h = the (proportional) width/height, minW/minH = min-width/min-height FLOORS the window never renders or resizes below (like CSS width:50%; min-width:340px). A value in (0,1] is a PROPORTION of the viewport (→ viewport.w/.h); >1 is absolute pixels. e.g. cels(\"app\", 4, 4, geom(0.1, 0.1, 0.5, 0.4, 340, 200), at(\"a1\", …)). Written into win.geom[name] the first time the window materializes; a later user drag/resize is preserved."
+   }
+  },
+  {
+   "key": "doc",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "doc",
+    "segment": "origin",
+    "name": "doc",
+    "kind": "native",
+    "genesis": true,
+    "description": "DEPRECATED legacy alias of seg/甲. genesis: compose a whole document from cels()/def()/cel() parts in one formula, e.g. doc(cels(\"in\",2,2,at(\"a1\",\"x\")), def(\"f\",\"js\",\"x=>x\")). What seed() emits — paste it into 元 to recreate an app."
+   }
+  },
+  {
+   "key": "seed",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "seed",
+    "segment": "origin",
+    "name": "seed",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "() - serialize the WHOLE document to a single recreating formula (a doc(...) / cels(...) you can paste into 元). Callable from any cel; its value becomes the seed source."
+   }
+  },
+  {
+   "key": "export",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "export",
+    "segment": "origin",
+    "name": "export",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(segment?, form?) - serialize a document segment (or, with no arg, the WHOLE document stack); the boot substrate is never included. form \"archive\" (default) = a lossless 甲骨 json string for =import(); form \"formula\" = the re-minting formula (=cels(...)/=def(...)) for a workbook/function segment. Whole-doc formula is also =seed()/=link()."
+   }
+  },
+  {
+   "key": "import",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "import",
+    "segment": "origin",
+    "name": "import",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(src) - load an archive json string (or a =formula) into the document stack: ADD a new segment, or wholesale-REPLACE a same-named one. Refuses a boot-set name (net/dom/origin/…). =import(\"{...}\")"
+   }
+  },
+  {
+   "key": "origin.run",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.run",
+    "segment": "origin",
+    "name": "origin.run",
+    "kind": "native",
+    "description": "(state, cellKey) - set the cell's content from the draft and re-evaluate; rebuild the cell list (new grids in, swept out); 元 un-deletable (empty restores readme)."
+   }
+  },
+  {
+   "key": "origin.edit",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.edit",
+    "segment": "origin",
+    "name": "origin.edit",
+    "kind": "native",
+    "description": "(state, cellKeyOrForceSpec) - start INLINE editing a cell (seed draft with its source); the Excel double-click path (single-click SELECTS via origin.select). Payload is the cell key, or { key, force: true } to start editing past the form-control guard."
+   }
+  },
+  {
+   "key": "origin.select",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.select",
+    "segment": "origin",
+    "name": "origin.select",
+    "kind": "native",
+    "description": "(state, cellKey, event) - SELECT a cell (Excel single-click): set 元.selected + 元.selectedSrc + seed 元.draft from its source, WITHOUT swapping it to the inline editor, so the grid keeps showing the value while the formula bar shows the source. A click on a form control a formula rendered is left alone."
+   }
+  },
+  {
+   "key": "origin.fire",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.fire",
+    "segment": "origin",
+    "name": "origin.fire",
+    "kind": "native",
+    "description": "(state, cellKey?) - FIRE (re-evaluate) the selected cell (or the given key): a FormulaCel re-applies its source via setValue (recompile + re-cascade); a ValueCel re-writes its own value (re-cascades dependents). Wired to the 🔫 button on the formula bar."
+   }
+  },
+  {
+   "key": "origin.key",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.key",
+    "segment": "origin",
+    "name": "origin.key",
+    "kind": "native",
+    "description": "(state, cellKey, event) - Enter commits the draft + moves the active cell down a row."
+   }
+  },
+  {
+   "key": "origin.gridkey",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.gridkey",
+    "segment": "origin",
+    "name": "origin.gridkey",
+    "kind": "native",
+    "description": "global keydown over a SELECTED-but-not-editing cell: arrows/Tab move the selection, Enter moves down, a printable key starts editing it (the char shows in the cell + mirrors in the formula bar). Excel-style grid navigation."
+   }
+  },
+  {
+   "key": "origin.effects",
+   "celType": "ChannelCel",
+   "metadata": {
+    "key": "origin.effects",
+    "segment": "origin",
+    "name": "origin.effects",
+    "drain": "origin.drain",
+    "description": "load/cels requests commit here (effects at drain)."
+   },
+   "v": {
+    "drain": "origin.drain"
+   },
+   "locked": true
+  },
+  {
+   "key": "origin.drain",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.drain",
+    "segment": "origin",
+    "name": "origin.drain",
+    "kind": "native",
+    "description": "(items) - execute cels (segment listing) requests; result text replaces the request as the cel's value."
+   }
+  },
+  {
+   "key": "members",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "members",
+    "segment": "origin",
+    "name": "members",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(segment) - readable listing of a segment's cels (skill first; locked marked)."
+   }
+  },
+  {
+   "key": "inspect",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "inspect",
+    "segment": "origin",
+    "name": "inspect",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(key) - the cel's full definition (celType, value, formula, metadata) as readable JSON."
+   }
+  },
+  {
+   "key": "segments",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "segments",
+    "segment": "origin",
+    "name": "segments",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "() - every loaded segment with role, version, dependencies."
+   }
+  },
+  {
+   "key": "origin.install",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.install",
+    "segment": "origin",
+    "name": "origin.install",
+    "kind": "native",
+    "description": "(state, archive) - persist an origin-application segment ARCHIVE (dumpSegments shape {segments,manifests}, object or JSON string) into the OPFS segment-store via store.putRaw WITHOUT loading it into state. Idempotent at name granularity (an already-stored app is skipped). The ONLY way the archive's cels reach state is a later origin.launch (hydrate-closure); install never hydrates. Returns a status string. (Distinct from winapps' app.assets, which fetches asset FILES.)"
+   }
+  },
+  {
+   "key": "installBakedApps",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "installBakedApps",
+    "segment": "origin",
+    "name": "installBakedApps",
+    "kind": "native",
+    "description": "(state, manifest?) - first-run install of the baked APPLICATION + document segments: read the inert #plastron-apps manifest the bundle baked into the page (a { name: archive } map) and origin.install each entry (OPFS only, never state). Pass `manifest` to bypass the DOM read (tests/headless). No-op off-DOM or without a filesystem. A broken baked app is logged, not thrown."
+   }
+  },
+  {
+   "key": "refreshApps",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "refreshApps",
+    "segment": "origin",
+    "name": "refreshApps",
+    "kind": "native",
+    "description": "() - factory-refresh the BAKED apps + demo docs to the build this page shipped with: re-installs every archive from the baked manifest, flipping each baked segment's latest back to the shipped version. User-CREATED segments are never touched; a user's saved edits to a SHIPPED demo doc are shadowed (prior versions stay in the store). Boot already upgrades automatically when a baked archive's VERSION bumps — this verb forces it for same-version changes. Reload the page afterwards so boot-hydrated segments (the desktop) re-hydrate.",
+    "example": "=refreshApps()"
+   }
+  },
+  {
+   "key": "origin.update",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "origin.update",
+    "segment": "origin",
+    "name": "origin.update",
+    "description": "the pending update notice {id, notice} — {} when this profile has seen the current build. Seeded {} so the desktop banner formula's dep edge is LIVE from hydrate (the dynamic-cel lesson: a cel minted later can't grow edges into already-compiled formulas). Filled by origin.updateCheck at boot; cleared by origin.updateLater / the post-refresh reload."
+   },
+   "v": {}
+  },
+  {
+   "key": "origin.updateCheck",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.updateCheck",
+    "segment": "origin",
+    "name": "origin.updateCheck",
+    "kind": "native",
+    "description": "(state) - boot hook (boot.run runs it after installBakedApps): read the page's baked #plastron-update build stamp {id, notice}, compare against the persisted last-seen id (/plastron/update-seen). Mismatch fills origin.update so the desktop 🔄 chip surfaces. A FRESH profile (no marker file) is current by definition — the marker initializes to the page's id, no banner. No-ops off-DOM, without OPFS, or when the host didn't bake the stamp.",
+    "example": "=origin.updateCheck()"
+   }
+  },
+  {
+   "key": "updatebanner",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "updatebanner",
+    "segment": "origin",
+    "name": "updatebanner",
+    "kind": "native",
+    "description": "(update) - PURE renderer for the desktop update chip: a hidden div while `update` is {}; else a fixed top-right pill '🔄 plastron updated — what's new' whose click dispatches origin.updateOpen. The desktop app mounts it via =mount('.origin', updatebanner(origin.update)), so the chip derives reactively from the origin.update cel.",
+    "example": "=updatebanner(origin.update)"
+   }
+  },
+  {
+   "key": "origin.updateOpen",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.updateOpen",
+    "segment": "origin",
+    "name": "origin.updateOpen",
+    "kind": "native",
+    "description": "(state) - the update chip click: open the what's-new WINDOW — the shipped UPDATE.md notice (pre-wrap) over two buttons: [🔄 Refresh demo docs & reload] (origin.updateRefresh) and [Later] (origin.updateLater). A wopen window whose content cel is the built vnode (data, not formula), raised above open windows."
+   }
+  },
+  {
+   "key": "origin.updateRefresh",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.updateRefresh",
+    "segment": "origin",
+    "name": "origin.updateRefresh",
+    "kind": "native",
+    "description": "(state) - the notice window's refresh button: force-reinstall every baked app + demo doc (the banner flow IS the consent, so no confirm — unlike =refreshApps()), persist the seen build id, then location.reload() so boot-hydrated segments come up on the new build. User-created segments are untouched; edits to shipped demo docs are shadowed, not deleted."
+   }
+  },
+  {
+   "key": "origin.updateLater",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.updateLater",
+    "segment": "origin",
+    "name": "origin.updateLater",
+    "kind": "native",
+    "description": "(state) - the notice window's dismiss button: persist the seen build id (the banner stays gone until the NEXT build ships — =refreshApps() remains the manual path), clear origin.update (the chip unmounts reactively), close the window."
+   }
+  },
+  {
+   "key": "origin.launch",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.launch",
+    "segment": "origin",
+    "name": "origin.launch",
+    "kind": "native",
+    "description": "(state, app) - open an installed origin-application by name: hydrate its segment closure from the store (idempotent), then run its conventional ENTRY cel `<app>.entry` so it materializes its window(s). The navbar/icon click path. The app must already be installed (boot.run installs the baked set)."
+   }
+  },
+  {
+   "key": "boot.run",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "boot.run",
+    "segment": "origin",
+    "name": "boot.run",
+    "kind": "native",
+    "description": "(state, opts?) - the origin-application boot sequence: install every baked app archive into the store (OPFS, not state), then launch the desktop shell. Tests pass {manifest, open} to drive it headlessly; open:false installs only."
+   }
+  },
+  {
+   "key": "taskbarBar",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "taskbarBar",
+    "segment": "origin",
+    "name": "taskbarBar",
+    "kind": "native",
+    "description": "(active, ...states) - render the desktop bottom taskbar: one chip per non-closed, non-docked window, the active one bordered, a minimized one dimmed. Receives each window's state VALUE; click → desktop.taskClick. Built reactively by desktop.taskbarGenesis."
+   }
+  },
+  {
+   "key": "desktop.taskbarGenesis",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.taskbarGenesis",
+    "segment": "origin",
+    "name": "desktop.taskbarGenesis",
+    "kind": "native",
+    "genesis": true,
+    "description": "(list, active) - re-derive the taskbar from win.list. A FormulaCel (desktop.taskbarGenesis win.list win.active) re-fires when the window set or focus changes and returns a genesis whose desktop.taskbar.frame splices in each window's state cel by name, so the bar tracks min/raise/title reactively."
+   }
+  },
+  {
+   "key": "desktop.taskClick",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.taskClick",
+    "segment": "origin",
+    "name": "desktop.taskClick",
+    "kind": "native",
+    "description": "(state, ref) - click a taskbar chip: a minimized window restores (clear min + raise); the active one minimizes; any other open one raises."
+   }
+  },
+  {
+   "key": "desktop.graphbtn",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.graphbtn",
+    "segment": "origin",
+    "name": "desktop.graphbtn",
+    "kind": "native",
+    "description": "() - the round lower-left desktop button that opens the state force-graph (dispatches desktop.stategraph)."
+   }
+  },
+  {
+   "key": "desktop.stategraph",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.stategraph",
+    "segment": "origin",
+    "name": "desktop.stategraph",
+    "kind": "native",
+    "description": "(state) - open a force-graph of the whole state in a real window-segment window (drag/resize/minimize/fullscreen/close via wframe): one node per segment, sized by how much memory it uses, origin-application segments tinted distinctly. Reuses the forcegraph segment (fg.set + fgview)."
+   }
+  },
+  {
+   "key": "origin.celtopo",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.celtopo",
+    "segment": "origin",
+    "name": "origin.celtopo",
+    "kind": "native",
+    "description": "(state, key?) - open the runCycle dependency CONE of a cel (defaults to the selected cell) as a force-graph window: upstream deps (blue) it depends on + downstream dependents (green) that depend on it + the cel itself pinned (gold), edges = inputMap propagation arrows. The 🔗 button on the formula bar dispatches it; clicking a node re-centers. Reuses the forcegraph segment (fg.set + fgview)."
+   }
+  },
+  {
+   "key": "desktop.graphNode",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.graphNode",
+    "segment": "origin",
+    "name": "desktop.graphNode",
+    "kind": "native",
+    "description": "(state, seg) - click a state-graph node: open that segment in the app editor (origin.editapp) to edit its cels' sources."
+   }
+  },
+  {
+   "key": "desktop.bg",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.bg",
+    "segment": "origin",
+    "name": "desktop.bg",
+    "kind": "native",
+    "description": "(src, fallback) - the desktop wallpaper image. img() hydrates a /path src to an objectURL via file-store, so src can be an OPFS path or a data-URI; fallback covers an empty wallpaper. Right-click opens display settings (desktop.bgmenu)."
+   }
+  },
+  {
+   "key": "desktop.bgmenu",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.bgmenu",
+    "segment": "origin",
+    "name": "desktop.bgmenu",
+    "kind": "native",
+    "description": "(state) - right-click the wallpaper: refresh the /wallpapers/ image list and open (or raise) the display-settings window."
+   }
+  },
+  {
+   "key": "desktop.settingsView",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.settingsView",
+    "segment": "origin",
+    "name": "desktop.settingsView",
+    "kind": "native",
+    "description": "(current, files) - the display-settings window body: a wallpaper preview, a file-IO import button, and a chip per image under /wallpapers/ (click → desktop.setWallpaper)."
+   }
+  },
+  {
+   "key": "desktop.refreshWallpapers",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.refreshWallpapers",
+    "segment": "origin",
+    "name": "desktop.refreshWallpapers",
+    "kind": "native",
+    "description": "(state) - list /wallpapers/ into the desktop.wallpapers cel (the settings grid references it, so it updates reactively). Creates the folder if missing."
+   }
+  },
+  {
+   "key": "desktop.setWallpaper",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.setWallpaper",
+    "segment": "origin",
+    "name": "desktop.setWallpaper",
+    "kind": "native",
+    "description": "(state, path) - point the desktop.wallpaper cel at an OPFS path; the bg img + painter load it. Reactive repaint."
+   }
+  },
+  {
+   "key": "desktop.importWallpaper",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.importWallpaper",
+    "segment": "origin",
+    "name": "desktop.importWallpaper",
+    "kind": "native",
+    "description": "(state, _, event) - file-IO import: read the picked File, write it under /wallpapers/, then select it as the wallpaper. Browser-only (File API)."
+   }
+  },
+  {
+   "key": "desktop.icons",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.icons",
+    "segment": "origin",
+    "name": "desktop.icons",
+    "kind": "native",
+    "description": "(iconpos, mobile, ...items) - desktop: free-positioned, draggable app icons (positions persisted in desktop.iconpos by label); mobile: today's collapsible nav. items are item(label, action); a click LAUNCHES via origin.navOpen."
+   }
+  },
+  {
+   "key": "desktop.iconGrab",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.iconGrab",
+    "segment": "origin",
+    "name": "desktop.iconGrab",
+    "kind": "native",
+    "description": "(state, label, event) - pointerdown on a desktop icon: capture the pointer + record the grab offset in desktop.icondrag."
+   }
+  },
+  {
+   "key": "desktop.iconMove",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.iconMove",
+    "segment": "origin",
+    "name": "desktop.iconMove",
+    "kind": "native",
+    "description": "(state, _, event) - pointermove while dragging an icon: update desktop.iconpos[label] to the pointer position; repaint."
+   }
+  },
+  {
+   "key": "desktop.iconDrop",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.iconDrop",
+    "segment": "origin",
+    "name": "desktop.iconDrop",
+    "kind": "native",
+    "description": "(state) - pointerup: record how far the icon moved (desktop.iconLastMoved, so a drag suppresses the click) and clear desktop.icondrag."
+   }
+  },
+  {
+   "key": "desktop.iconClick",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "desktop.iconClick",
+    "segment": "origin",
+    "name": "desktop.iconClick",
+    "kind": "native",
+    "description": "(state, action) - launch the icon's app via origin.navOpen UNLESS the pointer dragged (a drag is not a click)."
+   }
+  },
+  {
+   "key": "sheetcells",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "sheetcells",
+    "segment": "origin",
+    "name": "sheetcells",
+    "kind": "native",
+    "description": "(keys, vals) - zip a key list + value list into sheetgrid entries {key,col,row,value}, deriving col/row from each key's A1 suffix. The host formula passes the keys (strings) + the cel values (a list referencing each cel, so the grid is reactive)."
+   }
+  },
+  {
+   "key": "origin.editapp",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.editapp",
+    "segment": "origin",
+    "name": "origin.editapp",
+    "kind": "native",
+    "description": "(state, app) - open another segment's cels as an editable source list (its formulas/definition): each cel as key → editable source; Enter commits. Click a node in the state force-graph to edit that segment. sheetapp-as-editor."
+   }
+  },
+  {
+   "key": "origin.editAppCel",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.editAppCel",
+    "segment": "origin",
+    "name": "origin.editAppCel",
+    "kind": "native",
+    "description": "(state, {app,key}, event) - commit an edited cel source from the app editor (on Enter): rewrite the cel's source, then refresh the editor."
+   }
+  },
+  {
+   "key": "origin.savedoc",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.savedoc",
+    "segment": "origin",
+    "name": "origin.savedoc",
+    "kind": "native",
+    "description": "(state, name) - record the document's cel states: saveUserSpace dehydrates the origin-user segment's private closure and store.put's it under the app's documents/ subfolder."
+   }
+  },
+  {
+   "key": "viewport",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "viewport",
+    "segment": "origin",
+    "name": "viewport",
+    "kind": "native",
+    "description": "() - current page metrics {w, h, mobile, orient} as a one-shot snapshot. For REACTIVE layout reference the cels instead: viewport.w / viewport.h / viewport.mobile / viewport.orient update on window resize, so a formula re-runs to relayout — =IF(viewport.mobile, dom(\"h1\",\"phone\"), win(\"app\",\"App\",body)) or =win(\"app\",\"App\",body, viewport.w, viewport.h - 40)."
+   }
+  },
+  {
+   "key": "origin.viewportSync",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.viewportSync",
+    "segment": "origin",
+    "name": "viewportSync",
+    "kind": "native",
+    "description": "(host) writes live page metrics into the viewport.* cels so formulas that reference them re-run; the host calls it at boot and on resize."
+   }
+  },
+  {
+   "key": "origin.clockSync",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.clockSync",
+    "segment": "origin",
+    "name": "clockSync",
+    "kind": "native",
+    "description": "(host) writes the current time into the clock (HH:MM) + clock.full cels so a formula referencing them (e.g. a taskbar) re-renders; the host calls it on an interval. Reference `clock` in a formula instead of a banned NOW()."
+   }
+  },
+  {
+   "key": "item",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "item",
+    "segment": "origin",
+    "name": "item",
+    "kind": "native",
+    "description": "(label, action, ...children) - one navigation menu node for nav(). label is text/emoji; action is a window KEY (clicking focuses that window) or a '=formula' (clicking spawns a new window running it), or omit action for a pure submenu parent. children are more item()s (WordPress-style nesting). e.g. item(\"📊 Charts\", item(\"🥧 Pie\", '=cels(3,2, ...piechart...)'))."
+   }
+  },
+  {
+   "key": "nav",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "nav",
+    "segment": "origin",
+    "name": "nav",
+    "kind": "native",
+    "description": "([mobile], ...items) - a navigation menu from item() nodes. Pass viewport.mobile as the first arg so it AUTO-SWITCHES: a collapsible left sidebar (☰) on mobile, desktop icon-launchers otherwise (it re-renders on rotate/resize). Nesting collapses via native <details>. e.g. =nav(viewport.mobile, item(\"📁 Files\",\"files\"), item(\"📊 Charts\", item(\"🥧 Pie\", '=cels(3,2,at(\"A1\",\"x\"))')))."
+   }
+  },
+  {
+   "key": "origin.navOpen",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.navOpen",
+    "segment": "origin",
+    "name": "navOpen",
+    "kind": "native",
+    "description": "dispatch target for a clicked nav leaf: a '=formula' action spawns a new window (trusted, capped by the kernel); any other action is a window key and focuses that window."
+   }
+  },
+  {
+   "key": "def",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "def",
+    "segment": "origin",
+    "name": "def",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(name, kind, source) - define a callable function from source in a compiler kind (\"js\" works out of the box). =def(\"double\", \"js\", \"x => x * 2\") then call it: =double(21) -> 42."
+   }
+  },
+  {
+   "key": "cdn",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "cdn",
+    "segment": "origin",
+    "name": "cdn",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(url) - load an external script/library from a URL via the kernel loadScript primitive. =cdn(\"https://cdn.jsdelivr.net/npm/canvas-confetti\") then call what it exposes."
+   }
+  },
+  {
+   "key": "ls",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "ls",
+    "segment": "origin",
+    "name": "ls",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(path?) - list a directory in OPFS (default /). dirs show a trailing /."
+   }
+  },
+  {
+   "key": "tree",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "tree",
+    "segment": "origin",
+    "name": "tree",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(path?) - recursive directory tree in OPFS (default /)."
+   }
+  },
+  {
+   "key": "mkdir",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "mkdir",
+    "segment": "origin",
+    "name": "mkdir",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(path) - make a directory in OPFS (recursive)."
+   }
+  },
+  {
+   "key": "rm",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "rm",
+    "segment": "origin",
+    "name": "rm",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(path) - remove a file or directory from OPFS (auto file-vs-dir)."
+   }
+  },
+  {
+   "key": "mv",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "mv",
+    "segment": "origin",
+    "name": "mv",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(from, to) - move/rename a file or directory in OPFS."
+   }
+  },
+  {
+   "key": "cat",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "cat",
+    "segment": "origin",
+    "name": "cat",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(path) - read a text file from OPFS into the cell."
+   }
+  },
+  {
+   "key": "write",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "write",
+    "segment": "origin",
+    "name": "write",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(path, text) - write text to a file in OPFS (create/overwrite)."
+   }
+  },
+  {
+   "key": "touch",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "touch",
+    "segment": "origin",
+    "name": "touch",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(path) - create an empty file in OPFS if it does not exist."
+   }
+  },
+  {
+   "key": "stat",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "stat",
+    "segment": "origin",
+    "name": "stat",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(path) - size / isDir / mtime of an OPFS path."
+   }
+  },
+  {
+   "key": "hash",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "hash",
+    "segment": "origin",
+    "name": "hash",
+    "kind": "native",
+    "description": "(seg, ...exclude) - a recent SHA-256 (hex) of worksheet `seg`s SOURCE cels (ValueCel value | FormulaCel formula-text; derived values excluded - sources only, so it is deterministic across replicas). Trailing-* exclude patterns drop ephemeral/IO ranges. =hash(\"budget\") / =hash(\"budget\", \"budget.live*\").",
+    "emitsTo": "origin.effects"
+   },
+   "locked": true
+  },
+  {
+   "key": "view",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "view",
+    "segment": "origin",
+    "name": "view",
+    "kind": "native",
+    "description": "(name [, item]) -> THE pane verb: =view('charts') opens a VIEW pane (a <div id=name>) in the active workbook's cardBook; =view('charts', dom('h1','Hi')) opens-if-needed AND contributes this cell's slot. GENERATIVE: the formula SURVIVES in the cell (the bar shows it when active); the value is the pane token '⧉ name' ('⧉ name +' for a contribution); each contributing cell owns ONE keyed slot - re-fires replace it (no duplicates), edits update it live, and a saved sheet re-creates its panes on rehydrate.",
+    "emitsTo": "origin.effects"
+   }
+  },
+  {
+   "key": "sheet",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "sheet",
+    "segment": "origin",
+    "name": "sheet",
+    "kind": "native",
+    "description": "(name?, rows?, cols?) - add a SPARSE worksheet tab to the active workbook: the only cel minted is <name>.dims (default 12x7); addresses are keyed into state only when a value/formula is committed. name defaults to the guarded sheetN; an existing name is a no-op. GENERATIVE: the formula survives (the tab's recipe - a saved sheet re-creates it); the value is the token '▦ name'.",
+    "emitsTo": "origin.effects"
+   }
+  },
+  {
+   "key": "rename",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "rename",
+    "segment": "origin",
+    "name": "rename",
+    "kind": "native",
+    "description": "(target, newName) - retitle a sheet or view tab in the active workbook, found by TITLE or segment name. Sheets rename by ALIAS (tab title + <seg>.alias; cel keys never re-key); views retitle in the window state. GENERATIVE + idempotent (a re-fire when the old name is gone but the new one exists is a no-op).",
+    "emitsTo": "origin.effects"
+   }
+  },
+  {
+   "key": "addCells",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "addCells",
+    "segment": "origin",
+    "name": "addCells",
+    "kind": "native",
+    "description": "(sheet, rows, cols) - grow the sheet's rendered range TO AT LEAST rows x cols: a pure <seg>.dims write - sparse, so NO addressed space enters state; the grid re-renders reactively. At-least semantics keep the formula idempotent (rehydrate re-fires are no-ops). =addCells('data', 20, 9).",
+    "emitsTo": "origin.effects"
+   }
+  },
+  {
+   "key": "help",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "help",
+    "segment": "origin",
+    "name": "help",
+    "kind": "native",
+    "description": "(segment?) - open the vocabulary EXPLORER in a view pane: a TREE of segments (the VS Code explorer shape - grouped by role, each expands like a folder to its functions), a SEARCH box over names + descriptions on top (typing swaps the tree for a flat hit list), and the clicked function's signature/description/source on the right. No graph, no layout cost - instant at any vocabulary size. =help('ecs') opens with that segment expanded. GENERATIVE: the formula survives; the value is '⧉ help'. TEXT MODE — =help('', 'text') or =help('charts', 'text') returns the whole catalog (or one segment's) as this cell's plain-text VALUE instead of opening a pane: the agent-facing discovery form (absorbed the retired =vocab).",
+    "emitsTo": "origin.effects"
+   }
+  },
+  {
+   "key": "help.selectNode",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "help.selectNode",
+    "segment": "origin",
+    "name": "help.selectNode",
+    "kind": "native",
+    "description": "(state, key) - a function-row or search-hit click: lands {key, celType, segment, kind, description, f} in help.selectedInfo for the detail panel."
+   }
+  },
+  {
+   "key": "help.toggle",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "help.toggle",
+    "segment": "origin",
+    "name": "help.toggle",
+    "kind": "native",
+    "description": "(state, segName) - the help tree's folder click: expand/collapse the segment (help.open is the expanded set) and show its description in the detail panel."
+   }
+  },
+  {
+   "key": "help.search",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "help.search",
+    "segment": "origin",
+    "name": "help.search",
+    "kind": "native",
+    "description": "(state, _, event) - the help explorer's search box: writes help.query from the input and runs the full repaint cycle (mount-headed frames suppress value-change propagation, so a plain setValue would not repaint)."
+   }
+  },
+  {
+   "key": "helpPane",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "helpPane",
+    "segment": "origin",
+    "name": "helpPane",
+    "kind": "native",
+    "description": "(index, query, open, info) - pure renderer for the =help explorer tab: search bar + the segment/function TREE (or flat search hits) + the detail panel. The tab formula references help.index / help.query / help.open / help.selectedInfo so every interaction re-renders reactively."
+   }
+  },
+  {
+   "key": "domview",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "domview",
+    "segment": "origin",
+    "name": "domview",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(name [, item]) - DEPRECATED pre-standardization name for =view (kept so old saved sheets still evaluate). Use =view."
+   }
+  },
+  {
+   "key": "grokconfig",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "grokconfig",
+    "segment": "origin",
+    "name": "grokconfig",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(project, url, anonkey, grokEndpoint?) -> loads the grok/supabase/auth segments and seeds the login+chat config cels (sb.<project>.url/.anonkey, grok.project, grok.url) FROM A FORMULA. The url + PUBLISHABLE anon key + endpoint are not secrets, so they belong in the formula; the password is typed into the login input and the xAI key stays server-side. =grokconfig('ccfr','https://REF.supabase.co','sb_publishable_xxx','https://REF.supabase.co/functions/v1/grok')."
+   }
+  },
+  {
+   "key": "chatcard",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "chatcard",
+    "segment": "origin",
+    "name": "chatcard",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(project?) -> drops the slick login + grok-chat card (a reactive grok.ui formula) into the active workbook's cardBook (the dom-view pane); opens a workbook if none is active. Pair with =grokconfig(...). =chatcard('ccfr')."
+   }
+  },
+  {
+   "key": "mountcard",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "mountcard",
+    "segment": "origin",
+    "name": "mountcard",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(cellKey, title?) -> mount ANOTHER cell's formula as a LIVE card in the active workbook's cardBook. The cell KEEPS its =dom(...) formula (editable) and the card re-renders whenever you change it — unlike =append, which snapshots. Put =dom(...) in a cell, then =mountcard('sheet1.C1', 'My Panel')."
+   }
+  },
+  {
+   "key": "append",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "append",
+    "segment": "origin",
+    "name": "append",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(view, xpath, item) | (xpath, item) | (view, item) - place THIS CELL's keyed slot at an XPATH: scoped to a view pane ('viz', '//div[@id=\"x\"]', item), DOCUMENT-scoped when the first arg IS an xpath (searched across every appendable surface - ValueCel-owned vnodes; matches inside FormulaCel-derived dom are refused: edit that formula), or the pane root (2-arg name form; opens the pane if needed). GENERATIVE: the formula survives, re-fires REPLACE the slot (no duplicates), an xpath edit MOVES it. item = a dom() vnode (bare cell refs dep-wire) or a string cel address. xpath subset: /tag, //tag, *, [n], [@id='x'], [@class='x']. DISTINCT from =view."
+   }
+  },
+  {
+   "key": "segs",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "segs",
+    "segment": "origin",
+    "name": "segs",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "() - list sheets saved to OPFS (=saveSeg/openSeg/delSeg manage them)."
+   }
+  },
+  {
+   "key": "saveSeg",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "saveSeg",
+    "segment": "origin",
+    "name": "saveSeg",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(name) - save the whole current sheet to an OPFS file under /plastron/sheets."
+   }
+  },
+  {
+   "key": "openSeg",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "openSeg",
+    "segment": "origin",
+    "name": "openSeg",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(name) - restore a sheet previously saved with saveSeg from OPFS."
+   }
+  },
+  {
+   "key": "delSeg",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "delSeg",
+    "segment": "origin",
+    "name": "delSeg",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(name) - delete a saved sheet from OPFS."
+   }
+  },
+  {
+   "key": "downloadSeg",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "downloadSeg",
+    "segment": "origin",
+    "name": "downloadSeg",
+    "kind": "native",
+    "description": "(name) - a button that downloads a saved sheet (.json) from OPFS."
+   }
+  },
+  {
+   "key": "db",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "db",
+    "segment": "origin",
+    "name": "db",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(name?) - open/create a sqlite database in OPFS (default main). returns a handle for sql()/tables()."
+   }
+  },
+  {
+   "key": "sql",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "sql",
+    "segment": "origin",
+    "name": "sql",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(db, query) - run SQL against a db handle; SELECT returns rows, writes persist to OPFS."
+   }
+  },
+  {
+   "key": "tables",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "tables",
+    "segment": "origin",
+    "name": "tables",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(db) - list the tables in a db."
+   }
+  },
+  {
+   "key": "dbseed",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "dbseed",
+    "segment": "origin",
+    "name": "dbseed",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(db, rows, table) - bulk-load a JSON array of row objects into a table. e.g. =dbseed(mydb, A1:C9, \"turtles\")"
+   }
+  },
+  {
+   "key": "schema",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "schema",
+    "segment": "origin",
+    "name": "schema",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(db) - introspect the database: tables, columns, primary keys and foreign keys (the basis for the visual query builder)."
+   }
+  },
+  {
+   "key": "dbexport",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "dbexport",
+    "segment": "origin",
+    "name": "dbexport",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(db, path) - serialize the database to a portable .db blob and write it to a file-store path (browsable / downloadable). e.g. =dbexport(mydb, \"/exports/mydb.db\")"
+   }
+  },
+  {
+   "key": "dbimport",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "dbimport",
+    "segment": "origin",
+    "name": "dbimport",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(db, path) - load a .db file from a file-store path INTO the database, replacing its contents. e.g. =dbimport(mydb, \"/exports/mydb.db\")"
+   }
+  },
+  {
+   "key": "interlinked",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "interlinked",
+    "segment": "origin",
+    "name": "interlinked",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(seg) - force-directed graph of a grid segment's cels (nodes) + their inputMap deps (edges), laid out + rendered by the forcegraph segment (draggable fg node chips)."
+   }
+  },
+  {
+   "key": "simulate",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "simulate",
+    "segment": "origin",
+    "name": "simulate",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(fnName, n?) - def-driven animation: run a def'd frame fn (i -> [x, y]) n times and play the trajectory on an animated canvas."
+   }
+  },
+  {
+   "key": "save",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "save",
+    "segment": "origin",
+    "name": "save",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(name?) - persist your sheet (cell sources + def'd functions) to this browser's localStorage. =save() then reload and it's back; =save(\"v2\") for a named slot."
+   }
+  },
+  {
+   "key": "open",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "open",
+    "segment": "origin",
+    "name": "open",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(name?) - restore a saved sheet from localStorage. =open() loads the default slot; =open(\"v2\") a named one."
+   }
+  },
+  {
+   "key": "link",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "link",
+    "segment": "origin",
+    "name": "link",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(target?, base?) - a shareable URL that rebuilds a plastron from the page address (#f= hash, deflate+base64url). =link() encodes the WHOLE sheet; =link(\"元\") encodes one cell's source; =link(\"\", \"\") makes a relative #f= that works from a file. Paste the URL anywhere — it survives a tweet (t.co shortens it)."
+   }
+  },
+  {
+   "key": "unlink",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "unlink",
+    "segment": "origin",
+    "name": "unlink",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(url) - decode a =link() URL (or bare #f= payload) back to its formula source, as text. The inverse of link. Does NOT run it — paste the source into a cell yourself."
+   }
+  },
+  {
+   "key": "encrypt",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "encrypt",
+    "segment": "origin",
+    "name": "encrypt",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(passphrase?, target?, base?) - like link, but AES-256-GCM the source behind a passphrase. The URL parameter names the method: https://plastron.ca/#aes256gcm=<ciphertext>. =encrypt() encrypts the WHOLE sheet; =encrypt(\"\", \"元\") one cell. Omit the passphrase to be PROMPTED (so it never lands in the sheet). Pipeline: deflate → AES-256-GCM (PBKDF2-SHA256, 600k) → base64url; AES-256 is quantum-resistant. The URL is opaque; share the passphrase out-of-band. Caveat: the decrypted formula lives in browser memory — run a local index.html offline for high stakes."
+   }
+  },
+  {
+   "key": "decrypt",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "decrypt",
+    "segment": "origin",
+    "name": "decrypt",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(url, passphrase?) - decode a =encrypt() URL (or bare #aes256gcm= payload) back to its formula source, as text. The inverse of encrypt. Omit the passphrase to be PROMPTED. Does NOT run it — paste the source into a cell yourself. A wrong passphrase or tampered link yields an error (GCM authenticates)."
+   }
+  },
+  {
+   "key": "otpEncrypt",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "otpEncrypt",
+    "segment": "origin",
+    "name": "otpEncrypt",
+    "kind": "native",
+    "description": "(target?) - ONE-TIME-PAD encrypt with UNCONDITIONAL secrecy (perfect, quantum-immune). Renders a file picker: choose a pad file of random bytes (≥ message length + 32) shared with your peer. Produces https://plastron.ca/#otp=<padName>.<ciphertext> — ciphertext = formula XOR pad, plus a one-time Carter-Wegman MAC for unconditional integrity. NO compression (would leak length info). One pad file = ONE message: DELETE it from both stacks after use; never reuse a pad. target \"\" = whole sheet; a cell key = its source."
+   }
+  },
+  {
+   "key": "otpDecrypt",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "otpDecrypt",
+    "segment": "origin",
+    "name": "otpDecrypt",
+    "kind": "native",
+    "description": "(url) - decode a =otpEncrypt() #otp= link. Renders a file picker for the matching pad (the URL names which pad). Returns the formula source as text in the formula bar; does NOT run it. A wrong pad or tampered message fails the MAC check. Delete the pad after use."
+   }
+  },
+  {
+   "key": "otpLoader",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "otpLoader",
+    "segment": "origin",
+    "name": "otpLoader",
+    "kind": "native",
+    "description": "(padId, payload) - the boot view a #otp= URL renders as 元: a file picker to load the named pad and decrypt the shared plastron (kernel stays LOCKED). Used by bootFromHash; not usually called by hand."
+   }
+  },
+  {
+   "key": "origin.otpEncrypt",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.otpEncrypt",
+    "segment": "origin",
+    "name": "origin.otpEncrypt",
+    "kind": "native",
+    "description": "(state, target, event) - dispatch target: XOR the source with the picked pad → an #otp= URL in the formula bar; warns to delete the spent pad."
+   }
+  },
+  {
+   "key": "origin.otpDecrypt",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.otpDecrypt",
+    "segment": "origin",
+    "name": "origin.otpDecrypt",
+    "kind": "native",
+    "description": "(state, url, event) - dispatch target: decrypt an #otp= payload with the picked pad → the formula source in the formula bar (does not run it)."
+   }
+  },
+  {
+   "key": "origin.otpUnlock",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.otpUnlock",
+    "segment": "origin",
+    "name": "origin.otpUnlock",
+    "kind": "native",
+    "description": "(state, payload, event) - boot dispatch target: load the pad → decrypt → the shared formula becomes 元 (still jailed/locked)."
+   }
+  },
+  {
+   "key": "kernel",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "kernel",
+    "segment": "origin",
+    "name": "kernel",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(seed, preset?) - spawn a QUARANTINED child plastron from a seed formula in a fresh segment (app1, app2, …). preset = locked (default) | compute | net | trusted, capped by THIS kernel's trust. The child's cells live under <seg>.*; gated capabilities (code/net/storage) come back #DENIED unless the preset grants them. A #f= share URL is just a locked seed."
+   }
+  },
+  {
+   "key": "jail",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "jail",
+    "segment": "origin",
+    "name": "jail",
+    "kind": "native",
+    "emitsTo": "origin.effects",
+    "description": "(seed) - render a SANDBOXED iframe running the seed formula as its OWN kernel. allow-scripts but no allow-same-origin → opaque origin: it cannot touch localStorage, the parent page, or other tabs. The browser's real Layer-A jail for untrusted plastrons."
+   }
+  },
+  {
+   "key": "origin.savepage",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.savepage",
+    "segment": "origin",
+    "name": "origin.savepage",
+    "kind": "native",
+    "description": "(state) - download the running plastron as a single self-contained 龜甲.html you can re-open or redeploy anywhere. Invoke from a formula: =origin.savepage()."
+   }
+  },
+  {
+   "key": "origin.tone",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.tone",
+    "segment": "origin",
+    "name": "origin.tone",
+    "kind": "native",
+    "description": "(state, freq) - play ONE Web Audio oscillator note at the given frequency (Hz). Loads the sound segment on first use. Wire it to a button: (on \"click\" \"origin.tone\" 440)."
+   }
+  },
+  {
+   "key": "view.refresh",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "view.refresh",
+    "segment": "origin",
+    "name": "view.refresh",
+    "kind": "native",
+    "description": "host hook called by settleStructural after out-of-band structure materializes — rebuilds 元.cells + repaints"
+   },
+   "locked": true
+  },
+  {
+   "key": "元.viewConfig",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "元.viewConfig",
+    "segment": "origin",
+    "name": "元.viewConfig"
+   },
+   "v": {
+    "base": "元",
+    "draftCel": "元.draft",
+    "editHandler": "origin.edit",
+    "keyHandler": "origin.key"
+   }
+  },
+  {
+   "key": "mount",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "mount",
+    "segment": "origin",
+    "name": "mount",
+    "kind": "native",
+    "description": "(target content) - pin a dom under another element of the sheet instead of in the cell that holds it. target is a selector matched against the view: \".sheet\" pins under the cells, \"div.cell\" under the first cell, \"#id\" by id; a bare word (\"top\"/\"bottom\") is a region anchor laid out around the sheet. Deleting the formula removes it."
+   }
+  },
+  {
+   "key": "viewfire",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "viewfire",
+    "segment": "origin",
+    "name": "viewfire",
+    "kind": "native",
+    "description": "(vals) - the gen-2 desktop compositor behind 元.view (replaces sheetView): vals is the cell values of every whitelisted self-mounting frame (cellKeys); look each up in the mount registry and splice the windows into the positioned .origin desktop, mounted at #app. Renders nothing of its own."
+   }
+  },
+  {
+   "key": "win.layout",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "win.layout",
+    "segment": "origin",
+    "description": "Desktop layout argument: \"rowflow\" (default) lays WIDE windows in rows that wrap and overflow downward; \"masonry\" packs them into narrow screen-width columns; \"free\" leaves them. 元 leads top-left. Set visibly via segment(\"rowflow\"|\"masonry\"|\"free\", ...)."
+   },
+   "v": "rowflow"
+  },
+  {
+   "key": "win.geom",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "win.geom",
+    "segment": "origin",
+    "name": "win.geom",
+    "description": "per-window geometry (x/y/w/h/z) and tab relationships (host) keyed by sheet segment. readme is seeded BIG and roughly centered (x 300, y 90, w 860, h 680) so the welcome card lands front-and-centre; chat/turtlecharts carry only host so they tab into clients/turtles."
+   },
+   "v": {}
+  },
+  {
+   "key": "winsheet.drag",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "winsheet.drag",
+    "segment": "origin",
+    "name": "winsheet.drag"
+   },
+   "v": null
+  },
+  {
+   "key": "segment",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "segment",
+    "segment": "origin",
+    "name": "segment",
+    "kind": "native",
+    "genesis": true,
+    "description": "genesis: compose a SEGMENT (document) from cels()/winapp()/chatapp()/def()/cel() parts in one formula, e.g. =segment(...). (was doc.)"
+   }
+  },
+  {
+   "key": "origin.askgrok",
+   "celType": "LockedLambdaCel",
+   "locked": true,
+   "metadata": {
+    "key": "origin.askgrok",
+    "segment": "origin",
+    "name": "origin.askgrok",
+    "kind": "native",
+    "description": "(state, key) -> state. The 🔮 formula-bar button: send the bar's natural-language question + the sheet's source context to grok (server-side xAI proxy via supabase.invoke) and drop the returned plastron FORMULA back into the bar to review, then ⚡ to commit. xAI key stays server-side."
+   }
+  }
+ ]
 }

@@ -74,6 +74,18 @@
       "locked": true
     },
     {
+      "key": "explorer.rmdir",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "explorer.rmdir",
+        "segment": "file-explorer",
+        "name": "explorer.rmdir",
+        "kind": "native",
+        "description": "(state, path) - dispatch target for the 🗑 on a DIRECTORY row: confirm (browser confirm() when present), fs.rmdir the tree recursively, clear any preview under it, refresh the listing. Segment-store docs are directories under /plastron/segments — prefer the Sheets 📂 picker's 🗑 for those (it also maintains the store index)."
+      }
+    },
+    {
       "key": "explorer.rename",
       "celType": "LockedLambdaCel",
       "metadata": {

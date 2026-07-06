@@ -46,6 +46,10 @@ type Node =
   | { t: "bin"; op: string; l: Node; r: Node }
   | { t: "un"; op: string; e: Node }
   | { t: "obj"; entries: { key: string; value: Node }[] } // { color: "tomato", "font-size": A1 }
+  | { t: "list"; items: Node[] }                   // [1, "two", A1] — a literal array value
+  | { t: "member"; base: Node; key: string }       // A1.test — property of the base's value
+  | { t: "index"; base: Node; e: Node }            // A1[0] — 0-based; negatives count from the end
+  | { t: "slice"; base: Node; from?: Node; to?: Node } // A1[1:3] / A1[:2] / A1[-2:] — JS slice semantics
   | { t: "call"; name: string; args: Node[] };
 
 // ── tokenizer ────────────────────────────────────────────────────────────────
@@ -76,7 +80,12 @@ const tokenize = (src: string): Tok[] => {
     }
     const two = src.slice(i, i + 2);
     if (OPS2.has(two)) { toks.push({ k: "op", v: two }); i += 2; continue; }
-    if ("+-*/&=<>(),:!{}".includes(c)) { toks.push({ k: "op", v: c }); i++; continue; }
+    if ("+-*/&=<>(),:!{}[]".includes(c)) { toks.push({ k: "op", v: c }); i++; continue; }
+    // A lone "." (not starting a number) is the postfix member operator —
+    // it appears after a "]" or ")" in chains like A1[0].name.
+    if (c === "." && !(src[i + 1]! >= "0" && src[i + 1]! <= "9")) {
+      toks.push({ k: "op", v: "." }); i++; continue;
+    }
     if ((c >= "0" && c <= "9") || c === ".") {
       let j = i;
       while (j < n && ((src[j]! >= "0" && src[j]! <= "9") || src[j] === ".")) j++;
@@ -106,7 +115,12 @@ const tokenize = (src: string): Tok[] => {
 // Precedence low→high: comparison < concat(&) < additive < multiplicative
 // < unary < primary.
 
-const parseToks = (toks: Tok[]): Node => {
+// Wrap a base node in one member node per path component (A1.users.name →
+// member(member(ref A1, "users"), "name")). Empty path returns the base.
+const memberChain = (base: Node, path: string[]): Node =>
+  path.reduce<Node>((b, key) => ({ t: "member", base: b, key }), base);
+
+const parseToks = (toks: Tok[], state?: State): Node => {
   let pos = 0;
 
   
@@ -169,8 +183,63 @@ const parseToks = (toks: Tok[]): Node => {
   const unary = (): Node => {
     const v = opv();
     if (v === "-" || v === "+") { next(); return { t: "un", op: v!, e: unary() }; }
-    return primary();
+    return postfix();
   }
+  // Postfix access binds tightest: .member, [index], [from:to] chain onto any
+  // primary — A1.users[0].name, foo(x).bar, B2[-1]. Indexing is 0-BASED (the
+  // bracket surface is JS/Python-domain; INDEX() stays 1-based Excel-domain).
+  const postfix = (): Node => postfixOps(primary());
+  const postfixOps = (start: Node): Node => {
+    let base = start;
+    for (;;) {
+      const v = opv();
+      if (v === ".") {
+        next();
+        const nt = next();
+        if (!nt || nt.k !== "name") throw new Error("infix: expected a member name after \".\"");
+        // The name token may itself carry dots (A1[0].user.name lexes ".": "user.name").
+        for (const part of nt.v.split(".")) base = { t: "member", base, key: part };
+        continue;
+      }
+      if (v === "[") {
+        next();
+        // [:to] / [from:to] / [from:] / [:] are slices; [expr] is an index.
+        let from: Node | undefined, to: Node | undefined;
+        if (opv() !== ":") from = comparison();
+        if (opv() === ":") {
+          next();
+          if (opv() !== "]") to = comparison();
+          eat("]");
+          base = { t: "slice", base, from, to };
+        } else {
+          eat("]");
+          if (!from) throw new Error("infix: empty index");
+          base = { t: "index", base, e: from };
+        }
+        continue;
+      }
+      return base;
+    }
+  }
+  // A range in EXPRESSION position is recognized only when it is ACCESSED —
+  // D1:D9.age / D1:D9[0] — i.e. the end ref carries a dotted member tail or
+  // the next token opens a postfix. A bare `ref : ref` anywhere else keeps its
+  // existing meanings (slice endpoints inside [ ], plain range arguments).
+  const accessedRange = (fromAddr: string, seg?: string): Node | undefined => {
+    if (peek()?.v !== ":") return undefined;
+    const endTok = toks[pos + 1];
+    if (endTok?.k !== "name") return undefined;
+    const [endHead = "", ...tail] = endTok.v.split(".");
+    if (!parseRef(endHead)) return undefined;
+    const after = toks[pos + 2];
+    if (tail.length === 0 && after?.v !== "[" && after?.v !== ".") return undefined;
+    next(); next(); // consume ":" and the end ref
+    const range = `${fromAddr}:${endHead.toUpperCase()}`;
+    const node: Node = seg
+      ? { t: "range", range, keys: expandRange(range).map((a) => `${seg}.${a}`) }
+      : { t: "range", range };
+    return memberChain(node, tail);
+  };
   const primary = (): Node => {
     const t = next();
     if (!t) throw new Error("infix: unexpected end");
@@ -195,6 +264,18 @@ const parseToks = (toks: Tok[]): Node => {
       eat("}");
       return { t: "obj", entries };
     }
+    // list literal — [1, "two", A1, [2, 3]]. Items are full expressions, so a
+    // cel ref inside stays a real dependency. (In postfix position [ is
+    // indexing — that's handled by postfix() before primary() ever sees it.)
+    if (t.v === "[") {
+      const items: Node[] = [];
+      if (peek()?.v !== "]") {
+        items.push(comparison());
+        while (peek()?.v === ",") { next(); items.push(comparison()); }
+      }
+      eat("]");
+      return { t: "list", items };
+    }
     if (t.k === "name") {
       // Function call?
       if (peek()?.v === "(") {
@@ -212,41 +293,73 @@ const parseToks = (toks: Tok[]): Node => {
       if (upper === "FALSE") return { t: "bool", v: false };
       // Cross-sheet reference: Seg!A1 (coordinate-convergence step 3).
       // The segment keeps its case; member keys are `<segment>.<ADDR>`.
+      // A dotted tail is member access on the cell's value: fish!A1.age.
       if (peek()?.v === "!") {
         next(); // !
         const refTok = next();
-        if (!refTok || refTok.k !== "name" || !parseRef(refTok.v)) {
+        const [head = "", ...path] = refTok?.k === "name" ? refTok.v.split(".") : [];
+        if (!refTok || !parseRef(head)) {
           throw new Error(`infix: expected a cell ref after "${t.v}!"`);
         }
-        const addr = refTok.v.toUpperCase();
-        return { t: "ref", ref: addr, key: `${t.v}.${addr}` };
+        const addr = head.toUpperCase();
+        if (path.length === 0) {
+          const r = accessedRange(addr, t.v);
+          if (r) return r;
+        }
+        return memberChain({ t: "ref", ref: addr, key: `${t.v}.${addr}` }, path);
       }
-      if (parseRef(t.v)) return { t: "ref", ref: t.v.toUpperCase() };
+      if (parseRef(t.v)) {
+        const r = accessedRange(t.v.toUpperCase());
+        return r ?? { t: "ref", ref: t.v.toUpperCase() };
+      }
+      // A dotted name that IS an exact live cel key resolves as that cel —
+      // even when its head looks like an A1 ref. Without this, a sheet named
+      // `sheet1` poisons every `sheet1.dims`-style reference into member
+      // access on the phantom cell SHEET1 (column SHEET, row 1).
+      if (t.v.includes(".") && state?.cels.has(t.v)) return { t: "sym", name: t.v };
+      // A dotted name whose HEAD is a cell ref is member access on that
+      // cell's value (A1.test → the "test" key of A1's dict). Non-ref heads
+      // keep their existing meaning: an exact namespaced cel key
+      // (viewport.mobile, fg.g1.spec) — those cels resolve as one symbol.
+      if (t.v.includes(".")) {
+        const [head = "", ...path] = t.v.split(".");
+        if (parseRef(head)) return memberChain({ t: "ref", ref: head.toUpperCase() }, path);
+      }
       // Bare symbol — a cel reference by exact key (named ranges resolve
       // at compile via resolveSymbols; anything else reads the cel's v).
       return { t: "sym", name: t.v };
     }
     throw new Error(`infix: unexpected token "${t.v}"`);
   }
-  // An argument may be a range (A1:B2 / Seg!A1:B3) or an expression.
+  // An argument may be a range (A1:B2 / Seg!A1:B3) or an expression. A range's
+  // end ref may carry a member tail (D1:D9.age) and further postfix ops.
+  const rangeHead = (tok: Tok | undefined): string | undefined => {
+    if (tok?.k !== "name") return undefined;
+    const head = tok.v.split(".")[0]!;
+    return parseRef(head) ? head : undefined;
+  };
   const argument = (): Node => {
     const t = peek();
     // Seg!A1:B3 — lookahead: name ! name : name
     if (t?.k === "name" && !parseRef(t.v) && toks[pos + 1]?.v === "!"
         && toks[pos + 2]?.k === "name" && parseRef(toks[pos + 2]!.v)
-        && toks[pos + 3]?.v === ":" && toks[pos + 4]?.k === "name" && parseRef(toks[pos + 4]!.v)) {
+        && toks[pos + 3]?.v === ":" && rangeHead(toks[pos + 4])) {
       const seg = next()!.v; next(); // seg !
       const from = next()!.v.toUpperCase(); next(); // from :
-      const to = next()!.v.toUpperCase();
+      const endTok = next()!;
+      const [endHead = "", ...tail] = endTok.v.split(".");
+      const to = endHead.toUpperCase();
       const keys = expandRange(`${from}:${to}`).map((addr) => `${seg}.${addr}`);
-      return { t: "range", range: `${from}:${to}`, keys };
+      return postfixOps(memberChain({ t: "range", range: `${from}:${to}`, keys }, tail));
     }
     if (t?.k === "name" && parseRef(t.v) && toks[pos + 1]?.v === ":") {
       const from = next()!.v;
       eat(":");
       const to = next();
-      if (!to || !parseRef(to.v)) throw new Error("infix: bad range");
-      return { t: "range", range: `${from.toUpperCase()}:${to.v.toUpperCase()}` };
+      const [endHead = "", ...tail] = to?.k === "name" ? to.v.split(".") : [];
+      if (!to || !parseRef(endHead)) throw new Error("infix: bad range");
+      const node: Node = { t: "range", range: `${from.toUpperCase()}:${endHead.toUpperCase()}` };
+      return postfixOps(memberChain(node, tail));
     }
     return comparison();
   }
@@ -306,6 +419,46 @@ const evalNode = (node: Node, lookup: Lookup): unknown => {
       const o: Record<string, unknown> = {};
       for (const e of node.entries) o[e.key] = evalNode(e.value, lookup);
       return o;
+    }
+    case "list": return node.items.map((it) => evalNode(it, lookup));
+    case "member": {
+      const b = evalNode(node.base, lookup);
+      if (isCelError(b)) return b;
+      // null/undefined-safe (like ?.): an empty cell reads as blank, not an error.
+      if (b === null || b === undefined) return undefined;
+      // BROADCAST: member access over a collection maps per item — a range of
+      // dict cells (=D1:D9.age) and an array-of-dicts value behave identically.
+      // Empty items (null/undefined/"" — an over-selected range) are skipped;
+      // [index]/[slice] stay positional and do NOT skip. Chains re-broadcast
+      // (=D1:D9.user.name). Array length is COUNTA/LEN's job, not `.length`.
+      if (Array.isArray(b)) {
+        return b.filter((v) => v !== null && v !== undefined && v !== "")
+          .map((v) => (v as Record<string, unknown>)[node.key]);
+      }
+      return (b as Record<string, unknown>)[node.key];
+    }
+    case "index": {
+      const b = evalNode(node.base, lookup);
+      if (isCelError(b)) return b;
+      if (b === null || b === undefined) return undefined;
+      const k = evalNode(node.e, lookup);
+      if (isCelError(k)) return k;
+      // 0-based positional access on arrays/strings, negatives from the end;
+      // any other base (a dict) is keyed access — A1[B1] reads a dynamic key.
+      if (Array.isArray(b) || typeof b === "string") {
+        const i = Math.trunc(num(k));
+        return b[i < 0 ? b.length + i : i];
+      }
+      return (b as Record<string, unknown>)[String(k)];
+    }
+    case "slice": {
+      const b = evalNode(node.base, lookup);
+      if (isCelError(b)) return b;
+      if (b === null || b === undefined) return undefined;
+      if (!Array.isArray(b) && typeof b !== "string") return VALUE();
+      const from = node.from ? Math.trunc(num(evalNode(node.from, lookup))) : undefined;
+      const to = node.to ? Math.trunc(num(evalNode(node.to, lookup))) : undefined;
+      return b.slice(from, to);
     }
     case "call": return evalCall(node, lookup);
   }
@@ -498,7 +651,7 @@ const approxIndex = (col: unknown[], key: unknown): number => {
 const BUILTIN_CALLS: ReadonlySet<string> = new Set([
   "SUM", "MIN", "MAX", "AVG", "AVERAGE", "IF",
   // math / rounding
-  "ROUND", "ROUNDUP", "ROUNDDOWN", "ABS", "INT", "MOD",
+  "ROUND", "ROUNDUP", "ROUNDDOWN", "ABS", "INT", "MOD", "SQRT", "POWER",
   // predicate aggregation
   "COUNT", "COUNTA", "COUNTIF", "SUMIF", "AVERAGEIF",
   // lookup / reference
@@ -523,6 +676,7 @@ export const BUILTIN_DOCS: Readonly<Record<string, string>> = {
   AVERAGE: "(range…) mean (AVG)", IF: "(cond, then, else) branch",
   ROUND: "(x, n) round to n places", ROUNDUP: "(x, n) round away from 0", ROUNDDOWN: "(x, n) round toward 0",
   ABS: "(x) absolute value", INT: "(x) floor", MOD: "(a, b) remainder",
+  SQRT: "(x) square root", POWER: "(x, y) x to the power y",
   COUNT: "(range) count numbers", COUNTA: "(range) count non-empty",
   COUNTIF: "(range, crit) count matching", SUMIF: "(range, crit, [sumRange]) sum matching",
   AVERAGEIF: "(range, crit, [avgRange]) mean matching",
@@ -534,13 +688,31 @@ export const BUILTIN_DOCS: Readonly<Record<string, string>> = {
   LEFT: "(s, n) first n chars", RIGHT: "(s, n) last n chars", MID: "(s, start, len) substring",
   LEN: "(s) length", TRIM: "(s) collapse spaces", UPPER: "(s) uppercase", LOWER: "(s) lowercase",
   DATE: "(y, m, d) ISO date string",
-  LET: "(name, value, …, calc) bind names for THIS formula, then compute calc — reuse a sub-expression without repeating it: =LET(r, A1*2, r + r*r)",
+  LET: "(name, value, …, calc) bind names for THIS formula, then compute calc — reuse a sub-expression without repeating it: =LET(r, A1*2, r + r*r). NAMES MUST NOT LOOK LIKE CELL REFS: s2/g1/aa3 tokenize as A1 addresses and the binding is rejected — use sq/ga/total.",
   LAMBDA: "(param, …, body) an inline function value — pass to MAP/REDUCE/etc: =LAMBDA(x, x*x)",
   MAP: "(range, fn) apply fn to each value → array: =SUM(MAP(A1:A9, LAMBDA(x, x*x)))",
   FILTER: "(range, predicate) keep values where predicate is true → array: =FILTER(A1:A9, LAMBDA(x, x > 0))",
   REDUCE: "(init, range, fn) fold: =REDUCE(0, A1:A9, LAMBDA(acc, x, acc + x))",
   SCAN: "(init, range, fn) running fold → array of each step",
   BYROW: "(range, fn) apply fn to each ROW (an array) → array: =BYROW(A1:C3, LAMBDA(row, SUM(row)))",
+};
+
+// LET/LAMBDA scope overlay. A dotted symbol whose HEAD is a bound name walks
+// the remaining path into the bound value — =LET(o, A1, o.age) — because
+// `o.age` lexes as ONE name token and only binding can disambiguate it from a
+// namespaced cel key. Shadowing is consistent: a bound head wins over a cel.
+const scopedLookup = (scope: Map<string, unknown>, lookup: Lookup): Lookup => (k) => {
+  if (scope.has(k)) return scope.get(k);
+  const i = k.indexOf(".");
+  if (i > 0 && scope.has(k.slice(0, i))) {
+    let v = scope.get(k.slice(0, i));
+    for (const part of k.slice(i + 1).split(".")) {
+      if (v === null || v === undefined) return undefined;
+      v = (v as Record<string, unknown>)[part];
+    }
+    return v;
+  }
+  return lookup(k);
 };
 
 const evalCall = (node: { name: string; args: Node[] }, lookup: Lookup): unknown => {
@@ -561,7 +733,7 @@ const evalCall = (node: { name: string; args: Node[] }, lookup: Lookup): unknown
     case "LET": {
       if (A.length < 3 || A.length % 2 === 0) return VALUE(); // need pairs + a final calc
       const scope = new Map<string, unknown>();
-      const lk: Lookup = (k) => (scope.has(k) ? scope.get(k) : lookup(k));
+      const lk = scopedLookup(scope, lookup);
       for (let i = 0; i + 1 < A.length; i += 2) {
         const nameNode = A[i]!;
         if (nameNode.t !== "sym") return VALUE(); // a name must be a bare identifier
@@ -580,7 +752,7 @@ const evalCall = (node: { name: string; args: Node[] }, lookup: Lookup): unknown
       return ((...vals: unknown[]): unknown => {
         const scope = new Map<string, unknown>();
         names.forEach((nm, i) => scope.set(nm, vals[i]));
-        return evalNode(body, (k) => (scope.has(k) ? scope.get(k) : lookup(k)));
+        return evalNode(body, scopedLookup(scope, lookup));
       }) as Fn;
     }
     case "MAP": {
@@ -620,6 +792,8 @@ const evalCall = (node: { name: string; args: Node[] }, lookup: Lookup): unknown
     }
 
     // ── math / rounding ──────────────────────────────────────────────────
+    case "SQRT":      return Math.sqrt(num(evalNode(A[0]!, lookup)));
+    case "POWER":     return Math.pow(num(evalNode(A[0]!, lookup)), num(evalNode(A[1]!, lookup)));
     case "ROUND":     return roundTo(num(evalNode(A[0]!, lookup)), A[1] ? Math.trunc(num(evalNode(A[1], lookup))) : 0, "round");
     case "ROUNDUP":   return roundTo(num(evalNode(A[0]!, lookup)), A[1] ? Math.trunc(num(evalNode(A[1], lookup))) : 0, "up");
     case "ROUNDDOWN": return roundTo(num(evalNode(A[0]!, lookup)), A[1] ? Math.trunc(num(evalNode(A[1], lookup))) : 0, "down");
@@ -790,15 +964,27 @@ const evalCall = (node: { name: string; args: Node[] }, lookup: Lookup): unknown
 
 const isFormula = (src: string): boolean => src.trimStart().startsWith("=");
 
-const parseSource = (src: string): Node => {
+const parseSource = (src: string, state?: State): Node => {
   const body = src.trimStart().slice(1); // drop the leading "="
-  return parseToks(tokenize(body));
+  return parseToks(tokenize(body), state);
 };
 
 const literalNode = (src: string): Node => {
   const t = src.trim();
   if (t !== "" && !Number.isNaN(Number(t))) return { t: "num", v: Number(t) };
   return { t: "str", v: src };
+};
+
+/** JSON data entry — the leading char selects the language (`=` infix, `(`
+ *  S-expr), and `{`/`[` selects JSON: the cell's VALUE is the parsed
+ *  object/array (which dehydrates back to JSON in the 甲骨 archive for free).
+ *  Returns undefined when the content isn't parseable JSON — the cell stays a
+ *  plain string, exactly as before. Wrapped in {v} so a valid JSON `null` is
+ *  distinguishable from "not JSON". */
+export const parseJsonEntry = (src: string): { v: unknown } | undefined => {
+  const t = src.trim();
+  if (!t.startsWith("{") && !t.startsWith("[")) return undefined;
+  try { return { v: JSON.parse(t) }; } catch { return undefined; }
 };
 
 const collectDeps = (node: Node, acc: Set<Key>): void => {
@@ -812,6 +998,14 @@ const collectDeps = (node: Node, acc: Set<Key>): void => {
     case "un": collectDeps(node.e, acc); break;
     case "bin": collectDeps(node.l, acc); collectDeps(node.r, acc); break;
     case "obj": for (const e of node.entries) collectDeps(e.value, acc); break;
+    case "list": for (const it of node.items) collectDeps(it, acc); break;
+    case "member": collectDeps(node.base, acc); break;
+    case "index": collectDeps(node.base, acc); collectDeps(node.e, acc); break;
+    case "slice":
+      collectDeps(node.base, acc);
+      if (node.from) collectDeps(node.from, acc);
+      if (node.to) collectDeps(node.to, acc);
+      break;
     case "call": {
       const up = node.name.toUpperCase();
       // LET/LAMBDA bind names that are NOT cel refs — collect the deps of the
@@ -831,7 +1025,13 @@ const collectDeps = (node: Node, acc: Set<Key>): void => {
         }
         const body = node.args[node.args.length - 1];
         if (body) collectDeps(body, tmp);
-        for (const d of tmp) if (!bound.has(d)) acc.add(d);
+        // Drop bound names AND dotted symbols whose head is bound (o.age
+        // inside LET(o, …) reads the binding, not a cel) — matches the
+        // scopedLookup shadowing rule at eval.
+        for (const d of tmp) {
+          const head = d.includes(".") ? d.slice(0, d.indexOf(".")) : d;
+          if (!bound.has(d) && !bound.has(head)) acc.add(d);
+        }
         break;
       }
       if (!BUILTIN_CALLS.has(up)) acc.add(node.name);
@@ -930,6 +1130,8 @@ const resolveSymbols = (
   switch (node.t) {
     case "sym": {
       if (bound.has(node.name)) return node;
+      // A dotted symbol with a bound head is scope access (o.age), never a cel.
+      if (node.name.includes(".") && bound.has(node.name.slice(0, node.name.indexOf(".")))) return node;
       const keys = rangeCelKeys(state, node.name);
       if (keys) { defs.add(node.name); return { t: "range", range: node.name, keys }; }
       if (seg && !node.name.includes(".") && state.cels.has(`${seg}.${node.name}`)) {
@@ -942,6 +1144,14 @@ const resolveSymbols = (
     case "un": return { ...node, e: rec(node.e, bound) };
     case "bin": return { ...node, l: rec(node.l, bound), r: rec(node.r, bound) };
     case "obj": return { ...node, entries: node.entries.map((e) => ({ key: e.key, value: rec(e.value, bound) })) };
+    case "list": return { ...node, items: node.items.map((it) => rec(it, bound)) };
+    case "member": return { ...node, base: rec(node.base, bound) };
+    case "index": return { ...node, base: rec(node.base, bound), e: rec(node.e, bound) };
+    case "slice": return {
+      ...node, base: rec(node.base, bound),
+      ...(node.from ? { from: rec(node.from, bound) } : {}),
+      ...(node.to ? { to: rec(node.to, bound) } : {}),
+    };
     case "call": {
       const up = node.name.toUpperCase();
       if (up === "LET") {
@@ -1008,6 +1218,14 @@ const qualifyRefs = (node: Node, seg: string): Node => {
     case "un": return { ...node, e: qualifyRefs(node.e, seg) };
     case "bin": return { ...node, l: qualifyRefs(node.l, seg), r: qualifyRefs(node.r, seg) };
     case "obj": return { ...node, entries: node.entries.map((e) => ({ key: e.key, value: qualifyRefs(e.value, seg) })) };
+    case "list": return { ...node, items: node.items.map((it) => qualifyRefs(it, seg)) };
+    case "member": return { ...node, base: qualifyRefs(node.base, seg) };
+    case "index": return { ...node, base: qualifyRefs(node.base, seg), e: qualifyRefs(node.e, seg) };
+    case "slice": return {
+      ...node, base: qualifyRefs(node.base, seg),
+      ...(node.from ? { from: qualifyRefs(node.from, seg) } : {}),
+      ...(node.to ? { to: qualifyRefs(node.to, seg) } : {}),
+    };
     case "call": return { ...node, args: node.args.map((a) => qualifyRefs(a, seg)) };
     default: return node;
   }
@@ -1078,7 +1296,7 @@ const definitionEnvelope = (key: string, rhs: string, context?: CompileContext):
 export const compileInfix = (source: string, state?: State, context?: CompileContext): CompiledLambda => {
   const def = DEFN_RE.exec(source);
   if (def && state) return definitionEnvelope(def[1]!, def[2]!, context);
-  let ast = isFormula(source) ? parseSource(source) : literalNode(source);
+  let ast = isFormula(source) ? parseSource(source, state) : literalNode(source);
   const seg = selfSegmentOf(context?.selfKey);
   if (state) ast = resolveSymbols(ast, state, new Set(), seg);
   if (seg) ast = qualifyRefs(ast, seg);
@@ -1099,7 +1317,7 @@ export const compileInfix = (source: string, state?: State, context?: CompileCon
 compileInfix.extractDeps = (source: string, state?: State, context?: CompileContext): Key[] => {
   if (DEFN_RE.test(source)) return []; // a `:=` binder has inline source — no formula deps
   if (!isFormula(source)) return [];
-  let ast = parseSource(source);
+  let ast = parseSource(source, state);
   const acc = new Set<Key>();
   const seg = selfSegmentOf(context?.selfKey);
   if (state) ast = resolveSymbols(ast, state, acc, seg); // named-range + segment-local DEFINITION edges land in acc

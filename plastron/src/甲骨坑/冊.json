@@ -50,6 +50,22 @@
     "dependencies": []
   },
   {
+    "name": "collections",
+    "version": "0.0.1",
+    "description": "Boundary verbs of the collections doctrine: rows (tabular range/nested arrays → LIST OF DICTS, the hub form), table (list of dicts → HTML table vnode for view panes), unique (order-preserving structural dedupe — set discipline), jsonparse (JSON string value → object/array; runtime twin of {…}/[…] data entry, inverse of json()). Tables are views over plain JSON-shaped values, not a storage shape.",
+    "dependencies": [
+      "dom"
+    ],
+    "role": "library"
+  },
+  {
+    "name": "guide",
+    "version": "0.0.1",
+    "description": "Doc-only ValueCels: the canonical LLM/agent guide as data. Each section is one cel whose VALUE is the section's text, with {order, title, audience} metadata. plastron-examples/origin/llms.md is GENERATED from this seed (scripts/generate-llms.mjs) — an eval fix lands in a guide cel, never in a hand-kept md.",
+    "dependencies": [],
+    "role": "library"
+  },
+  {
     "name": "wat-compiler",
     "version": "1.0.0",
     "description": "The 'wat' compiler cel — WebAssembly text-format source → callable Fn via wabt.js + WebAssembly.instantiate. Gated on csp.wasm-available. wabt.js is dynamic-imported only on first compile.",
@@ -244,6 +260,23 @@
     "role": "library"
   },
   {
+    "name": "ecs",
+    "version": "0.0.1",
+    "description": "A generic entity-component-system vocabulary for the cel graph: entity = array index, a component table is ONE cel holding a length-N array (SoA), a system is a FormulaCel composing sysmap/neighbors/integrate/wrap (simulation), opmap/gridops (rendering onto plastron-canvas ops), automaton (B/S-rulestring CA). The RULE is never native (grid-program contract): sheets author it as a lambda cel and pass it in - to sysmap at formula scale, or as swarmstep's KERNEL (=LAMBDA or wat, same ABI) at the 10k+ dense tier, where entities live in one SoA buffers cel probeable via bufstats. Time is advanced by the sim.run pump: commits route derived *.next values back into tables through one setValueBatch per frame (the graph derives, the pump advances - a formula cannot write its own input); effects mutate the buffers cel in place and bump the generation cel. param.set is the generic input→cel on() handler.",
+    "dependencies": [],
+    "role": "library"
+  },
+  {
+    "name": "plastron-gpu",
+    "version": "0.0.1",
+    "description": "The 3-D renderer tier (01-rendering.md): a scene-spec vocabulary mirroring plastron-canvas one dimension up — box/sphere/material/mesh/light/camera/instances are PURE spec constructors, scene(w,h,…) returns a <canvas data-scene> vnode through the normal pipeline, and the dom replay registry dispatches it to replay.scene, which lazy-imports Three (same-origin vendored module, jsdelivr fallback), builds the object graph once, and retains it per canvas. Per-frame updates flow through the scene.paint channel: a sceneframe cel carries {bufferKey, generation}; the drain dirty-diffs the buffer cel's SoA typed arrays against the last upload, setMatrixAt's the changed InstancedMesh slots, and renders — continuous state never enters the vnode diff (doctrine #5); the buffer contract is residency-agnostic (doctrine #4).",
+    "dependencies": [
+      "dom",
+      "plastron-canvas"
+    ],
+    "role": "library"
+  },
+  {
     "name": "buffer-schema",
     "version": "0.0.1",
     "description": "A SchemaCel ('buffers') that snapshots a buffer struct — a plain object whose values may be typed arrays (Float32/Float64/Int8/Uint8/Uint8Clamped/Int16/Uint16/Int32/Uint32 Array) alongside JSON-native scalars/arrays (dims, counters, RNG state). dehydrate encodes each typed array as {__ta, b64}; hydrate reconstructs the live typed array; isChanged is ref-eq. Bind via metadata.schema:'buffers' on any cel holding sim/mesh/gpu buffers — the default dehydrate is JSON-only. The snapshot half of the CPU-resident-SoA / dense-ECS interior; generalises js-common-schema's uint8array to every numeric dtype + the struct.",
@@ -340,7 +373,7 @@
   {
     "name": "sheetkeys",
     "version": "0.0.1",
-    "description": "per-segment crypto for the encrypted-collaborative-sheetapp (Phase 2): sheetkeys.hash (deterministic SHA-256 of a segment SOURCE cels, sources-only, with exclude patterns), and (next) sealsheet/opensheet. State-taking verbs over keystore + crypto + sheet-io.",
+    "description": "per-segment crypto for the encrypted-collaborative-sheetapp (Phase 2): sheetkeys.hash (deterministic SHA-256 of a segment SOURCE cels, sources-only, with exclude patterns), and (next) sealsheet/opensheet (envelope a segment to a keypair). State-taking verbs over keystore + crypto + sheet-io.",
     "dependencies": [
       "keystore",
       "crypto",
@@ -350,9 +383,8 @@
   {
     "name": "sheetsync",
     "version": "0.0.1",
-    "description": "the CRDT change pipeline (encrypted-collaborative-sheetapp Phase 3): sheetsync.commit runs a source edit through gate->diff->crdt.layer->sign->verify->gate->crdt.append->fold->setValue->runCycle. Sources only; one writer at a time. Loopback now; WebRTC in Phase 4.",
+    "description": "the encrypted collaborative change pipeline as a per-cell DELTA-STATE LWW-MAP CRDT: sheetsync.commit mints {key,kind,val,ts,author,id} (val carries the real value — formula text or a literal object/list/number, never stringified), gate->sign->verify->LWW-merge into the <seg>.crdt winner-map->project->runCycle, and encrypts+broadcasts the op over WebRTC. Sources only; per-key last-writer-wins; snapshot = the map. Connect/share/recv/hello drive the peer session.",
     "dependencies": [
-      "crdt",
       "keystore",
       "sheetkeys",
       "crypto"
@@ -382,6 +414,18 @@
     "description": "Supabase PostgREST data plane (cloud twin of the sqlite library). supabase.data(state, op, project, payload): select/insert/update/delete/rpc over REST, borrowing the user JWT from the session store as the bearer (anon when not signed in). Reads config cels sb.<project>.url / sb.<project>.anonkey. Writes bump sb.<project>.<table>.rev — reference it in a select formula to re-fire on change (the same cel realtime pushes bump). supabase.realtime subscribes a table to live postgres_changes over a Phoenix WebSocket, bumping the same rev cel on each push. Returns rows on success.",
     "dependencies": [
       "session"
+    ]
+  },
+  {
+    "name": "grok",
+    "version": "0.0.1",
+    "description": "LLM-in-a-sheet bridge: a bestiary of bots (grok.bots + =addbot roster mints), a transcript-as-cel chat pane (chatpane, appkit-styled) over grok.workbook-context, and a client-applied tool loop (read_cells/write_cell/evaluate_formula/vocabulary through the user's commit path, receipted). grok.ask keeps the formula-bar form. xAI key stays server-side (supabase.invoke / grok.url).",
+    "dependencies": [
+      "supabase",
+      "supabase-auth",
+      "session",
+      "dom",
+      "checkpoint"
     ]
   },
   {
@@ -419,7 +463,7 @@
   {
     "name": "winapps",
     "version": "0.0.1",
-    "description": "the windowed-app framework — generic UI (toolbar/toolbtn) + app install (app.install/app.installed: an assets manifest {url,opfs,sha} → OPFS, idempotent). App-agnostic; sheet-specific UI lives in sheets, wasm specifics in winapps-wasm, the frame in window.",
+    "description": "the windowed-app framework — generic UI (toolbar/toolbtn) + app install (app.assets/app.assets.ready: an assets manifest {url,opfs,sha} → OPFS, idempotent). App-agnostic; sheet-specific UI lives in sheets, wasm specifics in winapps-wasm, the frame in window.",
     "dependencies": [
       "dom",
       "file-store"
@@ -437,7 +481,7 @@
   {
     "name": "winapps-wasm",
     "version": "0.0.1",
-    "description": "wasm-app specifics of the windowed-app stack — wasmapp builds a wasm <canvas> window on the tabbable frame + the graph<->engine bridge + active-gated keys (wasmcanvas + wasmwin.focus/blur/key live here). Pairs with winapps app.install + a harness provider.",
+    "description": "wasm-app specifics of the windowed-app stack — wasmapp builds a wasm <canvas> window on the tabbable frame + the graph<->engine bridge + active-gated keys (wasmcanvas + wasmwin.focus/blur/key live here). Pairs with winapps app.assets + a harness provider.",
     "dependencies": [
       "dom",
       "window"

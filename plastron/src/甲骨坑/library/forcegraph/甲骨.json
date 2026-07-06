@@ -10,7 +10,8 @@
         "segment": "forcegraph",
         "name": "fgview",
         "kind": "native",
-        "description": "(id, spec, pos, zoom) - render a force-directed graph: canvas edges under draggable node chips (drag to move, scroll to zoom, click to act). Use IN A FORMULA with the instance cels as args so interactions re-render reactively: (fgview \"g1\" fg.g1.spec fg.g1.pos fg.g1.zoom). spec = { nodes: [{key,label?,size?}], edges: [[a,b]...], pin?, onNode?: {dispatch} }. Set up an instance with fg.set."
+        "description": "(id, spec, pos, zoom) - render a force-directed graph: canvas edges under draggable node chips (drag to move, scroll to zoom, click to act). Use IN A FORMULA with the instance cels as args so interactions re-render reactively: (fgview \"g1\" fg.g1.spec fg.g1.pos fg.g1.zoom). spec = { nodes: [{key,label?,size?}], edges: [[a,b]...], pin?, onNode?: {dispatch} }. Set up an instance with fg.set.",
+        "commentary": "The {nodes, edges} spec is the CANONICAL graph form (collections doctrine): converters from adjacency/edge-list values should target it rather than minting a new graph shape."
       }
     },
     {

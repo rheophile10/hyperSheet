@@ -1,24 +1,51 @@
-// Shared test fixture: the turtles + turtle_charts worksheets (the content the
-// 📊 Turtles document records) as a windowed-worksheet fixture for the sheet-host /
-// formula-bar / window suites. Inlined here (the starter .f files were removed when
-// readme/keyboard/turtles became origin-user documents).
-const TURTLES = `\
-=segment(
-	cels("turtle_charts", 1, 3,
+// Shared test fixture: the turtles dashboard document (the 📊 Turtles doc) as a
+// windowed-worksheet RECIPE for the sheet-host / formula-bar / window suites.
+// DERIVED from the shipped archive (plastron-examples/origin/apps/docs/turtles.json)
+// at import time, so the fixture and the desktop demo can't drift.
+//
+// FORMULA-FIRST + collections doctrine: turtle_data is the editable grid;
+// turtle_charts holds the =rows() hub-form pivot (B1), the species filter cell
+// (B2), the =FILTER derivation (B3), and ONE =view("🐢 dashboard", …) formula
+// (B4) that grows the select + bar/line/pie pane. NB: =view needs an open
+// WORKBOOK to attach its pane to; suites that assert the pane (turtles-pattern)
+// open one first — data-only consumers (origin.test's xlsx round-trip) don't.
+import { readFileSync } from "node:fs";
+
+const doc = JSON.parse(readFileSync(new URL("../../plastron-examples/origin/apps/docs/turtles.json", import.meta.url), "utf8"));
+
+// one at("a1", …) entry per cel; formula sources single-quoted (they use only
+// double quotes inside), scalar values passed through as quoted literals.
+const atEntry = (cel) => {
+  const addr = cel.metadata.name.toLowerCase();
+  if (cel.celType === "FormulaCel") {
+    if (cel.f.includes("'")) throw new Error(`fixture: ${cel.key} formula has single quotes — update the quoting here`);
+    return `at("${addr}", '${cel.f}')`;
+  }
+  const v = cel.v;
+  return typeof v === "number" ? `at("${addr}", "${v}")` : `at("${addr}", ${JSON.stringify(String(v))})`;
+};
+const segCels = (name) => doc.segments.find((s) => s.name === name).cels;
+const dims = (cels) => {
+  let rows = 1, cols = 1;
+  for (const c of cels) {
+    const m = /^([A-Z]+)(\d+)$/.exec(c.metadata.name);
+    if (!m) continue;
+    cols = Math.max(cols, m[1].charCodeAt(0) - 64);
+    rows = Math.max(rows, Number(m[2]));
+  }
+  return { rows, cols };
+};
+const chartCels = segCels("turtle_charts");
+const dataCels = segCels("turtle_data");
+const cd = dims(chartCels), dd = dims(dataCels);
+
+const TURTLES = `=segment(
+	cels("turtle_charts", ${cd.rows}, ${cd.cols},
 		geom(0, 0.4, 0.8, 0.6),
-		at("a1", '=canvas(300, 200, barchart(turtle_data!A2:A8, turtle_data!B2:B8))'),
-		at("b1", '=canvas(300, 200, linechart(turtle_data!A2:A8, turtle_data!C2:C8))'),
-		at("c1", '=canvas(300, 200, piechart(turtle_data!A2:A8, turtle_data!D2:D8))')),
-	cels("turtle_data", 8, 4,
+		${chartCels.map(atEntry).join(",\n\t\t")}),
+	cels("turtle_data", ${dd.rows}, ${dd.cols},
 		geom(0, 0, 0.8, 0.4),
-		at("a1", "Species"), at("b1", "Lifespan years"), at("c1", "Top speed km/h"), at("d1", "Eggs per clutch"),
-		at("a2", "Galápagos"),   at("b2", "177"), at("c2", "0.3"), at("d2", "10"),
-		at("a3", "Leatherback"), at("b3", "45"),  at("c3", "35"),  at("d3", "80"),
-		at("a4", "Green sea"),   at("b4", "75"),  at("c4", "32"),  at("d4", "110"),
-		at("a5", "Box"),         at("b5", "100"), at("c5", "0.5"), at("d5", "5"),
-		at("a6", "Snapping"),    at("b6", "40"),  at("c6", "2"),   at("d6", "30"),
-		at("a7", "Painted"),     at("b7", "55"),  at("c7", "1.5"), at("d7", "12"),
-		at("a8", "Loggerhead"),  at("b8", "65"),  at("c8", "24"),  at("d8", "100")))
+		${dataCels.map(atEntry).join(",\n\t\t")}))
 `;
 
 export async function openTurtlesFixture(state, resolveFn) {

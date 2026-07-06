@@ -131,6 +131,10 @@ const extent: Fn = ((values: unknown): number[] => {
   return xs.length ? [Math.min(...xs), Math.max(...xs)] : [0, 1];
 }) as Fn;
 
+// re-exported for in-process consumers (charts, future maps/gpu) — same fns the
+// cels carry, imported directly rather than resolved through state.
+export { linscale, bandscale, scaleapply, bandwidth, ordinalcolor };
+
 export const name = "viz-core" as const;
 
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([

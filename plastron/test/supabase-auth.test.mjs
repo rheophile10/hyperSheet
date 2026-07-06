@@ -46,7 +46,7 @@ test("missing config cels → graceful error, no network", async () => {
   const state = createInitialState();
   await resolveFn(state, "ensureSegments")(state, ["supabase-auth"]);
   const msg = await resolveFn(state, "supabase.auth")(state, "signin", "nope", { email: "x", password: "y" });
-  assert.match(msg, /missing sb\.nope\.url/);
+  assert.match(msg, /missing supabase config .* sb\.nope/);
 });
 
 live("password sign-in → token in session, sb.test.auth = signed-in", async () => {

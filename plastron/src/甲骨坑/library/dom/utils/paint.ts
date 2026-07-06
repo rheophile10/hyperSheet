@@ -2,7 +2,60 @@ import type { ChannelEnqueue, RenderSpec, State } from "../../../../types/index.
 import { resolveFn } from "../../../../kernel/index.js";
 import { diffVNodes, type DiffEq, type Patch } from "./diff.js";
 import { applyPatch, type DocLike } from "./apply.js";
-import { drawCanvases } from "./canvas.js";
+import { drawCanvases, collect, type CanvasLike } from "./canvas.js";
+
+// ── the dom replay registry (01-rendering.md) ───────────────────────────────
+// `dom.replayers` (a ValueCel: data-attr → replayer cel key) generalizes the
+// old hardcoded drawCanvases call: after each patch the painter walks the
+// spec-carrying <canvas> elements and dispatches each to the FIRST replayer
+// whose attr it carries. The registry IS a cel (cel-is-dispatch), so new
+// media (data-scene → replay.scene, SVG, WebGPU) register by writing it —
+// no painter change. Registry absent → the legacy 2-D path. A missing or
+// unresolvable replayer (its segment not loaded yet) skips silently; every
+// call is guarded — a replay failure must never break a flush.
+// ── controlled-input sync (post-patch hook) ────────────────────────────────
+// A form control's DOM value property diverges from the vnode the moment the
+// user types (input events update cels, not vnodes). When paints COALESCE
+// (commit + select in one JS turn), the diff compares pre-edit vnode against
+// final vnode — often equal — and never patches the element, leaving the
+// user-typed text stale (the formula bar showing the previous cell's source).
+// After each patch, re-assert every unfocused control's property from its
+// value ATTRIBUTE (writeAttr mirrors the vnode there). A focused control is
+// never touched — mid-edit typing stays authoritative.
+const syncFormValues = (root: unknown): void => {
+  try {
+    const r = root as { querySelectorAll?: (s: string) => ArrayLike<{ getAttribute(n: string): string | null; value?: string; ownerDocument?: { activeElement?: unknown } }> } | null;
+    if (!r || typeof r.querySelectorAll !== "function") return;
+    const els = r.querySelectorAll("input[value], textarea[value]");
+    for (let i = 0; i < els.length; i++) {
+      const el = els[i]!;
+      const doc = el.ownerDocument;
+      if (doc && doc.activeElement === el) continue;
+      const want = el.getAttribute("value") ?? "";
+      if (el.value !== want) el.value = want;
+    }
+  } catch { /* a sync failure must never break a flush */ }
+};
+
+const runReplayers = (state: State, root: unknown): void => {
+  const reg = state.cels.get("dom.replayers")?.v as Record<string, string> | undefined;
+  if (!reg || typeof reg !== "object") { drawCanvases(root); return; }
+  try {
+    const found: CanvasLike[] = [];
+    collect(root as CanvasLike, found);
+    for (const cv of found) {
+      if (typeof cv.getAttribute !== "function") continue;
+      for (const [attr, celKey] of Object.entries(reg)) {
+        if (!cv.getAttribute(attr)) continue;
+        try {
+          const replay = resolveFn(state, celKey) as ((el: unknown, s: State) => unknown) | undefined;
+          replay?.(cv, state);
+        } catch { /* guarded */ }
+        break; // first match wins
+      }
+    }
+  } catch { /* a replay failure must never break the paint */ }
+};
 
 // ── OPFS image hydration ────────────────────────────────────────────────────
 // img[data-opfs-src] (the `img` verb's "/path" form) resolves to an objectURL
@@ -148,9 +201,11 @@ export const createPainter = (state: State, opts: PainterOpts = {}): Painter => 
         if (target) {
           const node = applyPatch(target as never, mountedNode.get(key) ?? null, patch, perElement, state, doc);
           mountedNode.set(key, node as { nodeType: number } | null);
-          // replay any <canvas data-ops> draw-specs onto their 2d contexts
-          // (plastron-canvas vocabulary). Guarded — never breaks a flush.
-          drawCanvases(target);
+          // dispatch spec-carrying <canvas> elements to their replayers via
+          // the dom.replayers registry (data-ops → replay.canvas2d,
+          // data-scene → replay.scene, …). Guarded — never breaks a flush.
+          runReplayers(state, target);
+          syncFormValues(target);
           hydrateOpfsImgs(target, state);
         }
       }

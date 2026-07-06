@@ -45,11 +45,21 @@ interface WabtModuleHandle {
 
 // Lazy-init wabt. Module-level singleton because the wabt instance is
 // stateless and reusing it avoids re-instantiating the parser wasm on
-// every compile.
+// every compile. The bare import serves dev/CLI/tests (bundled or
+// node_modules); the single-file dist marks wabt EXTERNAL (bundle.ts), so
+// in the deployed browser the bare specifier rejects and we fall back to
+// the CDN ESM build — same pattern as py-compiler's PYODIDE_CDN and
+// plastron-gpu's three fallback. Overridable via globalThis.__wabtCdn.
+const WABT_CDN = "https://cdn.jsdelivr.net/npm/wabt@1.0.37/+esm";
 let _wabt: Promise<WabtModule> | undefined;
 const getWabt = (): Promise<WabtModule> => {
   if (!_wabt) {
-    _wabt = import("wabt").then((m) => (m.default as () => Promise<WabtModule>)());
+    _wabt = import("wabt")
+      .catch(() => {
+        const url = (globalThis as { __wabtCdn?: string }).__wabtCdn ?? WABT_CDN;
+        return import(url) as Promise<{ default: unknown }>;
+      })
+      .then((m) => (m.default as () => Promise<WabtModule>)());
   }
   return _wabt;
 };

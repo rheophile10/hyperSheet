@@ -112,8 +112,27 @@ const drain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Promise<v
     for (const [k, c] of state.cels) if (generatedBy(c) === owner) owned.set(k, c);
 
     // ── regeneration diff: removals first ──
+    // SPARSE grids: a cel BORN into a sheet's address space (committed after
+    // genesis, stamped with this generator's ownership) is USER DATA — it is
+    // never in the sparse spec, but it survives regeneration as long as the
+    // generator still declares the sheet (its `<seg>.dims` is in the spec)
+    // AND the address is within the declared range (a shrink sweeps
+    // out-of-range cels, exactly like the old eager blanks). The final sweep
+    // below still reclaims it when the generator itself goes away.
+    const colIdx = (s: string): number => { let n = 0; for (const ch of s) n = n * 26 + (ch.charCodeAt(0) - 64); return n; };
+    const inDeclaredRange = (k: Key): boolean => {
+      const dot = k.lastIndexOf(".");
+      if (dot <= 0) return false;
+      const m = /^([A-Z]+)(\d+)$/.exec(k.slice(dot + 1));
+      if (!m) return false;
+      const dimsSpec = req.cels[`${k.slice(0, dot)}.dims`] as { v?: { rows?: unknown; cols?: unknown } } | undefined;
+      if (!dimsSpec) return false;
+      const rows = Number(dimsSpec.v?.rows) || 0, cols = Number(dimsSpec.v?.cols) || 0;
+      return Number(m[2]) <= rows && colIdx(m[1]!) <= cols;
+    };
     for (const [k] of owned) {
       if (!(k in req.cels)) {
+        if (inDeclaredRange(k)) continue;
         retireCel(state, k, stale);
         retired.push(k);
       }

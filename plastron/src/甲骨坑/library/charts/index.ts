@@ -1,5 +1,6 @@
 import type { 甲骨, Cel, Fn } from "../../../types/index.js";
 import { bindNativeFns } from "../../../kernel/index.js";
+import { linscale, scaleapply, ordinalcolor } from "../viz-core/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -22,7 +23,9 @@ type Op = Record<string, unknown>;
 
 const num = (v: unknown, d = 0): number => { const n = Number(v); return Number.isFinite(n) ? n : d; };
 
-const PALETTE = ["#7fd0ff", "#e6677a", "#9fe89f", "#ffd34e", "#c39bd3", "#f5b041", "#76d7c4", "#f1948a", "#85c1e9", "#d7bde2"];
+// the categorical palette now comes from viz-core (ordinalcolor wraps the same
+// 10-color ramp); chrome colors stay local.
+const color = (i: number): string => String(ordinalcolor(i));
 const BG = "#16161f", INK = "#c9c9d4", MUT = "#8a8a99", GRID = "#2e2e3e";
 
 const flat = (v: unknown): unknown[] => (Array.isArray(v) ? (v as unknown[]).flat(8) : v == null ? [] : [v]);
@@ -66,14 +69,15 @@ const barchart: Fn = ((labels: unknown, values?: unknown, x?: unknown, y?: unkno
   const padL = 10, padR = 10, padT = 20, padB = 18;
   const plotW = b.w - padL - padR, plotH = b.h - padT - padB;
   const hi = Math.max(...vs, 1e-9);
+  const ys = linscale(0, hi, 0, plotH); // value → bar height (the linear map charts used to bake inline)
   const slot = plotW / vs.length;
   const bw = Math.max(3, slot * 0.62);
   const ops: Op[] = [bgOp(b)];
   vs.forEach((v, i) => {
-    const bh = Math.max(1, (Math.max(0, v) / hi) * plotH);
+    const bh = Math.max(1, num(scaleapply(ys, Math.max(0, v))));
     const bx = b.x + padL + i * slot + (slot - bw) / 2;
     const by = b.y + padT + plotH - bh;
-    ops.push({ op: "rect", x: bx, y: by, w: bw, h: bh, fill: PALETTE[i % PALETTE.length] });
+    ops.push({ op: "rect", x: bx, y: by, w: bw, h: bh, fill: color(i) });
     ops.push(centered(bx + bw / 2, by - 4, fmt(v), INK, 10));
     ops.push(centered(bx + bw / 2, b.y + b.h - 5, clip(ls[i]!, Math.max(3, Math.floor(slot / 5.5))), MUT, 9));
   });
@@ -91,7 +95,8 @@ const linechart: Fn = ((labels: unknown, values?: unknown, x?: unknown, y?: unkn
   const plotW = b.w - padL - padR, plotH = b.h - padT - padB;
   const lo = Math.min(0, ...vs);
   const hi = Math.max(...vs, lo + 1e-9);
-  const ny = (v: number): number => b.y + padT + ((hi - v) / (hi - lo)) * plotH;
+  const ys = linscale(lo, hi, b.y + padT + plotH, b.y + padT); // value → y (inverted: hi at the top)
+  const ny = (v: number): number => num(scaleapply(ys, v));
   const px = (i: number): number => b.x + padL + (vs.length > 1 ? (i * plotW) / (vs.length - 1) : plotW / 2);
   const ops: Op[] = [bgOp(b)];
   for (const gv of [hi, (hi + lo) / 2, lo]) {
@@ -99,9 +104,9 @@ const linechart: Fn = ((labels: unknown, values?: unknown, x?: unknown, y?: unkn
     ops.push({ op: "line", points: [[b.x + padL, gy], [b.x + b.w - padR, gy]], stroke: GRID, lineWidth: 1 });
     ops.push({ op: "text", x: b.x + 4, y: gy + 3, text: fmt(gv), fill: MUT, font: "9px system-ui" });
   }
-  ops.push({ op: "line", points: vs.map((v, i) => [px(i), ny(v)]), stroke: PALETTE[0], lineWidth: 2 });
+  ops.push({ op: "line", points: vs.map((v, i) => [px(i), ny(v)]), stroke: color(0), lineWidth: 2 });
   vs.forEach((v, i) => {
-    ops.push({ op: "circle", x: px(i), y: ny(v), r: 3, fill: PALETTE[0] });
+    ops.push({ op: "circle", x: px(i), y: ny(v), r: 3, fill: color(0) });
     ops.push(centered(px(i), b.y + b.h - 5, clip(ls[i]!, Math.max(3, Math.floor(plotW / Math.max(1, vs.length) / 5.5))), MUT, 9));
   });
   return ops;
@@ -121,14 +126,14 @@ const piechart: Fn = ((labels: unknown, values?: unknown, x?: unknown, y?: unkno
   let a0 = -Math.PI / 2;
   rows.forEach((row, i) => {
     const a1 = a0 + (row.v / total) * Math.PI * 2;
-    ops.push({ op: "wedge", cx, cy, r, a0, a1, fill: PALETTE[i % PALETTE.length], stroke: BG, lineWidth: 1 });
+    ops.push({ op: "wedge", cx, cy, r, a0, a1, fill: color(i), stroke: BG, lineWidth: 1 });
     a0 = a1;
   });
   const lx = b.x + side + 16, rowH = 15;
   const maxRows = Math.max(1, Math.floor((b.h - 16) / rowH));
   rows.slice(0, maxRows).forEach((row, i) => {
     const ly = b.y + 14 + i * rowH;
-    ops.push({ op: "rect", x: lx, y: ly - 8, w: 9, h: 9, fill: PALETTE[i % PALETTE.length] });
+    ops.push({ op: "rect", x: lx, y: ly - 8, w: 9, h: 9, fill: color(i) });
     ops.push({ op: "text", x: lx + 14, y: ly, text: `${clip(row.l, 16)} ${fmt(row.v)} (${Math.round((row.v / total) * 100)}%)`, fill: INK, font: "10px system-ui" });
   });
   if (rows.length > maxRows) ops.push({ op: "text", x: lx + 14, y: b.y + 14 + maxRows * rowH, text: `+${rows.length - maxRows} more`, fill: MUT, font: "10px system-ui" });

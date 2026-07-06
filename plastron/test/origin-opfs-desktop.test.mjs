@@ -3,10 +3,11 @@ import assert from "node:assert/strict";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 
-// origin — the OPFS desktop phase: the wallpaper loads FROM an OPFS file
-// (origin.seedWallpaper writes /desktop/wallpaper.<ext> and points desktop.A2
-// at it), upload/download cels render their button/input, and the explorer verb
-// lists OPFS entries as a folders-then-files dom value.
+// origin — the OPFS desktop phase: the desktop background falls back to the
+// shipped data-URI wallpaper (rendered by a formula — the old
+// origin.seedWallpaper OPFS-seeding verb is gone), upload/download cels render
+// their button/input, and the explorer verb lists OPFS entries as a
+// folders-then-files dom value.
 
 process.env.PLASTRON_FILE_STORE_ROOT ??= "./.plastron-fs";
 
@@ -124,17 +125,21 @@ test("explorer() renders OPFS folders + files from a listing as a dom value", as
   const all = txtV(val);
   assert.match(all, /sub\//, "the folder is listed (with a trailing /)");
   assert.match(all, /hello\.txt/, "the file is listed");
+  // BOTH row kinds hold a clickable name span + per-row action buttons
+  // (dir rows gained a recursive 🗑 — the nav click moved into the name span).
   const dirRow = walkV(val, (n) => String(n.attrs?.class ?? "").includes("fe-dir"))[0];
-  // the file row holds a clickable name span (preview) + per-file action buttons
-  const fileName = walkV(val, (n) => String(n.attrs?.class ?? "").includes("fe-name"))[0];
-  assert.equal(dirRow?.events?.click?.dispatch, "explorer.nav", "folders descend");
+  const dirName = walkV(dirRow, (n) => String(n.attrs?.class ?? "").includes("fe-name"))[0];
+  const fileName = walkV(val, (n) => String(n.attrs?.class ?? "").includes("fe-file"))
+    .flatMap((row) => walkV(row, (n) => String(n.attrs?.class ?? "").includes("fe-name")))[0];
+  assert.equal(dirName?.events?.click?.dispatch, "explorer.nav", "folders descend");
   assert.equal(fileName?.events?.click?.dispatch, "explorer.open", "files preview");
-  // per-file action buttons render: delete / rename / download
+  // per-row action buttons render: delete / rename / download / rmdir
   const acts = walkV(val, (n) => String(n.attrs?.class ?? "").includes("fe-act"));
   const dispatches = acts.map((a) => a.events?.click?.dispatch);
   assert.ok(dispatches.includes("explorer.delete"), "a 🗑 delete button renders");
   assert.ok(dispatches.includes("explorer.rename"), "a ✎ rename button renders");
   assert.ok(dispatches.includes("explorer.download"), "a ⬇ download button renders");
+  assert.ok(dispatches.includes("explorer.rmdir"), "a 🗑 recursive delete renders on the dir row");
 });
 
 test("the explorer window lists real OPFS entries + descends reactively", async () => {

@@ -2,6 +2,66 @@
   "name": "sheetapp",
   "cels": [
     {
+      "key": "sheetapp.addsheet",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sheetapp.addsheet",
+        "segment": "sheetapp",
+        "name": "sheetapp.addsheet",
+        "kind": "native",
+        "description": "(state, {ref, name?, rows?, cols?}) -> create a fresh SPARSE sheet segment and tab it into the workbook via window.addSheet. The only minted cel is <seg>.dims ({rows, cols}, default 12x7) - addresses render from dims and a cel is born only when a value/formula is committed. name defaults to the guarded sheetN; an existing name is a no-op (idempotent - the =sheet verb re-fires)."
+      },
+      "locked": true
+    },
+    {
+      "key": "sheetapp.regrid",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetapp.regrid",
+        "segment": "sheetapp",
+        "name": "regrid",
+        "kind": "native",
+        "description": "(state, seg) -> re-derive a sheet's content formula after a cel is born into (or removed from) the segment: swaps the sheetcells(...) ref list inside every workbook tab formula rendering seg. Called by origin.commit when a commit births a new grid cel."
+      }
+    },
+    {
+      "key": "sheetapp.applyrename",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetapp.applyrename",
+        "segment": "sheetapp",
+        "name": "sheetapp.applyrename",
+        "kind": "native",
+        "description": "(state, _, event) -> commit the rename box (✓ button or Enter)."
+      }
+    },
+    {
+      "key": "sheetapp.tabmenu",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetapp.tabmenu",
+        "segment": "sheetapp",
+        "name": "sheetapp.tabmenu",
+        "kind": "native",
+        "description": "(state, {ref,index}, event) -> right-click / double-click a worksheet tab to open the floating rename box."
+      }
+    },
+    {
+      "key": "sheetapp.renamesheet",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetapp.renamesheet",
+        "segment": "sheetapp",
+        "name": "sheetapp.renamesheet",
+        "kind": "native",
+        "description": "(state, {ref,index,name}) -> rename a sheet by ALIAS (set the tab title + record <seg>.alias), NOT by re-keying cels. Formulas/cell keys are untouched."
+      }
+    },
+    {
       "key": "sheetapp.program",
       "celType": "ValueCel",
       "metadata": {
@@ -11,6 +71,43 @@
         "description": "the worksheet program marker. sheetapp is the origin-application its documents (origin-user segments stamped applications:[\"sheetapp\"]) render against; it owns new/open/save/load/close + the worksheet window render (sheetdoc). role:application is derived from the application/ loader group."
       },
       "v": "worksheet"
+    },
+    {
+      "key": "sheetapp.open",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetapp.open",
+        "segment": "sheetapp",
+        "name": "sheetapp.open",
+        "kind": "native",
+        "description": "(state) - the workbook 📂 button: open a picker window listing the OPFS segment store's DOCUMENTS (store.list entries carrying an `app` field — docs, not library/application segments). Click a row to open it.",
+        "example": "=on(\"click\", \"sheetapp.open\")"
+      }
+    },
+    {
+      "key": "sheetapp.pick",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetapp.pick",
+        "segment": "sheetapp",
+        "name": "sheetapp.pick",
+        "kind": "native",
+        "description": "(state, name) - picker row click: close the 📂 picker window and origin.opendoc the chosen stored document."
+      }
+    },
+    {
+      "key": "sheetapp.delete",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheetapp.delete",
+        "segment": "sheetapp",
+        "name": "sheetapp.delete",
+        "kind": "native",
+        "description": "(state, name) - the 📂 picker row's 🗑: confirm, then store.del every stored version of the document and refresh the picker. Baked demo docs reinstall on the next fresh boot; user docs are gone for good. Deleting an OPEN doc doesn't evict its live cels — and closing that window re-saves it."
+      }
     },
     {
       "key": "sheetapp.save",
