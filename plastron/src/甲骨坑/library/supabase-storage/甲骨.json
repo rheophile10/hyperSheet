@@ -1,0 +1,17 @@
+{
+  "name": "supabase-storage",
+  "cels": [
+    {
+      "key": "supabase.storage",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "supabase.storage",
+        "segment": "supabase-storage",
+        "name": "supabase.storage",
+        "kind": "native",
+        "description": "(state, op, project, payload) - Supabase Storage (buckets) — the cloud twin of the file-store/OPFS library, over gated fetch with the session JWT (RLS-scoped). op=upload {bucket, path, content, contentType?='text/plain', upsert?=true} → { Key }; op=download {bucket, path} → text; op=list {bucket, prefix?, limit?, offset?} → objects; op=remove {bucket, path} → ok; op=createBucket {bucket, public?} → bucket; op=listBuckets → buckets. Reads config cels sb.<project>.url / sb.<project>.anonkey. Returns a parenthesised error string on failure."
+      },
+      "locked": true
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "name": "scheduler",
+  "cels": [
+    {
+      "key": "clock.target_fps",
+      "celType": "ValueCel",
+      "v": 60,
+      "metadata": {
+        "key": "clock.target_fps", "segment": "scheduler", "name": "target_fps", "schema": "number",
+        "description": "the frame rate the governor AIMS for (host-set knob). The achievable rate (clock.fps) falls below this when the device can't keep up."
+      }
+    },
+    {
+      "key": "clock.mode",
+      "celType": "ValueCel",
+      "v": "learn",
+      "metadata": {
+        "key": "clock.mode", "segment": "scheduler", "name": "mode", "schema": "string",
+        "description": "the learn/lock/lose governor: 'learn' folds each frame cost into the cost model; 'lock' freezes the learned model; 'lose' resets it to the latest sample."
+      }
+    },
+    {
+      "key": "clock.cost_ewma",
+      "celType": "ValueCel",
+      "v": 0,
+      "metadata": {
+        "key": "clock.cost_ewma", "segment": "scheduler", "name": "cost_ewma", "schema": "number",
+        "description": "the learned cost model: an exponential moving average (ms) of how long a frame actually takes. Updated by clock.tick in 'learn' mode; frozen in 'lock'; reseeded in 'lose'."
+      }
+    },
+    {
+      "key": "clock.samples",
+      "celType": "ValueCel",
+      "v": 0,
+      "metadata": {
+        "key": "clock.samples", "segment": "scheduler", "name": "samples", "schema": "number",
+        "description": "how many frames have been folded into the cost model so far."
+      }
+    },
+    {
+      "key": "clock.interval",
+      "celType": "ValueCel",
+      "v": 16,
+      "metadata": {
+        "key": "clock.interval", "segment": "scheduler", "name": "interval", "schema": "number",
+        "description": "GOVERNOR OUTPUT: ms to wait before the next frame, so the achieved period (cost + interval) targets the sustainable rate. The host loop reads this to schedule the next frame."
+      }
+    },
+    {
+      "key": "clock.fps",
+      "celType": "ValueCel",
+      "v": 60,
+      "metadata": {
+        "key": "clock.fps", "segment": "scheduler", "name": "fps", "schema": "number",
+        "description": "GOVERNOR OUTPUT: the achievable frame rate given the learned cost (1000 / max(budget, cost_ewma)). An observer cel — reference it in a stats formula and it updates for free each frame."
+      }
+    },
+    {
+      "key": "clock.tick",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "clock.tick", "segment": "scheduler", "name": "tick", "kind": "native",
+        "description": "(state, cost) - the governor STEP. Fold the measured frame cost (ms) into the cost model per clock.mode, write clock.cost_ewma/samples/interval/fps, and return the next interval (ms). Call once per frame after the sim + paint; schedule the next frame with the returned value. Decouples sim/render rate from device capability via a learnable cost model (learn/lock/lose). Replaces hand-rolled setInterval/rAF clock loops."
+      }
+    }
+  ]
+}

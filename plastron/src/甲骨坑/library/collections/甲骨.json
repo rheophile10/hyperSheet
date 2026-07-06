@@ -1,0 +1,61 @@
+{
+  "name": "collections",
+  "cels": [
+    {
+      "key": "rows",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "rows",
+        "segment": "collections",
+        "name": "rows",
+        "kind": "native",
+        "description": "(data, headers?) - tabular data → a LIST OF DICTS (the hub form the collections doctrine converges on). data: nested row arrays whose FIRST row is the header ([[\"name\",\"age\"],[\"ada\",36]] — the S-expr range shape, or BYROW output), OR a flat value list plus an explicit headers array (=rows(A2:C4, A1:C1) — the infix range shape: headers give the column count, the flat data chunks into rows), OR an already-dict list (identity). Empty rows are dropped. Feed the result to table()/dbseed()/broadcast dot access (=rows(...).age).",
+        "example": "=rows(A2:C4, A1:C1)  →  [{name:\"ada\", age:36}, …]",
+        "commentary": "The collections doctrine converges every tabular shape on this ONE hub form so the access algebra never changes as data moves between forms: =sql/supabase results already ARE it, dbseed consumes it, broadcast dot access (=D1:D9.age) reads it. Convert at the boundary with rows() instead of reshaping by hand — nothing else does range→dicts."
+      }
+    },
+    {
+      "key": "table",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "table",
+        "segment": "collections",
+        "name": "table",
+        "kind": "native",
+        "description": "(rowsOrData, opts?) - render a LIST OF DICTS as an HTML table vnode (class pl-table) for a view pane: columns are the union of row keys in first-seen order, header from the keys. Accepts anything rows() accepts (nested header-row arrays convert automatically). opts: {cols: [\"name\",\"age\"]} selects/orders columns; {limit: n} caps rows (a '… N more' footer row shows the truncation). Values render via json-ish text; nested objects stringify. =view('people', table(rows(A1:C9))).",
+        "example": "=view('people', table(rows(A2:C9, A1:C1), {limit: 20}))",
+        "commentary": "Tables are VIEWS over plain JSON-shaped values, not a storage shape — there is no table object to mutate. Edit the value/range the table reads and the view re-renders reactively. And no value→range spill: ranges are authored, never exploded into (the no-spill doctrine)."
+      }
+    },
+    {
+      "key": "unique",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "unique",
+        "segment": "collections",
+        "name": "unique",
+        "kind": "native",
+        "description": "(list) - SET discipline for a list value: drop duplicates, keep first occurrence, preserve order. Primitives compare by value; dicts/lists by structural (JSON) equality. Non-array input returns a one-item list (or [] for blank). =unique(D1:D9.tag) → the distinct tags.",
+        "example": "=unique(D1:D9.tag)  →  the distinct tags, first-seen order",
+        "commentary": "Sets are lists with a uniqueness DISCIPLINE, not a fifth storage form — keep set semantics in this verb rather than reaching for a new container (no DICT()/ARRAY(): literals + JSON entry cover construction)."
+      }
+    },
+    {
+      "key": "jsonparse",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "jsonparse",
+        "segment": "collections",
+        "name": "jsonparse",
+        "kind": "native",
+        "description": "(s) - parse a JSON STRING VALUE into the object/array it encodes — the runtime twin of typed-in `{…}`/`[…]` data entry, and the inverse of json(). A non-string passes through unchanged (already parsed); invalid JSON is a #VALUE!-style cel error IFERROR can catch. =jsonparse(cat('/data.json')).users[0].name.",
+        "example": "=jsonparse(cat('/data.json')).users[0].name",
+        "commentary": "Entry routes differ by TIER, not representation: typed-in {\"a\":1} mints a writable ValueCel, ={a:1} mints a derived FormulaCel — same shape, different writability. jsonparse is the runtime route for JSON that arrives as a STRING value (cat(), fetch, sql text): parse once at the boundary, then the one access algebra applies."
+      }
+    }
+  ]
+}

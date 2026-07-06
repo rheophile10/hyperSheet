@@ -1,0 +1,174 @@
+{
+  "name": "ecs",
+  "cels": [
+    {
+      "key": "sysmap",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sysmap",
+        "segment": "ecs",
+        "name": "sysmap",
+        "kind": "native",
+        "description": "(rule, ...args) - run a per-entity rule over parallel component tables (entity = array index). N comes from the first array arg; any array of exactly length N is sliced per entity, everything else (params, dt, colors) broadcasts; the entity index arrives as the rule's last argument. A lambda cel referenced in the formula contributes its CALLABLE, so =sysmap(D6, positions, velocities, ...) receives a real function - author the rule as a =LAMBDA cell (the grid-program contract: rules are cells, never native). Returns the length-N result table."
+      }
+    },
+    {
+      "key": "neighbors",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "neighbors",
+        "segment": "ecs",
+        "name": "neighbors",
+        "kind": "native",
+        "description": "(positions, radius, ...tables) - per-entity spatial query over a [[x,y],...] table: for entity i, an array of [pos_j, ...table_j] rows for every OTHER entity j within radius. Extra tables let a rule see neighbors' velocities etc. Naive O(n^2) - fine for hundreds of entities."
+      }
+    },
+    {
+      "key": "integrate",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "integrate",
+        "segment": "ecs",
+        "name": "integrate",
+        "kind": "native",
+        "description": "(positions, velocities, dt) - Euler step over pair tables: [[x,y],...] + [[vx,vy],...] -> [[x+vx*dt, y+vy*dt],...]."
+      }
+    },
+    {
+      "key": "wrap",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "wrap",
+        "segment": "ecs",
+        "name": "wrap",
+        "kind": "native",
+        "description": "(positions, w, h) - toroidal wrap of a [[x,y],...] table into the box [0,w)x[0,h)."
+      }
+    },
+    {
+      "key": "opmap",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "opmap",
+        "segment": "ecs",
+        "name": "opmap",
+        "kind": "native",
+        "description": "(op, table, ...args) - render a component table with an existing canvas-op builder: each row is spread into op, trailing args appended. =canvas(w, h, opmap(circle, positions, 3, '#4fc3f7')) draws one dot per entity (canvas flattens op arrays)."
+      }
+    },
+    {
+      "key": "gridops",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "gridops",
+        "segment": "ecs",
+        "name": "gridops",
+        "kind": "native",
+        "description": "(op, grid, w, h, cell, ...args) - render the truthy cells of a flat w*h grid: op(px, py, cell-1, cell-1, ...args) per live cell. With rect that is a filled square per cell; the -1 leaves a hairline grid gap."
+      }
+    },
+    {
+      "key": "automaton",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "automaton",
+        "segment": "ecs",
+        "name": "automaton",
+        "kind": "native",
+        "description": "(grid, w, h, rule) - one generation of a toroidal 8-neighbour cellular automaton on a flat w*h grid. The RULE lives in a cell (grid-program contract): a KERNEL callable (alive, count) -> 0|1 - author it as =LAMBDA(alive, n, ...) or a wat lambda (same ABI) - or a B/S rulestring as policy-as-data ('B3/S23' = Conway, 'B36/S23' = HighLife). The mechanism is only the neighbour count. Returns a NEW array so a skipEqual commit freezes cleanly on still lifes."
+      }
+    },
+    {
+      "key": "param.set",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "param.set",
+        "segment": "ecs",
+        "name": "param.set",
+        "kind": "native",
+        "description": "(state, celKey, event) - generic input->cel binding for on(): writes the event target's value to the cel named by the payload. Ranges/numbers write valueAsNumber, checkboxes write checked, everything else the string value. =dom('input', attr('type','range',...), on('input', 'param.set', 'ecs.cohesion'))."
+      }
+    },
+    {
+      "key": "flockSeed",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "flockSeed",
+        "segment": "ecs",
+        "name": "flockSeed",
+        "kind": "native",
+        "description": "(n, seed, w, h, d) - a deterministic seeded flock: the SoA buffers struct {n, positions: Float32Array(3n), velocities: Float32Array(3n)} for n entities in a centered w*h*d box (mulberry32 - same seed, byte-identical flock). Meant as a pump effect's init so archives never carry the floats; bind metadata.schema:'buffers' on the cel for snapshot round-trips."
+      }
+    },
+    {
+      "key": "swarmstep",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "swarmstep",
+        "segment": "ecs",
+        "name": "swarmstep",
+        "kind": "native",
+        "description": "(buffers, params, kernel) - one simulation step over the SoA struct, IN PLACE, as pure MECHANISM: spatial-hash neighbor aggregates per entity (cell = radius, params.maxNeighbors cap, default 24), then the KERNEL decides each new velocity, then commit + integrate + toroidal wrap in the centered box. The kernel is the RULE and lives in a cell (the grid-program contract): an infix =LAMBDA for the legible tier or a wat lambda cel for the compiled tier - same ABI: kernel(px,py,pz, vx,vy,vz, n, cx,cy,cz, ax,ay,az, sx,sy,sz, cohesion, alignment, separation, maxSpeed) -> [vx,vy,vz], where n = neighbors found, c* = neighbor centroid, a* = mean neighbor velocity, s* = inverse-square separation sum (all zeros when n=0). params = {cohesion, alignment, separation, maxSpeed, radius, dt, w, h, d, maxNeighbors?} - author it as an infix object-literal FormulaCel over sheet cells and the sim re-derives on every edit. Deterministic (no RNG). Use as a sim.run effect: {fn: swarmstep, kernel: E1, ...}."
+      }
+    },
+    {
+      "key": "bufstats",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "bufstats",
+        "segment": "ecs",
+        "name": "bufstats",
+        "kind": "native",
+        "description": "(buffers, gen) - probe the dense interior: {gen, n, meanSpeed, maxSpeed} summary of a SoA buffers struct. Reference the generation cel as gen so the probe re-derives on every committed frame - gen is part of the output (stats as-of generation gen), which is what makes the off-grid buffer observable through the grid."
+      }
+    },
+    {
+      "key": "sim.run",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sim.run",
+        "segment": "ecs",
+        "name": "sim.run",
+        "kind": "native",
+        "description": "(state, configKey) - start the tick pump named by a config cel: { commits?: [{to, from, every?, skipEqual?}], effects?: [{fn, kernel?, buffers, params?, gen, init?, initArgs?}], while?, fps? }. COMMITS route derived *.next cels back into table cels through the graph (the formula-tier loop). EFFECTS are the dense-interior loop: call fn(buffers, params, kernel) to mutate SoA typed arrays IN PLACE, seed via init(...initArgs) when the buffer cel is empty, and write gen=frame - the generation write re-fires sceneframe cels so scene.paint drains dirty instances; per-frame entity state never crosses the graph. fn / kernel / init are CALLABLES - reference the verb and lambda cels in the config formula (fn: swarmstep, kernel: E1, init: flockSeed) so the reference IS the dependency edge; never name them as strings. buffers/gen are cel-KEY strings (write targets the pump owns); params is an embedded object or a cel-key string read live. every=N commits on every Nth frame; skipEqual skips content-equal writes; while names a window state cel - the pump stops when it closes. The config cel is re-read every frame, so fps and every knob it derives from are live. Returns 'running' or 'already running'."
+      }
+    },
+    {
+      "key": "workbook",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "workbook",
+        "segment": "ecs",
+        "name": "workbook",
+        "kind": "native",
+        "genesis": true,
+        "description": "(id, title, geom?, ...'kind:title:ref') - a formula-friendly wbopen: genesis a self-mounting gen-2 WORKBOOK window over EXISTING content cels. Tab specs are flat strings because infix cannot author {ref,title}[] arrays: 'sheet:params:ecsv.params' fills the left celBook (worksheets), 'view:fish:ecsv.fish' the right cardBook (dom views). =workbook('ecs', 'ECS', geom(0.3, 0.06, 900, 560), 'sheet:params:ecsv.params', 'view:fish:ecsv.fish')."
+      }
+    },
+    {
+      "key": "sim.stop",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sim.stop",
+        "segment": "ecs",
+        "name": "sim.stop",
+        "kind": "native",
+        "description": "(state, configKey) - stop the tick pump started by sim.run for this config cel."
+      }
+    }
+  ]
+}

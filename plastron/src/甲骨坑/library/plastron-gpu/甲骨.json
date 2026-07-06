@@ -1,0 +1,162 @@
+{
+  "name": "plastron-gpu",
+  "cels": [
+    {
+      "key": "box",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "box",
+        "segment": "plastron-gpu",
+        "name": "box",
+        "kind": "native",
+        "description": "(w, h, d) - a box geometry SPEC node ({spec:'box', w,h,d}). Pure - the Three geometry is built by the replayer, never here. =scene(..., mesh(box(1,1,1), material('#4a90d9')))."
+      }
+    },
+    {
+      "key": "sphere",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sphere",
+        "segment": "plastron-gpu",
+        "name": "sphere",
+        "kind": "native",
+        "description": "(r) - a sphere geometry SPEC node ({spec:'sphere', r})."
+      }
+    },
+    {
+      "key": "material",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "material",
+        "segment": "plastron-gpu",
+        "name": "material",
+        "kind": "native",
+        "description": "(color) - a material SPEC node ({spec:'material', color}). Lambert-shaded by the replayer."
+      }
+    },
+    {
+      "key": "mesh",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "mesh",
+        "segment": "plastron-gpu",
+        "name": "mesh",
+        "kind": "native",
+        "description": "(geometry, material) - a single-object mesh SPEC node. For N copies use instances()."
+      }
+    },
+    {
+      "key": "light",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "light",
+        "segment": "plastron-gpu",
+        "name": "light",
+        "kind": "native",
+        "description": "(x, y, z [, color] [, intensity]) - a directional light SPEC node (an ambient fill ships automatically)."
+      }
+    },
+    {
+      "key": "camera",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "camera",
+        "segment": "plastron-gpu",
+        "name": "camera",
+        "kind": "native",
+        "description": "(x, y, z) - a perspective camera SPEC node, looking at the origin."
+      }
+    },
+    {
+      "key": "instances",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "instances",
+        "segment": "plastron-gpu",
+        "name": "instances",
+        "kind": "native",
+        "description": "(geometry, material, count, bufferKey) - the keystone SPEC node: N copies of one geometry as a THREE.InstancedMesh (one draw call). bufferKey is a CEL KEY STRING naming the buffer cel whose value is the SoA struct {positions: Float32Array(3N) [, colors: Float32Array(3N)]} - the spec carries the key, not the data, so it dehydrates cleanly; the scene.paint drain reads the cel and uploads per-instance transforms (residency-agnostic: any struct satisfying the shape works). instanceColor is allocated only when the struct has colors."
+      }
+    },
+    {
+      "key": "scene",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "scene",
+        "segment": "plastron-gpu",
+        "name": "scene",
+        "kind": "native",
+        "description": "(w, h, ...nodes) - a <canvas data-scene> VNODE carrying the scene-spec JSON (camera/light/mesh/instances nodes; optional (style ...) child). Arrives via the normal vnode pipeline; the dom replay registry dispatches it to replay.scene, which builds and RETAINS the Three object graph per canvas. 3-D twin of canvas()."
+      }
+    },
+    {
+      "key": "sceneframe",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sceneframe",
+        "segment": "plastron-gpu",
+        "name": "sceneframe",
+        "kind": "native",
+        "description": "(bufferKey, generation) - the scene.paint channel payload {key, gen}. emitsTo: a formula whose root call is sceneframe AUTO-JOINS the scene.paint channel - type =sceneframe('sheet1.B10', B11) into any cell and each generation bump re-fires it, enqueues the frame, and the drain uploads dirty instances + renders. This is how continuous sims paint WITHOUT routing per-frame state through the vnode diff (doctrine #5).",
+        "emitsTo": "scene.paint"
+      }
+    },
+    {
+      "key": "three.url",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "three.url",
+        "segment": "plastron-gpu",
+        "name": "three.url",
+        "description": "where the replayer lazy-imports three.module.js from. Default '/three.module.js' (same-origin, CSP 'self'-clean; vendored by the host - the doom asset precedent). Falls back to jsdelivr (already in origin's script-src). OPFS-cached delivery via asset.fetch would need blob: in script-src - deliberately deferred."
+      },
+      "v": "/three.module.js"
+    },
+    {
+      "key": "scene.paint",
+      "celType": "ChannelCel",
+      "metadata": {
+        "key": "scene.paint",
+        "segment": "plastron-gpu",
+        "drain": "scene.paint.drain",
+        "description": "the 3-D paint channel. sceneframe FormulaCels declare metadata.channel:['scene.paint']; a generation/knob change buffers a {key, gen} frame here; draining uploads dirty instance transforms to the retained Three handles and renders. NOT the dom.paint vnode path - per-frame instance data never enters the vnode diff."
+      },
+      "v": {
+        "drain": "scene.paint.drain"
+      }
+    },
+    {
+      "key": "scene.paint.drain",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "scene.paint.drain",
+        "segment": "plastron-gpu",
+        "name": "scene.paint.drain",
+        "kind": "native",
+        "description": "Channel drain: for each buffered {key, gen} frame, for each retained scene handle whose instances reference that buffer cel key - read the SoA struct, dirty-diff against the last upload, setMatrixAt the changed instances (setColorAt when colors present), needsUpdate once, render. Guarded; never breaks a flush."
+      }
+    },
+    {
+      "key": "replay.scene",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "replay.scene",
+        "segment": "plastron-gpu",
+        "name": "replay.scene",
+        "kind": "native",
+        "description": "(el, state) - the 3-D replayer (dom.replayers entry for data-scene): on first sight of a <canvas data-scene>, lazy-import Three, build renderer + scene graph from the spec, full-upload the instance buffers, render once, and RETAIN the handle in a WeakMap keyed by the element (frame-to-frame updates flow through scene.paint, not re-parsing). A changed data-scene attr rebuilds; a disconnected element is pruned and its renderer disposed (GL context cap)."
+      }
+    }
+  ]
+}

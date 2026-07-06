@@ -1,0 +1,23 @@
+{
+  "name": "asset-loader",
+  "cels": [
+    {
+      "key": "asset.base",
+      "celType": "ValueCel",
+      "v": "/",
+      "metadata": {
+        "key": "asset.base", "segment": "asset-loader", "name": "base", "schema": "string",
+        "description": "default URL prefix for asset.fetch when a caller doesn't pass one (assets are hosted at plastron.ca / same-origin). Overridable per-call (opts.base) or via globalThis.__plastronAssets."
+      }
+    },
+    {
+      "key": "asset.fetch",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "asset.fetch", "segment": "asset-loader", "name": "fetch", "kind": "native",
+        "description": "(state, name [, {base?, cache?, onProgress?}]) → Uint8Array. Fetch a named binary asset from base+name, cached in OPFS at /plastron/assets/<name> so it downloads once and reloads instantly. The one mechanism behind every heavy lazy tier (doom WAD, and rapier/maplibre/occt/three to come). cache:false skips the cache; caching is best-effort — a missing file-store/OPFS silently degrades to a plain fetch."
+      }
+    }
+  ]
+}

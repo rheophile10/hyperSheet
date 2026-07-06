@@ -1,0 +1,54 @@
+{
+  "name": "supabase",
+  "cels": [
+    {
+      "key": "supabase.data",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "supabase.data",
+        "segment": "supabase",
+        "name": "supabase.data",
+        "kind": "native",
+        "description": "(state, op, project, payload) - Supabase PostgREST data plane over gated fetch. Reads config cels sb.<project>.url / sb.<project>.anonkey; sends the user JWT (resolved from the session store) as the Authorization bearer when signed in, else anon. op=select {table, query?} → rows; op=insert {table, rows} → inserted rows (+bumps rev); op=update {table, match, values} → updated rows (+rev); op=delete {table, match} → deleted rows (+rev); op=rpc {fn, args} → result. Writes bump sb.<project>.<table>.rev — reference that rev in a select formula and the select re-fires on change (the same cel realtime pushes bump). Returns rows on success, a parenthesised error string on failure (Array.isArray to discriminate)."
+      },
+      "locked": true
+    },
+    {
+      "key": "supabase.realtime",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "supabase.realtime",
+        "segment": "supabase",
+        "name": "supabase.realtime",
+        "kind": "native",
+        "description": "(state, op, project, payload) - Supabase Realtime over a Phoenix-channel WebSocket. op=subscribe {table, schema?='public'} opens a persistent socket (authenticated with the session JWT for RLS) and, on each postgres_changes push, bumps sb.<project>.<table>.rev — so a server-side change re-fires a subscribed select formula through the SAME rev cel a local write bumps. op=unsubscribe {table} leaves the channel; op=status returns { connected, channels }. Browser + Bun (globalThis.WebSocket)."
+      },
+      "locked": true
+    },
+    {
+      "key": "supabase.invoke",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "supabase.invoke",
+        "segment": "supabase",
+        "name": "supabase.invoke",
+        "kind": "native",
+        "description": "(state, project, fn, body) -> json | {error}. Call a Supabase EDGE FUNCTION (/functions/v1/<fn>) with apikey + the user JWT resolved at the effect site (never a cel). The function holds any provider secret (e.g. an LLM key) SERVER-SIDE. Used by the grok segment to reach the chat-completion proxy."
+      },
+      "locked": true
+    },
+    {
+      "key": "supabase.config",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "supabase.config",
+        "segment": "supabase",
+        "name": "supabase.config",
+        "kind": "native",
+        "description": "(state, project, urlOrDict, anonkey?) -> string. Set the PUBLIC project config. Preferred: a DICT writes the ONE sb.<project> cel ({url, anonkey}) that sbConfig resolves FIRST; legacy (url, anonkey) strings write the two-cel sb.<project>.url / .anonkey fallback form. The anon/publishable key is browser-safe; the only secret (the user JWT) lives in the session store after supabase.auth signs in.",
+        "example": "=supabase.config(\"default\", {url:\"https://xxx.supabase.co\", anonkey:\"sb_publishable_…\"})"
+      },
+      "locked": true
+    }
+  ]
+}

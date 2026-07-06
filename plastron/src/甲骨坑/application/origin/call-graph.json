@@ -1,0 +1,6521 @@
+{
+  "generated": "bc4f683",
+  "verbs": {
+    "addCells": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1101
+        }
+      ],
+      "calledBy": []
+    },
+    "app.assets": {
+      "segment": "winapps",
+      "calls": [
+        {
+          "to": "fs.exists",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/winapps/index.ts",
+          "line": 84
+        },
+        {
+          "to": "fs.write",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/winapps/index.ts",
+          "line": 85
+        }
+      ],
+      "calledBy": []
+    },
+    "app.assets.ready": {
+      "segment": "winapps",
+      "calls": [
+        {
+          "to": "fs.exists",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/winapps/index.ts",
+          "line": 77
+        }
+      ],
+      "calledBy": []
+    },
+    "append": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1227
+        }
+      ],
+      "calledBy": []
+    },
+    "asset-loader:module": {
+      "segment": "asset-loader",
+      "calls": [
+        {
+          "to": "ensureSegments",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/asset-loader/index.ts",
+          "line": 39
+        },
+        {
+          "to": "fs.exists",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/asset-loader/index.ts",
+          "line": 42
+        },
+        {
+          "to": "fs.read",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/asset-loader/index.ts",
+          "line": 40
+        },
+        {
+          "to": "fs.write",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/asset-loader/index.ts",
+          "line": 41
+        }
+      ],
+      "calledBy": []
+    },
+    "boot.run": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1657
+        },
+        {
+          "to": "store.has",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1651
+        }
+      ],
+      "calledBy": []
+    },
+    "cat": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 997
+        }
+      ],
+      "calledBy": []
+    },
+    "cdn": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 919
+        }
+      ],
+      "calledBy": []
+    },
+    "chatcard": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1201
+        }
+      ],
+      "calledBy": []
+    },
+    "checkpoint": {
+      "segment": "checkpoint",
+      "calls": [
+        {
+          "to": "checkpoint.commit",
+          "kind": "emits",
+          "file": "src/甲骨坑/library/checkpoint/甲骨.json",
+          "line": 32
+        }
+      ],
+      "calledBy": []
+    },
+    "checkpoint.commit": {
+      "segment": "checkpoint",
+      "calls": [
+        {
+          "to": "checkpoint.drain",
+          "kind": "drain",
+          "file": "src/甲骨坑/library/checkpoint/甲骨.json",
+          "line": 5
+        }
+      ],
+      "calledBy": [
+        "checkpoint"
+      ]
+    },
+    "checkpoint.drain": {
+      "segment": "checkpoint",
+      "calls": [],
+      "calledBy": [
+        "checkpoint.commit"
+      ]
+    },
+    "checkpoint.restore": {
+      "segment": "checkpoint",
+      "calls": [
+        {
+          "to": "hydrate",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/checkpoint/index.ts",
+          "line": 111
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/checkpoint/index.ts",
+          "line": 116
+        }
+      ],
+      "calledBy": []
+    },
+    "checkpoint.snapshot": {
+      "segment": "checkpoint",
+      "calls": [],
+      "calledBy": [
+        "grok.applytools"
+      ]
+    },
+    "checkpoint:module": {
+      "segment": "checkpoint",
+      "calls": [
+        {
+          "to": "dehydrate",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/checkpoint/index.ts",
+          "line": 40
+        }
+      ],
+      "calledBy": []
+    },
+    "clock.tick": {
+      "segment": "scheduler",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/scheduler/index.ts",
+          "line": 64
+        }
+      ],
+      "calledBy": []
+    },
+    "closeUserSpace": {
+      "segment": "user-space-ops",
+      "calls": [],
+      "calledBy": [
+        "sheetapp:module"
+      ]
+    },
+    "db": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1304
+        }
+      ],
+      "calledBy": []
+    },
+    "dbexport": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1369
+        }
+      ],
+      "calledBy": []
+    },
+    "dbimport": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1382
+        }
+      ],
+      "calledBy": []
+    },
+    "dbseed": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1343
+        }
+      ],
+      "calledBy": []
+    },
+    "decrypt": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1486
+        }
+      ],
+      "calledBy": []
+    },
+    "def": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 906
+        }
+      ],
+      "calledBy": []
+    },
+    "defn.commit": {
+      "segment": "defn",
+      "calls": [
+        {
+          "to": "defn.drain",
+          "kind": "drain",
+          "file": "src/甲骨坑/library/defn/甲骨.json",
+          "line": 5
+        }
+      ],
+      "calledBy": []
+    },
+    "defn.drain": {
+      "segment": "defn",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/defn/index.ts",
+          "line": 95
+        }
+      ],
+      "calledBy": [
+        "defn.commit",
+        "origin.run",
+        "sheet:module"
+      ]
+    },
+    "dehydrate": {
+      "segment": "kernel",
+      "calls": [],
+      "calledBy": [
+        "checkpoint:module",
+        "segment-archive:module"
+      ]
+    },
+    "delSeg": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1279
+        }
+      ],
+      "calledBy": []
+    },
+    "desktop.bg": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "desktop.bgmenu",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1910
+        }
+      ],
+      "calledBy": []
+    },
+    "desktop.bgmenu": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1985
+        },
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1993
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1985
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1992
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1982
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1989
+        },
+        {
+          "to": "window.raise",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1990
+        }
+      ],
+      "calledBy": [
+        "desktop.bg"
+      ]
+    },
+    "desktop.graphNode": {
+      "segment": "origin",
+      "calls": [],
+      "calledBy": [
+        "origin:module"
+      ]
+    },
+    "desktop.graphbtn": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "desktop.stategraph",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1768
+        }
+      ],
+      "calledBy": []
+    },
+    "desktop.iconClick": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.navOpen",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2073
+        }
+      ],
+      "calledBy": [
+        "desktop.icons"
+      ]
+    },
+    "desktop.iconDrop": {
+      "segment": "origin",
+      "calls": [],
+      "calledBy": [
+        "desktop.icons"
+      ]
+    },
+    "desktop.iconGrab": {
+      "segment": "origin",
+      "calls": [],
+      "calledBy": [
+        "desktop.icons"
+      ]
+    },
+    "desktop.iconMove": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2062
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2061
+        }
+      ],
+      "calledBy": [
+        "desktop.icons"
+      ]
+    },
+    "desktop.icons": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "desktop.iconClick",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2021
+        },
+        {
+          "to": "desktop.iconDrop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2021
+        },
+        {
+          "to": "desktop.iconGrab",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2021
+        },
+        {
+          "to": "desktop.iconMove",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2021
+        }
+      ],
+      "calledBy": []
+    },
+    "desktop.importWallpaper": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "fs.exists",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1965
+        },
+        {
+          "to": "fs.mkdir",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1965
+        },
+        {
+          "to": "fs.write",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1965
+        }
+      ],
+      "calledBy": [
+        "desktop.settingsView"
+      ]
+    },
+    "desktop.refreshWallpapers": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "fs.exists",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1939
+        },
+        {
+          "to": "fs.list",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1939
+        },
+        {
+          "to": "fs.mkdir",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1939
+        }
+      ],
+      "calledBy": []
+    },
+    "desktop.setWallpaper": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1955
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1954
+        }
+      ],
+      "calledBy": [
+        "desktop.settingsView"
+      ]
+    },
+    "desktop.settingsView": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "desktop.importWallpaper",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1923
+        },
+        {
+          "to": "desktop.setWallpaper",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1927
+        }
+      ],
+      "calledBy": []
+    },
+    "desktop.stategraph": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1782
+        },
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1791
+        },
+        {
+          "to": "fg.set",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1776
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1782
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1790
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1779
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1786
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1789
+        },
+        {
+          "to": "window.raise",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1787
+        }
+      ],
+      "calledBy": [
+        "desktop.graphbtn"
+      ]
+    },
+    "desktop.taskClick": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1719
+        },
+        {
+          "to": "window.min",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1715
+        },
+        {
+          "to": "window.raise",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1715
+        }
+      ],
+      "calledBy": [
+        "taskbarBar"
+      ]
+    },
+    "docgraph:module": {
+      "segment": "docgraph",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 360
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 375
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 365
+        },
+        {
+          "to": "wiki.open",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 138
+        },
+        {
+          "to": "wiki.open",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 178
+        },
+        {
+          "to": "wiki.openSource",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 298
+        },
+        {
+          "to": "wiki.saveDesc",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 197
+        },
+        {
+          "to": "wiki.saveNote",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 209
+        },
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 178
+        },
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 195
+        },
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 197
+        },
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 207
+        },
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 209
+        },
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 298
+        }
+      ],
+      "calledBy": []
+    },
+    "dom.paint": {
+      "segment": "dom",
+      "calls": [
+        {
+          "to": "dom.paint.drain",
+          "kind": "drain",
+          "file": "src/甲骨坑/library/dom/甲骨.json",
+          "line": 5
+        }
+      ],
+      "calledBy": []
+    },
+    "dom.paint.drain": {
+      "segment": "dom",
+      "calls": [],
+      "calledBy": [
+        "dom.paint"
+      ]
+    },
+    "dom:module": {
+      "segment": "dom",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/dom/utils/drag.ts",
+          "line": 29
+        },
+        {
+          "to": "ensureSegments",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/dom/utils/paint.ts",
+          "line": 82
+        },
+        {
+          "to": "fs.read",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/dom/utils/paint.ts",
+          "line": 84
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/dom/utils/drag.ts",
+          "line": 31
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/dom/utils/drag.ts",
+          "line": 35
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/dom/utils/events.ts",
+          "line": 126
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/dom/utils/events.ts",
+          "line": 184
+        },
+        {
+          "to": "vnode.bindings-equal",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/dom/utils/paint.ts",
+          "line": 155
+        },
+        {
+          "to": "vnode.equals",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/dom/utils/paint.ts",
+          "line": 154
+        }
+      ],
+      "calledBy": []
+    },
+    "domview": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1175
+        }
+      ],
+      "calledBy": []
+    },
+    "doom:module": {
+      "segment": "doom",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/doom/index.ts",
+          "line": 97
+        },
+        {
+          "to": "hydrate",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/doom/index.ts",
+          "line": 119
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/doom/index.ts",
+          "line": 116
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/doom/index.ts",
+          "line": 19
+        },
+        {
+          "to": "sound.stop-all",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/doom/index.ts",
+          "line": 94
+        },
+        {
+          "to": "sound.stop-all",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/doom/index.ts",
+          "line": 109
+        },
+        {
+          "to": "window.close",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/doom/index.ts",
+          "line": 92
+        }
+      ],
+      "calledBy": []
+    },
+    "download": {
+      "segment": "file-explorer",
+      "calls": [
+        {
+          "to": "explorer.download",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 162
+        }
+      ],
+      "calledBy": []
+    },
+    "downloadSeg": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "explorer.download",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2687
+        }
+      ],
+      "calledBy": []
+    },
+    "drain": {
+      "segment": "kernel",
+      "calls": [],
+      "calledBy": [
+        "desktop.bgmenu",
+        "desktop.iconMove",
+        "desktop.setWallpaper",
+        "desktop.stategraph",
+        "desktop.taskClick",
+        "docgraph:module",
+        "dom:module",
+        "doom:module",
+        "explorer.upload",
+        "file-explorer:module",
+        "forcegraph:module",
+        "grok:module",
+        "origin.askgrok",
+        "origin.celtopo",
+        "origin.edit",
+        "origin.editapp",
+        "origin.fire",
+        "origin.gridkey",
+        "origin.launch",
+        "origin.navOpen",
+        "origin.otpDecrypt",
+        "origin.otpEncrypt",
+        "origin.run",
+        "origin.select",
+        "origin.updateLater",
+        "origin.updateOpen",
+        "origin:module",
+        "param.set",
+        "profile:module",
+        "sbdemo.kanban",
+        "sbdemo.login",
+        "sheet-io:module",
+        "sheet:module",
+        "sheetapp.addsheet",
+        "sheetapp.applyrename",
+        "sheetapp.golive",
+        "sheetapp.grant",
+        "sheetapp.open",
+        "sheetapp.renamesheet",
+        "sheetapp.tabmenu",
+        "sheetapp:module",
+        "sheetdoc",
+        "sheets:module",
+        "sim.run",
+        "view.refresh",
+        "window:module"
+      ]
+    },
+    "encrypt": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1473
+        }
+      ],
+      "calledBy": []
+    },
+    "ensureSegments": {
+      "segment": "kernel",
+      "calls": [],
+      "calledBy": [
+        "asset-loader:module",
+        "dom:module",
+        "origin.askgrok",
+        "sheetsync:module"
+      ]
+    },
+    "explorer.delete": {
+      "segment": "file-explorer",
+      "calls": [
+        {
+          "to": "fs.delete",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 278
+        }
+      ],
+      "calledBy": []
+    },
+    "explorer.download": {
+      "segment": "file-explorer",
+      "calls": [
+        {
+          "to": "fs.read",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 182
+        }
+      ],
+      "calledBy": [
+        "download",
+        "downloadSeg",
+        "file-explorer:module"
+      ]
+    },
+    "explorer.nav": {
+      "segment": "file-explorer",
+      "calls": [],
+      "calledBy": [
+        "file-explorer:module"
+      ]
+    },
+    "explorer.open": {
+      "segment": "file-explorer",
+      "calls": [],
+      "calledBy": [
+        "file-explorer:module"
+      ]
+    },
+    "explorer.openSheet": {
+      "segment": "file-explorer",
+      "calls": [
+        {
+          "to": "fs.read",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 256
+        }
+      ],
+      "calledBy": [
+        "file-explorer:module"
+      ]
+    },
+    "explorer.refresh": {
+      "segment": "file-explorer",
+      "calls": [],
+      "calledBy": [
+        "origin.launch",
+        "origin.navOpen"
+      ]
+    },
+    "explorer.rename": {
+      "segment": "file-explorer",
+      "calls": [
+        {
+          "to": "fs.rename",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 313
+        }
+      ],
+      "calledBy": []
+    },
+    "explorer.rmdir": {
+      "segment": "file-explorer",
+      "calls": [
+        {
+          "to": "fs.rmdir",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 293
+        }
+      ],
+      "calledBy": []
+    },
+    "explorer.upload": {
+      "segment": "file-explorer",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 201
+        },
+        {
+          "to": "fs.write",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 198
+        }
+      ],
+      "calledBy": [
+        "file-explorer:module",
+        "upload"
+      ]
+    },
+    "export": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 271
+        }
+      ],
+      "calledBy": []
+    },
+    "fg.arm": {
+      "segment": "forcegraph",
+      "calls": [],
+      "calledBy": [
+        "fgview"
+      ]
+    },
+    "fg.click": {
+      "segment": "forcegraph",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 404
+        }
+      ],
+      "calledBy": [
+        "fgview"
+      ]
+    },
+    "fg.disarm": {
+      "segment": "forcegraph",
+      "calls": [],
+      "calledBy": [
+        "fgview"
+      ]
+    },
+    "fg.drop": {
+      "segment": "forcegraph",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 384
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 385
+        }
+      ],
+      "calledBy": [
+        "fgview"
+      ]
+    },
+    "fg.grab": {
+      "segment": "forcegraph",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 354
+        }
+      ],
+      "calledBy": [
+        "fgview"
+      ]
+    },
+    "fg.move": {
+      "segment": "forcegraph",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 370
+        }
+      ],
+      "calledBy": [
+        "fgview"
+      ]
+    },
+    "fg.set": {
+      "segment": "forcegraph",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 231
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 232
+        }
+      ],
+      "calledBy": [
+        "desktop.stategraph",
+        "origin.celtopo",
+        "origin.drain",
+        "wiki.open"
+      ]
+    },
+    "fg.toggleKind": {
+      "segment": "forcegraph",
+      "calls": [],
+      "calledBy": [
+        "fgview"
+      ]
+    },
+    "fg.wheel": {
+      "segment": "forcegraph",
+      "calls": [],
+      "calledBy": [
+        "fgview"
+      ]
+    },
+    "fgview": {
+      "segment": "forcegraph",
+      "calls": [
+        {
+          "to": "fg.arm",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 322
+        },
+        {
+          "to": "fg.click",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 291
+        },
+        {
+          "to": "fg.disarm",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 323
+        },
+        {
+          "to": "fg.drop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 290
+        },
+        {
+          "to": "fg.grab",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 288
+        },
+        {
+          "to": "fg.move",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 289
+        },
+        {
+          "to": "fg.toggleKind",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 306
+        },
+        {
+          "to": "fg.wheel",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 321
+        },
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 306
+        }
+      ],
+      "calledBy": [
+        "origin.drain"
+      ]
+    },
+    "file-explorer:module": {
+      "segment": "file-explorer",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 222
+        },
+        {
+          "to": "explorer.download",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 105
+        },
+        {
+          "to": "explorer.nav",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 69
+        },
+        {
+          "to": "explorer.nav",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 76
+        },
+        {
+          "to": "explorer.open",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 84
+        },
+        {
+          "to": "explorer.openSheet",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 84
+        },
+        {
+          "to": "explorer.upload",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 98
+        },
+        {
+          "to": "fs.list",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 127
+        },
+        {
+          "to": "fs.read",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 146
+        },
+        {
+          "to": "fs.stat",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 127
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 221
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 209
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 208
+        }
+      ],
+      "calledBy": []
+    },
+    "forcegraph:module": {
+      "segment": "forcegraph",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 345
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/forcegraph/index.ts",
+          "line": 347
+        }
+      ],
+      "calledBy": []
+    },
+    "fs.command": {
+      "segment": "file-store",
+      "calls": [],
+      "calledBy": [
+        "origin.drain"
+      ]
+    },
+    "fs.delete": {
+      "segment": "file-store",
+      "calls": [],
+      "calledBy": [
+        "explorer.delete"
+      ]
+    },
+    "fs.exists": {
+      "segment": "file-store",
+      "calls": [],
+      "calledBy": [
+        "app.assets",
+        "app.assets.ready",
+        "asset-loader:module",
+        "desktop.importWallpaper",
+        "desktop.refreshWallpapers"
+      ]
+    },
+    "fs.list": {
+      "segment": "file-store",
+      "calls": [],
+      "calledBy": [
+        "desktop.refreshWallpapers",
+        "file-explorer:module",
+        "keystore:module"
+      ]
+    },
+    "fs.mkdir": {
+      "segment": "file-store",
+      "calls": [],
+      "calledBy": [
+        "desktop.importWallpaper",
+        "desktop.refreshWallpapers",
+        "keystore:module",
+        "origin.drain",
+        "origin:module"
+      ]
+    },
+    "fs.read": {
+      "segment": "file-store",
+      "calls": [],
+      "calledBy": [
+        "asset-loader:module",
+        "dom:module",
+        "explorer.download",
+        "explorer.openSheet",
+        "file-explorer:module",
+        "wasm-bytes:module"
+      ]
+    },
+    "fs.readText": {
+      "segment": "file-store",
+      "calls": [],
+      "calledBy": [
+        "keystore:module",
+        "origin.drain",
+        "origin.updateCheck"
+      ]
+    },
+    "fs.rename": {
+      "segment": "file-store",
+      "calls": [],
+      "calledBy": [
+        "explorer.rename"
+      ]
+    },
+    "fs.rmdir": {
+      "segment": "file-store",
+      "calls": [],
+      "calledBy": [
+        "explorer.rmdir"
+      ]
+    },
+    "fs.stat": {
+      "segment": "file-store",
+      "calls": [],
+      "calledBy": [
+        "file-explorer:module"
+      ]
+    },
+    "fs.write": {
+      "segment": "file-store",
+      "calls": [],
+      "calledBy": [
+        "app.assets",
+        "asset-loader:module",
+        "desktop.importWallpaper",
+        "explorer.upload"
+      ]
+    },
+    "fs.writeText": {
+      "segment": "file-store",
+      "calls": [],
+      "calledBy": [
+        "keystore:module",
+        "origin.drain",
+        "origin:module"
+      ]
+    },
+    "genesis.commit": {
+      "segment": "genesis",
+      "calls": [
+        {
+          "to": "genesis.drain",
+          "kind": "drain",
+          "file": "src/甲骨坑/library/genesis/甲骨.json",
+          "line": 5
+        }
+      ],
+      "calledBy": []
+    },
+    "genesis.drain": {
+      "segment": "genesis",
+      "calls": [
+        {
+          "to": "setCelBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/genesis/index.ts",
+          "line": 82
+        }
+      ],
+      "calledBy": [
+        "genesis.commit",
+        "origin.run",
+        "sheet-io:module",
+        "sheet:module"
+      ]
+    },
+    "grok.addbot": {
+      "segment": "grok",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 148
+        }
+      ],
+      "calledBy": []
+    },
+    "grok.applytools": {
+      "segment": "grok",
+      "calls": [
+        {
+          "to": "checkpoint.snapshot",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 300
+        }
+      ],
+      "calledBy": []
+    },
+    "grok.ask": {
+      "segment": "grok",
+      "calls": [],
+      "calledBy": [
+        "origin.askgrok"
+      ]
+    },
+    "grok.field": {
+      "segment": "grok",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 468
+        }
+      ],
+      "calledBy": []
+    },
+    "grok.loadmsgs": {
+      "segment": "grok",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 614
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 629
+        }
+      ],
+      "calledBy": []
+    },
+    "grok.loadrooms": {
+      "segment": "grok",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 582
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 598
+        }
+      ],
+      "calledBy": []
+    },
+    "grok.pickbot": {
+      "segment": "grok",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 504
+        }
+      ],
+      "calledBy": []
+    },
+    "grok.pickroom": {
+      "segment": "grok",
+      "calls": [
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 642
+        },
+        {
+          "to": "window.raise",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 656
+        },
+        {
+          "to": "window.viewTab",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 654
+        }
+      ],
+      "calledBy": []
+    },
+    "grok.roomsend": {
+      "segment": "grok",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 675
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 677
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 680
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 684
+        }
+      ],
+      "calledBy": []
+    },
+    "grok.send": {
+      "segment": "grok",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 522
+        }
+      ],
+      "calledBy": []
+    },
+    "grok.signin": {
+      "segment": "grok",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 483
+        },
+        {
+          "to": "supabase.auth",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 480
+        },
+        {
+          "to": "supabase.config",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 477
+        }
+      ],
+      "calledBy": []
+    },
+    "grok.signout": {
+      "segment": "grok",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 497
+        },
+        {
+          "to": "supabase.auth",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 495
+        }
+      ],
+      "calledBy": []
+    },
+    "grok:module": {
+      "segment": "grok",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 459
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 233
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 458
+        },
+        {
+          "to": "session.handle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 344
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 227
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 571
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 164
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/grok/index.ts",
+          "line": 456
+        }
+      ],
+      "calledBy": []
+    },
+    "grokconfig": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1188
+        }
+      ],
+      "calledBy": []
+    },
+    "hash": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1049
+        }
+      ],
+      "calledBy": []
+    },
+    "help": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1114
+        }
+      ],
+      "calledBy": []
+    },
+    "help.search": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2463
+        }
+      ],
+      "calledBy": [
+        "helpPane"
+      ]
+    },
+    "help.selectNode": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2441
+        }
+      ],
+      "calledBy": [
+        "helpPane",
+        "origin:module"
+      ]
+    },
+    "help.toggle": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2455
+        }
+      ],
+      "calledBy": [
+        "helpPane"
+      ]
+    },
+    "helpPane": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "help.search",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2585
+        },
+        {
+          "to": "help.selectNode",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2517
+        },
+        {
+          "to": "help.selectNode",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2551
+        },
+        {
+          "to": "help.toggle",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2540
+        }
+      ],
+      "calledBy": []
+    },
+    "host.imports": {
+      "segment": "host",
+      "calls": [],
+      "calledBy": [
+        "js-compiler:module",
+        "py-compiler:module",
+        "wasm-bytes:module",
+        "wat-compiler:module"
+      ]
+    },
+    "hydrate": {
+      "segment": "kernel",
+      "calls": [],
+      "calledBy": [
+        "checkpoint.restore",
+        "doom:module",
+        "segment-archive:module",
+        "segment-io:module"
+      ]
+    },
+    "hydrate-closure": {
+      "segment": "user-space-ops",
+      "calls": [],
+      "calledBy": [
+        "origin.editapp",
+        "origin.launch",
+        "origin.newsheet"
+      ]
+    },
+    "import": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 284
+        }
+      ],
+      "calledBy": []
+    },
+    "importFromDir": {
+      "segment": "cli-segment-export",
+      "calls": [
+        {
+          "to": "store.putRaw",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/cli-segment-export/index.ts",
+          "line": 146
+        },
+        {
+          "to": "store.readIndex",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/cli-segment-export/index.ts",
+          "line": 145
+        }
+      ],
+      "calledBy": []
+    },
+    "inspect": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 409
+        }
+      ],
+      "calledBy": []
+    },
+    "interlinked": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1395
+        }
+      ],
+      "calledBy": []
+    },
+    "io-keys:module": {
+      "segment": "io-keys",
+      "calls": [
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/io-keys/index.ts",
+          "line": 30
+        }
+      ],
+      "calledBy": []
+    },
+    "io-touch:module": {
+      "segment": "io-touch",
+      "calls": [
+        {
+          "to": "keys.capture",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/io-touch/index.ts",
+          "line": 18
+        }
+      ],
+      "calledBy": []
+    },
+    "jail": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1584
+        }
+      ],
+      "calledBy": []
+    },
+    "js-compiler:module": {
+      "segment": "js-compiler",
+      "calls": [
+        {
+          "to": "host.imports",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/js-compiler/index.ts",
+          "line": 36
+        }
+      ],
+      "calledBy": []
+    },
+    "kernel": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1571
+        }
+      ],
+      "calledBy": []
+    },
+    "keys.capture": {
+      "segment": "io-keys",
+      "calls": [],
+      "calledBy": [
+        "io-touch:module"
+      ]
+    },
+    "keystore:module": {
+      "segment": "keystore",
+      "calls": [
+        {
+          "to": "fs.list",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/keystore/index.ts",
+          "line": 134
+        },
+        {
+          "to": "fs.mkdir",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/keystore/index.ts",
+          "line": 141
+        },
+        {
+          "to": "fs.readText",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/keystore/index.ts",
+          "line": 148
+        },
+        {
+          "to": "fs.writeText",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/keystore/index.ts",
+          "line": 142
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/keystore/index.ts",
+          "line": 154
+        }
+      ],
+      "calledBy": []
+    },
+    "kv.mint": {
+      "segment": "sheets",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 550
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 550
+        }
+      ],
+      "calledBy": [
+        "kvsheet"
+      ]
+    },
+    "kv.retire": {
+      "segment": "sheets",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 604
+        }
+      ],
+      "calledBy": [
+        "kvsheet"
+      ]
+    },
+    "kv.set": {
+      "segment": "sheets",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 580
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 580
+        }
+      ],
+      "calledBy": [
+        "kvsheet"
+      ]
+    },
+    "kvsheet": {
+      "segment": "sheets",
+      "calls": [
+        {
+          "to": "kv.mint",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 471
+        },
+        {
+          "to": "kv.mint",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 473
+        },
+        {
+          "to": "kv.retire",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 463
+        },
+        {
+          "to": "kv.set",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 459
+        },
+        {
+          "to": "kv.set",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 460
+        }
+      ],
+      "calledBy": []
+    },
+    "link": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1447
+        }
+      ],
+      "calledBy": []
+    },
+    "loadScript": {
+      "segment": "kernel",
+      "calls": [],
+      "calledBy": [
+        "origin.drain"
+      ]
+    },
+    "loadUserSpace": {
+      "segment": "user-space-ops",
+      "calls": [
+        {
+          "to": "store.get",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/user-space-ops/index.ts",
+          "line": 154
+        }
+      ],
+      "calledBy": [
+        "origin-lifecycle:module",
+        "origin.opendoc"
+      ]
+    },
+    "ls": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 932
+        }
+      ],
+      "calledBy": []
+    },
+    "members": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 396
+        }
+      ],
+      "calledBy": []
+    },
+    "miditrack": {
+      "segment": "music",
+      "calls": [
+        {
+          "to": "music.play",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/music/index.ts",
+          "line": 89
+        }
+      ],
+      "calledBy": []
+    },
+    "mkdir": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 958
+        }
+      ],
+      "calledBy": []
+    },
+    "mountcard": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1214
+        }
+      ],
+      "calledBy": []
+    },
+    "music.play": {
+      "segment": "music",
+      "calls": [
+        {
+          "to": "sound.play-tone",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/music/index.ts",
+          "line": 103
+        }
+      ],
+      "calledBy": [
+        "miditrack"
+      ]
+    },
+    "mv": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 984
+        }
+      ],
+      "calledBy": []
+    },
+    "newUserSpace": {
+      "segment": "user-space-ops",
+      "calls": [
+        {
+          "to": "store.get",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/user-space-ops/index.ts",
+          "line": 122
+        },
+        {
+          "to": "store.has",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/user-space-ops/index.ts",
+          "line": 112
+        }
+      ],
+      "calledBy": [
+        "origin.newsheet"
+      ]
+    },
+    "open": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1434
+        }
+      ],
+      "calledBy": []
+    },
+    "openSeg": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1266
+        }
+      ],
+      "calledBy": []
+    },
+    "origin-lifecycle:module": {
+      "segment": "origin-lifecycle",
+      "calls": [
+        {
+          "to": "loadUserSpace",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/origin-lifecycle/index.ts",
+          "line": 51
+        },
+        {
+          "to": "store.get",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/origin-lifecycle/index.ts",
+          "line": 50
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.askgrok": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 596
+        },
+        {
+          "to": "ensureSegments",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 599
+        },
+        {
+          "to": "grok.ask",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 600
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 595
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.celtopo": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1877
+        },
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1886
+        },
+        {
+          "to": "fg.set",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1871
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1877
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1885
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1874
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1881
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1884
+        },
+        {
+          "to": "window.raise",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1882
+        }
+      ],
+      "calledBy": [
+        "origin:module"
+      ]
+    },
+    "origin.clockSync": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1254
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1254
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.close": {
+      "segment": "origin-lifecycle",
+      "calls": [
+        {
+          "to": "origin.io",
+          "kind": "emits",
+          "file": "src/甲骨坑/library/origin-lifecycle/甲骨.json",
+          "line": 60
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.drain": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "fg.set",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3273
+        },
+        {
+          "to": "fgview",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3274
+        },
+        {
+          "to": "fs.command",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3216
+        },
+        {
+          "to": "fs.mkdir",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3166
+        },
+        {
+          "to": "fs.readText",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3174
+        },
+        {
+          "to": "fs.writeText",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3167
+        },
+        {
+          "to": "loadScript",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3094
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3151
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2769
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3061
+        },
+        {
+          "to": "setCelBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3044
+        },
+        {
+          "to": "setCelBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3062
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2870
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2905
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2942
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2955
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3000
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3026
+        },
+        {
+          "to": "sheetapp.addsheet",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2970
+        },
+        {
+          "to": "sheetapp.renamesheet",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2996
+        },
+        {
+          "to": "sheetkeys.hash",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3243
+        },
+        {
+          "to": "sqlite.command",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3245
+        },
+        {
+          "to": "wbopen",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3060
+        },
+        {
+          "to": "window.addView",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2953
+        },
+        {
+          "to": "window.addView",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3057
+        },
+        {
+          "to": "window.addView",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 3077
+        }
+      ],
+      "calledBy": [
+        "origin.effects"
+      ]
+    },
+    "origin.edit": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 549
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 548
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 541
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.editAppCel": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2174
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2175
+        }
+      ],
+      "calledBy": [
+        "origin:module"
+      ]
+    },
+    "origin.editapp": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2158
+        },
+        {
+          "to": "hydrate-closure",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2140
+        },
+        {
+          "to": "origin.run",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2149
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2157
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2153
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2156
+        },
+        {
+          "to": "window.raise",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2154
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.effects": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.drain",
+          "kind": "drain",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 369
+        }
+      ],
+      "calledBy": [
+        "addCells",
+        "append",
+        "cat",
+        "cdn",
+        "chatcard",
+        "db",
+        "dbexport",
+        "dbimport",
+        "dbseed",
+        "decrypt",
+        "def",
+        "delSeg",
+        "domview",
+        "encrypt",
+        "export",
+        "grokconfig",
+        "hash",
+        "help",
+        "import",
+        "inspect",
+        "interlinked",
+        "jail",
+        "kernel",
+        "link",
+        "ls",
+        "members",
+        "mkdir",
+        "mountcard",
+        "mv",
+        "open",
+        "openSeg",
+        "rename",
+        "rm",
+        "save",
+        "saveSeg",
+        "schema",
+        "seed",
+        "segments",
+        "segs",
+        "sheet",
+        "simulate",
+        "sql",
+        "stat",
+        "tables",
+        "touch",
+        "tree",
+        "unlink",
+        "view",
+        "write"
+      ]
+    },
+    "origin.fire": {
+      "segment": "origin-lifecycle",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/origin-lifecycle/index.ts",
+          "line": 104
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.flush": {
+      "segment": "origin-lifecycle",
+      "calls": [
+        {
+          "to": "origin.io",
+          "kind": "emits",
+          "file": "src/甲骨坑/library/origin-lifecycle/甲骨.json",
+          "line": 69
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.gridkey": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 874
+        },
+        {
+          "to": "origin.select",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 853
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 873
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 871
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.install": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "store.putRaw",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1429
+        },
+        {
+          "to": "store.readIndex",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1430
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.io": {
+      "segment": "origin-lifecycle",
+      "calls": [
+        {
+          "to": "origin.io.drain",
+          "kind": "drain",
+          "file": "src/甲骨坑/library/origin-lifecycle/甲骨.json",
+          "line": 5
+        }
+      ],
+      "calledBy": [
+        "origin.close",
+        "origin.flush",
+        "origin.load",
+        "origin.new",
+        "origin.open",
+        "origin.save"
+      ]
+    },
+    "origin.io.drain": {
+      "segment": "origin-lifecycle",
+      "calls": [],
+      "calledBy": [
+        "origin.io"
+      ]
+    },
+    "origin.key": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.select",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 810
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 824
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.launch": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1608
+        },
+        {
+          "to": "explorer.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1629
+        },
+        {
+          "to": "hydrate-closure",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1601
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1608
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1621
+        }
+      ],
+      "calledBy": [
+        "origin.navOpen"
+      ]
+    },
+    "origin.load": {
+      "segment": "origin-lifecycle",
+      "calls": [
+        {
+          "to": "origin.io",
+          "kind": "emits",
+          "file": "src/甲骨坑/library/origin-lifecycle/甲骨.json",
+          "line": 42
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.navOpen": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1362
+        },
+        {
+          "to": "explorer.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1381
+        },
+        {
+          "to": "origin.launch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1335
+        },
+        {
+          "to": "origin.opendoc",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1339
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1362
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1357
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1375
+        },
+        {
+          "to": "wake",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1330
+        }
+      ],
+      "calledBy": [
+        "desktop.iconClick",
+        "origin:module",
+        "sheetapp.openSealed",
+        "sheetapp.seal",
+        "sheetapp:module"
+      ]
+    },
+    "origin.new": {
+      "segment": "origin-lifecycle",
+      "calls": [
+        {
+          "to": "origin.io",
+          "kind": "emits",
+          "file": "src/甲骨坑/library/origin-lifecycle/甲骨.json",
+          "line": 24
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.newsheet": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "hydrate-closure",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 227
+        },
+        {
+          "to": "newUserSpace",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 231
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 232
+        },
+        {
+          "to": "store.has",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 228
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.open": {
+      "segment": "origin-lifecycle",
+      "calls": [
+        {
+          "to": "origin.io",
+          "kind": "emits",
+          "file": "src/甲骨坑/library/origin-lifecycle/甲骨.json",
+          "line": 51
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.opendoc": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "loadUserSpace",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 213
+        }
+      ],
+      "calledBy": [
+        "origin.navOpen",
+        "sheetapp.pick"
+      ]
+    },
+    "origin.otpDecrypt": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1084
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1082
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1076
+        }
+      ],
+      "calledBy": [
+        "otpDecrypt"
+      ]
+    },
+    "origin.otpEncrypt": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1067
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1065
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1059
+        }
+      ],
+      "calledBy": [
+        "otpEncrypt"
+      ]
+    },
+    "origin.otpUnlock": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1096
+        }
+      ],
+      "calledBy": [
+        "otpLoader"
+      ]
+    },
+    "origin.run": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "defn.drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 735
+        },
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 696
+        },
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 733
+        },
+        {
+          "to": "genesis.drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 734
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 738
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 749
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 651
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 649
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 695
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 728
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 761
+        },
+        {
+          "to": "sheetapp.regrid",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 722
+        },
+        {
+          "to": "sheetsync.commit",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 692
+        }
+      ],
+      "calledBy": [
+        "origin.editapp",
+        "origin:module",
+        "sheetdoc"
+      ]
+    },
+    "origin.save": {
+      "segment": "origin-lifecycle",
+      "calls": [
+        {
+          "to": "origin.io",
+          "kind": "emits",
+          "file": "src/甲骨坑/library/origin-lifecycle/甲骨.json",
+          "line": 33
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.savedoc": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "saveUserSpace",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2191
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.select": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 565
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 564
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 562
+        }
+      ],
+      "calledBy": [
+        "origin.gridkey",
+        "origin.key"
+      ]
+    },
+    "origin.tone": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "sound.play-tone",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1212
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.updateCheck": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "fs.readText",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1518
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1521
+        }
+      ],
+      "calledBy": []
+    },
+    "origin.updateLater": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1587
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1586
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1580
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1584
+        }
+      ],
+      "calledBy": [
+        "origin.updateOpen"
+      ]
+    },
+    "origin.updateOpen": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1558
+        },
+        {
+          "to": "origin.updateLater",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1547
+        },
+        {
+          "to": "origin.updateRefresh",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1548
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1557
+        },
+        {
+          "to": "setCelBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1554
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1556
+        },
+        {
+          "to": "window.raise",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1555
+        },
+        {
+          "to": "wopen",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1551
+        }
+      ],
+      "calledBy": [
+        "updatebanner"
+      ]
+    },
+    "origin.updateRefresh": {
+      "segment": "origin",
+      "calls": [],
+      "calledBy": [
+        "origin.updateOpen"
+      ]
+    },
+    "origin.viewportSync": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1236
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1236
+        }
+      ],
+      "calledBy": []
+    },
+    "origin:module": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "desktop.graphNode",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1761
+        },
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1317
+        },
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2424
+        },
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2425
+        },
+        {
+          "to": "fs.mkdir",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1507
+        },
+        {
+          "to": "fs.writeText",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1508
+        },
+        {
+          "to": "help.selectNode",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2477
+        },
+        {
+          "to": "origin.celtopo",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1861
+        },
+        {
+          "to": "origin.editAppCel",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2123
+        },
+        {
+          "to": "origin.navOpen",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1279
+        },
+        {
+          "to": "origin.navOpen",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1297
+        },
+        {
+          "to": "origin.run",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1142
+        },
+        {
+          "to": "origin.run",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1171
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2423
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 446
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 966
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1119
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2001
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2753
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 628
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 970
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1141
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1170
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1315
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2000
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 444
+        },
+        {
+          "to": "window.addView",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 2762
+        },
+        {
+          "to": "window.raise",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1316
+        }
+      ],
+      "calledBy": []
+    },
+    "otpDecrypt": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.otpDecrypt",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1030
+        }
+      ],
+      "calledBy": []
+    },
+    "otpEncrypt": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.otpEncrypt",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1022
+        }
+      ],
+      "calledBy": []
+    },
+    "otpLoader": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.otpUnlock",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1044
+        }
+      ],
+      "calledBy": []
+    },
+    "param.set": {
+      "segment": "ecs",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/ecs/index.ts",
+          "line": 318
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/ecs/index.ts",
+          "line": 315
+        }
+      ],
+      "calledBy": []
+    },
+    "peer.apply": {
+      "segment": "peer",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/peer/index.ts",
+          "line": 95
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/peer/index.ts",
+          "line": 94
+        }
+      ],
+      "calledBy": []
+    },
+    "peer:module": {
+      "segment": "peer",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/peer/index.ts",
+          "line": 194
+        }
+      ],
+      "calledBy": []
+    },
+    "peerjoin": {
+      "segment": "peer",
+      "calls": [],
+      "calledBy": [
+        "sheetapp.golive"
+      ]
+    },
+    "peersend": {
+      "segment": "peer",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/peer/index.ts",
+          "line": 132
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/peer/index.ts",
+          "line": 131
+        }
+      ],
+      "calledBy": []
+    },
+    "profile.importfile": {
+      "segment": "profile",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/profile/index.ts",
+          "line": 138
+        }
+      ],
+      "calledBy": [
+        "profileui"
+      ]
+    },
+    "profile:module": {
+      "segment": "profile",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/profile/index.ts",
+          "line": 75
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/profile/index.ts",
+          "line": 74
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/profile/index.ts",
+          "line": 68
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/profile/index.ts",
+          "line": 71
+        }
+      ],
+      "calledBy": []
+    },
+    "profileui": {
+      "segment": "profile",
+      "calls": [
+        {
+          "to": "profile.importfile",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/profile/index.ts",
+          "line": 48
+        }
+      ],
+      "calledBy": []
+    },
+    "profilewin": {
+      "segment": "profile",
+      "calls": [],
+      "calledBy": [
+        "sheetapp.seal"
+      ]
+    },
+    "py-compiler:module": {
+      "segment": "py-compiler",
+      "calls": [
+        {
+          "to": "host.imports",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/py-compiler/index.ts",
+          "line": 12
+        }
+      ],
+      "calledBy": []
+    },
+    "rename": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1088
+        }
+      ],
+      "calledBy": []
+    },
+    "renameOverlay": {
+      "segment": "sheets",
+      "calls": [
+        {
+          "to": "sheetapp.applyrename",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 299
+        },
+        {
+          "to": "sheetapp.applyrename",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 301
+        }
+      ],
+      "calledBy": []
+    },
+    "rm": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 971
+        }
+      ],
+      "calledBy": []
+    },
+    "runCycle": {
+      "segment": "kernel",
+      "calls": [],
+      "calledBy": [
+        "checkpoint.restore",
+        "desktop.bgmenu",
+        "desktop.iconMove",
+        "desktop.setWallpaper",
+        "desktop.stategraph",
+        "file-explorer:module",
+        "grok:module",
+        "origin.celtopo",
+        "origin.drain",
+        "origin.edit",
+        "origin.editapp",
+        "origin.gridkey",
+        "origin.launch",
+        "origin.navOpen",
+        "origin.run",
+        "origin.select",
+        "origin.updateLater",
+        "origin.updateOpen",
+        "origin:module",
+        "profile:module",
+        "sbdemo.kanban",
+        "sbdemo.login",
+        "sheet-io:module",
+        "sheet:module",
+        "sheetapp.addsheet",
+        "sheetapp.applyrename",
+        "sheetapp.golive",
+        "sheetapp.grant",
+        "sheetapp.open",
+        "sheetapp.renamesheet",
+        "sheetapp.tabmenu",
+        "sheetapp:module",
+        "sheetdoc",
+        "sheets:module",
+        "sheetsync.recv",
+        "sheetsync:module",
+        "wiki.open",
+        "wiki.openSource",
+        "window:module"
+      ]
+    },
+    "save": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1421
+        }
+      ],
+      "calledBy": []
+    },
+    "saveSeg": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1253
+        }
+      ],
+      "calledBy": []
+    },
+    "saveUserSpace": {
+      "segment": "user-space-ops",
+      "calls": [
+        {
+          "to": "store.put",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/user-space-ops/index.ts",
+          "line": 77
+        }
+      ],
+      "calledBy": [
+        "origin.savedoc",
+        "sheetapp.save",
+        "sheetapp:module"
+      ]
+    },
+    "sbdemo.add": {
+      "segment": "supabase-demo",
+      "calls": [
+        {
+          "to": "supabase.data",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 49
+        }
+      ],
+      "calledBy": []
+    },
+    "sbdemo.field": {
+      "segment": "supabase-demo",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 93
+        }
+      ],
+      "calledBy": []
+    },
+    "sbdemo.install": {
+      "segment": "supabase-demo",
+      "calls": [
+        {
+          "to": "setCelBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 34
+        }
+      ],
+      "calledBy": []
+    },
+    "sbdemo.kanban": {
+      "segment": "supabase-demo",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 146
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 145
+        },
+        {
+          "to": "setCelBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 124
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 144
+        },
+        {
+          "to": "wbopen",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 140
+        }
+      ],
+      "calledBy": []
+    },
+    "sbdemo.login": {
+      "segment": "supabase-demo",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 116
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 115
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 104
+        },
+        {
+          "to": "supabase.auth",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 102
+        },
+        {
+          "to": "supabase.data",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 107
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 114
+        }
+      ],
+      "calledBy": []
+    },
+    "sbdemo.signin": {
+      "segment": "supabase-demo",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 43
+        },
+        {
+          "to": "supabase.auth",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 40
+        }
+      ],
+      "calledBy": []
+    },
+    "sbdemo.watch": {
+      "segment": "supabase-demo",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 55
+        },
+        {
+          "to": "supabase.realtime",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-demo/index.ts",
+          "line": 54
+        }
+      ],
+      "calledBy": []
+    },
+    "scene.paint": {
+      "segment": "plastron-gpu",
+      "calls": [
+        {
+          "to": "scene.paint.drain",
+          "kind": "drain",
+          "file": "src/甲骨坑/library/plastron-gpu/甲骨.json",
+          "line": 125
+        }
+      ],
+      "calledBy": [
+        "sceneframe"
+      ]
+    },
+    "scene.paint.drain": {
+      "segment": "plastron-gpu",
+      "calls": [],
+      "calledBy": [
+        "scene.paint"
+      ]
+    },
+    "sceneframe": {
+      "segment": "plastron-gpu",
+      "calls": [
+        {
+          "to": "scene.paint",
+          "kind": "emits",
+          "file": "src/甲骨坑/library/plastron-gpu/甲骨.json",
+          "line": 101
+        }
+      ],
+      "calledBy": []
+    },
+    "schema": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1356
+        }
+      ],
+      "calledBy": []
+    },
+    "seed": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 258
+        }
+      ],
+      "calledBy": []
+    },
+    "seedStore": {
+      "segment": "opfs-seeding",
+      "calls": [
+        {
+          "to": "store.putRaw",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/opfs-seeding/index.ts",
+          "line": 54
+        },
+        {
+          "to": "store.readIndex",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/opfs-seeding/index.ts",
+          "line": 53
+        }
+      ],
+      "calledBy": []
+    },
+    "segment-archive:module": {
+      "segment": "segment-archive",
+      "calls": [
+        {
+          "to": "dehydrate",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/segment-archive/utils/archive.ts",
+          "line": 106
+        },
+        {
+          "to": "hydrate",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/segment-archive/utils/archive.ts",
+          "line": 176
+        }
+      ],
+      "calledBy": []
+    },
+    "segment-io:module": {
+      "segment": "segment-io",
+      "calls": [
+        {
+          "to": "hydrate",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/segment-io/index.ts",
+          "line": 143
+        }
+      ],
+      "calledBy": []
+    },
+    "segments": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 422
+        }
+      ],
+      "calledBy": []
+    },
+    "segs": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1240
+        }
+      ],
+      "calledBy": []
+    },
+    "session.forget": {
+      "segment": "session",
+      "calls": [],
+      "calledBy": [
+        "supabase.auth"
+      ]
+    },
+    "session.handle": {
+      "segment": "session",
+      "calls": [],
+      "calledBy": [
+        "grok:module",
+        "supabase-storage:module",
+        "supabase.auth",
+        "supabase:module"
+      ]
+    },
+    "session.put": {
+      "segment": "session",
+      "calls": [],
+      "calledBy": [
+        "supabase-auth:module"
+      ]
+    },
+    "session:module": {
+      "segment": "session",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/session/index.ts",
+          "line": 56
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/session/index.ts",
+          "line": 54
+        }
+      ],
+      "calledBy": []
+    },
+    "setCel": {
+      "segment": "kernel",
+      "calls": [],
+      "calledBy": [
+        "boot.run",
+        "defn.drain",
+        "desktop.bgmenu",
+        "desktop.stategraph",
+        "docgraph:module",
+        "doom:module",
+        "fg.set",
+        "file-explorer:module",
+        "grok:module",
+        "kv.mint",
+        "kv.set",
+        "origin.celtopo",
+        "origin.clockSync",
+        "origin.drain",
+        "origin.navOpen",
+        "origin.newsheet",
+        "origin.run",
+        "origin.viewportSync",
+        "origin:module",
+        "peer.apply",
+        "peersend",
+        "session:module",
+        "sheet.resizeGrab",
+        "sheetapp.addsheet",
+        "sheetapp.golive",
+        "sheetapp.grant",
+        "sheetapp.renamesheet",
+        "sheetapp.tabmenu",
+        "sheetapp:module",
+        "sheetkeys.sealsheet",
+        "sheetkeys:module",
+        "sheetsync:module",
+        "sqlite:module",
+        "supabase-auth:module",
+        "supabase.config",
+        "supabase:module",
+        "wiki.openSource",
+        "wiki.saveDesc",
+        "window:module"
+      ]
+    },
+    "setCelBatch": {
+      "segment": "kernel",
+      "calls": [],
+      "calledBy": [
+        "genesis.drain",
+        "origin.drain",
+        "origin.updateOpen",
+        "sbdemo.install",
+        "sbdemo.kanban",
+        "sheetapp.open",
+        "sheetapp:module",
+        "supabase.config",
+        "xlsxload"
+      ]
+    },
+    "setValue": {
+      "segment": "kernel",
+      "calls": [],
+      "calledBy": [
+        "clock.tick",
+        "desktop.bgmenu",
+        "desktop.stategraph",
+        "dom:module",
+        "doom:module",
+        "fg.click",
+        "fg.drop",
+        "fg.grab",
+        "fg.move",
+        "fg.set",
+        "file-explorer:module",
+        "forcegraph:module",
+        "grok.addbot",
+        "grok.field",
+        "grok.loadmsgs",
+        "grok.loadrooms",
+        "grok.pickbot",
+        "grok.roomsend",
+        "grok.send",
+        "grok.signin",
+        "grok.signout",
+        "grok:module",
+        "help.search",
+        "kv.mint",
+        "kv.retire",
+        "kv.set",
+        "origin.celtopo",
+        "origin.clockSync",
+        "origin.drain",
+        "origin.editAppCel",
+        "origin.editapp",
+        "origin.key",
+        "origin.otpDecrypt",
+        "origin.otpEncrypt",
+        "origin.otpUnlock",
+        "origin.run",
+        "origin.updateCheck",
+        "origin.updateLater",
+        "origin.viewportSync",
+        "origin:module",
+        "param.set",
+        "peer.apply",
+        "peer:module",
+        "peersend",
+        "profile.importfile",
+        "sbdemo.field",
+        "sbdemo.login",
+        "sbdemo.signin",
+        "sbdemo.watch",
+        "session:module",
+        "sheet.resizeDrop",
+        "sheet.resizeGrab",
+        "sheet.resizeMove",
+        "sheet.resizeReset",
+        "sheet:module",
+        "sheetapp.applyrename",
+        "sheetapp.golive",
+        "sheetapp.pick",
+        "sheetapp.regrid",
+        "sheetapp.renamesheet",
+        "sheetapp:module",
+        "sheetdoc",
+        "sheets:module",
+        "sheetsync:module",
+        "sim.run",
+        "sqlite:module",
+        "supabase-auth:module",
+        "supabase:module",
+        "wiki.open",
+        "wiki.openSource",
+        "wiki.saveDesc",
+        "wiki.saveNote",
+        "winapps-wasm:module",
+        "window:module"
+      ]
+    },
+    "setValueBatch": {
+      "segment": "kernel",
+      "calls": [],
+      "calledBy": [
+        "docgraph:module",
+        "grok.pickroom",
+        "grok:module",
+        "help.selectNode",
+        "help.toggle",
+        "io-keys:module",
+        "keystore:module",
+        "origin.askgrok",
+        "origin.edit",
+        "origin.gridkey",
+        "origin.otpDecrypt",
+        "origin.otpEncrypt",
+        "origin.run",
+        "origin.select",
+        "origin:module",
+        "profile:module",
+        "sheet:module",
+        "sim.run"
+      ]
+    },
+    "sheet": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1075
+        }
+      ],
+      "calledBy": []
+    },
+    "sheet-io:module": {
+      "segment": "sheet-io",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet-io/index.ts",
+          "line": 27
+        },
+        {
+          "to": "genesis.drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet-io/index.ts",
+          "line": 149
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet-io/index.ts",
+          "line": 26
+        },
+        {
+          "to": "sheetdoc",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet-io/index.ts",
+          "line": 158
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet-io/index.ts",
+          "line": 160
+        },
+        {
+          "to": "xlsxexport",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet-io/index.ts",
+          "line": 173
+        }
+      ],
+      "calledBy": []
+    },
+    "sheet.resizeDrop": {
+      "segment": "sheets",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 384
+        }
+      ],
+      "calledBy": [
+        "sheets:module"
+      ]
+    },
+    "sheet.resizeGrab": {
+      "segment": "sheets",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 352
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 367
+        }
+      ],
+      "calledBy": [
+        "sheets:module"
+      ]
+    },
+    "sheet.resizeMove": {
+      "segment": "sheets",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 379
+        }
+      ],
+      "calledBy": [
+        "sheets:module"
+      ]
+    },
+    "sheet.resizeReset": {
+      "segment": "sheets",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 395
+        }
+      ],
+      "calledBy": [
+        "sheets:module"
+      ]
+    },
+    "sheet:module": {
+      "segment": "sheet",
+      "calls": [
+        {
+          "to": "defn.drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet/utils/build.ts",
+          "line": 201
+        },
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet/utils/build.ts",
+          "line": 203
+        },
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet/utils/build.ts",
+          "line": 209
+        },
+        {
+          "to": "genesis.drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet/utils/build.ts",
+          "line": 207
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet/utils/build.ts",
+          "line": 192
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet/utils/build.ts",
+          "line": 125
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet/utils/build.ts",
+          "line": 132
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet/utils/build.ts",
+          "line": 173
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheet/utils/build.ts",
+          "line": 148
+        }
+      ],
+      "calledBy": []
+    },
+    "sheetapp.addsheet": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 389
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 388
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 383
+        },
+        {
+          "to": "window.addSheet",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 387
+        }
+      ],
+      "calledBy": [
+        "origin.drain"
+      ]
+    },
+    "sheetapp.applyrename": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 465
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 465
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 464
+        }
+      ],
+      "calledBy": [
+        "renameOverlay"
+      ]
+    },
+    "sheetapp.delete": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "store.delete",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 508
+        },
+        {
+          "to": "store.has",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 508
+        }
+      ],
+      "calledBy": [
+        "sheetapp.open"
+      ]
+    },
+    "sheetapp.golive": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 332
+        },
+        {
+          "to": "peerjoin",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 327
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 331
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 315
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 329
+        },
+        {
+          "to": "sheetsync.connect",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 328
+        }
+      ],
+      "calledBy": [
+        "sheetapp:module"
+      ]
+    },
+    "sheetapp.grant": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 356
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 355
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 349
+        },
+        {
+          "to": "sheetsync.announceWriters",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 353
+        },
+        {
+          "to": "sheetsync.share",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 350
+        }
+      ],
+      "calledBy": [
+        "sheetapp:module"
+      ]
+    },
+    "sheetapp.open": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 496
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 495
+        },
+        {
+          "to": "setCelBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 489
+        },
+        {
+          "to": "sheetapp.delete",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 483
+        },
+        {
+          "to": "sheetapp.pick",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 482
+        },
+        {
+          "to": "store.list",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 478
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 494
+        },
+        {
+          "to": "window.raise",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 493
+        },
+        {
+          "to": "wopen",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 486
+        }
+      ],
+      "calledBy": [
+        "sheetapp:module"
+      ]
+    },
+    "sheetapp.openSealed": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "origin.navOpen",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 280
+        },
+        {
+          "to": "sheetkeys.opensheet",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 285
+        }
+      ],
+      "calledBy": [
+        "sheetapp:module"
+      ]
+    },
+    "sheetapp.pick": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "origin.opendoc",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 515
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 514
+        }
+      ],
+      "calledBy": [
+        "sheetapp.open"
+      ]
+    },
+    "sheetapp.regrid": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 407
+        }
+      ],
+      "calledBy": [
+        "origin.run"
+      ]
+    },
+    "sheetapp.renamesheet": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 431
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 431
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 430
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 428
+        }
+      ],
+      "calledBy": [
+        "origin.drain"
+      ]
+    },
+    "sheetapp.save": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "saveUserSpace",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 249
+        }
+      ],
+      "calledBy": [
+        "sheetapp:module"
+      ]
+    },
+    "sheetapp.seal": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "origin.navOpen",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 264
+        },
+        {
+          "to": "profilewin",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 263
+        },
+        {
+          "to": "sheetkeys.sealsheet",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 267
+        }
+      ],
+      "calledBy": [
+        "sheetapp:module"
+      ]
+    },
+    "sheetapp.tabmenu": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 452
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 452
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 445
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 451
+        }
+      ],
+      "calledBy": [
+        "window:module"
+      ]
+    },
+    "sheetapp:module": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "closeUserSpace",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 99
+        },
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 188
+        },
+        {
+          "to": "origin.navOpen",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 295
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 188
+        },
+        {
+          "to": "saveUserSpace",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 97
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 129
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 152
+        },
+        {
+          "to": "setCelBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 176
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 124
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 148
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 300
+        },
+        {
+          "to": "sheetapp.golive",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 173
+        },
+        {
+          "to": "sheetapp.grant",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 174
+        },
+        {
+          "to": "sheetapp.open",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 169
+        },
+        {
+          "to": "sheetapp.openSealed",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 172
+        },
+        {
+          "to": "sheetapp.save",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 170
+        },
+        {
+          "to": "sheetapp.seal",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 171
+        },
+        {
+          "to": "store.has",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 95
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 184
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 194
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 201
+        },
+        {
+          "to": "wbopen",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 166
+        },
+        {
+          "to": "window.raise",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 149
+        },
+        {
+          "to": "window.raise",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 181
+        }
+      ],
+      "calledBy": []
+    },
+    "sheetdoc": {
+      "segment": "sheetapp",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 78
+        },
+        {
+          "to": "origin.run",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 69
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 77
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 73
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 76
+        },
+        {
+          "to": "window.raise",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/sheetapp/index.ts",
+          "line": 74
+        }
+      ],
+      "calledBy": [
+        "sheet-io:module",
+        "sheetkeys.opensheet"
+      ]
+    },
+    "sheetkeys.hash": {
+      "segment": "sheetkeys",
+      "calls": [],
+      "calledBy": [
+        "origin.drain",
+        "sheetkeys.sealsheet"
+      ]
+    },
+    "sheetkeys.opensheet": {
+      "segment": "sheetkeys",
+      "calls": [
+        {
+          "to": "sheetdoc",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheetkeys/index.ts",
+          "line": 115
+        }
+      ],
+      "calledBy": [
+        "sheetapp.openSealed"
+      ]
+    },
+    "sheetkeys.sealsheet": {
+      "segment": "sheetkeys",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheetkeys/index.ts",
+          "line": 88
+        },
+        {
+          "to": "sheetkeys.hash",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheetkeys/index.ts",
+          "line": 91
+        }
+      ],
+      "calledBy": [
+        "sheetapp.seal"
+      ]
+    },
+    "sheetkeys:module": {
+      "segment": "sheetkeys",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheetkeys/index.ts",
+          "line": 67
+        }
+      ],
+      "calledBy": []
+    },
+    "sheets:module": {
+      "segment": "sheets",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 318
+        },
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 535
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 534
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 334
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 508
+        },
+        {
+          "to": "sheet.resizeDrop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 99
+        },
+        {
+          "to": "sheet.resizeGrab",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 97
+        },
+        {
+          "to": "sheet.resizeMove",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 98
+        },
+        {
+          "to": "sheet.resizeReset",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/sheets/index.ts",
+          "line": 100
+        }
+      ],
+      "calledBy": []
+    },
+    "sheetsync.announceWriters": {
+      "segment": "sheetsync",
+      "calls": [],
+      "calledBy": [
+        "sheetapp.grant"
+      ]
+    },
+    "sheetsync.commit": {
+      "segment": "sheetsync",
+      "calls": [],
+      "calledBy": [
+        "origin.run"
+      ]
+    },
+    "sheetsync.connect": {
+      "segment": "sheetsync",
+      "calls": [],
+      "calledBy": [
+        "sheetapp.golive"
+      ]
+    },
+    "sheetsync.recv": {
+      "segment": "sheetsync",
+      "calls": [
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheetsync/index.ts",
+          "line": 248
+        }
+      ],
+      "calledBy": []
+    },
+    "sheetsync.share": {
+      "segment": "sheetsync",
+      "calls": [],
+      "calledBy": [
+        "sheetapp.grant"
+      ]
+    },
+    "sheetsync:module": {
+      "segment": "sheetsync",
+      "calls": [
+        {
+          "to": "ensureSegments",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheetsync/index.ts",
+          "line": 90
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheetsync/index.ts",
+          "line": 116
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheetsync/index.ts",
+          "line": 82
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheetsync/index.ts",
+          "line": 87
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheetsync/index.ts",
+          "line": 94
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheetsync/index.ts",
+          "line": 181
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sheetsync/index.ts",
+          "line": 156
+        }
+      ],
+      "calledBy": []
+    },
+    "sim.run": {
+      "segment": "ecs",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/ecs/index.ts",
+          "line": 456
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/ecs/index.ts",
+          "line": 425
+        },
+        {
+          "to": "setValueBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/ecs/index.ts",
+          "line": 398
+        }
+      ],
+      "calledBy": []
+    },
+    "simulate": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1408
+        }
+      ],
+      "calledBy": []
+    },
+    "sound.play-tone": {
+      "segment": "sound",
+      "calls": [],
+      "calledBy": [
+        "music.play",
+        "origin.tone"
+      ]
+    },
+    "sound.stop-all": {
+      "segment": "sound",
+      "calls": [],
+      "calledBy": [
+        "doom:module"
+      ]
+    },
+    "sql": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1317
+        }
+      ],
+      "calledBy": []
+    },
+    "sqlite.command": {
+      "segment": "sqlite",
+      "calls": [],
+      "calledBy": [
+        "origin.drain"
+      ]
+    },
+    "sqlite:module": {
+      "segment": "sqlite",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sqlite/index.ts",
+          "line": 113
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/sqlite/index.ts",
+          "line": 124
+        }
+      ],
+      "calledBy": []
+    },
+    "stat": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1036
+        }
+      ],
+      "calledBy": []
+    },
+    "store.delete": {
+      "segment": "segment-store",
+      "calls": [],
+      "calledBy": [
+        "sheetapp.delete"
+      ]
+    },
+    "store.get": {
+      "segment": "segment-store",
+      "calls": [],
+      "calledBy": [
+        "loadUserSpace",
+        "newUserSpace",
+        "origin-lifecycle:module"
+      ]
+    },
+    "store.has": {
+      "segment": "segment-store",
+      "calls": [],
+      "calledBy": [
+        "boot.run",
+        "newUserSpace",
+        "origin.newsheet",
+        "sheetapp.delete",
+        "sheetapp:module"
+      ]
+    },
+    "store.list": {
+      "segment": "segment-store",
+      "calls": [],
+      "calledBy": [
+        "sheetapp.open"
+      ]
+    },
+    "store.put": {
+      "segment": "segment-store",
+      "calls": [],
+      "calledBy": [
+        "saveUserSpace"
+      ]
+    },
+    "store.putRaw": {
+      "segment": "segment-store",
+      "calls": [],
+      "calledBy": [
+        "importFromDir",
+        "origin.install",
+        "seedStore"
+      ]
+    },
+    "store.readIndex": {
+      "segment": "segment-store",
+      "calls": [],
+      "calledBy": [
+        "importFromDir",
+        "origin.install",
+        "seedStore"
+      ]
+    },
+    "supabase-auth:module": {
+      "segment": "supabase-auth",
+      "calls": [
+        {
+          "to": "session.put",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-auth/index.ts",
+          "line": 73
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-auth/index.ts",
+          "line": 46
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-auth/index.ts",
+          "line": 44
+        }
+      ],
+      "calledBy": []
+    },
+    "supabase-storage:module": {
+      "segment": "supabase-storage",
+      "calls": [
+        {
+          "to": "session.handle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-storage/index.ts",
+          "line": 26
+        }
+      ],
+      "calledBy": []
+    },
+    "supabase.auth": {
+      "segment": "supabase-auth",
+      "calls": [
+        {
+          "to": "session.forget",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-auth/index.ts",
+          "line": 116
+        },
+        {
+          "to": "session.handle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-auth/index.ts",
+          "line": 105
+        },
+        {
+          "to": "session.handle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase-auth/index.ts",
+          "line": 114
+        }
+      ],
+      "calledBy": [
+        "grok.signin",
+        "grok.signout",
+        "sbdemo.login",
+        "sbdemo.signin"
+      ]
+    },
+    "supabase.config": {
+      "segment": "supabase",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase/index.ts",
+          "line": 208
+        },
+        {
+          "to": "setCelBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase/index.ts",
+          "line": 214
+        }
+      ],
+      "calledBy": [
+        "grok.signin"
+      ]
+    },
+    "supabase.data": {
+      "segment": "supabase",
+      "calls": [],
+      "calledBy": [
+        "sbdemo.add",
+        "sbdemo.login"
+      ]
+    },
+    "supabase.realtime": {
+      "segment": "supabase",
+      "calls": [],
+      "calledBy": [
+        "sbdemo.watch"
+      ]
+    },
+    "supabase:module": {
+      "segment": "supabase",
+      "calls": [
+        {
+          "to": "session.handle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase/index.ts",
+          "line": 55
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase/index.ts",
+          "line": 92
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/supabase/index.ts",
+          "line": 90
+        }
+      ],
+      "calledBy": []
+    },
+    "tables": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1330
+        }
+      ],
+      "calledBy": []
+    },
+    "taskbarBar": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "desktop.taskClick",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1690
+        }
+      ],
+      "calledBy": []
+    },
+    "toolbtn": {
+      "segment": "winapps",
+      "calls": [
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/winapps/index.ts",
+          "line": 28
+        }
+      ],
+      "calledBy": []
+    },
+    "touch": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1023
+        }
+      ],
+      "calledBy": []
+    },
+    "touch.press": {
+      "segment": "io-touch",
+      "calls": [],
+      "calledBy": [
+        "touchpad"
+      ]
+    },
+    "touch.release": {
+      "segment": "io-touch",
+      "calls": [],
+      "calledBy": [
+        "touchpad"
+      ]
+    },
+    "touchpad": {
+      "segment": "io-touch",
+      "calls": [
+        {
+          "to": "touch.press",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/io-touch/index.ts",
+          "line": 33
+        },
+        {
+          "to": "touch.release",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/io-touch/index.ts",
+          "line": 34
+        },
+        {
+          "to": "touch.release",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/io-touch/index.ts",
+          "line": 35
+        }
+      ],
+      "calledBy": []
+    },
+    "tree": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 945
+        }
+      ],
+      "calledBy": []
+    },
+    "unlink": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1460
+        }
+      ],
+      "calledBy": []
+    },
+    "updatebanner": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.updateOpen",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 1533
+        }
+      ],
+      "calledBy": []
+    },
+    "upload": {
+      "segment": "file-explorer",
+      "calls": [
+        {
+          "to": "explorer.upload",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/file-explorer/index.ts",
+          "line": 167
+        }
+      ],
+      "calledBy": []
+    },
+    "view": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1062
+        }
+      ],
+      "calledBy": []
+    },
+    "view.refresh": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/application/origin/index.ts",
+          "line": 457
+        }
+      ],
+      "calledBy": [
+        "desktop.stategraph",
+        "grok:module",
+        "origin.celtopo",
+        "origin.editapp",
+        "origin.launch",
+        "origin.navOpen",
+        "origin.updateOpen",
+        "sbdemo.kanban",
+        "sbdemo.login",
+        "sheet-io:module",
+        "sheetapp.open",
+        "sheetapp.tabmenu",
+        "sheetapp:module",
+        "sheetdoc",
+        "wiki.open",
+        "wiki.openSource"
+      ]
+    },
+    "vnode.bindings-equal": {
+      "segment": "html-template-parser",
+      "calls": [],
+      "calledBy": [
+        "dom:module"
+      ]
+    },
+    "vnode.equals": {
+      "segment": "html-template-parser",
+      "calls": [],
+      "calledBy": [
+        "dom:module"
+      ]
+    },
+    "wake": {
+      "segment": "kernel",
+      "calls": [],
+      "calledBy": [
+        "origin.navOpen"
+      ]
+    },
+    "wasm-bytes:module": {
+      "segment": "wasm-bytes",
+      "calls": [
+        {
+          "to": "fs.read",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/wasm-bytes/index.ts",
+          "line": 86
+        },
+        {
+          "to": "host.imports",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/wasm-bytes/index.ts",
+          "line": 12
+        }
+      ],
+      "calledBy": []
+    },
+    "wasmwin.blur": {
+      "segment": "winapps-wasm",
+      "calls": [],
+      "calledBy": [
+        "winapps-wasm:module"
+      ]
+    },
+    "wasmwin.focus": {
+      "segment": "winapps-wasm",
+      "calls": [],
+      "calledBy": [
+        "winapps-wasm:module"
+      ]
+    },
+    "wasmwin.key": {
+      "segment": "winapps-wasm",
+      "calls": [],
+      "calledBy": [
+        "winapps-wasm:module"
+      ]
+    },
+    "wat-compiler:module": {
+      "segment": "wat-compiler",
+      "calls": [
+        {
+          "to": "host.imports",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/wat-compiler/index.ts",
+          "line": 9
+        }
+      ],
+      "calledBy": []
+    },
+    "wbframe": {
+      "segment": "window",
+      "calls": [
+        {
+          "to": "window.drop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 380
+        },
+        {
+          "to": "window.drop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 402
+        },
+        {
+          "to": "window.drop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 407
+        },
+        {
+          "to": "window.grab",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 402
+        },
+        {
+          "to": "window.grabResize",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 407
+        },
+        {
+          "to": "window.move",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 402
+        },
+        {
+          "to": "window.paneFull",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 372
+        },
+        {
+          "to": "window.raise",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 408
+        },
+        {
+          "to": "window.resizeMove",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 407
+        },
+        {
+          "to": "window.splitGrab",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 380
+        },
+        {
+          "to": "window.splitMove",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 380
+        },
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 372
+        },
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 389
+        },
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 393
+        }
+      ],
+      "calledBy": []
+    },
+    "wbopen": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "origin.drain",
+        "sbdemo.kanban",
+        "sheetapp:module"
+      ]
+    },
+    "wframe": {
+      "segment": "window",
+      "calls": [
+        {
+          "to": "window.drop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 141
+        },
+        {
+          "to": "window.drop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 160
+        },
+        {
+          "to": "window.grab",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 141
+        },
+        {
+          "to": "window.grabResize",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 160
+        },
+        {
+          "to": "window.move",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 141
+        },
+        {
+          "to": "window.raise",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 162
+        },
+        {
+          "to": "window.resizeMove",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 160
+        },
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 133
+        },
+        {
+          "to": "window.stop",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 150
+        },
+        {
+          "to": "window.tab",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 151
+        },
+        {
+          "to": "window.tabClose",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 150
+        }
+      ],
+      "calledBy": []
+    },
+    "wiki": {
+      "segment": "docgraph",
+      "calls": [
+        {
+          "to": "wiki.open",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 354
+        }
+      ],
+      "calledBy": []
+    },
+    "wiki.open": {
+      "segment": "docgraph",
+      "calls": [
+        {
+          "to": "fg.set",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 415
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 446
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 417
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 431
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 436
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 437
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 445
+        }
+      ],
+      "calledBy": [
+        "docgraph:module",
+        "wiki"
+      ]
+    },
+    "wiki.openSource": {
+      "segment": "docgraph",
+      "calls": [
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 542
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 510
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 530
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 540
+        },
+        {
+          "to": "view.refresh",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 541
+        }
+      ],
+      "calledBy": [
+        "docgraph:module"
+      ]
+    },
+    "wiki.saveDesc": {
+      "segment": "docgraph",
+      "calls": [
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 470
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 472
+        }
+      ],
+      "calledBy": [
+        "docgraph:module"
+      ]
+    },
+    "wiki.saveNote": {
+      "segment": "docgraph",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/docgraph/index.ts",
+          "line": 460
+        }
+      ],
+      "calledBy": [
+        "docgraph:module"
+      ]
+    },
+    "winapps-wasm:module": {
+      "segment": "winapps-wasm",
+      "calls": [
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/winapps-wasm/index.ts",
+          "line": 39
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/winapps-wasm/index.ts",
+          "line": 63
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/winapps-wasm/index.ts",
+          "line": 145
+        },
+        {
+          "to": "wasmwin.blur",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/winapps-wasm/index.ts",
+          "line": 134
+        },
+        {
+          "to": "wasmwin.focus",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/winapps-wasm/index.ts",
+          "line": 133
+        },
+        {
+          "to": "wasmwin.key",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/winapps-wasm/index.ts",
+          "line": 135
+        },
+        {
+          "to": "wasmwin.key",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/winapps-wasm/index.ts",
+          "line": 136
+        }
+      ],
+      "calledBy": []
+    },
+    "window.addSheet": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "sheetapp.addsheet"
+      ]
+    },
+    "window.addView": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "origin.drain",
+        "origin:module"
+      ]
+    },
+    "window.close": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "doom:module"
+      ]
+    },
+    "window.drop": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "wbframe",
+        "wframe"
+      ]
+    },
+    "window.grab": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "wbframe",
+        "wframe"
+      ]
+    },
+    "window.grabResize": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "wbframe",
+        "wframe"
+      ]
+    },
+    "window.min": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "desktop.taskClick"
+      ]
+    },
+    "window.move": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "wbframe",
+        "wframe"
+      ]
+    },
+    "window.paneFull": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "wbframe"
+      ]
+    },
+    "window.raise": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "desktop.bgmenu",
+        "desktop.stategraph",
+        "desktop.taskClick",
+        "grok.pickroom",
+        "origin.celtopo",
+        "origin.editapp",
+        "origin.updateOpen",
+        "origin:module",
+        "sheetapp.open",
+        "sheetapp:module",
+        "sheetdoc",
+        "wbframe",
+        "wframe"
+      ]
+    },
+    "window.resizeMove": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "wbframe",
+        "wframe"
+      ]
+    },
+    "window.splitGrab": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "wbframe"
+      ]
+    },
+    "window.splitMove": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "wbframe"
+      ]
+    },
+    "window.stop": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "docgraph:module",
+        "fgview",
+        "toolbtn",
+        "wbframe",
+        "wframe"
+      ]
+    },
+    "window.tab": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "wframe"
+      ]
+    },
+    "window.tabClose": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "wframe"
+      ]
+    },
+    "window.viewTab": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "grok.pickroom"
+      ]
+    },
+    "window:module": {
+      "segment": "window",
+      "calls": [
+        {
+          "to": "drain",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 44
+        },
+        {
+          "to": "runCycle",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 214
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 50
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 66
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 212
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 438
+        },
+        {
+          "to": "setCel",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 450
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 47
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 49
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 65
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 437
+        },
+        {
+          "to": "setValue",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 449
+        },
+        {
+          "to": "sheetapp.tabmenu",
+          "kind": "dispatch",
+          "file": "src/甲骨坑/library/window/index.ts",
+          "line": 341
+        }
+      ],
+      "calledBy": []
+    },
+    "wopen": {
+      "segment": "window",
+      "calls": [],
+      "calledBy": [
+        "origin.updateOpen",
+        "sheetapp.open"
+      ]
+    },
+    "write": {
+      "segment": "origin",
+      "calls": [
+        {
+          "to": "origin.effects",
+          "kind": "emits",
+          "file": "src/甲骨坑/application/origin/甲骨.json",
+          "line": 1010
+        }
+      ],
+      "calledBy": []
+    },
+    "xlsxexport": {
+      "segment": "xlsx",
+      "calls": [],
+      "calledBy": [
+        "sheet-io:module"
+      ]
+    },
+    "xlsxload": {
+      "segment": "xlsx",
+      "calls": [
+        {
+          "to": "setCelBatch",
+          "kind": "resolveFn",
+          "file": "src/甲骨坑/library/xlsx/index.ts",
+          "line": 198
+        }
+      ],
+      "calledBy": []
+    }
+  }
+}

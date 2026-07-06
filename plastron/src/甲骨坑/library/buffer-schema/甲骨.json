@@ -1,0 +1,41 @@
+{
+  "name": "buffer-schema",
+  "cels": [
+    {
+      "key": "buffers",
+      "celType": "SchemaCel",
+      "metadata": {
+        "key": "buffers", "segment": "buffer-schema",
+        "description": "A SchemaCel that snapshots a BUFFER STRUCT: a plain object whose values may be typed arrays (Float32/Float64/Int8/Uint8/Uint8Clamped/Int16/Uint16/Int32/Uint32 Array) alongside JSON-native scalars/arrays (dims, counters, RNG state). The default dehydrate is JSON-only, so bind this on a cel via metadata.schema:'buffers' to persist sim/mesh/gpu buffers. dehydrate encodes each typed array as {__ta, b64}; hydrate reconstructs the live typed array. isChanged is ref-eq (the host mutates in place + signals via a separate generation cel). The snapshot half of the CPU-resident-SoA interior."
+      },
+      "v": {
+        "key": "buffers",
+        "zod": { "type": "object" },
+        "protocols": {
+          "isChanged": "buffers_isChanged",
+          "hydrate": "buffers_hydrate",
+          "dehydrate": "buffers_dehydrate"
+        },
+        "memoSafe": false
+      }
+    },
+    {
+      "key": "buffers_isChanged",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": { "key": "buffers_isChanged", "segment": "buffer-schema", "kind": "native" }
+    },
+    {
+      "key": "buffers_hydrate",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": { "key": "buffers_hydrate", "segment": "buffer-schema", "kind": "native" }
+    },
+    {
+      "key": "buffers_dehydrate",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": { "key": "buffers_dehydrate", "segment": "buffer-schema", "kind": "native" }
+    }
+  ]
+}

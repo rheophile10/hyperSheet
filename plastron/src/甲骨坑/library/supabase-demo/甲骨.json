@@ -1,0 +1,77 @@
+{
+  "name": "supabase-demo",
+  "cels": [
+    {
+      "key": "sbdemo.install",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sbdemo.install", "segment": "supabase-demo", "name": "sbdemo.install", "kind": "native",
+        "description": "(state, project='demo', url?, anonkey?) - lay down a worked Supabase example as sheet cels: config (sb.<p>.url/anonkey), seeded sb.<p>.todos.rev, sbdemo.<p>.status/live strings, and a reactive sbdemo.<p>.panel FormulaCel that renders auth status + live todo rev-count + subscription state via dom. The panel re-renders reactively as the handlers (sbdemo.signin/add/watch) drive the supabase verbs."
+      },
+      "locked": true
+    },
+    {
+      "key": "sbdemo.signin",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sbdemo.signin", "segment": "supabase-demo", "name": "sbdemo.signin", "kind": "native",
+        "description": "(state, project, payload) - dispatch handler: sign in via supabase.auth and write a display string to sbdemo.<p>.status (the panel reacts). Wire a button's click to this."
+      },
+      "locked": true
+    },
+    {
+      "key": "sbdemo.add",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sbdemo.add", "segment": "supabase-demo", "name": "sbdemo.add", "kind": "native",
+        "description": "(state, project, title?) - dispatch handler: insert a todo via supabase.data; the write bumps sb.<p>.todos.rev so the panel's count re-renders."
+      },
+      "locked": true
+    },
+    {
+      "key": "sbdemo.watch",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sbdemo.watch", "segment": "supabase-demo", "name": "sbdemo.watch", "kind": "native",
+        "description": "(state, project) - dispatch handler: subscribe sb.<p> todos to realtime; a server-side change then bumps the same rev cel and the panel re-renders live. Sets sbdemo.<p>.live."
+      },
+      "locked": true
+    },
+    {
+      "key": "sbdemo.ui",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sbdemo.ui", "segment": "supabase-demo", "name": "sbdemo.ui", "kind": "native",
+        "description": "(project, email, password, status, tasks) - PURE render of the login form + kanban board as a vnode. Inputs dispatch to sbdemo.field; the button dispatches to sbdemo.login. Call from a formula with the reactive cels as args so it re-renders on change."
+      },
+      "locked": true
+    },
+    {
+      "key": "sbdemo.field",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sbdemo.field", "segment": "supabase-demo", "name": "sbdemo.field", "kind": "native",
+        "description": "(state, cellKey, event) - input dispatch handler: write the <input>'s value (event.target.value) into the cel named by cellKey. Wires email/password fields to cels."
+      },
+      "locked": true
+    },
+    {
+      "key": "sbdemo.login",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sbdemo.login", "segment": "supabase-demo", "name": "sbdemo.login", "kind": "native",
+        "description": "(state, project, event) - login button handler: sign in with the captured sbdemo.<p>.email/password, then query the user's kanban table (RLS-scoped) and write the rows to sbdemo.<p>.tasks so the board renders. Sets sbdemo.<p>.status."
+      },
+      "locked": true
+    },
+    {
+      "key": "sbdemo.kanban",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "sbdemo.kanban", "segment": "supabase-demo", "name": "sbdemo.kanban", "kind": "native",
+        "description": "(state, project='demo', url?, anonkey?) - install the interactive login+kanban demo: config + email/password/status/tasks cels + a mounted sbdemo.<p>.view formula (=mount('.origin', sbdemo.ui(...))). Real <input>s + a Log in button, authored as a formula; on submit it signs in and renders the user's kanban board."
+      },
+      "locked": true
+    }
+  ]
+}
