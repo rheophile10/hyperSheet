@@ -1,8 +1,0 @@
-{
-  "name": "sheetapp",
-  "version": "1.0.0",
-  "role": "application",
-  "kind": "origin-application",
-  "dependencies": [],
-  "sha": "16b6a8b078169c"
-}

@@ -26,6 +26,11 @@ coverage/
 examples/plastron-sheet/plan.md
 notes/
 docs/
+# …EXCEPT the baked demo documents: bundle.ts bakes apps/docs/*.json into the
+# deployed index.html, so CI needs them in the repo (materialize-docs is gone;
+# these are hand-maintained SOURCE now, not build output).
+!plastron-examples/origin/apps/docs/
+!plastron-examples/origin/apps/docs/**
 
 # Bench output (one JSON per run; not source-of-truth)
 bench/results/
@@ -34,7 +39,12 @@ bench/results/
 plastron-examples/pictograph/甲骨.json
 
 # Runtime file-store data — created by node-fs backend when bun runs.
+# (.plastron-fs-*/ and the short-named .fl/.t6/.t7 variants are per-test stores.)
 .plastron-fs/
+.plastron-fs-*/
+plastron/.fl/
+plastron/.t6/
+plastron/.t7/
 
 # Tmp e2e logs.
 /tmp/e2e-*.log
