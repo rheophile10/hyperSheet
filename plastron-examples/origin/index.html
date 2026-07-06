@@ -14,7 +14,7 @@
          codegen can't run new Function — the engine's AST-walk fallback (gated
          on csp.eval-available) takes over. 'wasm-unsafe-eval' keeps the wasm
          compilers (js/quickjs/py) working; CDNs pinned for Pyodide/confetti. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' blob: data: https://api.anthropic.com https://api.x.ai https://api.open-meteo.com https://geocoding-api.open-meteo.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com ws://localhost:* wss://localhost:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; worker-src 'self' blob:;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' blob: data: https://api.anthropic.com https://api.x.ai https://api.open-meteo.com https://geocoding-api.open-meteo.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com ws://localhost:* wss://localhost:* http://localhost:* http://127.0.0.1:* ws://127.0.0.1:* https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; worker-src 'self' blob:;" />
     <title>🐢 plastron — cels interlinked</title>
     <!-- Open Graph / Twitter card (static; crawlers don't run JS or see the #f= hash,
          so every shared link previews with this one 🐢 card — card.png is rendered
@@ -49,7 +49,7 @@
          OWN styling inline, produced by the origin view fn + readme formula.
          The host keeps only this base shell (:root / * / body / #app).
          (The 🎹 keyboard's keycap styling — incl. the :active press colour —
-         lives in keyboard.f itself, mounted as a <style> via dom("style",…).) */
+         lives in the keyboard document itself, mounted as a <style> via dom("style",…).) */
     </style>
   </head>
   <body>
@@ -69,6 +69,11 @@
          map the first boot's boot.run installs into OPFS (store.put, NOT state); the
          desktop shell is then hydrated on demand. The install source of truth. -->
     <script type="application/json" id="plastron-apps">[[APP_ARCHIVES]]</script>
+    <!-- The build stamp + release notice ({id, notice}): id is a content hash of the
+         baked archives + UPDATE.md, so any shipped change mints a new id. Boot's
+         origin.updateCheck compares it to the persisted last-seen id and surfaces
+         the desktop 🔄 update chip on mismatch. Inert JSON, like #plastron-apps. -->
+    <script type="application/json" id="plastron-update">[[UPDATE_INFO]]</script>
     <!-- No external <script> tags: the py-compiler pulls Pyodide from a CDN
          itself (via the kernel loadScript primitive) on first py use. -->
     <script type="module" src="./origin-main.ts"></script>

@@ -1,0 +1,521 @@
+{
+  "formatVersion": 1,
+  "segments": [
+    {
+      "name": "turtle_charts",
+      "cels": [
+        {
+          "key": "turtle_charts.A1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_charts.A1",
+            "segment": "turtle_charts",
+            "name": "A1",
+            "description": "label: B1 is the HUB-FORM pivot — the grid rows as a list of dicts"
+          },
+          "v": "dataset"
+        },
+        {
+          "key": "turtle_charts.B1",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "turtle_charts.B1",
+            "segment": "turtle_charts",
+            "name": "B1",
+            "parser": "infix",
+            "description": "the collections-doctrine pivot: the editable grid range → the hub form (a LIST OF DICTS keyed by the header row); everything downstream derives from THIS cell"
+          },
+          "f": "=rows(turtle_data!A2:D8, turtle_data!A1:D1)"
+        },
+        {
+          "key": "turtle_charts.A2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_charts.A2",
+            "segment": "turtle_charts",
+            "name": "A2",
+            "description": "label: B2 is the species filter the dashboard's select writes"
+          },
+          "v": "filter"
+        },
+        {
+          "key": "turtle_charts.B2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_charts.B2",
+            "segment": "turtle_charts",
+            "name": "B2",
+            "description": "the selected species ('all' = no filter) — the dashboard's <select> writes it via param.set; every chart derives through =FILTER on it"
+          },
+          "v": "all"
+        },
+        {
+          "key": "turtle_charts.A3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_charts.A3",
+            "segment": "turtle_charts",
+            "name": "A3",
+            "description": "label: B3 is the filtered dataset"
+          },
+          "v": "filtered"
+        },
+        {
+          "key": "turtle_charts.B3",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "turtle_charts.B3",
+            "segment": "turtle_charts",
+            "name": "B3",
+            "parser": "infix",
+            "description": "the FILTERED dataset: keep dicts whose .species matches the filter cell (or every dict when it holds 'all'); the charts broadcast .species/.lifespan/.speed/.eggs off this"
+          },
+          "f": "=FILTER(B1, LAMBDA(t, OR(B2 = \"all\", t.species = B2)))"
+        },
+        {
+          "key": "turtle_charts.A4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_charts.A4",
+            "segment": "turtle_charts",
+            "name": "A4",
+            "description": "label: B4 grows the dashboard view pane"
+          },
+          "v": "dashboard"
+        },
+        {
+          "key": "turtle_charts.B4",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "turtle_charts.B4",
+            "segment": "turtle_charts",
+            "name": "B4",
+            "parser": "infix",
+            "description": "the GENERATIVE dashboard formula: a species <select> (param.set → the filter cell) + bar/line/pie canvases, all derived from the dataset cell B1 through the filter B3, contributed to ONE '🐢 dashboard' VIEW pane — the cell keeps the visible source (value: the ⧉ token); edit data or change the filter and every chart re-renders"
+          },
+          "f": "=view(\"🐢 dashboard\", dom(\"div\",\n\tdom(\"div\", style(\"display\", \"flex\", \"gap\", \".5rem\", \"align-items\", \"center\", \"padding\", \".3rem\"),\n\t\t\"species:\",\n\t\tdom(\"select\", on(\"change\", \"param.set\", \"turtle_charts.B2\"),\n\t\t\tdom(\"option\", IF(B2 = \"all\", attr(\"selected\", \"selected\"), \"\"), \"all\"),\n\t\t\tMAP(B1.species, LAMBDA(s, dom(\"option\", IF(s = B2, attr(\"selected\", \"selected\"), \"\"), s))))),\n\tdom(\"div\", style(\"display\", \"flex\", \"flex-wrap\", \"wrap\", \"gap\", \".5rem\"),\n\t\tcanvas(300, 200, barchart(B3.species, B3.lifespan)),\n\t\tcanvas(300, 200, linechart(B3.species, B3.speed)),\n\t\tcanvas(300, 200, piechart(B3.species, B3.eggs)))))"
+        },
+        {
+          "key": "turtle_charts.dims",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_charts.dims",
+            "segment": "turtle_charts",
+            "name": "dims",
+            "description": "the sheet's RENDERED range {rows, cols} — sparse: addresses render from dims; a cel exists only once a value/formula is committed. =addCells grows this."
+          },
+          "v": {
+            "rows": 40,
+            "cols": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "turtle_data",
+      "cels": [
+        {
+          "key": "turtle_data.A1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.A1",
+            "segment": "turtle_data",
+            "name": "A1",
+            "description": "column header 'species' — =rows() reads this row as the dict KEYS, so broadcast access is .species"
+          },
+          "v": "species"
+        },
+        {
+          "key": "turtle_data.B1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.B1",
+            "segment": "turtle_data",
+            "name": "B1",
+            "description": "column header 'lifespan' — =rows() reads this row as the dict KEYS, so broadcast access is .lifespan"
+          },
+          "v": "lifespan"
+        },
+        {
+          "key": "turtle_data.C1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.C1",
+            "segment": "turtle_data",
+            "name": "C1",
+            "description": "column header 'speed' — =rows() reads this row as the dict KEYS, so broadcast access is .speed"
+          },
+          "v": "speed"
+        },
+        {
+          "key": "turtle_data.D1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.D1",
+            "segment": "turtle_data",
+            "name": "D1",
+            "description": "column header 'eggs' — =rows() reads this row as the dict KEYS, so broadcast access is .eggs"
+          },
+          "v": "eggs"
+        },
+        {
+          "key": "turtle_data.A2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.A2",
+            "segment": "turtle_data",
+            "name": "A2",
+            "description": "species — edit it and the dashboard re-labels everywhere"
+          },
+          "v": "Galápagos"
+        },
+        {
+          "key": "turtle_data.B2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.B2",
+            "segment": "turtle_data",
+            "name": "B2",
+            "description": "lifespan (years) — feeds the bar chart through the dataset cell"
+          },
+          "v": 177
+        },
+        {
+          "key": "turtle_data.C2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.C2",
+            "segment": "turtle_data",
+            "name": "C2",
+            "description": "top speed (km/h) — feeds the line chart through the dataset cell"
+          },
+          "v": 0.3
+        },
+        {
+          "key": "turtle_data.D2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.D2",
+            "segment": "turtle_data",
+            "name": "D2",
+            "description": "eggs per clutch — feeds the pie chart through the dataset cell"
+          },
+          "v": 10
+        },
+        {
+          "key": "turtle_data.A3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.A3",
+            "segment": "turtle_data",
+            "name": "A3",
+            "description": "species — edit it and the dashboard re-labels everywhere"
+          },
+          "v": "Leatherback"
+        },
+        {
+          "key": "turtle_data.B3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.B3",
+            "segment": "turtle_data",
+            "name": "B3",
+            "description": "lifespan (years) — feeds the bar chart through the dataset cell"
+          },
+          "v": 45
+        },
+        {
+          "key": "turtle_data.C3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.C3",
+            "segment": "turtle_data",
+            "name": "C3",
+            "description": "top speed (km/h) — feeds the line chart through the dataset cell"
+          },
+          "v": 35
+        },
+        {
+          "key": "turtle_data.D3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.D3",
+            "segment": "turtle_data",
+            "name": "D3",
+            "description": "eggs per clutch — feeds the pie chart through the dataset cell"
+          },
+          "v": 80
+        },
+        {
+          "key": "turtle_data.A4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.A4",
+            "segment": "turtle_data",
+            "name": "A4",
+            "description": "species — edit it and the dashboard re-labels everywhere"
+          },
+          "v": "Green sea"
+        },
+        {
+          "key": "turtle_data.B4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.B4",
+            "segment": "turtle_data",
+            "name": "B4",
+            "description": "lifespan (years) — feeds the bar chart through the dataset cell"
+          },
+          "v": 75
+        },
+        {
+          "key": "turtle_data.C4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.C4",
+            "segment": "turtle_data",
+            "name": "C4",
+            "description": "top speed (km/h) — feeds the line chart through the dataset cell"
+          },
+          "v": 32
+        },
+        {
+          "key": "turtle_data.D4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.D4",
+            "segment": "turtle_data",
+            "name": "D4",
+            "description": "eggs per clutch — feeds the pie chart through the dataset cell"
+          },
+          "v": 110
+        },
+        {
+          "key": "turtle_data.A5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.A5",
+            "segment": "turtle_data",
+            "name": "A5",
+            "description": "species — edit it and the dashboard re-labels everywhere"
+          },
+          "v": "Box"
+        },
+        {
+          "key": "turtle_data.B5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.B5",
+            "segment": "turtle_data",
+            "name": "B5",
+            "description": "lifespan (years) — feeds the bar chart through the dataset cell"
+          },
+          "v": 100
+        },
+        {
+          "key": "turtle_data.C5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.C5",
+            "segment": "turtle_data",
+            "name": "C5",
+            "description": "top speed (km/h) — feeds the line chart through the dataset cell"
+          },
+          "v": 0.5
+        },
+        {
+          "key": "turtle_data.D5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.D5",
+            "segment": "turtle_data",
+            "name": "D5",
+            "description": "eggs per clutch — feeds the pie chart through the dataset cell"
+          },
+          "v": 5
+        },
+        {
+          "key": "turtle_data.A6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.A6",
+            "segment": "turtle_data",
+            "name": "A6",
+            "description": "species — edit it and the dashboard re-labels everywhere"
+          },
+          "v": "Snapping"
+        },
+        {
+          "key": "turtle_data.B6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.B6",
+            "segment": "turtle_data",
+            "name": "B6",
+            "description": "lifespan (years) — feeds the bar chart through the dataset cell"
+          },
+          "v": 40
+        },
+        {
+          "key": "turtle_data.C6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.C6",
+            "segment": "turtle_data",
+            "name": "C6",
+            "description": "top speed (km/h) — feeds the line chart through the dataset cell"
+          },
+          "v": 2
+        },
+        {
+          "key": "turtle_data.D6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.D6",
+            "segment": "turtle_data",
+            "name": "D6",
+            "description": "eggs per clutch — feeds the pie chart through the dataset cell"
+          },
+          "v": 30
+        },
+        {
+          "key": "turtle_data.A7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.A7",
+            "segment": "turtle_data",
+            "name": "A7",
+            "description": "species — edit it and the dashboard re-labels everywhere"
+          },
+          "v": "Painted"
+        },
+        {
+          "key": "turtle_data.B7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.B7",
+            "segment": "turtle_data",
+            "name": "B7",
+            "description": "lifespan (years) — feeds the bar chart through the dataset cell"
+          },
+          "v": 55
+        },
+        {
+          "key": "turtle_data.C7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.C7",
+            "segment": "turtle_data",
+            "name": "C7",
+            "description": "top speed (km/h) — feeds the line chart through the dataset cell"
+          },
+          "v": 1.5
+        },
+        {
+          "key": "turtle_data.D7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.D7",
+            "segment": "turtle_data",
+            "name": "D7",
+            "description": "eggs per clutch — feeds the pie chart through the dataset cell"
+          },
+          "v": 12
+        },
+        {
+          "key": "turtle_data.A8",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.A8",
+            "segment": "turtle_data",
+            "name": "A8",
+            "description": "species — edit it and the dashboard re-labels everywhere"
+          },
+          "v": "Loggerhead"
+        },
+        {
+          "key": "turtle_data.B8",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.B8",
+            "segment": "turtle_data",
+            "name": "B8",
+            "description": "lifespan (years) — feeds the bar chart through the dataset cell"
+          },
+          "v": 65
+        },
+        {
+          "key": "turtle_data.C8",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.C8",
+            "segment": "turtle_data",
+            "name": "C8",
+            "description": "top speed (km/h) — feeds the line chart through the dataset cell"
+          },
+          "v": 24
+        },
+        {
+          "key": "turtle_data.D8",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.D8",
+            "segment": "turtle_data",
+            "name": "D8",
+            "description": "eggs per clutch — feeds the pie chart through the dataset cell"
+          },
+          "v": 100
+        },
+        {
+          "key": "turtle_data.dims",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "turtle_data.dims",
+            "segment": "turtle_data",
+            "name": "dims",
+            "description": "the sheet's RENDERED range {rows, cols} — sparse: addresses render from dims; a cel exists only once a value/formula is committed. =addCells grows this."
+          },
+          "v": {
+            "rows": 40,
+            "cols": 8
+          }
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    {
+      "name": "turtle_charts",
+      "version": "0.2.0",
+      "description": "turtles (a sheetapp document) — the DASHBOARD sheet: =rows() pivots the data grid into the hub form (list of dicts), =FILTER derives the filtered dataset from the species filter cell, and ONE =view formula grows a dashboard pane (species select + bar/line/pie) — the collections doctrine end to end, every step a visible cell",
+      "role": "user-space",
+      "kind": "origin-user",
+      "applications": [
+        "sheetapp"
+      ],
+      "dependencies": [
+        "sheetapp",
+        "turtle_data",
+        "collections",
+        "charts",
+        "plastron-canvas",
+        "dom",
+        "ecs",
+        "origin"
+      ]
+    },
+    {
+      "name": "turtle_data",
+      "version": "0.2.0",
+      "description": "turtles (a sheetapp document) — the editable data worksheet; header row = the dict keys of the =rows() pivot; edit any cell and the dashboard re-renders through the graph",
+      "role": "user-space",
+      "kind": "origin-user",
+      "applications": [
+        "sheetapp"
+      ],
+      "dependencies": [
+        "sheetapp"
+      ]
+    }
+  ]
+}

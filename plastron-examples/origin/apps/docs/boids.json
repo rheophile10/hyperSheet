@@ -1,0 +1,871 @@
+{
+  "formatVersion": 1,
+  "segments": [
+    {
+      "name": "boids",
+      "cels": [
+        {
+          "key": "boids.A1",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids.A1",
+            "segment": "boids",
+            "name": "A1",
+            "description": "the =view() pane: run/stop + the canvas drawing one circle per fish from the B12 positions table. References B12 so every committed frame repaints.",
+            "parser": "infix"
+          },
+          "f": "=view(\"fish\", dom(\"div\", dom(\"div\", style(\"display\",\"flex\",\"gap\",\".5rem\"), dom(\"button\", on(\"click\",\"sim.run\",\"boids.B16\"), \"▶ run\"), dom(\"button\", on(\"click\",\"sim.stop\",\"boids.B16\"), \"⏸ stop\")), canvas(B8, B9, rect(0,0,B8,B9,\"#0b1020\"), opmap(circle, B12, 3, \"#4fc3f7\"))))"
+        },
+        {
+          "key": "boids.A2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A2",
+            "segment": "boids",
+            "name": "A2",
+            "description": "param label row 2"
+          },
+          "v": "cohesion"
+        },
+        {
+          "key": "boids.B2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.B2",
+            "segment": "boids",
+            "name": "B2",
+            "description": "EDIT ME - the cohesion parameter; D3/D4 re-derive live and the flock changes mid-swim"
+          },
+          "v": 0.01
+        },
+        {
+          "key": "boids.A3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A3",
+            "segment": "boids",
+            "name": "A3",
+            "description": "param label row 3"
+          },
+          "v": "alignment"
+        },
+        {
+          "key": "boids.B3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.B3",
+            "segment": "boids",
+            "name": "B3",
+            "description": "EDIT ME - the alignment parameter; D3/D4 re-derive live and the flock changes mid-swim"
+          },
+          "v": 0.06
+        },
+        {
+          "key": "boids.A4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A4",
+            "segment": "boids",
+            "name": "A4",
+            "description": "param label row 4"
+          },
+          "v": "separation"
+        },
+        {
+          "key": "boids.B4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.B4",
+            "segment": "boids",
+            "name": "B4",
+            "description": "EDIT ME - the separation parameter; D3/D4 re-derive live and the flock changes mid-swim"
+          },
+          "v": 0.05
+        },
+        {
+          "key": "boids.A5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A5",
+            "segment": "boids",
+            "name": "A5",
+            "description": "param label row 5"
+          },
+          "v": "speed"
+        },
+        {
+          "key": "boids.B5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.B5",
+            "segment": "boids",
+            "name": "B5",
+            "description": "EDIT ME - the speed parameter; D3/D4 re-derive live and the flock changes mid-swim"
+          },
+          "v": 2.5
+        },
+        {
+          "key": "boids.A6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A6",
+            "segment": "boids",
+            "name": "A6",
+            "description": "param label row 6"
+          },
+          "v": "radius"
+        },
+        {
+          "key": "boids.B6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.B6",
+            "segment": "boids",
+            "name": "B6",
+            "description": "EDIT ME - the radius parameter; D3/D4 re-derive live and the flock changes mid-swim"
+          },
+          "v": 60
+        },
+        {
+          "key": "boids.A7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A7",
+            "segment": "boids",
+            "name": "A7",
+            "description": "param label row 7"
+          },
+          "v": "dt"
+        },
+        {
+          "key": "boids.B7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.B7",
+            "segment": "boids",
+            "name": "B7",
+            "description": "EDIT ME - the dt parameter; D3/D4 re-derive live and the flock changes mid-swim"
+          },
+          "v": 1
+        },
+        {
+          "key": "boids.A8",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A8",
+            "segment": "boids",
+            "name": "A8",
+            "description": "param label row 8"
+          },
+          "v": "w"
+        },
+        {
+          "key": "boids.B8",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.B8",
+            "segment": "boids",
+            "name": "B8",
+            "description": "EDIT ME - the w parameter; D3/D4 re-derive live and the flock changes mid-swim"
+          },
+          "v": 640
+        },
+        {
+          "key": "boids.A9",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A9",
+            "segment": "boids",
+            "name": "A9",
+            "description": "param label row 9"
+          },
+          "v": "h"
+        },
+        {
+          "key": "boids.B9",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.B9",
+            "segment": "boids",
+            "name": "B9",
+            "description": "EDIT ME - the h parameter; D3/D4 re-derive live and the flock changes mid-swim"
+          },
+          "v": 400
+        },
+        {
+          "key": "boids.A10",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A10",
+            "segment": "boids",
+            "name": "A10",
+            "description": "param label"
+          },
+          "v": "fps"
+        },
+        {
+          "key": "boids.B10",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.B10",
+            "segment": "boids",
+            "name": "B10",
+            "description": "EDIT ME - pump frames per second (live)"
+          },
+          "v": 30
+        },
+        {
+          "key": "boids.A11",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A11",
+            "segment": "boids",
+            "name": "A11",
+            "description": "rule label"
+          },
+          "v": "rule =LAMBDA — EDIT ME"
+        },
+        {
+          "key": "boids.B11",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids.B11",
+            "segment": "boids",
+            "name": "B11",
+            "description": "THE STEERING RULE the B14 system maps over every fish: (pos, vel, nbrs, cohesion, alignment, separation, maxSpeed) -> [vx, vy]. EDIT IT mid-swim and the flock changes course - the rule is a cell, not native code (the 10k doc compiles the same idea to wat).",
+            "parser": "infix"
+          },
+          "f": "=LAMBDA(pos, vel, nbrs, cohesion, alignment, separation, maxSpeed, LET(\n\tpx, pos[0],  py, pos[1],\n\tn, REDUCE(0, nbrs, LAMBDA(a, r, a + 1)),\n\tcx, REDUCE(0, nbrs, LAMBDA(a, r, a + r[0][0])),\n\tcy, REDUCE(0, nbrs, LAMBDA(a, r, a + r[0][1])),\n\tax, REDUCE(0, nbrs, LAMBDA(a, r, a + r[1][0])),\n\tay, REDUCE(0, nbrs, LAMBDA(a, r, a + r[1][1])),\n\tsx, REDUCE(0, nbrs, LAMBDA(a, r, a + (px - r[0][0]) / MAX(1, (px - r[0][0])*(px - r[0][0]) + (py - r[0][1])*(py - r[0][1])))),\n\tsy, REDUCE(0, nbrs, LAMBDA(a, r, a + (py - r[0][1]) / MAX(1, (px - r[0][0])*(px - r[0][0]) + (py - r[0][1])*(py - r[0][1])))),\n\tvx, IF(n = 0, vel[0], vel[0] + (cx/n - px)*cohesion + (ax/n - vel[0])*alignment + sx*separation*40),\n\tvy, IF(n = 0, vel[1], vel[1] + (cy/n - py)*cohesion + (ay/n - vel[1])*alignment + sy*separation*40),\n\tsq, vx*vx + vy*vy,\n\tspeed, LET(ga, MAX(ABS(vx), ABS(vy), 0.0001), gb, (ga + sq/ga)/2, (gb + sq/gb)/2),\n\tclamped, MIN(MAX(speed, 0.6), MAX(0.6, maxSpeed)),\n\t[vx * clamped / speed, vy * clamped / speed]))"
+        },
+        {
+          "key": "boids.A12",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A12",
+            "segment": "boids",
+            "name": "A12",
+            "description": "table label"
+          },
+          "v": "positions"
+        },
+        {
+          "key": "boids.B12",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.B12",
+            "segment": "boids",
+            "name": "B12",
+            "description": "positions TABLE [[x,y],...] - a plain JSON VALUE cell (the pump writes D4 back into it each frame, so it must stay data, not formula)"
+          },
+          "v": [
+            [
+              409.2,
+              10.0
+            ],
+            [
+              176.0,
+              89.3
+            ],
+            [
+              471.3,
+              270.7
+            ],
+            [
+              571.0,
+              34.8
+            ],
+            [
+              270.0,
+              11.9
+            ],
+            [
+              139.9,
+              202.1
+            ],
+            [
+              17.0,
+              79.5
+            ],
+            [
+              415.9,
+              218.0
+            ],
+            [
+              141.1,
+              235.7
+            ],
+            [
+              518.0,
+              2.6
+            ],
+            [
+              515.7,
+              279.3
+            ],
+            [
+              217.8,
+              62.2
+            ],
+            [
+              612.6,
+              134.6
+            ],
+            [
+              59.4,
+              38.7
+            ],
+            [
+              542.4,
+              241.5
+            ],
+            [
+              516.6,
+              291.9
+            ],
+            [
+              343.2,
+              389.2
+            ],
+            [
+              242.3,
+              220.8
+            ],
+            [
+              530.8,
+              247.4
+            ],
+            [
+              551.5,
+              230.9
+            ],
+            [
+              450.9,
+              18.3
+            ],
+            [
+              145.9,
+              115.8
+            ],
+            [
+              51.1,
+              93.1
+            ],
+            [
+              64.6,
+              111.2
+            ],
+            [
+              406.8,
+              145.9
+            ],
+            [
+              236.9,
+              83.8
+            ],
+            [
+              170.9,
+              374.7
+            ],
+            [
+              414.7,
+              243.7
+            ],
+            [
+              109.5,
+              291.7
+            ],
+            [
+              104.6,
+              151.8
+            ],
+            [
+              633.3,
+              256.0
+            ],
+            [
+              356.4,
+              273.8
+            ],
+            [
+              539.4,
+              310.4
+            ],
+            [
+              146.6,
+              12.8
+            ],
+            [
+              201.9,
+              107.1
+            ],
+            [
+              135.0,
+              377.2
+            ],
+            [
+              560.9,
+              125.9
+            ],
+            [
+              419.5,
+              158.3
+            ],
+            [
+              585.3,
+              183.5
+            ],
+            [
+              169.5,
+              98.7
+            ],
+            [
+              359.3,
+              105.1
+            ],
+            [
+              374.1,
+              359.1
+            ],
+            [
+              255.6,
+              87.7
+            ],
+            [
+              638.4,
+              203.8
+            ],
+            [
+              58.2,
+              18.8
+            ],
+            [
+              70.2,
+              251.0
+            ],
+            [
+              506.9,
+              168.9
+            ],
+            [
+              40.7,
+              152.6
+            ],
+            [
+              637.5,
+              211.6
+            ],
+            [
+              621.5,
+              344.3
+            ],
+            [
+              7.3,
+              288.3
+            ],
+            [
+              436.3,
+              214.8
+            ],
+            [
+              170.8,
+              256.4
+            ],
+            [
+              71.4,
+              173.9
+            ],
+            [
+              290.4,
+              381.5
+            ],
+            [
+              560.5,
+              105.4
+            ],
+            [
+              320.4,
+              71.5
+            ],
+            [
+              584.1,
+              348.2
+            ],
+            [
+              191.0,
+              255.6
+            ],
+            [
+              389.7,
+              61.1
+            ]
+          ]
+        },
+        {
+          "key": "boids.A13",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A13",
+            "segment": "boids",
+            "name": "A13",
+            "description": "table label"
+          },
+          "v": "velocities"
+        },
+        {
+          "key": "boids.B13",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.B13",
+            "segment": "boids",
+            "name": "B13",
+            "description": "velocities TABLE [[vx,vy],...] parallel to D1 - a plain JSON VALUE cell (the pump writes D3 back into it)"
+          },
+          "v": [
+            [
+              0.16,
+              -1.99
+            ],
+            [
+              -1.94,
+              -0.49
+            ],
+            [
+              0.36,
+              -1.97
+            ],
+            [
+              -1.96,
+              -0.38
+            ],
+            [
+              2.0,
+              0.01
+            ],
+            [
+              -0.9,
+              1.79
+            ],
+            [
+              1.99,
+              0.24
+            ],
+            [
+              1.8,
+              -0.86
+            ],
+            [
+              1.45,
+              -1.38
+            ],
+            [
+              0.98,
+              -1.74
+            ],
+            [
+              -0.71,
+              1.87
+            ],
+            [
+              1.87,
+              0.71
+            ],
+            [
+              1.44,
+              -1.39
+            ],
+            [
+              1.89,
+              -0.65
+            ],
+            [
+              1.72,
+              1.03
+            ],
+            [
+              -1.99,
+              0.18
+            ],
+            [
+              1.81,
+              0.84
+            ],
+            [
+              0.13,
+              -2.0
+            ],
+            [
+              0.2,
+              -1.99
+            ],
+            [
+              1.38,
+              1.44
+            ],
+            [
+              -1.98,
+              0.31
+            ],
+            [
+              -1.9,
+              -0.62
+            ],
+            [
+              -0.19,
+              1.99
+            ],
+            [
+              1.39,
+              -1.44
+            ],
+            [
+              -1.77,
+              0.93
+            ],
+            [
+              0.48,
+              1.94
+            ],
+            [
+              -1.94,
+              -0.49
+            ],
+            [
+              -0.25,
+              -1.98
+            ],
+            [
+              0.6,
+              1.91
+            ],
+            [
+              -0.76,
+              1.85
+            ],
+            [
+              2.0,
+              -0.06
+            ],
+            [
+              -1.18,
+              -1.62
+            ],
+            [
+              -1.85,
+              0.76
+            ],
+            [
+              -1.99,
+              -0.22
+            ],
+            [
+              1.45,
+              1.38
+            ],
+            [
+              0.32,
+              1.97
+            ],
+            [
+              -1.05,
+              1.7
+            ],
+            [
+              -1.7,
+              -1.05
+            ],
+            [
+              0.25,
+              1.98
+            ],
+            [
+              0.37,
+              1.97
+            ],
+            [
+              1.8,
+              0.86
+            ],
+            [
+              -1.36,
+              -1.47
+            ],
+            [
+              0.26,
+              1.98
+            ],
+            [
+              1.66,
+              -1.12
+            ],
+            [
+              1.27,
+              -1.54
+            ],
+            [
+              1.81,
+              0.86
+            ],
+            [
+              0.15,
+              1.99
+            ],
+            [
+              -0.97,
+              -1.75
+            ],
+            [
+              0.45,
+              1.95
+            ],
+            [
+              1.35,
+              1.48
+            ],
+            [
+              1.84,
+              -0.79
+            ],
+            [
+              -1.8,
+              -0.86
+            ],
+            [
+              -1.97,
+              0.34
+            ],
+            [
+              0.43,
+              -1.95
+            ],
+            [
+              0.71,
+              -1.87
+            ],
+            [
+              0.73,
+              1.86
+            ],
+            [
+              1.64,
+              1.14
+            ],
+            [
+              -1.82,
+              0.84
+            ],
+            [
+              -1.77,
+              0.92
+            ],
+            [
+              -1.96,
+              0.41
+            ]
+          ]
+        },
+        {
+          "key": "boids.A14",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A14",
+            "segment": "boids",
+            "name": "A14",
+            "description": "system label"
+          },
+          "v": "steer → next vel"
+        },
+        {
+          "key": "boids.B14",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids.B14",
+            "segment": "boids",
+            "name": "B14",
+            "description": "the STEER system: map the B11 rule over every fish with its neighbours + the live params. A table in, a table out - all cells.",
+            "parser": "infix"
+          },
+          "f": "=sysmap(B11, B12, B13, neighbors(B12, B6, B13), B2, B3, B4, B5)"
+        },
+        {
+          "key": "boids.A15",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A15",
+            "segment": "boids",
+            "name": "A15",
+            "description": "system label"
+          },
+          "v": "move → next pos"
+        },
+        {
+          "key": "boids.B15",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids.B15",
+            "segment": "boids",
+            "name": "B15",
+            "description": "the MOVE system: Euler-step the positions by the steered velocities, toroidal wrap in the w*h box.",
+            "parser": "infix"
+          },
+          "f": "=wrap(integrate(B12, B14, B7), B8, B9)"
+        },
+        {
+          "key": "boids.A16",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.A16",
+            "segment": "boids",
+            "name": "A16",
+            "description": "pump label"
+          },
+          "v": "pump"
+        },
+        {
+          "key": "boids.B16",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids.B16",
+            "segment": "boids",
+            "name": "B16",
+            "description": "pump config -> what sim.run reads: commit the derived next-positions/velocities back into the B12/B13 tables through the graph each frame. Every knob it derives from is live.",
+            "parser": "infix"
+          },
+          "f": "={while: 'win.boids.state', fps: B10, commits: [{to: 'boids.B12', from: 'boids.B15'}, {to: 'boids.B13', from: 'boids.B14'}]}"
+        },
+        {
+          "key": "boids.dims",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids.dims",
+            "segment": "boids",
+            "name": "dims",
+            "description": "the sheet's RENDERED range {rows, cols} — sparse: addresses render from dims; a cel exists only once a value/formula is committed. =addCells grows this."
+          },
+          "v": {
+            "rows": 40,
+            "cols": 8
+          }
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    {
+      "name": "boids",
+      "version": "0.1.0",
+      "description": "60 fish, formula-first (a sheetapp document), stacked in one vertical column: params in B2:B10, THE STEERING RULE as a =LAMBDA in B11, the position/velocity tables in B12/B13, the steer/move systems as formulas in B14/B15, and the pump in B16 committing each frame back through the graph. Open it, press ▶ run, edit any cell mid-swim - including the rule.",
+      "role": "user-space",
+      "kind": "origin-user",
+      "applications": [
+        "sheetapp"
+      ],
+      "dependencies": [
+        "sheetapp",
+        "ecs",
+        "dom",
+        "plastron-canvas",
+        "origin"
+      ]
+    }
+  ]
+}

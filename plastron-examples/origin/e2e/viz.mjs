@@ -11,15 +11,18 @@ await put(`=cels(3, 1)`, "元");
 await put(`1`, "g3x1.A1");
 await put(`=g3x1!A1 + 1`, "g3x1.A2");
 await put(`=g3x1!A2 + 1`, "g3x1.A3");
+// interlinked now renders through the forcegraph engine: an .fg-box div whose
+// inner canvas draws the edges (data-ops lines) and whose node chips are
+// draggable .fg-node buttons (fg.set laid the graph out into fg.ilk-g3x1.*).
 const g = await put(`=interlinked("g3x1")`, "元");
-ok(g && g.tag === "canvas", "interlinked returns a canvas vnode");
-const ops = (g && g.attrs && JSON.parse(g.attrs["data-ops"])) || [];
-ok(ops.filter(o=>o.op==="circle").length === 3, "3 nodes (circles)");
-ok(ops.filter(o=>o.op==="line").length === 2, "2 edges (lines)");
-ok(ops.filter(o=>o.op==="text").length === 3, "3 node labels");
+ok(g && g.tag === "div" && g.attrs && g.attrs["data-fg"] === "ilk-g3x1", "interlinked returns an fgview box (fg.ilk-g3x1)");
+const inner = ((g && g.children) || []).find(c=>c && c.tag==="canvas");
+const ops = (inner && inner.attrs && JSON.parse(inner.attrs["data-ops"])) || [];
+ok(ops.filter(o=>o.op==="line").length === 2, "2 edges (lines on the fg canvas)");
 await page.waitForTimeout(200);
-const drawn = await page.evaluate(()=>{ const cs=[...document.querySelectorAll("canvas[width='440']")]; if(!cs.length) return -1; const c=cs[cs.length-1]; const d=c.getContext("2d").getImageData(0,0,c.width,c.height).data; let nz=0; for(let i=3;i<d.length;i+=4) if(d[i]!==0)nz++; return nz; });
-ok(drawn > 500, `force graph painted (${drawn} opaque px)`);
+const chips = await page.evaluate(()=>[...document.querySelectorAll(".fg-box[data-fg='ilk-g3x1'] .fg-node")].map(b=>b.textContent));
+ok(chips.length === 3, `3 node chips rendered (${JSON.stringify(chips)})`);
+ok(["A1","A2","A3"].every(l=>chips.includes(l)), "chips carry the cel labels A1/A2/A3");
 // --- def-driven bouncing ball ---
 await put(`=def("ball", "js", "i => [30 + 280*Math.abs((i/20)%2-1), 30 + 200*Math.abs((i/14)%2-1)]")`, "元");
 const sim = await put(`=simulate("ball", 120)`, "元");

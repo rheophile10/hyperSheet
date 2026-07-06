@@ -1,0 +1,553 @@
+{
+  "formatVersion": 1,
+  "segments": [
+    {
+      "name": "boids10k",
+      "cels": [
+        {
+          "key": "boids10k.A1",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids10k.A1",
+            "segment": "boids10k",
+            "name": "A1",
+            "description": "the RENDER formula: =view() grows the fish pane in the cardBook from THIS cell - run/stop buttons + the =scene() spec: 10,000 instanced fish in ONE draw call. The spec carries the buffer cel KEY ('boids10k.D1') - the InstancedMesh reads it via the scene.paint drain, so this cell never re-fires per frame.",
+            "parser": "infix"
+          },
+          "f": "=view(\"fish\", dom(\"div\", dom(\"div\", style(\"display\",\"flex\",\"gap\",\".5rem\",\"padding\",\".3rem\"), dom(\"button\", on(\"click\",\"sim.run\",\"boids10k.D5\"), \"▶ run\"), dom(\"button\", on(\"click\",\"sim.stop\",\"boids10k.D5\"), \"⏸ stop\")), scene(720, 480, camera(0, 9, 26), light(10, 20, 10), instances(box(0.12, 0.12, 0.3), material('#4fc3f7'), 10000, 'boids10k.D1'))))"
+        },
+        {
+          "key": "boids10k.A2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A2",
+            "segment": "boids10k",
+            "name": "A2",
+            "description": "param label row 2"
+          },
+          "v": "cohesion"
+        },
+        {
+          "key": "boids10k.B2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B2",
+            "segment": "boids10k",
+            "name": "B2",
+            "description": "EDIT ME - the cohesion parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
+          },
+          "v": 0.015
+        },
+        {
+          "key": "boids10k.A3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A3",
+            "segment": "boids10k",
+            "name": "A3",
+            "description": "param label row 3"
+          },
+          "v": "alignment"
+        },
+        {
+          "key": "boids10k.B3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B3",
+            "segment": "boids10k",
+            "name": "B3",
+            "description": "EDIT ME - the alignment parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
+          },
+          "v": 0.05
+        },
+        {
+          "key": "boids10k.A4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A4",
+            "segment": "boids10k",
+            "name": "A4",
+            "description": "param label row 4"
+          },
+          "v": "separation"
+        },
+        {
+          "key": "boids10k.B4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B4",
+            "segment": "boids10k",
+            "name": "B4",
+            "description": "EDIT ME - the separation parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
+          },
+          "v": 0.06
+        },
+        {
+          "key": "boids10k.A5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A5",
+            "segment": "boids10k",
+            "name": "A5",
+            "description": "param label row 5"
+          },
+          "v": "maxSpeed"
+        },
+        {
+          "key": "boids10k.B5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B5",
+            "segment": "boids10k",
+            "name": "B5",
+            "description": "EDIT ME - the maxSpeed parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
+          },
+          "v": 2.0
+        },
+        {
+          "key": "boids10k.A6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A6",
+            "segment": "boids10k",
+            "name": "A6",
+            "description": "param label row 6"
+          },
+          "v": "radius"
+        },
+        {
+          "key": "boids10k.B6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B6",
+            "segment": "boids10k",
+            "name": "B6",
+            "description": "EDIT ME - the radius parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
+          },
+          "v": 1.2
+        },
+        {
+          "key": "boids10k.A7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A7",
+            "segment": "boids10k",
+            "name": "A7",
+            "description": "param label row 7"
+          },
+          "v": "dt"
+        },
+        {
+          "key": "boids10k.B7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B7",
+            "segment": "boids10k",
+            "name": "B7",
+            "description": "EDIT ME - the dt parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
+          },
+          "v": 0.016
+        },
+        {
+          "key": "boids10k.A8",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A8",
+            "segment": "boids10k",
+            "name": "A8",
+            "description": "param label row 8"
+          },
+          "v": "w"
+        },
+        {
+          "key": "boids10k.B8",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B8",
+            "segment": "boids10k",
+            "name": "B8",
+            "description": "EDIT ME - the w parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
+          },
+          "v": 20
+        },
+        {
+          "key": "boids10k.A9",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A9",
+            "segment": "boids10k",
+            "name": "A9",
+            "description": "param label row 9"
+          },
+          "v": "h"
+        },
+        {
+          "key": "boids10k.B9",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B9",
+            "segment": "boids10k",
+            "name": "B9",
+            "description": "EDIT ME - the h parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
+          },
+          "v": 12
+        },
+        {
+          "key": "boids10k.A10",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A10",
+            "segment": "boids10k",
+            "name": "A10",
+            "description": "param label row 10"
+          },
+          "v": "d"
+        },
+        {
+          "key": "boids10k.B10",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B10",
+            "segment": "boids10k",
+            "name": "B10",
+            "description": "EDIT ME - the d parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
+          },
+          "v": 20
+        },
+        {
+          "key": "boids10k.D1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.D1",
+            "segment": "boids10k",
+            "name": "D1",
+            "description": "the dense ECS interior (doctrine #2): ONE cel holding the whole 10k flock as SoA Float32Arrays {n, positions(3N), velocities(3N)}. Seeded by the pump's flockSeed init (the doc ships no floats); the buffer schema makes user saves round-trip the typed arrays as b64.",
+            "schema": "buffers"
+          },
+          "v": {}
+        },
+        {
+          "key": "boids10k.D2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.D2",
+            "segment": "boids10k",
+            "name": "D2",
+            "description": "the sparse boundary: the ONLY per-frame value that crosses the graph. The pump bumps it; the D4 sceneframe re-fires; scene.paint drains dirty instances into the retained InstancedMesh."
+          },
+          "v": 0
+        },
+        {
+          "key": "boids10k.D3",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids10k.D3",
+            "segment": "boids10k",
+            "name": "D3",
+            "description": "the params object the sim reads - re-derives on every edit of the B-column knobs (and D5 embeds it, so the pump sees the fresh object next frame). maxNeighbors is the aggregation cap that used to be a hidden native constant.",
+            "parser": "infix"
+          },
+          "f": "={cohesion: B2, alignment: B3, separation: B4, maxSpeed: B5, radius: B6, dt: B7, w: B8, h: B9, d: B10, maxNeighbors: B15}"
+        },
+        {
+          "key": "boids10k.D4",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids10k.D4",
+            "segment": "boids10k",
+            "name": "D4",
+            "description": "the scene.paint channel cel: {key, gen} per generation bump - how the sim paints WITHOUT routing 30,000 floats through the vnode diff.",
+            "channel": [
+              "scene.paint"
+            ],
+            "parser": "infix"
+          },
+          "f": "=sceneframe('boids10k.D1', D2)"
+        },
+        {
+          "key": "boids10k.D5",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids10k.D5",
+            "segment": "boids10k",
+            "name": "D5",
+            "description": "pump config → what sim.run reads. THE RULE IS ON THE SHEET: kernel picks the steering lambda - the wat tier (B20 source, B21 binder → boids10k.steerwat) above 2000 fish, the legible B19 =LAMBDA below. fn/kernel/init are CEL REFERENCES (never strings): edit B19 or B20 mid-swim and the flock changes course. swarmstep is pure mechanism - spatial hash + neighbor aggregates + integrate + wrap; it has no rule of its own.",
+            "parser": "infix"
+          },
+          "f": "={while: 'win.boids10k.state', fps: B11,\n\teffects: [{fn: swarmstep, kernel: IF(B12 > 2000, boids10k.steerwat, B19),\n\t\tbuffers: 'boids10k.D1', params: D3, gen: 'boids10k.D2',\n\t\tinit: flockSeed, initArgs: [B12, B13, B8, B9, B10]}]}"
+        },
+        {
+          "key": "boids10k.A11",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A11",
+            "segment": "boids10k",
+            "name": "A11",
+            "description": "param label — the pump's frame budget"
+          },
+          "v": "fps"
+        },
+        {
+          "key": "boids10k.B11",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B11",
+            "segment": "boids10k",
+            "name": "B11",
+            "description": "frames per second — live: the pump re-reads the config formula every frame"
+          },
+          "v": 30
+        },
+        {
+          "key": "boids10k.A12",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A12",
+            "segment": "boids10k",
+            "name": "A12",
+            "description": "param label — how many fish flockSeed mints"
+          },
+          "v": "count"
+        },
+        {
+          "key": "boids10k.B12",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B12",
+            "segment": "boids10k",
+            "name": "B12",
+            "description": "flock size — a SEED-time knob: flockSeed only runs when D1 is EMPTY, so edit this then clear D1 (commit {} to it, even mid-run) to reseed; a saved doc keeps its buffer, so close+reopen does NOT reseed"
+          },
+          "v": 10000
+        },
+        {
+          "key": "boids10k.A13",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A13",
+            "segment": "boids10k",
+            "name": "A13",
+            "description": "param label — the deterministic RNG seed"
+          },
+          "v": "seed"
+        },
+        {
+          "key": "boids10k.B13",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B13",
+            "segment": "boids10k",
+            "name": "B13",
+            "description": "flockSeed's RNG seed — SEED-time like count: applies when D1 is empty (clear D1 to reseed)"
+          },
+          "v": 42
+        },
+        {
+          "key": "boids10k.C5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.C5",
+            "segment": "boids10k",
+            "name": "C5",
+            "description": "reader note: the pump cell is a FORMULA, not a black box"
+          },
+          "v": "pump → what sim.run reads (D5): the STEERING RULE is the kernel cell it references - B19 (legible =LAMBDA) under 2000 fish, the B20 wat source (compiled via the B21 binder) above. Every knob on the left is live; count/seed are SEED-time (clear D1 to reseed)."
+        },
+        {
+          "key": "boids10k.A14",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A14",
+            "segment": "boids10k",
+            "name": "A14",
+            "description": "param label — where this sim's behavior is defined"
+          },
+          "v": "rule"
+        },
+        {
+          "key": "boids10k.B14",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B14",
+            "segment": "boids10k",
+            "name": "B14",
+            "description": "reader note: the dense-tier doctrine — one cel, many entities; the rule stays native for the buffer march, and the formula-tier twin (same three steering terms) is the 2D boids doc's D6"
+          },
+          "v": "the rule lives ON THE SHEET, in the stack below: B19 is the steering =LAMBDA (aggregates in, velocity out); B20 is the same rule as wat source, compiled by the =WAT binder in B21 into boids10k.steerwat - same ABI, ~20x faster, which is what 10,000 fish at 30fps need. Edit either rule mid-swim. Native swarmstep is mechanism only: spatial hash, neighbor means, integrate, wrap. Compile the rule, don't fuse it."
+        },
+        {
+          "key": "boids10k.A15",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A15",
+            "segment": "boids10k",
+            "name": "A15",
+            "description": "param label row 15"
+          },
+          "v": "maxNeighbors"
+        },
+        {
+          "key": "boids10k.B15",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.B15",
+            "segment": "boids10k",
+            "name": "B15",
+            "description": "EDIT ME - neighbor-aggregation cap per fish (was a hidden native constant; now a live knob)"
+          },
+          "v": 24
+        },
+        {
+          "key": "boids10k.A16",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A16",
+            "segment": "boids10k",
+            "name": "A16",
+            "description": "probe label"
+          },
+          "v": "probe"
+        },
+        {
+          "key": "boids10k.B16",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids10k.B16",
+            "segment": "boids10k",
+            "name": "B16",
+            "description": "the dense interior made observable: bufstats summarizes the D1 buffer as of generation D2, so it re-derives every committed frame",
+            "parser": "infix"
+          },
+          "f": "=bufstats(D1, D2)"
+        },
+        {
+          "key": "boids10k.A17",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A17",
+            "segment": "boids10k",
+            "name": "A17",
+            "description": "probe label"
+          },
+          "v": "mean speed"
+        },
+        {
+          "key": "boids10k.B17",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids10k.B17",
+            "segment": "boids10k",
+            "name": "B17",
+            "description": "live mean speed off the probe - member access over the B16 stats object",
+            "parser": "infix"
+          },
+          "f": "=ROUND(B16.meanSpeed, 2)"
+        },
+        {
+          "key": "boids10k.B19",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids10k.B19",
+            "segment": "boids10k",
+            "name": "B19",
+            "description": "THE STEERING RULE, legible tier: an infix =LAMBDA over the swarmstep kernel ABI - (px,py,pz, vx,vy,vz, n, cx,cy,cz, ax,ay,az, sx,sy,sz, coh, ali, sep, maxv) -> [vx,vy,vz]. n = neighbors found, c* = neighbor centroid, a* = mean neighbor velocity, s* = separation sum. EDIT ME with count ≤ 2000 and the flock changes course mid-swim; B20 is the same rule compiled to wat (minted by the B21 binder), which the pump uses at 10k.",
+            "parser": "infix"
+          },
+          "f": "=LAMBDA(px,py,pz, vx,vy,vz, n, cx,cy,cz, ax,ay,az, sx,sy,sz, coh, ali, sep, maxv,\n\tLET(\n\t\twx, IF(n>0, vx + (cx-px)*coh + (ax-vx)*ali + sx*sep, vx),\n\t\twy, IF(n>0, vy + (cy-py)*coh + (ay-vy)*ali + sy*sep, vy),\n\t\twz, IF(n>0, vz + (cz-pz)*coh + (az-vz)*ali + sz*sep, vz),\n\t\tspeed, MAX(0.000001, SQRT(wx*wx + wy*wy + wz*wz)),\n\t\tk, MIN(MAX(speed, maxv*0.3), maxv)/speed,\n\t\t[wx*k, wy*k, wz*k]))"
+        },
+        {
+          "key": "boids10k.B20",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids10k.B20",
+            "segment": "boids10k",
+            "name": "B20",
+            "description": "THE STEERING RULE, compiled tier: the same rule as B19 in WebAssembly text - identical ABI, identical output, ~20x the call rate, which is what 10,000 fish need. EDIT ME: the B21 binder recompiles it and the pump picks up the new rule next frame, mid-swim. (The cell is an infix formula returning the source string - the ='...' wrapper keeps a leading '(' from reading as an s-expr on commit, so bar edits round-trip.)",
+            "parser": "infix"
+          },
+          "f": "='(module (func (export \"main\")\n  (param $px f64) (param $py f64) (param $pz f64)\n  (param $vx f64) (param $vy f64) (param $vz f64)\n  (param $n f64)\n  (param $cx f64) (param $cy f64) (param $cz f64)\n  (param $ax f64) (param $ay f64) (param $az f64)\n  (param $sx f64) (param $sy f64) (param $sz f64)\n  (param $coh f64) (param $ali f64) (param $sep f64) (param $maxv f64)\n  (result f64 f64 f64)\n  (local $wx f64) (local $wy f64) (local $wz f64) (local $speed f64) (local $k f64)\n  (if (f64.gt (local.get $n) (f64.const 0))\n    (then\n      (local.set $wx (f64.add (local.get $vx) (f64.add (f64.mul (f64.sub (local.get $cx) (local.get $px)) (local.get $coh)) (f64.add (f64.mul (f64.sub (local.get $ax) (local.get $vx)) (local.get $ali)) (f64.mul (local.get $sx) (local.get $sep))))))\n      (local.set $wy (f64.add (local.get $vy) (f64.add (f64.mul (f64.sub (local.get $cy) (local.get $py)) (local.get $coh)) (f64.add (f64.mul (f64.sub (local.get $ay) (local.get $vy)) (local.get $ali)) (f64.mul (local.get $sy) (local.get $sep))))))\n      (local.set $wz (f64.add (local.get $vz) (f64.add (f64.mul (f64.sub (local.get $cz) (local.get $pz)) (local.get $coh)) (f64.add (f64.mul (f64.sub (local.get $az) (local.get $vz)) (local.get $ali)) (f64.mul (local.get $sz) (local.get $sep)))))))\n    (else\n      (local.set $wx (local.get $vx))\n      (local.set $wy (local.get $vy))\n      (local.set $wz (local.get $vz))))\n  (local.set $speed (f64.max (f64.const 0.000001)\n    (f64.sqrt (f64.add (f64.mul (local.get $wx) (local.get $wx)) (f64.add (f64.mul (local.get $wy) (local.get $wy)) (f64.mul (local.get $wz) (local.get $wz)))))))\n  (local.set $k (f64.div (f64.min (f64.max (local.get $speed) (f64.mul (local.get $maxv) (f64.const 0.3))) (local.get $maxv)) (local.get $speed)))\n  (f64.mul (local.get $wx) (local.get $k))\n  (f64.mul (local.get $wy) (local.get $k))\n  (f64.mul (local.get $wz) (local.get $k))\n))'"
+        },
+        {
+          "key": "boids10k.B21",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "boids10k.B21",
+            "segment": "boids10k",
+            "name": "B21",
+            "description": "the BINDER: compiles the wat source in B20 and commits it as the named lambda boids10k.steerwat (lineage-stamped: definedBy this cell, origin B20). The named cel is only the commit target - the rule you read and edit is E2, ON the sheet.",
+            "parser": "infix"
+          },
+          "f": "=WAT(B20, 'boids10k.steerwat', TRUE)"
+        },
+        {
+          "key": "boids10k.A19",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A19",
+            "segment": "boids10k",
+            "name": "A19",
+            "description": "rule label"
+          },
+          "v": "rule =LAMBDA"
+        },
+        {
+          "key": "boids10k.A20",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A20",
+            "segment": "boids10k",
+            "name": "A20",
+            "description": "rule label"
+          },
+          "v": "rule (wat)"
+        },
+        {
+          "key": "boids10k.A21",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.A21",
+            "segment": "boids10k",
+            "name": "A21",
+            "description": "rule label"
+          },
+          "v": "binder"
+        },
+        {
+          "key": "boids10k.dims",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "boids10k.dims",
+            "segment": "boids10k",
+            "name": "dims",
+            "description": "the sheet's RENDERED range {rows, cols} — sparse: addresses render from dims; a cel exists only once a value/formula is committed. =addCells grows this."
+          },
+          "v": {
+            "rows": 40,
+            "cols": 8
+          }
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    {
+      "name": "boids10k",
+      "version": "0.1.0",
+      "description": "10,000 fish, formula-first (a sheetapp document) - the WHOLE 3-D boids sim lives in visible grid cells, INCLUDING THE RULE: params in B2:B15, the steering =LAMBDA in B19, the same rule as wat source in B20 compiled by the =WAT binder in B21 (the pump picks a tier by flock size), the SoA buffer cel in D1 probed by =bufstats in B16, the generation boundary in D2, the params object in D3, the sceneframe channel in D4, and the pump config in D5 under the plastron-gpu InstancedMesh scene grown by =view() in A1. Open it, press ▶ run, edit any cell mid-swim - including the rule.",
+      "role": "user-space",
+      "kind": "origin-user",
+      "applications": [
+        "sheetapp"
+      ],
+      "dependencies": [
+        "sheetapp",
+        "ecs",
+        "plastron-gpu",
+        "dom",
+        "origin",
+        "wat-compiler",
+        "defn"
+      ]
+    }
+  ]
+}

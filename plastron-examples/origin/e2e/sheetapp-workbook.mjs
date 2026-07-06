@@ -71,7 +71,7 @@ try {
   // ── 1. multiple worksheets + a cross-sheet formula ─────────────────────────
   ok(await page.evaluate(() => !!document.querySelector(".pl-workbook")), "opened as a workbook window");
   ok(await page.evaluate(() => { const t = document.querySelector(".pl-wb-stabs"); return t && /Data/.test(t.textContent) && /Calc/.test(t.textContent); }), "two worksheet tabs (Data, Calc)");
-  ok(await page.evaluate(() => { const t = document.querySelector(".pl-wb-vtabs"); return t && /Dashboard/.test(t.textContent); }), "a dom-view tab (Dashboard)");
+  ok(await page.evaluate(() => { const t = document.querySelector(".pl-wb-right .pl-wb-stabs"); return t && /Dashboard/.test(t.textContent); }), "a dom-view tab (Dashboard, bottom row, same look as the sheet tabs)");
   ok(await page.evaluate(() => Number(globalThis.plastron.state.cels.get("wbc.B1")?.v) === 40), "cross-sheet formula computed (wbc.B1 = wbd.B1*B2 = 40)");
   ok(await page.evaluate(() => /qty 10/.test(document.querySelector(".pl-wb-left")?.textContent ?? "")), "active sheet (Data) body renders");
 

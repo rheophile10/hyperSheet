@@ -1,3 +1,5 @@
+<!-- GENERATED from the guide segment (plastron/src/甲骨坑/library/guide/甲骨.json) by plastron/scripts/generate-llms.mjs — edit the guide cels, not this file. -->
+
 # plastron — guide for LLMs & agents
 
 This is the one canonical guide. It is served verbatim as plain text at
@@ -17,8 +19,8 @@ This guide lists the high-frequency verbs, but it is NOT the full set. Plastron
 ships MANY more (charts, graphs, music/MIDI, peer/net, files, …). If you need a
 capability that isn't spelled out below, DISCOVER it with a formula instead of
 guessing a verb that may not exist:
-  =vocab()            every verb + its one-line description, grouped by segment
-  =vocab("charts")    just one segment's verbs
+  =help("", "text")        every verb + its one-line description, grouped by segment
+  =help("charts", "text")  just one segment's verbs (as this cell's VALUE — no pane)
   =inspect("name")    one verb's full doc — signature, about, source
   =members("seg")     the cels in a segment
   =segments()         every loaded segment
@@ -33,6 +35,10 @@ THE TWO FORMULA LANGUAGES (pick one per cell; the leading char selects it)
     `=1+1`   `=cels(8,5,"todo")`   `=dom("h1","hello")`   `=g!A1*2`   `=SUM(A1:A10)`
 - **S-expression** — Lisp prefix, starts with `(`:
     `(+ 1 1)`   `(cels 8 5 "todo")`   `(dom "h1" "hello")`
+- **JSON** — data entry, starts with `{` or `[`:
+    `{"name": "kirk", "age": 7}`   `[1, 2, 3]`
+  The cell's VALUE is the parsed object/array (archives round-trip it as the
+  same JSON). Unparseable `{`/`[` content stays a plain string.
 
 They are equivalent in power. Infix is the Excel-compatible surface; S-expr is the
 homoiconic one. Don't mix them inside one formula. Cell references are `A1`,
@@ -95,10 +101,36 @@ LOGIC / DATA
         running total:  at("B2",'=SUM(A2:A2)'), at("B3",'=SUM(A2:A3)'), at("B4",'=SUM(A2:A4)')
         row totals:     at("D2",'=SUM(A2:C2)'), at("D3",'=SUM(A3:C3)'), at("D4",'=SUM(A4:C4)')
     • if a task REQUIRES SCAN/BYROW for that column, each cell must STILL resolve to ONE
-      number — extract it with INDEX(array, position); never leave the raw array in a cell:
-        at("C2",'=INDEX(SCAN(0,B2:B2,LAMBDA(a,v,a+v)),1)'), at("C3",'=INDEX(SCAN(0,B2:B3,LAMBDA(a,v,a+v)),2)') …
-        at("D2",'=INDEX(BYROW(A2:C4,LAMBDA(r,SUM(r))),1)'), at("D3",'=INDEX(BYROW(A2:C4,LAMBDA(r,SUM(r))),2)') …
+      number — extract it with a [position] index (0-based); never leave the raw array in a cell:
+        at("C2",'=SCAN(0,B2:B2,LAMBDA(a,v,a+v))[0]'), at("C3",'=SCAN(0,B2:B3,LAMBDA(a,v,a+v))[1]') …
+        at("D2",'=BYROW(A2:C4,LAMBDA(r,SUM(r)))[0]'), at("D3",'=BYROW(A2:C4,LAMBDA(r,SUM(r)))[1]') …
   A lone =SCAN(…)/=BYROW(…) sitting in one cell is the #1 way these tasks render wrong — don't.
+
+DICTS & LISTS (structured values in cells + how to read them back)
+  Literals (infix): `={name: "kirk", age: 7}` (keys bare or "quoted") and `=[1, "two", A1]`.
+  Values are full expressions — a cel ref inside stays a REAL dependency (reactive).
+  Typed-in data (no `=`): `{"a": 1}` / `[1,2,3]` — JSON content enters as the value itself.
+  ACCESS from another cell — dot for members, [ ] for 0-BASED positions (JS-domain;
+  INDEX() stays 1-based Excel-domain), negatives from the end, [from:to] slices:
+    =A2.age          =A2.users[0].name        =fish!A1.species     (cross-sheet)
+    =B2[0]  =B2[-1]  =B2[1:3]  =B2[:2]        =A2[B1]              (dynamic key)
+    =LET(o, A2, o.age + o.xs[2])              (bound names walk the binding)
+    =SUM(MAP(A2.xs, LAMBDA(x, x*10)))         (a dict's list feeds MAP/REDUCE/…)
+  BROADCAST — dot over a RANGE of dict cells (or an array-of-dicts value) maps
+  per item, skipping empty cells; brackets stay positional (raw, no skip):
+    =D1:D9.age       =SUM(D1:D9.age)          =fish!A1:A9.species
+    =D1:D9.user.name (chains re-broadcast)    =D1:D9[0]  (first CELL's value)
+    =A2.rows.n       (array value broadcasts the same way as a range)
+  A dotted name whose head ISN'T a cell ref (fg.g1.spec, viewport.mobile) is still an
+  exact CEL KEY — only an A1-shaped head means member access. Missing members read as
+  blank (like an empty cell), not an error. Objects/arrays display as raw JSON-ish text;
+  wrap in =json(A2) to inspect, or MAP → dom() to render.
+  TABLES & CONVERTERS (collections segment) — the hub form is the LIST OF DICTS:
+    =rows(A2:C9, A1:C1)      header range + data range → list of dicts
+    =table(rows(A2:C9, A1:C1))   render it as an HTML table in a view pane
+    =unique(D1:D9.tag)       set discipline (order-preserving, structural)
+    =jsonparse(s)            JSON string value → object/array (inverse of json())
+    =dbseed('db', rows(A2:C9, A1:C1), 't')   …and into SQLite
   SEED YOUR INPUTS + LABEL THE OUTPUT: a formula over empty cells shows 0/blank, and a
   bare scalar answer is nothing to look at. If a task says "price in A1, qty in A2",
   build a LABELED sheet that seeds the inputs so the result is visible:
@@ -119,9 +151,10 @@ RENDER A LIST (a collection → repeated DOM — this is how data becomes UI)
         dom("div.row",
           on("click", "some.handler", CONCAT("todo.B", id)),     ← payload NAMES this row's cel
           INDEX(todo!B1:B5, id)))))                               ← INDEX reads this row's field
-  MAP is for iterating a DATA RANGE. For a FIXED, small set of sections (e.g. a few columns
-  or tabs), there is NO inline list literal — do NOT invent ARRAY(…)/[…]. Instead define the
-  section once as a LAMBDA (via LET) and CALL it per section:
+  MAP iterates a DATA RANGE or an inline list literal — for a FIXED, small set of sections
+  (a few columns or tabs) MAP over the list, or define the section once as a LAMBDA (via
+  LET) and CALL it per section:
+    =dom("div", MAP(["Left", "Middle", "Right"], LAMBDA(name, dom("div.col", dom("h3", name)))))
     =LET(section, LAMBDA(name, dom("div.col", dom("h3", name), …use name…)),
       dom("div", section("Left"), section("Middle"), section("Right")))
   A LET-bound LAMBDA can call EARLIER LET names and see the calling LAMBDA's params, so a
@@ -215,7 +248,7 @@ THE #f= CODEC — build a link by hand, no app needed. `#f=<payload>` where payl
       tag "1" + base64url(deflateRaw(utf8(formula)))  ← compressed (raw DEFLATE)
   Emit whichever is SHORTER; the leading tag char tells the decoder which. base64url =
   base64 with "+"→"-", "/"→"_", trailing "=" stripped. **No JSON wrapper.** Worked (plain):
-      =vocab()  →  utf8 3D 76 6F 63 61 62 28 29  →  base64url PXZvY2FiKCk  →  #f=0PXZvY2FiKCk
+      =1+1  →  utf8 3D 31 2B 31  →  base64url PTErMQ  →  #f=0PTErMQ
 
 ENCRYPTED links — the URL param NAMES the method (a self-describing booter):
 - `=encrypt(pass)`  → `#aes256gcm=<payload>`  (passphrase prompt on open)
@@ -243,6 +276,6 @@ WORKED ONE-TIME-PAD DEMO (the pad is PUBLIC → a codec demo, not a secret messa
 [[OTP_DEMO]]
 
 ────────────────────────────────────────────────────────────────────────────
-FULL VERB CATALOG (baked from =vocab() at build time — current as of this deploy)
+FULL VERB CATALOG (baked from the =help text mode at build time — current as of this deploy)
 ────────────────────────────────────────────────────────────────────────────
 [[VOCAB_CATALOG]]

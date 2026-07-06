@@ -241,8 +241,8 @@ await withPage("readme formula text is black (CanvasText), not blue", async (pag
 
 await withPage("=segments() lists origin", async (page) => ok(String(await put(page, "=segments()")).includes("origin"), "origin listed"));
 
-await withPage("=vocab(\"origin\") lists the vocabulary", async (page) => {
-  const v = String(await put(page, '=vocab("origin")'));
+await withPage("=help(\"origin\", \"text\") lists the vocabulary", async (page) => {
+  const v = String(await put(page, '=help("origin", "text")'));
   ok(/\bgrid\b/.test(v) && /\bdom\b/.test(v) && /\bdef\b/.test(v), "grid/dom/def listed");
 });
 

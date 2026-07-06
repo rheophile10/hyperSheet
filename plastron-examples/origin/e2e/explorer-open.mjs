@@ -33,8 +33,8 @@ await page.evaluate(async () => {
 });
 ok((await cel("file-store.backend")) === "opfs", "OPFS backend live in browser");
 
-// 2) OPEN the explorer exactly like the navpanel "📁 Files" icon does: dispatch
-//    origin.navOpen with the "=explorerwin()" action. No upload, no manual nav.
+// 2) OPEN the explorer via the "=explorerwin()" formula launch path (origin.navOpen
+//    formula branch). No upload, no manual nav.
 await page.evaluate(async () => {
   const { state, resolveFn } = globalThis.plastron;
   await resolveFn(state, "origin.navOpen")(state, "=explorerwin()");
@@ -53,6 +53,21 @@ const domHasFile = await page.evaluate(() =>
   !!document.querySelector(".file-explorer") &&
   /preexisting\.txt/.test(document.querySelector(".file-explorer")?.textContent ?? ""));
 ok(domHasFile, "the opened explorer window renders the file row in the DOM");
+
+// 5) the ACTUAL desktop "📁 Files" icon dispatches `app:filesapp` (→ origin.launch
+//    runs the filesapp entry `=explorerwin()`), NOT the bare formula. That launch
+//    path must ALSO populate the listing on open. Blank the listing + reopen via
+//    the real icon action and assert it re-reads OPFS (regression for the icon path).
+await page.evaluate(async () => {
+  const { state, resolveFn } = globalThis.plastron;
+  await resolveFn(state, "setValue")(state, "explorer.listing", { entries: [], previewText: "" });
+  await resolveFn(state, "setValue")(state, "explorer.cwd", "/");
+  await resolveFn(state, "origin.navOpen")(state, "app:filesapp");
+});
+await page.waitForTimeout(250);
+last = await cel("explorer.listing");
+const iconNames = (last?.entries ?? []).map((e) => e.name);
+ok(iconNames.includes("preexisting.txt"), `app:filesapp icon launch ALSO populates the listing (${JSON.stringify(iconNames)})`);
 
 ok(errs.length === 0, `no console/page errors${errs.length ? ": " + errs.slice(0, 2).join(" | ") : ""}`);
 

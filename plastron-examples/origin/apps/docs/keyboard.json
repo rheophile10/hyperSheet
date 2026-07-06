@@ -1,0 +1,229 @@
+{
+  "formatVersion": 1,
+  "segments": [
+    {
+      "name": "keyboard",
+      "cels": [
+        {
+          "key": "keyboard.A1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.A1",
+            "segment": "keyboard",
+            "name": "A1",
+            "description": "column header: the key's label"
+          },
+          "v": "note"
+        },
+        {
+          "key": "keyboard.B1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.B1",
+            "segment": "keyboard",
+            "name": "B1",
+            "description": "column header: the key's pitch in Hz — edit a freq and that key re-tunes"
+          },
+          "v": "freq"
+        },
+        {
+          "key": "keyboard.A2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.A2",
+            "segment": "keyboard",
+            "name": "A2",
+            "description": "note label — edit it and the key's cap re-labels in the view pane"
+          },
+          "v": "C"
+        },
+        {
+          "key": "keyboard.B2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.B2",
+            "segment": "keyboard",
+            "name": "B2",
+            "description": "pitch in Hz — origin.tone plays this when the key is pressed"
+          },
+          "v": 262
+        },
+        {
+          "key": "keyboard.A3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.A3",
+            "segment": "keyboard",
+            "name": "A3",
+            "description": "note label — edit it and the key's cap re-labels in the view pane"
+          },
+          "v": "D"
+        },
+        {
+          "key": "keyboard.B3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.B3",
+            "segment": "keyboard",
+            "name": "B3",
+            "description": "pitch in Hz — origin.tone plays this when the key is pressed"
+          },
+          "v": 294
+        },
+        {
+          "key": "keyboard.A4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.A4",
+            "segment": "keyboard",
+            "name": "A4",
+            "description": "note label — edit it and the key's cap re-labels in the view pane"
+          },
+          "v": "E"
+        },
+        {
+          "key": "keyboard.B4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.B4",
+            "segment": "keyboard",
+            "name": "B4",
+            "description": "pitch in Hz — origin.tone plays this when the key is pressed"
+          },
+          "v": 330
+        },
+        {
+          "key": "keyboard.A5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.A5",
+            "segment": "keyboard",
+            "name": "A5",
+            "description": "note label — edit it and the key's cap re-labels in the view pane"
+          },
+          "v": "F"
+        },
+        {
+          "key": "keyboard.B5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.B5",
+            "segment": "keyboard",
+            "name": "B5",
+            "description": "pitch in Hz — origin.tone plays this when the key is pressed"
+          },
+          "v": 349
+        },
+        {
+          "key": "keyboard.A6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.A6",
+            "segment": "keyboard",
+            "name": "A6",
+            "description": "note label — edit it and the key's cap re-labels in the view pane"
+          },
+          "v": "G"
+        },
+        {
+          "key": "keyboard.B6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.B6",
+            "segment": "keyboard",
+            "name": "B6",
+            "description": "pitch in Hz — origin.tone plays this when the key is pressed"
+          },
+          "v": 392
+        },
+        {
+          "key": "keyboard.A7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.A7",
+            "segment": "keyboard",
+            "name": "A7",
+            "description": "note label — edit it and the key's cap re-labels in the view pane"
+          },
+          "v": "A"
+        },
+        {
+          "key": "keyboard.B7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.B7",
+            "segment": "keyboard",
+            "name": "B7",
+            "description": "pitch in Hz — origin.tone plays this when the key is pressed"
+          },
+          "v": 440
+        },
+        {
+          "key": "keyboard.A8",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.A8",
+            "segment": "keyboard",
+            "name": "A8",
+            "description": "note label — edit it and the key's cap re-labels in the view pane"
+          },
+          "v": "B"
+        },
+        {
+          "key": "keyboard.B8",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.B8",
+            "segment": "keyboard",
+            "name": "B8",
+            "description": "pitch in Hz — origin.tone plays this when the key is pressed"
+          },
+          "v": 494
+        },
+        {
+          "key": "keyboard.C1",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "keyboard.C1",
+            "segment": "keyboard",
+            "name": "C1",
+            "parser": "infix",
+            "description": "the GENERATIVE keyboard formula: builds the whole key row from the note/freq cells and contributes it to the 'piano' VIEW pane (=view) — the cell keeps the visible source (value: the ⧉ token); press a key and origin.tone plays its freq; edit a note/freq cell and the keys re-render"
+          },
+          "f": "=view(\"piano\", dom(\"div\",\n\tdom(\"style\", \"\n\t\t.pl-key {\n\t\t\twidth: 64px;\n\t\t\tmin-height: 180px;\n\t\t\tmargin: 3px;\n\t\t\tborder: 1px solid #9a9a9a;\n\t\t\tborder-radius: 0 0 8px 8px;\n\t\t\tdisplay: flex;\n\t\t\talign-items: flex-end;\n\t\t\tjustify-content: center;\n\t\t\tpadding-bottom: 10px;\n\t\t\tfont: 800 1.2rem ui-monospace, monospace;\n\t\t\tcolor: #222;\n\t\t\tbackground: linear-gradient(#fdfdfd, #e8e8e8);\n\t\t\tcursor: pointer;\n\t\t}\n\t\t.pl-key:active {\n\t\t\tbackground: #ffd34e;\n\t\t\ttransform: translateY(2px);\n\t\t}\n\t\"),\n\tdom(\"div\", style(\"display\", \"flex\", \"align-items\", \"flex-start\", \"padding\", \".5rem\"),\n\tdom(\"button.pl-key\", on(\"click\", \"origin.tone\", keyboard.B2), keyboard.A2),\n\tdom(\"button.pl-key\", on(\"click\", \"origin.tone\", keyboard.B3), keyboard.A3),\n\tdom(\"button.pl-key\", on(\"click\", \"origin.tone\", keyboard.B4), keyboard.A4),\n\tdom(\"button.pl-key\", on(\"click\", \"origin.tone\", keyboard.B5), keyboard.A5),\n\tdom(\"button.pl-key\", on(\"click\", \"origin.tone\", keyboard.B6), keyboard.A6),\n\tdom(\"button.pl-key\", on(\"click\", \"origin.tone\", keyboard.B7), keyboard.A7),\n\tdom(\"button.pl-key\", on(\"click\", \"origin.tone\", keyboard.B8), keyboard.A8))))"
+        },
+        {
+          "key": "keyboard.dims",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "keyboard.dims",
+            "segment": "keyboard",
+            "name": "dims",
+            "description": "the sheet's RENDERED range {rows, cols} — sparse: addresses render from dims; a cel exists only once a value/formula is committed. =addCells grows this."
+          },
+          "v": {
+            "rows": 40,
+            "cols": 8
+          }
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    {
+      "name": "keyboard",
+      "version": "0.1.0",
+      "description": "keyboard (a sheetapp document) — note/freq rows in the worksheet, ONE visible =view formula that builds the playable piano keys into the workbook's RIGHT view pane (origin.tone on click)",
+      "role": "user-space",
+      "kind": "origin-user",
+      "applications": [
+        "sheetapp"
+      ],
+      "dependencies": [
+        "sheetapp",
+        "dom",
+        "origin"
+      ]
+    }
+  ]
+}

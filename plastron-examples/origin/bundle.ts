@@ -57,14 +57,14 @@ const sqlInline =
 // So the #llms div, dist/llms.txt, and the <head> guide block are ALL downstream
 // of llms.md — edit that one file and every channel (incl. the llm-eval system
 // prompt, which reads llms.md directly) stays in sync.
-{
-  const md = await Bun.file(join(import.meta.dir, "llms.md")).text();
-  const escMd = md.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  let html = await Bun.file(HTML).text();
-  if (!html.includes("[[LLMS_GUIDE]]")) throw new Error("bundle: [[LLMS_GUIDE]] sentinel missing from index.html #llms");
-  html = html.replace("[[LLMS_GUIDE]]", () => escMd);   // function form — md may contain $ patterns
-  await Bun.write(HTML, html);
-}
+// NOTE: the [[VOCAB_CATALOG]]/[[OTP_DEMO]] substitutions happen INSIDE the guide
+// text below, NOT on the whole document — the guide segment's seed carries the
+// literal sentinels, so the bundled kernel JS contains them too; a whole-document
+// replace would splice the catalog into a template literal and break the boot.
+const guideMd = await Bun.file(join(import.meta.dir, "llms.md")).text();
+const guideEsc = guideMd.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+let bakedCatalog = "";
+let bakedOtp = "";
 
 // Bake the =vocab() catalog into the <noscript> guide (the [[VOCAB_CATALOG]]
 // sentinel in index.html). We boot the origin kernel HEADLESS (no painter —
@@ -86,14 +86,11 @@ const sqlInline =
     console.warn(`bundle: vocab bake failed (${e}); falling back to a live-catalog pointer`);
     catalog = "(open https://plastron.ca/#raw=%3Dvocab() to read the live catalog)";
   }
-  let html = await Bun.file(HTML).text();
-  if (!html.includes("[[VOCAB_CATALOG]]")) throw new Error("bundle: [[VOCAB_CATALOG]] sentinel missing from index.html");
-  html = html.replace("[[VOCAB_CATALOG]]", catalog);
-  await Bun.write(HTML, html);
+  bakedCatalog = catalog;
 }
 
-// (Starter-kit bake removed — readme/keyboard/turtles are baked as origin-user
-//  DOCUMENT archives in the app-archives block below, not .f files seeded to OPFS.)
+// (readme/keyboard/turtles are baked as origin-user DOCUMENT archives in the
+//  app-archives block below, installed to the segment store on first boot.)
 
 // Bake the APP ARCHIVES ([[APP_ARCHIVES]] sentinel): an inert JSON map of
 // { <name>: <segment-archive> } from apps/*.json. The first boot's boot.run /
@@ -118,8 +115,27 @@ const sqlInline =
   let html = await Bun.file(HTML).text();
   if (!html.includes("[[APP_ARCHIVES]]")) throw new Error("bundle: [[APP_ARCHIVES]] sentinel missing from index.html");
   html = html.replace("[[APP_ARCHIVES]]", () => json);   // function form — json has $ patterns
+
+  // BUILD STAMP + RELEASE NOTICE ([[UPDATE_INFO]] sentinel): {id, notice} for the
+  // update-notification system. The id is a content hash of the baked archives
+  // JSON *plus* UPDATE.md, so shipping new apps/docs OR just posting a notice
+  // mints a new id (Ian edits UPDATE.md per release). Boot's origin.updateCheck
+  // compares the id against the persisted last-seen id and surfaces the desktop
+  // 🔄 chip on mismatch. Content-hash, not Date.now — reproducible builds.
+  const notice = await Bun.file(join(import.meta.dir, "UPDATE.md")).text().catch(() => "");
+  const updateInfo = JSON.stringify({ id: Bun.hash(json + notice).toString(36), notice })
+    .replace(/<\/script>/g, "<\\/script>");
+  // ANCHORED to the tag, not the bare sentinel: the inlined kernel JS (in <head>,
+  // before this tag) legitimately mentions sentinel-shaped strings, and a
+  // whole-document first-occurrence replace would corrupt it (the llms-guide
+  // bake hit exactly this on 2026-07-04).
+  const UPDATE_ANCHOR = 'id="plastron-update">[[UPDATE_INFO]]</script>';
+  if (!html.includes(UPDATE_ANCHOR)) throw new Error("bundle: the #plastron-update [[UPDATE_INFO]] tag is missing from index.html");
+  html = html.replace(UPDATE_ANCHOR, () => `id="plastron-update">${updateInfo}</script>`);
+
   await Bun.write(HTML, html);
   console.log(`✔ app archives — ${Object.keys(apps).length} apps (${(json.length / 1024).toFixed(1)} KB)`);
+  console.log(`✔ update stamp — id ${JSON.parse(updateInfo).id} (notice ${notice.length} chars)`);
 }
 
 // Bake the WORKED OTP DEMO ([[OTP_DEMO]] sentinel) using the SHIPPED card.png as
@@ -141,9 +157,21 @@ const sqlInline =
     console.warn(`bundle: otp demo bake failed (${e}); falling back to a pointer`);
     block = `  (open https://plastron.ca/ and run =otpEncrypt() with a pad file to make your own #otp= link)`;
   }
+  bakedOtp = block;
+}
+
+// Inject the fully-baked guide into the #llms <pre>: sentinel substitution is
+// scoped to the GUIDE TEXT (function-form — catalog/otp carry $ patterns), then
+// one [[LLMS_GUIDE]] replace. The kernel JS's own sentinel copies stay verbatim.
+{
+  if (!guideEsc.includes("[[VOCAB_CATALOG]]") || !guideEsc.includes("[[OTP_DEMO]]"))
+    throw new Error("bundle: [[VOCAB_CATALOG]]/[[OTP_DEMO]] sentinel missing from llms.md");
+  const guide = guideEsc
+    .replace("[[VOCAB_CATALOG]]", () => bakedCatalog)
+    .replace("[[OTP_DEMO]]", () => bakedOtp);
   let html = await Bun.file(HTML).text();
-  if (!html.includes("[[OTP_DEMO]]")) throw new Error("bundle: [[OTP_DEMO]] sentinel missing from index.html");
-  html = html.replace("[[OTP_DEMO]]", block);
+  if (!html.includes("[[LLMS_GUIDE]]")) throw new Error("bundle: [[LLMS_GUIDE]] sentinel missing from index.html #llms");
+  html = html.replace("[[LLMS_GUIDE]]", () => guide);
   await Bun.write(HTML, html);
 }
 
@@ -211,6 +239,20 @@ for (const a of ["doom.wasm", "freedoom1.wad"]) {
   }
 }
 
+// three (plastron-gpu's lazy renderer) — the pinned vendored module build rides
+// alongside index.html like the DOOM assets; scene() lazy-imports
+// /three.module.js on first use (same-origin, CSP 'self'-clean; jsdelivr is the
+// fallback). three.module.js imports ./three.core.js, so both ship.
+for (const a of ["three.module.js", "three.core.js"]) {
+  const src = Bun.file(join(import.meta.dir, "vendor", "three", a));
+  if (await src.exists()) {
+    await Bun.write(join(OUT, a), src);
+    console.log(`✔ dist/${a} — ${((await Bun.file(join(OUT, a)).bytes()).length / 1024).toFixed(0)} KB`);
+  } else {
+    console.log(`⚠ vendor/three/${a} not found — =scene() will fall back to jsdelivr`);
+  }
+}
+
 // Relocate Bun's ~1.9 MB inlined module bundle from <head> to the END of <body>,
 // so <head> stays tiny and the readable document (guide block + body) comes first
 // — a raw-HTML reader then gets everything before the megabytes. The bundle is
@@ -230,7 +272,7 @@ for (const a of ["doom.wasm", "freedoom1.wad"]) {
 }
 
 const bytes = (await Bun.file(HTML).bytes()).length;
-const ALLOWED = new Set(["index.html", "llms.txt", "doom.wasm", "freedoom1.wad"]);
+const ALLOWED = new Set(["index.html", "llms.txt", "doom.wasm", "freedoom1.wad", "three.module.js", "three.core.js"]);
 const leftovers = (await readdir(OUT)).filter((f) => !ALLOWED.has(f));
 console.log(`✔ dist/index.html — ${(bytes / 1024).toFixed(1)} KB`);
 if (leftovers.length) throw new Error(`bundle: unexpected extra files in dist/: ${leftovers.join(", ")}`);

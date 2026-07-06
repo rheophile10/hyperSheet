@@ -7,49 +7,107 @@
         {
           "key": "desktop.entry",
           "celType": "ValueCel",
-          "metadata": { "key": "desktop.entry", "segment": "desktop", "name": "entry", "description": "marker cel: its presence makes origin.launch run the settle loop that materializes the desktop chrome + taskbar genesis." },
+          "metadata": {
+            "key": "desktop.entry",
+            "segment": "desktop",
+            "name": "entry",
+            "description": "marker cel: its presence makes origin.launch run the settle loop that materializes the desktop chrome + taskbar genesis."
+          },
           "v": 1
         },
         {
           "key": "desktop.iconpos",
           "celType": "ValueCel",
-          "metadata": { "key": "desktop.iconpos", "segment": "desktop", "name": "iconpos", "description": "per-label icon positions { label: [x,y] }. Seeded {} so desktop.iconbar.frame's dep edge is LIVE from hydrate — else a drag (setValue iconpos) wouldn't re-render the icon (it'd teleport on drop)." },
+          "metadata": {
+            "key": "desktop.iconpos",
+            "segment": "desktop",
+            "name": "iconpos",
+            "description": "per-label icon positions { label: [x,y] }. Seeded {} so desktop.iconbar.frame's dep edge is LIVE from hydrate — else a drag (setValue iconpos) wouldn't re-render the icon (it'd teleport on drop)."
+          },
           "v": {}
         },
         {
           "key": "desktop.wallpaper",
           "celType": "ValueCel",
-          "metadata": { "key": "desktop.wallpaper", "segment": "desktop", "name": "wallpaper", "description": "the current wallpaper src (OPFS /path or data-URI); empty falls back to the shipped windows.wallpaper. Seeded so desktop.bg.frame's dep edge is live (a settings change repaints reactively)." },
+          "metadata": {
+            "key": "desktop.wallpaper",
+            "segment": "desktop",
+            "name": "wallpaper",
+            "description": "the current wallpaper src (OPFS /path or data-URI); empty falls back to the shipped windows.wallpaper. Seeded so desktop.bg.frame's dep edge is live (a settings change repaints reactively)."
+          },
           "v": ""
         },
         {
           "key": "desktop.bg.frame",
           "celType": "FormulaCel",
-          "metadata": { "key": "desktop.bg.frame", "segment": "desktop", "name": "bg.frame", "parser": "infix", "description": "self-mounting wallpaper; right-click opens display settings. Falls back to the shipped windows.wallpaper when desktop.wallpaper is unset." },
+          "metadata": {
+            "key": "desktop.bg.frame",
+            "segment": "desktop",
+            "name": "bg.frame",
+            "parser": "infix",
+            "description": "self-mounting wallpaper; right-click opens display settings. Falls back to the shipped windows.wallpaper when desktop.wallpaper is unset."
+          },
           "f": "=mount('.origin', desktop.bg(desktop.wallpaper, windows.wallpaper))"
         },
         {
           "key": "desktop.iconbar.frame",
           "celType": "FormulaCel",
-          "metadata": { "key": "desktop.iconbar.frame", "segment": "desktop", "name": "iconbar.frame", "parser": "infix", "description": "self-mounting app launcher: draggable desktop icons (non-mobile) or the collapsible nav (mobile). Sheet creates a new worksheet doc (do:origin.newsheet); Files/DOOM are origin-applications (app:); readme/keyboard/turtles are sheetapp origin-USER documents opened via doc: → origin.opendoc." },
-          "f": "=mount('.origin', desktop.icons(desktop.iconpos, viewport.mobile, item('🧮 Origin', '元'), item('▦ Sheet', 'do:origin.newsheet'), item('📁 Files', 'app:filesapp'), item('📖 Readme', 'doc:readme'), item('🎹 Keyboard', 'doc:keyboard'), item('📊 Turtles', 'doc:turtle_charts'), item('📋 Kanban', 'app:kanbanapp'), item('🐢 DOOM', 'app:doomapp')))"
+          "metadata": {
+            "key": "desktop.iconbar.frame",
+            "segment": "desktop",
+            "name": "iconbar.frame",
+            "parser": "infix",
+            "description": "self-mounting app launcher: draggable desktop icons (non-mobile) or the collapsible nav (mobile). Sheet creates a new worksheet doc (do:origin.newsheet); Files/DOOM are origin-applications (app:); readme/keyboard/turtles are sheetapp origin-USER documents opened via doc: → origin.opendoc."
+          },
+          "f": "=mount('.origin', desktop.icons(desktop.iconpos, viewport.mobile, item('▣ Origin', '元'), item('田 Sheet', 'do:origin.newsheet'), item('📁 Files', 'app:filesapp'), item('📖 Readme', 'doc:readme'), item('🎹 Keyboard', 'doc:keyboard'), item('💬 Chatrooms', 'doc:chatrooms'), item('📊 Turtles', 'doc:turtle_charts'), item('📋 Kanban', 'app:kanbanapp'), item('🐟 10k Boids', 'doc:boids10k'), item('🦠 Life', 'doc:life'), item('🐠 Boids', 'doc:boids'), item('🐢 DOOM', 'app:doomapp'), item('👤 Profile', 'app:profileapp')))"
         },
         {
           "key": "desktop.graph.frame",
           "celType": "FormulaCel",
-          "metadata": { "key": "desktop.graph.frame", "segment": "desktop", "name": "graph.frame", "parser": "infix", "description": "self-mounting round lower-left button → the state force-graph." },
+          "metadata": {
+            "key": "desktop.graph.frame",
+            "segment": "desktop",
+            "name": "graph.frame",
+            "parser": "infix",
+            "description": "self-mounting round lower-left button → the state force-graph."
+          },
           "f": "=mount('.origin', desktop.graphbtn())"
         },
         {
           "key": "desktop.taskbar.sync",
           "celType": "FormulaCel",
-          "metadata": { "key": "desktop.taskbar.sync", "segment": "desktop", "name": "taskbar.sync", "parser": "infix", "description": "genesis-from-formula: re-derives desktop.taskbar.frame from win.list/win.active so the bottom taskbar tracks open/active/minimized windows reactively." },
+          "metadata": {
+            "key": "desktop.taskbar.sync",
+            "segment": "desktop",
+            "name": "taskbar.sync",
+            "parser": "infix",
+            "description": "genesis-from-formula: re-derives desktop.taskbar.frame from win.list/win.active so the bottom taskbar tracks open/active/minimized windows reactively."
+          },
           "f": "=desktop.taskbarGenesis(win.list, win.active)"
+        },
+        {
+          "key": "desktop.update.frame",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "desktop.update.frame",
+            "segment": "desktop",
+            "name": "update.frame",
+            "parser": "infix",
+            "description": "self-mounting update-notice chip (fixed top-right): renders nothing while origin.update is {} — boot's origin.updateCheck fills it when the page's baked build id (#plastron-update) differs from the persisted last-seen id (/plastron/update-seen). Click opens the what's-new window (origin.updateOpen); Later/Refresh persist the seen id."
+          },
+          "f": "=mount('.origin', updatebanner(origin.update))"
         }
       ]
     }
   ],
   "manifests": [
-    { "name": "desktop", "version": "1.0.0", "description": "the origin desktop shell (wallpaper, icons, taskbar, state graph)", "role": "user", "kind": "origin-application", "dependencies": [] }
+    {
+      "name": "desktop",
+      "version": "1.2.0",
+      "description": "the origin desktop shell (wallpaper, icons, taskbar, state graph)",
+      "role": "user",
+      "kind": "origin-application",
+      "dependencies": []
+    }
   ]
 }

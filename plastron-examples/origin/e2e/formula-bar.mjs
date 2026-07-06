@@ -45,13 +45,15 @@ try {
     const scroller = w?.querySelector(".sheet-pane-body");
     return {
       bar: !!bar, input: !!w?.querySelector("textarea.fx-input"),
-      fire: !!w?.querySelector(".fx-fire"), wiki: !!w?.querySelector(".fx-wiki"), topo: !!w?.querySelector(".fx-topo"),
+      fire: !!w?.querySelector(".fx-fire"), wiki: !!w?.querySelector(".fx-wiki"), topo: !!w?.querySelector(".fx-topo"), ask: !!w?.querySelector(".fx-ask"),
+      // 🔮 ask-grok is gated on Supabase sign-in (not signed in here → absent).
       barAboveGrid: bar && grid ? !!(bar.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING) : false,
       barOutsideScroller: bar && scroller ? !scroller.contains(bar) : false,
     };
   });
   ok(a.bar && a.input, "A. formula bar with a textarea renders");
   ok(a.fire && a.wiki && a.topo, "A. bar has ⚡ fire, 📖 wiki, 🔗 topology buttons", a);
+  ok(a.ask === false, "A. 🔮 ask-grok is hidden until signed into Supabase", a);
   ok(a.barAboveGrid, "A. bar sits above the grid");
   ok(a.barOutsideScroller, "A. bar is OUTSIDE the grid's scroll container (no scrollbar occlusion)", a);
 

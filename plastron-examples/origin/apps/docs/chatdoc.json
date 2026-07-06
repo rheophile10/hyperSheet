@@ -1,0 +1,132 @@
+{
+  "formatVersion": 1,
+  "segments": [
+    {
+      "name": "chatdoc",
+      "cels": [
+        {
+          "key": "chatdoc.dims",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "chatdoc.dims",
+            "segment": "chatdoc",
+            "name": "dims"
+          },
+          "v": {
+            "rows": 40,
+            "cols": 8
+          }
+        },
+        {
+          "key": "chatdoc.A1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "chatdoc.A1",
+            "segment": "chatdoc",
+            "name": "A1",
+            "description": "label: B1 is the PUBLIC supabase config as ONE dict — sb.default derives from it by formula, so editing B1 repoints the whole app"
+          },
+          "v": "supabase config →"
+        },
+        {
+          "key": "chatdoc.B1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "chatdoc.B1",
+            "segment": "chatdoc",
+            "name": "B1",
+            "description": "the appkit project's PUBLIC config {url, anonkey} — the local Supabase CLI stack + its shared publishable key (browser-safe by design; the xAI key stays server-side in the edge function). JSON data entry: the cell's VALUE is the dict."
+          },
+          "v": {
+            "url": "http://127.0.0.1:54341",
+            "anonkey": "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH"
+          }
+        },
+        {
+          "key": "sb.default",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "sb.default",
+            "segment": "chatdoc",
+            "name": "sb.default",
+            "parser": "infix",
+            "description": "the config cel sbConfig resolves FIRST — derived from the visible B1 dict (reference IS the dependency: edit B1 and every supabase call follows)"
+          },
+          "f": "=chatdoc.B1"
+        },
+        {
+          "key": "chatdoc.A2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "chatdoc.A2",
+            "segment": "chatdoc",
+            "name": "A2",
+            "description": "label: B2 mints a chat bot by GENESIS — delete the formula and the sweep retires the bot"
+          },
+          "v": "mint a bot →"
+        },
+        {
+          "key": "chatdoc.B2",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "chatdoc.B2",
+            "segment": "chatdoc",
+            "name": "B2",
+            "parser": "infix",
+            "description": "=addbot mints grok.roster.advisor {name, persona, model}; '@advisor …' in the chat routes a message to it"
+          },
+          "f": "=addbot(\"advisor\", \"Terse workbook advisor. You answer with the cleanest formula or the shortest correct sentence.\", \"\")"
+        },
+        {
+          "key": "chatdoc.A3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "chatdoc.A3",
+            "segment": "chatdoc",
+            "name": "A3",
+            "description": "label: B3 IS the chat — one =view formula grows the pane; the login card gates it until signedIn(sb.default.auth)"
+          },
+          "v": "the chat pane →"
+        },
+        {
+          "key": "chatdoc.B3",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "chatdoc.B3",
+            "segment": "chatdoc",
+            "name": "B3",
+            "parser": "infix",
+            "description": "the whole chat as ONE visible formula: =view opens the pane, chatpane renders login-gate → transcript bubbles → composer; every referenced cel (transcript, question, bots, auth) re-renders it through the graph"
+          },
+          "f": "=view(\"chat\", chatpane(grok.transcript, grok.question, {project:\"default\", authed:signedIn(sb.default.auth), bots:grok.bots, bot:grok.bot, email:grok.email, password:grok.password, status:grok.status}))"
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    {
+      "name": "chatdoc",
+      "version": "0.0.1",
+      "description": "grok chat (a sheetapp document) — log in to Supabase and talk to grok about the workbook. The recipe is three visible cells: B1 the public config dict (sb.default derives from it), B2 =addbot mints a bot, B3 =view(chatpane(…)) grows the login-gated chat pane. Replies can READ and WRITE cells through the user's own commit path, receipted in the transcript.",
+      "role": "user-space",
+      "kind": "origin-user",
+      "applications": [
+        "sheetapp"
+      ],
+      "dependencies": [
+        "sheetapp",
+        "grok",
+        "supabase",
+        "supabase-auth",
+        "session",
+        "sheet",
+        "sheets",
+        "window",
+        "dom",
+        "genesis",
+        "origin"
+      ]
+    }
+  ],
+  "docLoad": "chatdoc"
+}

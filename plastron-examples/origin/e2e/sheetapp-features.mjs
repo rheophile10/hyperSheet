@@ -78,7 +78,11 @@ try {
   await page.click('[data-win="win.feat.state"] .pl-wb-stabs button:has-text("B")');
   await page.waitForTimeout(400);
   ok(await page.evaluate(() => /100/.test(document.querySelector('[data-win="win.feat.state"] .pl-wb-left')?.textContent ?? "")), "C. switching to worksheet B's tab shows the recomputed 100");
-  ok(await page.evaluate(() => /B is 100/.test(document.querySelector('[data-win="win.feat.state"] .pl-wb-right')?.textContent ?? "")), "C. the dom-view also reflects the cross-worksheet edit (B is 100)");
+  const domViewSynced = await page.waitForFunction(
+    () => /B is 100/.test(document.querySelector('[data-win="win.feat.state"] .pl-wb-right')?.textContent ?? ""),
+    { timeout: 4000 },
+  ).then(() => true).catch(() => false);
+  ok(domViewSynced, "C. the dom-view also reflects the cross-worksheet edit (B is 100)");
 
   // E. create a NEW dom window in the view stack (window.addView authors + adds it)
   await page.evaluate(async () => {
@@ -87,7 +91,7 @@ try {
     await globalThis.plastron.resolveFn(s, "runCycle")(s); await globalThis.plastron.resolveFn(s, "drain")(s, "dom.paint");
   });
   await page.waitForTimeout(500);
-  ok(await page.evaluate(() => { const t = document.querySelector('[data-win="win.feat.state"] .pl-wb-vtabs'); return t && /View1/.test(t.textContent) && /View2/.test(t.textContent); }), "E. a NEW dom-view window was added to the stack (View1 + View2 tabs)");
+  ok(await page.evaluate(() => { const t = document.querySelector('[data-win="win.feat.state"] .pl-wb-right .pl-wb-stabs'); return t && /View1/.test(t.textContent) && /View2/.test(t.textContent); }), "E. a NEW dom-view window was added to the stack (View1 + View2 tabs)");
   ok(await page.evaluate(() => /twice B = 200/.test(document.querySelector('[data-win="win.feat.state"] .pl-wb-right')?.textContent ?? "")), "E. the new dom view paints from a formula (twice B = 200)");
 
   ok(errs.length === 0, `no page errors${errs.length ? ": " + errs[0] : ""}`);
