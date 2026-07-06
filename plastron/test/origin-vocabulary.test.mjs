@@ -61,7 +61,7 @@ test("=sheet is sparse + generative: ONE dims cel, a tab, the ▦ token, idempot
   // sparse: exactly one cel in the new segment — the dims
   const dataCels = [...state.cels.keys()].filter((k) => k.startsWith("data."));
   assert.deepEqual(dataCels, ["data.dims"], `only data.dims minted (got ${JSON.stringify(dataCels)})`);
-  assert.deepEqual(state.cels.get("data.dims").v, { rows: 12, cols: 7 });
+  assert.deepEqual(state.cels.get("data.dims").v, { rows: 50, cols: 12 });
   // the tab landed in the active workbook
   const wb = state.cels.get("win.g2x2.state").v;
   assert.ok(wb.sheets.some((t) => t.title === "data"), "data tab added to the workbook");
@@ -81,13 +81,13 @@ test("=addCells grows dims TO AT LEAST rows×cols — a pure data write, idempot
   const { state, put } = await boot();
   await put("=sheet('data')", "g2x2.A1");
   const before = state.cels.size;
-  await put("=addCells('data', 20, 9)", "g2x2.B1");
-  assert.deepEqual(state.cels.get("data.dims").v, { rows: 20, cols: 9 }, "dims grew");
+  await put("=addCells('data', 60, 14)", "g2x2.B1");
+  assert.deepEqual(state.cels.get("data.dims").v, { rows: 60, cols: 14 }, "dims grew");
   // sparse: no addressed space entered state (only the =addCells cell itself changed)
   assert.equal([...state.cels.keys()].filter((k) => k.startsWith("data.") && k !== "data.dims").length, 0, "no data.* cels born");
   // at-least semantics: re-fire and smaller asks are no-ops
-  await put("=addCells('data', 15, 4)", "g2x2.B1");
-  assert.deepEqual(state.cels.get("data.dims").v, { rows: 20, cols: 9 }, "smaller ask is a no-op (grow-to-at-least)");
+  await put("=addCells('data', 55, 9)", "g2x2.B1");
+  assert.deepEqual(state.cels.get("data.dims").v, { rows: 60, cols: 14 }, "smaller ask is a no-op (grow-to-at-least)");
   assert.ok(state.cels.size >= before, "no cel churn");
   const b1 = state.cels.get("g2x2.B1");
   assert.equal(b1.celType, "FormulaCel", "generative — formula survives");

@@ -1,6 +1,6 @@
 import type { 甲骨, Cel, Fn, State, VNode, AttrValue, EventBinding } from "../../../types/index.js";
 import { bindNativeFns, isCelError, resolveFn, retireCel, precompute } from "../../../kernel/index.js";
-import { el as makeEl, text as T } from "../dom/index.js";
+import { el as makeEl, text as T, memo } from "../dom/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -14,6 +14,8 @@ import seed from "./甲骨.json" with { type: "json" };
 
 type V = VNode;
 const el = makeEl as unknown as (tag: string, attrs?: Record<string, AttrValue>, children?: V[], events?: Record<string, EventBinding>) => V;
+// memo over the local V alias (el always builds elements; VText never flows here)
+const memoV = memo as unknown as (node: V, sig: unknown) => V;
 const isVnode = (v: unknown): v is V => !!v && typeof v === "object" && ((v as { type?: unknown }).type === "el" || (v as { type?: unknown }).type === "text");
 
 const SX = {
@@ -22,7 +24,11 @@ const SX = {
   th: "border:1px solid #8883;background:#8881;text-align:center;color:#888;font-weight:600;font-size:.8rem;font-family:ui-monospace,monospace;min-width:1.8rem;padding:0 .35rem;height:1.9rem",
   corner: "border:1px solid #8883;background:#8881;text-align:center;color:#aaa;font-weight:700;font-size:.8rem;font-family:ui-monospace,monospace;padding:0 .35rem;height:1.9rem",
   td: "border:1px solid #8883;padding:0;height:1.9rem;text-align:left;vertical-align:top;cursor:cell",
-  cellValue: "display:flex;align-items:flex-start;padding:.15rem .4rem;min-height:1.6rem;font-family:ui-monospace,monospace;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap",
+  // content-visibility:auto — the browser skips layout/paint of offscreen cell
+  // CONTENT (tall grids render nearly free; `auto` intrinsic-size remembers the
+  // last real size so scrollbars stay honest). On the inner div, NOT the tr:
+  // containment is ignored on internal table elements, so tr can't have it.
+  cellValue: "display:flex;align-items:flex-start;padding:.15rem .4rem;min-height:1.6rem;font-family:ui-monospace,monospace;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;content-visibility:auto;contain-intrinsic-size:auto 4.5rem auto 1.6rem",
   edit: "width:100%;box-sizing:border-box;min-height:2.4rem;resize:vertical;font-family:ui-monospace,monospace;font-size:.85rem;padding:.15rem .4rem;border:0;background:#4a90d922;white-space:pre-wrap;line-height:1.4",
   // the formula bar (Excel edit surface): a cell-ref label ‖ ⚡ fire ‖ 📖 wiki ‖
   // 🔗 topology ‖ a textarea bound to the draft cel. Sits above the grid (sheetpane
@@ -174,17 +180,22 @@ const sheetgrid: Fn = ((label: unknown, cells: unknown, opts?: unknown, dims?: u
       { click: { dispatch: SEL, payload: key }, dblclick: { dispatch: EDIT, payload: key } });
   };
 
+  // MEMO HINTS (the diff's O(changed) fast path, diff.ts memoEq): each th/td
+  // carries a shallow signature of everything its subtree renders from. A
+  // selection move re-diffs exactly TWO cells (old + new); a value commit
+  // re-diffs one; everything else NOOPs without a deep compare. draftVal is
+  // in the signature only for the ACTIVE cell so typing never busts the rest.
   const head = el("tr", {}, [el("th", { class: "corner", style: SX.corner }, [T(String(label ?? ""))]),
     ...Array.from({ length: maxC + 1 }, (_, c) => {
       const letter = colLetter(c);
-      return el("th", { "data-col": letter, style: SX.th + ";position:relative" + wCss(wOf(c)) },
-        seg ? [T(letter), sizeHandle(seg, "col", letter)] : [T(letter)]);
+      return memoV(el("th", { "data-col": letter, style: SX.th + ";position:relative" + wCss(wOf(c)) },
+        seg ? [T(letter), sizeHandle(seg, "col", letter)] : [T(letter)]), [letter, wOf(c)]);
     })]);
   const rows = Array.from({ length: maxR + 1 }, (_, r) => {
     const rh = hOf(r);
     return el("tr", {}, [
-      el("th", { class: "rownum", "data-row": String(r + 1), style: SX.th + ";position:relative" + hCss(rh) },
-        seg ? [T(String(r + 1)), sizeHandle(seg, "row", String(r + 1))] : [T(String(r + 1))]),
+      memoV(el("th", { class: "rownum", "data-row": String(r + 1), style: SX.th + ";position:relative" + hCss(rh) },
+        seg ? [T(String(r + 1)), sizeHandle(seg, "row", String(r + 1))] : [T(String(r + 1))]), [r, rh]),
       ...Array.from({ length: maxC + 1 }, (_, c) => {
         const e = at.get(`${c},${r}`);
         // sparse: no backing cel — synthesize the addressed key so the empty
@@ -192,11 +203,13 @@ const sheetgrid: Fn = ((label: unknown, cells: unknown, opts?: unknown, dims?: u
         const key = e?.key ?? (seg ? `${seg}.${colLetter(c)}${r + 1}` : "");
         const w = wOf(c);
         const size = (w ? wCss(w) : ";min-width:4.5rem") + hCss(rh);
-        if (!key) return el("td", { class: "cell", "data-key": "", style: `${SX.td}${size}` }, []);
+        if (!key) return memoV(el("td", { class: "cell", "data-key": "", style: `${SX.td}${size}` }, []), ["", w, rh]);
         const isActive = active === key, isSel = selected === key;
         const outline = isActive ? ";outline:2px solid #4a90d9;outline-offset:-2px" : (isSel ? ";outline:2px solid #4a90d999;outline-offset:-2px" : "");
         void FIRE;
-        return el("td", { class: isActive ? "cell editing" : (isSel ? "cell selected" : "cell"), "data-key": key, style: `${SX.td};position:relative${size}${outline}` }, [body(key, e?.value, rh, w)]);
+        return memoV(
+          el("td", { class: isActive ? "cell editing" : (isSel ? "cell selected" : "cell"), "data-key": key, style: `${SX.td};position:relative${size}${outline}` }, [body(key, e?.value, rh, w)]),
+          [key, e?.value, isActive, isSel, isActive ? draftVal : null, w, rh]);
       })]);
   });
   return el("div", { class: "grid-scroll", style: SX.scroll }, [el("table", { class: "grid", style: SX.table }, [el("thead", {}, [head]), el("tbody", {}, rows)])]);
