@@ -14,7 +14,7 @@
             "description": "the RENDER formula: =view() grows the fish pane in the cardBook from THIS cell - run/stop buttons + the =scene() spec: 10,000 instanced fish in ONE draw call. The spec carries the buffer cel KEY ('boids10k.D1') - the InstancedMesh reads it via the scene.paint drain, so this cell never re-fires per frame.",
             "parser": "infix"
           },
-          "f": "=view(\"fish\", dom(\"div\", dom(\"div\", style(\"display\",\"flex\",\"gap\",\".5rem\",\"padding\",\".3rem\"), dom(\"button\", on(\"click\",\"sim.run\",\"boids10k.D5\"), \"▶ run\"), dom(\"button\", on(\"click\",\"sim.stop\",\"boids10k.D5\"), \"⏸ stop\")), scene(720, 480, camera(0, 9, 26), light(10, 20, 10), instances(box(0.12, 0.12, 0.3), material('#4fc3f7'), 10000, 'boids10k.D1'))))"
+          "f": "=view(\"fish\", dom(\"div\", dom(\"div\", style(\"display\",\"flex\",\"gap\",\".5rem\",\"padding\",\".3rem\"), dom(\"button\", on(\"click\",\"sim.run\",\"boids10k.D5\"), \"▶ run\"), dom(\"button\", on(\"click\",\"sim.stop\",\"boids10k.D5\"), \"⏸ stop\")), scene(720, 480, camera(0, 10, 40), light(10, 20, 10), instances(box(0.12, 0.12, 0.3), material('#4fc3f7'), 10000, 'boids10k.D1'))))"
         },
         {
           "key": "boids10k.A2",
@@ -58,7 +58,7 @@
             "name": "B3",
             "description": "EDIT ME - the alignment parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
           },
-          "v": 0.05
+          "v": 0.08
         },
         {
           "key": "boids10k.A4",
@@ -102,7 +102,7 @@
             "name": "B5",
             "description": "EDIT ME - the maxSpeed parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
           },
-          "v": 2.0
+          "v": 5.0
         },
         {
           "key": "boids10k.A6",
@@ -146,7 +146,7 @@
             "name": "B7",
             "description": "EDIT ME - the dt parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
           },
-          "v": 0.016
+          "v": 0.05
         },
         {
           "key": "boids10k.A8",
@@ -168,7 +168,7 @@
             "name": "B8",
             "description": "EDIT ME - the w parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
           },
-          "v": 20
+          "v": 28
         },
         {
           "key": "boids10k.A9",
@@ -190,7 +190,7 @@
             "name": "B9",
             "description": "EDIT ME - the h parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
           },
-          "v": 12
+          "v": 16
         },
         {
           "key": "boids10k.A10",
@@ -212,7 +212,7 @@
             "name": "B10",
             "description": "EDIT ME - the d parameter; the D3 params object re-derives on every edit and the flock changes mid-swim"
           },
-          "v": 20
+          "v": 28
         },
         {
           "key": "boids10k.D1",
@@ -532,7 +532,7 @@
   "manifests": [
     {
       "name": "boids10k",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "10,000 fish, formula-first (a sheetapp document) - the WHOLE 3-D boids sim lives in visible grid cells, INCLUDING THE RULE: params in B2:B15, the steering =LAMBDA in B19, the same rule as wat source in B20 compiled by the =WAT binder in B21 (the pump picks a tier by flock size), the SoA buffer cel in D1 probed by =bufstats in B16, the generation boundary in D2, the params object in D3, the sceneframe channel in D4, and the pump config in D5 under the plastron-gpu InstancedMesh scene grown by =view() in A1. Open it, press ▶ run, edit any cell mid-swim - including the rule.",
       "role": "user-space",
       "kind": "origin-user",
