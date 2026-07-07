@@ -4,6 +4,7 @@ import type {
 import {
   bindNativeFns, resolveFn, ensureSegments, appendError, makeCelError, retireCel,
   isSegmentPending, hasSegment, getSegmentManifest, runCascade, affectedFor,
+  disposeCel, precompute,
 } from "../../../kernel/index.js";
 import {
   dumpArchive, dumpSegments, loadArchive, documentSegments, isSubstrateSegment, archiveSegmentNames,
@@ -1468,6 +1469,12 @@ const appInstall: Fn = (async (state: State, archiveArg?: unknown, forceArg?: un
     // baked archive on boot (upgrade); the same version re-installs only under
     // force (factory refresh — re-put flips `latest` back to the baked build).
     // Segment names not in the archive — user-created docs — are never touched.
+    // INSTALL-ONCE segments (manifest install:"once" — user-OWNED config like
+    // usercfg): once ANY version is stored, neither a boot upgrade nor the
+    // force refresh re-puts them — the user's rows are never stomped. Shipped
+    // defaults evolve in a separate stompable segment (usercfg_defaults) and
+    // merge in via =kvseed (missing keys only).
+    if ((man as { install?: string }).install === "once" && (idx.segments[name]?.versions ?? []).length) { skipped.push(name); continue; }
     if (!force && (idx.segments[name]?.versions ?? []).includes(version)) { skipped.push(name); continue; }
     await putRaw(state, name, version, man, { name, cels: s.cels ?? [] });
     installed.push(name);
@@ -1698,7 +1705,7 @@ const bootRun: Fn = (async (state: State, optsArg?: unknown): Promise<State> => 
 // open window; the round button opens a force-graph of the whole state. Both are
 // wired into the desktop in the boot/archive phase — here are the verbs.
 
-interface WinChip { ref?: string; title?: string; icon?: string; min?: number; closed?: number; dockedIn?: string }
+interface WinChip { ref?: string; title?: string; icon?: string; min?: number; closed?: number; dockedIn?: string; tools?: Array<{ icon?: string; title?: string; dispatch?: string }> }
 
 // taskbarBar(active, ...states) — the bottom bar render. One chip per non-closed,
 // non-docked window: the active one bordered, a minimized one dimmed + italic.
@@ -1715,10 +1722,19 @@ const taskbarBarFn: Fn = ((active?: unknown, ...states: unknown[]): V => {
     chips.push(el("button", {
       class: "pl-task" + (isActive ? " active" : "") + (isMin ? " min" : ""),
       title: isMin ? "restore" : (isActive ? "minimize" : "raise"),
-      style: `flex:0 0 auto;max-width:12rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:.2rem .55rem;border:1px solid ${isActive ? "#4a90d9" : "#8884"};border-radius:.35rem;background:${isActive ? "#4a90d922" : "Canvas"};color:CanvasText;cursor:pointer;font:600 .72rem ui-monospace,monospace;opacity:${isMin ? ".55" : "1"};font-style:${isMin ? "italic" : "normal"}`,
+      // Dim a minimized chip by FOREGROUND only (GrayText + italic) — never with
+      // element opacity, which would make the chip's own background see-through.
+      // Backgrounds are opaque + theme-aware: `Canvas` first (the universal opaque
+      // fallback), then a `color-mix(...)` tint as a progressive-enhancement second
+      // declaration (dropped by engines without color-mix; the earlier one wins).
+      style: `flex:0 0 auto;max-width:12rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:.2rem .55rem;border:1px solid ${isActive ? "#4a90d9" : "#8884"};border-radius:.35rem;${isActive ? "background:Canvas;background:color-mix(in srgb, #4a90d9 13%, Canvas)" : "background:Canvas"};color:${isMin ? "GrayText" : "CanvasText"};cursor:pointer;font:600 .72rem ui-monospace,monospace;font-style:${isMin ? "italic" : "normal"}`,
     }, [T(label)], { click: { dispatch: "desktop.taskClick", payload: w.ref } }));
   }
-  return el("div", { class: "pl-taskbar", style: "position:fixed;left:0;right:0;bottom:0;z-index:55;display:flex;gap:.3rem;align-items:center;padding:.3rem .5rem;background:#8881;border-top:1px solid #8884;overflow-x:auto" }, chips);
+  // The bar is an OPAQUE surface (so nothing behind the bottom strip bleeds through
+  // a chip) and paints ABOVE windows: z-index far past the window band (win.topz
+  // seeds 100; nextZ hands out 101+, +1 per raise), so a dragged window slides
+  // under the bar, never over it. Opaque + theme-aware via the Canvas→color-mix idiom.
+  return el("div", { class: "pl-taskbar", style: "position:fixed;left:0;right:0;bottom:0;z-index:100000;display:flex;gap:.3rem;align-items:center;padding:.3rem .5rem;background:Canvas;background:color-mix(in srgb, CanvasText 7%, Canvas);border-top:1px solid #8884;overflow-x:auto" }, chips);
 }) as Fn;
 
 // desktop.taskbarGenesis(list, active) — re-derive the taskbar from win.list. A
@@ -1800,6 +1816,7 @@ const graphbtnFn: Fn = ((): V => el("button", {
 // window (drag / resize / minimize / fullscreen / close come from wframe). Build
 // + lay out the spec via fg.set, then wopen a self-mounting window whose content
 // is the fgview. Idempotent: a re-open refreshes the spec and un-hides + raises.
+const STATEGRAPH_TOOLS = [{ icon: "⟳", title: "refresh — rebuild the graph from the current state", dispatch: "desktop.graphRefresh" }];
 const stategraphFn: Fn = (async (state: State): Promise<State> => {
   await ensureSegments(state, ["forcegraph", "window"]);
   await (resolveFn(state, "fg.set") as Fn)(state, { id: "stategraph", spec: buildStateGraphSpec(state) });
@@ -1810,12 +1827,26 @@ const stategraphFn: Fn = (async (state: State): Promise<State> => {
       metadata: { key: "desktop.graph.元", segment: "desktop.graph", parser: "infix" } });
     const drain = resolveFn(state, "drain") as Fn, runCycle = resolveFn(state, "runCycle") as Fn;
     for (let i = 0; i < 6; i++) { await runCycle(state); if (state.cels.get("genesis.commit")) await drain(state, "genesis.commit"); if (state.cels.get("origin.effects")) await drain(state, "origin.effects"); }
+    const born = (state.cels.get(sref)?.v ?? {}) as WinChip;
+    await (resolveFn(state, "setValue") as Fn)(state, sref, { ...born, tools: STATEGRAPH_TOOLS });
   } else {
     const cur = (state.cels.get(sref)?.v ?? {}) as WinChip;
-    await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0 });
+    await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0, tools: STATEGRAPH_TOOLS });
     await (resolveFn(state, "window.raise") as Fn)(state, sref);
   }
   await (resolveFn(state, "view.refresh") as Fn)(state);
+  await (resolveFn(state, "runCycle") as Fn)(state);
+  await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
+  return state;
+}) as Fn;
+
+// desktop.graphRefresh(state) — the ⟳ titlebar tool on the state-graph window:
+// rebuild the spec from the CURRENT state and re-set it. fg.set keeps surviving
+// nodes' positions as warm seeds, so a refresh adds/drops/resizes nodes without
+// scrambling the layout; the fgview content formula re-renders off the spec cel.
+const graphRefreshFn: Fn = (async (state: State): Promise<State> => {
+  await ensureSegments(state, ["forcegraph"]);
+  await (resolveFn(state, "fg.set") as Fn)(state, { id: "stategraph", spec: buildStateGraphSpec(state) });
   await (resolveFn(state, "runCycle") as Fn)(state);
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
   return state;
@@ -1932,8 +1963,9 @@ const desktopBgFn: Fn = ((src?: unknown, fallback?: unknown): V => {
   // A full-screen SURFACE div (z-index:0) carries the right-click handler and the
   // wallpaper img. The surface — not the img — is the event target: an OPFS-
   // hydrated img can drop its listener, and a -1 img sits behind the page so the
-  // contextmenu never reaches it. Icons (z38), windows (z1+), taskbar (z55) all
-  // stack above the surface, so only empty-desktop right-clicks open settings.
+  // contextmenu never reaches it. Icons (z38), windows (z1+, raised 101+), taskbar
+  // (z100000, above windows — the bar owns the bottom strip) all stack above the
+  // surface, so only empty-desktop right-clicks open settings.
   return el("div", { class: "desktop-surface", style: "position:fixed;inset:0;z-index:0;overflow:hidden" }, [
     el("img", { class: "desktop-bg", ...srcAttr, style: "width:100vw;height:100vh;object-fit:cover;display:block;pointer-events:none" }, []),
   ], { contextmenu: { dispatch: "desktop.bgmenu", prevent: true } });
@@ -2031,16 +2063,26 @@ const putDesktopCel = async (state: State, key: string, v: unknown): Promise<voi
 };
 
 // --- draggable desktop icons (desktop only) --------------------------------
-const ICON_H = 90;
-// desktop.icons(iconpos, mobile, ...items) — desktop: free-positioned, draggable
-// app icons (positions persisted in desktop.iconpos by label); mobile: today's
-// collapsible nav. items are item(label, action); a click LAUNCHES via navOpen.
+// Tile pitch geometry, paired to the .pl-desk-icon CSS below (width:5rem≈80px,
+// rendered tile height ≈ ICON_H): column-major fill-then-wrap coordinates.
+const ICON_H = 90, ICON_TOP = 12, ICON_LEFT = 16, ICON_COL_W = 96;
+// desktop.icons(iconpos, mobile, availH, ...items) — draggable desktop app icons:
+// persisted positions (desktop.iconpos by label) win; unpositioned tiles fill
+// top-to-bottom and wrap into a NEW column (rightward from the left edge) when the
+// next tile would pass availH; mobile falls back to the collapsible nav. items are
+// item(label, action); a click LAUNCHES via origin.navOpen. availH is the vertical
+// pixel budget (sniffed as the first numeric arg so the old (iconpos, mobile,
+// …items) order still works); missing/invalid availH → Infinity → one column.
 const desktopIconsFn: Fn = ((iconpos?: unknown, mobile?: unknown, ...rest: unknown[]): V => {
   const items = rest.filter(isNavItem);
   if (mobile) return (navFn as Fn)(true, ...items) as V;
+  const availRaw = rest.find((r) => typeof r === "number") as number | undefined;
+  const availH = (typeof availRaw === "number" && Number.isFinite(availRaw)) ? availRaw : Infinity;
+  const perCol = Math.max(1, Math.floor((availH - ICON_TOP) / ICON_H));
   const pos = (iconpos && typeof iconpos === "object" && !Array.isArray(iconpos)) ? iconpos as Record<string, [number, number]> : {};
   const tiles = items.map((it, i) => {
-    const p = pos[it.label] ?? [16, 12 + i * ICON_H];
+    const col = Math.floor(i / perCol), row = i % perCol;
+    const p = pos[it.label] ?? [ICON_LEFT + col * ICON_COL_W, ICON_TOP + row * ICON_H];
     const sp = it.label.indexOf(" ");
     const glyph = sp > 0 ? it.label.slice(0, sp) : it.label;
     const caption = sp > 0 ? it.label.slice(sp + 1) : "";
@@ -2157,6 +2199,32 @@ const buildAppEditor = (state: State, app: string): V => {
   ]);
 };
 
+// wireEditappFlush — make the editor window DESTROY itself on close. The window
+// segment's close fires the tab's flush cel (wopen sets tab.flush to
+// win.editapp_<app>.flush); without one, close only marks closed:1 and the
+// editor's cels (editapp.<app>.*) plus its window segment (win.editapp_<app>.*)
+// accumulate in state forever. They're pure UI — edits land on the target app's
+// cels via setValue as they're committed — so close = sweep, no save. Same
+// dispose → delete → precompute sweep as sheetapp's wireDocFlush; window.close
+// tolerates the state cel vanishing (skips its closed:1 write, prunes the
+// registry).
+const wireEditappFlush = async (state: State, app: string): Promise<void> => {
+  const key = `win.editapp_${app}.flush`;
+  if (state.cels.get(key)) return;
+  const fn = (async (s: State): Promise<void> => {
+    let swept = 0;
+    for (const prefix of [`editapp.${app}.`, `win.editapp_${app}.`]) {
+      for (const [k, c] of [...s.cels]) {
+        if (!k.startsWith(prefix)) continue;
+        try { disposeCel(c, s); } catch { /* dispose is best-effort teardown */ }
+        s.cels.delete(k); swept++;
+      }
+    }
+    if (swept) precompute(s);
+  }) as Fn;
+  await (resolveFn(state, "setCel") as Fn)(state, key, { celType: "LockedLambdaCel", locked: true, fn, metadata: { key, segment: `win.editapp_${app}`, name: "flush", kind: "native" } });
+};
+
 // origin.editapp(state, app) — open the app's cels as an editable source list.
 const editappFn: Fn = (async (state: State, appArg?: unknown): Promise<State> => {
   const app = String(appArg ?? "");
@@ -2182,6 +2250,7 @@ const editappFn: Fn = (async (state: State, appArg?: unknown): Promise<State> =>
     await (resolveFn(state, "setValue") as Fn)(state, sref, { ...cur, closed: 0, min: 0 });
     await (resolveFn(state, "window.raise") as Fn)(state, sref);
   }
+  await wireEditappFlush(state, app);
   await (resolveFn(state, "view.refresh") as Fn)(state);
   await (resolveFn(state, "runCycle") as Fn)(state);
   await (resolveFn(state, "drain") as Fn)(state, "dom.paint");
@@ -2367,6 +2436,13 @@ const viewReqFn: Fn = (name: unknown, item?: unknown) =>
 // workbook (the only cel minted is <name>.dims). GENERATIVE + idempotent.
 const sheetReqFn: Fn = (name?: unknown, rows?: unknown, cols?: unknown) =>
   ({ originSheet: { name: name === undefined ? undefined : String(name), rows, cols } });
+// =kvseed(into, from) — merge a SHIPPED-DEFAULTS kv segment into a user-owned
+// one: copy rows missing from `into` (never overwrite — the user's value wins)
+// and rewire the kvsheet views. GENERATIVE + idempotent: fires on every open,
+// so a refreshed defaults segment flows its NEW keys in while user rows stand
+// (the install-once/usercfg pattern). The drain applies via sheets' kv.seed.
+const kvseedReqFn: Fn = (into: unknown, from: unknown) =>
+  ({ originKvSeed: { into: String(into ?? ""), from: String(from ?? "") } });
 // =rename(target, newName) — retitle a sheet or view tab (by title or segment
 // name; cel keys never re-key — the alias model). GENERATIVE + idempotent.
 const renameReqFn: Fn = (target: unknown, name: unknown) =>
@@ -2697,7 +2773,7 @@ const withoutSlot = (n: VNLike, slotKey: string): VNLike => {
 const grokConfigReqFn: Fn = (project: unknown, url: unknown, anonkey: unknown, grokUrl: unknown) =>
   ({ grokConfig: { project: String(project ?? "default"), url: String(url ?? ""), anonkey: String(anonkey ?? ""), grokUrl: String(grokUrl ?? "") } });
 // =chatcard(project?) — drop the slick login + grok-chat card into the active
-// workbook's cardBook (the dom-view pane), as a reactive grok.ui formula. Pair it
+// workbook's cardBook (the dom-view pane), as a reactive chatpane formula. Pair it
 // with =grokconfig(...). Request→effect (state-arg wall).
 const chatcardReqFn: Fn = (project: unknown) => ({ chatCard: { project: String(project ?? "") } });
 // =mountcard(cellKey, title?) — mount ANOTHER cell's formula as a LIVE card in the
@@ -2899,6 +2975,20 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
           await (resolveFn(state, "setValue") as Fn)(state, `${name}.view`, el("div", { id: name, class: "pl-domview", style: "min-height:100%;padding:.2rem" }, children));
           result = { view: name, item: true };
         }
+      } else if (req.originKvSeed) {
+        // GENERATIVE + idempotent — =kvseed: merge shipped defaults into a
+        // user-owned kv segment (missing keys only — user rows never
+        // overwritten) via sheets' kv.seed, which also rewires the kvsheet
+        // views (a refreshed doc reverts them to the bootstrap form). The
+        // formula survives; the value is a small token.
+        const ks = req.originKvSeed as { into?: string; from?: string };
+        keepFormula = true;
+        const seedKv = resolveFn(state, "kv.seed") as Fn | undefined;
+        if (!seedKv) result = "(kvseed: the sheets segment is not loaded)";
+        else {
+          const r = await seedKv(state, ks) as { added?: string[] } | undefined;
+          result = { kvseed: String(ks.into ?? ""), ...(r?.added?.length ? { added: r.added.length } : {}) };
+        }
       } else if (req.originAppend) {
         // GENERATIVE + idempotent — =append (DISTINCT from =view): place this
         // cell's keyed slot at an XPATH. Pane-scoped ('viz' + xpath), pane
@@ -3073,7 +3163,7 @@ const effectsDrain: Fn = async (items: ChannelEnqueue[], stateArg?: unknown): Pr
         await (resolveFn(state, "setCelBatch") as Fn)(state, batch);
         result = `grokconfig: "${p}" → ${url || "(no url)"} — login + chat ready (segments loaded, config set)`;
       } else if (req.chatCard) {
-        // mount the reactive login+chat card (grok.ui) into the active workbook's
+        // mount the reactive login+chat card (=chatpane) into the active workbook's
         // cardBook (dom-view pane); open a workbook if none is active.
         const p = String((req.chatCard as { project?: string }).project || state.cels.get("grok.project")?.v || "default").replace(/[^\w.-]/g, "");
         await ensureSegments(state, ["grok", "supabase", "supabase-auth", "session", "window", "dom"]);
@@ -3397,6 +3487,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["desktop.taskClick", taskClickFn],
   ["desktop.graphbtn", graphbtnFn],
   ["desktop.stategraph", stategraphFn],
+  ["desktop.graphRefresh", graphRefreshFn],
   ["desktop.graphNode", graphNodeFn],
   ["origin.celtopo", celtopoFn],
   ["desktop.bg",        desktopBgFn],
@@ -3445,6 +3536,7 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["domview",        viewReqFn],   // deprecated pre-standardization name — old saved sheets still evaluate
   ["append",         appendReqFn],
   ["sheet",          sheetReqFn],
+  ["kvseed",         kvseedReqFn],
   ["rename",         renameReqFn],
   ["addCells",       addCellsReqFn],
   ["help",           helpReqFn],

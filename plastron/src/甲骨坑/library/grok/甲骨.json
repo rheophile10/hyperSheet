@@ -1,458 +1,480 @@
 {
-  "name": "grok",
-  "cels": [
-    {
-      "key": "grok.bots",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "grok.bots",
-        "segment": "grok",
-        "name": "bots",
-        "description": "The bestiary: a map of bot handle -> { name, persona, model } layered on the shared plastron primer. Edit/extend it like any cel; =addbot mints additional bots as grok.roster.<handle> cels (merged in). The xAI key lives server-side in the grok edge function, never here.",
-        "example": "=grok.bots.smith.persona"
-      },
-      "v": {
-        "smith": { "name": "Formula Smith", "persona": "Terse and precise. You forge the single cleanest formula for the job.", "model": "" },
-        "muse": { "name": "The Muse", "persona": "Playful and lateral. You find an unexpected but valid formula angle.", "model": "" },
-        "analyst": { "name": "The Analyst", "persona": "You prefer aggregates (SUM/AVERAGE/COUNTIF) and reason about the data in the sheet.", "model": "" }
-      }
+ "name": "grok",
+ "cels": [
+  {
+   "key": "grok.bots",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.bots",
+    "segment": "grok",
+    "name": "bots",
+    "description": "The bestiary: a map of bot handle -> { name, persona, model } layered on the shared plastron primer. Edit/extend it like any cel; =addbot mints additional bots as grok.roster.<handle> cels (merged in). The xAI key lives server-side in the grok edge function, never here.",
+    "example": "=grok.bots.smith.persona"
+   },
+   "v": {
+    "smith": {
+     "name": "Formula Smith",
+     "persona": "Terse and precise. You forge the single cleanest formula for the job.",
+     "model": ""
     },
-    {
-      "key": "grok.bot",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "grok.bot",
-        "segment": "grok",
-        "name": "bot",
-        "description": "The currently-selected bot handle (a key of the bestiary — grok.bots or a grok.roster.* mint). Default 'smith'. The formula-bar 🔮 trigger and the chat card ask this bot unless overridden (chat: '@handle …' routes one message)."
-      },
-      "v": "smith"
+    "muse": {
+     "name": "The Muse",
+     "persona": "Playful and lateral. You find an unexpected but valid formula angle.",
+     "model": ""
     },
-    {
-      "key": "grok.project",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "grok.project",
-        "segment": "grok",
-        "name": "project",
-        "description": "Which Supabase project (sb.<project>.url / .anonkey) hosts the grok edge function. Default 'default'."
-      },
-      "v": "default"
-    },
-    {
-      "key": "grok.transcript",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "grok.transcript",
-        "segment": "grok",
-        "name": "transcript",
-        "description": "The chat thread: a LIST OF MESSAGE DICTS [{role:'user'|'assistant'|'receipt', bot?, text, ts?, tool?}] (the collections hub form). grok.send appends turns; grok.applytools appends receipts ('wrote sheet9.B2 := =SUM(…)'); the chat card renders it reactively. Being a cel, it archives with the document and is formula-inspectable.",
-        "example": "=grok.transcript[-1].text"
-      },
-      "v": []
-    },
-    {
-      "key": "grok.scratch",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "grok.scratch",
-        "segment": "grok",
-        "name": "scratch",
-        "description": "The evaluate_formula tool's dry-run cel: the tool commits the candidate formula here (through the same sniff a keyboard commit gets) and returns the computed value — no sheet is touched."
-      },
-      "v": ""
-    },
-    {
-      "key": "grok.snap",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "grok.snap",
-        "segment": "grok",
-        "name": "snap",
-        "description": "'Snapshot before applying' toggle (write-back doctrine, default ON): when truthy and the checkpoint segment is loaded, grok.applytools takes a checkpoint ('grok-pre-apply') before a batch containing write_cell — checkpoint.restore is the undo story. Set false to skip."
-      },
-      "v": true
-    },
-    {
-      "key": "grok.context",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.context",
-        "segment": "grok",
-        "name": "grok.context",
-        "kind": "native",
-        "description": "(state, seg) -> string. ONE segment's SOURCE cells as plain lines (formula TEXT or value JSON), excluding sync control cels. Capped. The 🔮 formula-bar ask sends this; the chat card sends the whole workbook (grok.workbook-context)."
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.workbook-context",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.workbook-context",
-        "segment": "grok",
-        "name": "grok.workbook-context",
-        "kind": "native",
-        "description": "(state, wbRef?) -> string. The ACTIVE workbook (win.active, else the first win.*.state with a sheets tab list) as capped plain text: every sheet's dims + source cells (formula TEXT, value JSON) and every dom-view's formula — read from the wbframe state shape {sheets:[{ref,title}], views:[…]}. This is what chat bots see.",
-        "example": "=grok.workbook-context()  →  'workbook win.wb1.state …\\n## sheet doc (segment doc, 12×7)\\ndoc.A1 = 5 …'"
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.ask",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.ask",
-        "segment": "grok",
-        "name": "grok.ask",
-        "kind": "native",
-        "description": "(state, seg, question, botHandle?) -> {ok, reply, bot} | {ok:false, error}. Assemble [system(primer+persona), context+question], invoke the server-side grok proxy (supabase.invoke) WITH the tool surface (read_cells / write_cell / evaluate_formula / vocabulary); tool calls in the reply are applied through the user's commit path (receipted in grok.transcript, loop capped at 4 rounds) and the final reply — a plastron FORMULA for the bar — returns. xAI key stays server-side."
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.applytools",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.applytools",
-        "segment": "grok",
-        "name": "grok.applytools",
-        "kind": "native",
-        "description": "(state, toolCalls) -> [{role:'tool', tool_call_id, content}]. Apply a model reply's tool_calls THROUGH THE USER'S COMMIT PATH (typed-entry sniff -> setCel; read_cells/vocabulary read-only; evaluate_formula dry-runs in grok.scratch) and return the follow-up tool messages for the next round. Every application appends a receipt dict to grok.transcript; a write batch checkpoints first when grok.snap is on. No privileged mutation surface.",
-        "example": "grok.applytools(state, [{id:'1', function:{name:'write_cell', arguments:'{\"key\":\"sheet1.B2\",\"content\":\"=SUM(sheet1.A1:sheet1.A9)\"}'}}])"
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.url",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "grok.url",
-        "segment": "grok",
-        "name": "url",
-        "description": "The FULL chat-completion endpoint URL grok.fetch / the chat card POST to (e.g. a Supabase edge function /functions/v1/grok). Seed it from a gitignored .env — never commit a real project URL. Empty = the card falls back to supabase.invoke."
-      },
-      "v": ""
-    },
-    {
-      "key": "grok.email",
-      "celType": "ValueCel",
-      "metadata": { "key": "grok.email", "segment": "grok", "name": "email", "description": "Login form buffer: the email typed into the login card (grok.field writes it). Seed from .env for tests." },
-      "v": ""
-    },
-    {
-      "key": "grok.password",
-      "celType": "ValueCel",
-      "metadata": { "key": "grok.password", "segment": "grok", "name": "password", "description": "Login form buffer: the password typed into the login card. Never persisted to a segment archive; .env-seeded for tests." },
-      "v": ""
-    },
-    {
-      "key": "grok.question",
-      "celType": "ValueCel",
-      "metadata": { "key": "grok.question", "segment": "grok", "name": "question", "description": "Chat composer buffer: the message typed into the card's textarea (grok.field writes it). grok.send consumes and clears it." },
-      "v": ""
-    },
-    {
-      "key": "grok.reply",
-      "celType": "ValueCel",
-      "metadata": { "key": "grok.reply", "segment": "grok", "name": "reply", "description": "LEGACY MIRROR of grok.transcript: the shipped card formula (=grok.ui(…, grok.reply)) predates the transcript cel, so every transcript append is mirrored here to keep that formula reactive. New formulas should reference grok.transcript; drop the mirror once the card formula does." },
-      "v": ""
-    },
-    {
-      "key": "grok.status",
-      "celType": "ValueCel",
-      "metadata": { "key": "grok.status", "segment": "grok", "name": "status", "description": "Login status line ('✓ signed in as …' / '✗ error' / 'signed-out', written by grok.signin / grok.signout). The card view formula references it; without an explicit authed arg, the '✓' prefix is what flips the card from login to chat." },
-      "v": "signed-out"
-    },
-    {
-      "key": "grok.fetch",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.fetch",
-        "segment": "grok",
-        "name": "grok.fetch",
-        "kind": "native",
-        "description": "(state, question, botHandle?) -> {ok, reply, bot} | {ok:false, error}. DIRECT chat-completion fetch to the grok.url cel (from a gitignored .env), authorised with the signed-in user's Supabase JWT (resolved at the effect site, never a cel). Accepts {reply} or raw xAI {choices:[{message:{content}}]}."
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.field",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.field",
-        "segment": "grok",
-        "name": "grok.field",
-        "kind": "native",
-        "description": "(state, cellKey, event) -> void. An input's keystroke -> a cel (login/chat card buffers grok.email/password/question). Dispatch target for on('input', 'grok.field', '<cel>')."
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.signin",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.signin",
-        "segment": "grok",
-        "name": "grok.signin",
-        "kind": "native",
-        "description": "(state, project?) -> string. The login card's Sign-in button: supabase.auth signin with grok.email/grok.password, write grok.status, repaint. State-aware (the state-arg wall) — dispatched, never called from a formula."
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.signout",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.signout",
-        "segment": "grok",
-        "name": "grok.signout",
-        "kind": "native",
-        "description": "(state, project?) -> string. The chat header's Sign-out: supabase.auth signout (revoke + forget the session), grok.status := 'signed-out' (the card flips back to login), repaint. Dispatched, never called from a formula.",
-        "example": "on('click', 'grok.signout', 'default')"
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.send",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.send",
-        "segment": "grok",
-        "name": "grok.send",
-        "kind": "native",
-        "description": "(state, project?) -> string. The composer's Send: append the user turn to grok.transcript, send [chat primer + persona + grok.workbook-context, history] with the tool surface, run the tool loop (writes receipted), append the assistant turn. '@handle …' routes one message to that bot. Dispatched from the card, never from a formula.",
-        "example": "on('click', 'grok.send', 'default')"
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.key",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.key",
-        "segment": "grok",
-        "name": "grok.key",
-        "kind": "native",
-        "description": "(state, project, event) -> void. The composer textarea's keydown: Enter sends (grok.send), Shift+Enter newlines. Dispatch target for on('keydown', 'grok.key', '<project>').",
-        "example": "on('keydown', 'grok.key', 'default')"
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.pickbot",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.pickbot",
-        "segment": "grok",
-        "name": "grok.pickbot",
-        "kind": "native",
-        "description": "(state, handle) -> void. The chat header's bot chips: select the active bot (grok.bot := handle, if it exists in the bestiary) and repaint. Dispatched, never called from a formula.",
-        "example": "on('click', 'grok.pickbot', 'muse')"
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.addbot",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.addbot",
-        "segment": "grok",
-        "name": "grok.addbot",
-        "kind": "native",
-        "description": "(state, name, persona?, model?) -> handle. DISPATCHED bot mint: MERGE {name, persona, model} into the grok.bots dict under slug(name) (the cel chat formulas reference, so the new chip appears reactively), repaint. The formula twin is =addbot (genesis — a formula-owned grok.roster.* cel, swept with its formula).",
-        "example": "grok.addbot(state, 'Advisor', 'terse formula expert', 'grok-4')"
-      },
-      "locked": true
-    },
-    {
-      "key": "addbot",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "addbot",
-        "segment": "grok",
-        "name": "addbot",
-        "kind": "native",
-        "genesis": true,
-        "description": "(name, persona?, model?) GENESIS: mint a chat bot as a grok.roster.<handle> cel — a {name, persona, model} dict merged into the bestiary (grok.bots + roster). Formula-owned document recipe: it dehydrates with the sheet that authored it, and deleting the formula sweeps the bot away. '@handle …' in the chat routes a message to it.",
-        "example": "=addbot(\"advisor\", \"terse formula expert\", \"grok-4\")"
-      },
-      "locked": true
-    },
-    {
-      "key": "chatpane",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "chatpane",
-        "segment": "grok",
-        "name": "chatpane",
-        "kind": "native",
-        "description": "(transcript, draft, opts?) -> vnode. THE pure chat renderer (sheetbar pattern: instance cels as args) — author the whole chat from a GRID CELL by wrapping it in =view; referencing the cels IS the reactivity. Appkit-styled: opts.authed=false (pass signedIn(sb.<p>.auth)) gates to the login card (near-black header band, Email/Password, Sign in); signed in renders the thread — bot chips, slate-50 stream, Telegram bubbles (user solid #334155, bot/peer white-bordered — human:true dicts show 👤 name — receipts amber chips), rounded-full composer, Enter sends. opts: {project, authed, bots, bot, status, email, password} + instance wiring {title, draftCel, send, key, placeholder, chips:false} so a sibling surface (the room chat) reuses the renderer with its own verbs/cels. Inputs dispatch grok.field; buttons grok.signin/<send>/grok.pickbot/grok.signout.",
-        "example": "=view(\"chat\", chatpane(grok.transcript, grok.question, {project:\"default\", authed:signedIn(sb.default.auth), bots:grok.bots, bot:grok.bot, email:grok.email, password:grok.password, status:grok.status}))"
-      },
-      "locked": true
-    },
-    {
-      "key": "loginpane",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "loginpane",
-        "segment": "grok",
-        "name": "loginpane",
-        "kind": "native",
-        "description": "(opts) -> vnode. The login card as ITS OWN =view surface: signed out, the appkit login card (near-black band, Email/Password, Sign in -> grok.signin); signed in, the SESSION card — avatar initial, 'Signed in as <email>' (opts.session = sb.<p>.auth), Sign out. opts: {project, authed:signedIn(sb.<p>.auth), email, password, status, session}.",
-        "example": "=view(\"login\", loginpane({project:\"default\", authed:signedIn(sb.default.auth), email:grok.email, password:grok.password, status:grok.status, session:sb.default.auth}))"
-      },
-      "locked": true
-    },
-    {
-      "key": "roomspane",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "roomspane",
-        "segment": "grok",
-        "name": "roomspane",
-        "kind": "native",
-        "description": "(rooms, opts) -> vnode. The CHATROOMS view over appkit's conversations: one clickable row per room (🏛 lounge / 👥 group / 👤 dm, title, last-message snippet, unread badge) dispatching grok.pickroom; a ↻ Refresh button dispatching grok.loadrooms; the selected row (opts.room) highlighted; signed out -> the sign-in hint. opts: {project, authed, room, status}.",
-        "example": "=view(\"rooms\", roomspane(grok.rooms, {project:\"default\", authed:signedIn(sb.default.auth), room:grok.room}))"
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.rooms",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "grok.rooms",
-        "segment": "grok",
-        "name": "rooms",
-        "description": "The appkit chatrooms visible to the signed-in user: [{id, kind:'lounge'|'group'|'dm', title, last_body, last_at, unread}] — written by grok.loadrooms (the list_conversations RPC, RLS-scoped). roomspane renders it; referencing it in the pane formula IS the reactivity.",
-        "example": "=grok.rooms[0].title"
-      },
-      "v": []
-    },
-    {
-      "key": "grok.room",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "grok.room",
-        "segment": "grok",
-        "name": "room",
-        "description": "The SELECTED conversation id (a grok.rooms[].id uuid) — grok.pickroom writes it and loads that room's messages; grok.roomsend posts into it. Empty = no room selected."
-      },
-      "v": ""
-    },
-    {
-      "key": "grok.roomtitle",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "grok.roomtitle",
-        "segment": "grok",
-        "name": "roomtitle",
-        "description": "The selected room's display title (grok.pickroom writes it) — pass as chatpane's opts.title so the room-chat header names the room reactively."
-      },
-      "v": "Room chat"
-    },
-    {
-      "key": "grok.roomlog",
-      "celType": "ValueCel",
-      "metadata": {
-        "key": "grok.roomlog",
-        "segment": "grok",
-        "name": "roomlog",
-        "description": "The selected room's messages mapped into chatpane's dict shape: my rows {role:'user', text, ts}, everyone else {role:'assistant', human:true, bot:<profile name>, text, ts}. Written by grok.loadmsgs (RLS member-gated select on appkit's chat table); poll-on-send/switch. Distinct from grok.transcript (the standalone grok chat).",
-        "example": "=grok.roomlog[-1].text"
-      },
-      "v": []
-    },
-    {
-      "key": "grok.roomq",
-      "celType": "ValueCel",
-      "metadata": { "key": "grok.roomq", "segment": "grok", "name": "roomq", "description": "Room-chat composer buffer (grok.field writes it via chatpane's opts.draftCel). grok.roomsend consumes and clears it." },
-      "v": ""
-    },
-    {
-      "key": "grok.peers",
-      "celType": "ValueCel",
-      "metadata": { "key": "grok.peers", "segment": "grok", "name": "peers", "description": "profile id -> display name map (appkit's profile table), loaded with the rooms — labels other people's bubbles (👤 name) and derives DM titles." },
-      "v": {}
-    },
-    {
-      "key": "grok.loadrooms",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.loadrooms",
-        "segment": "grok",
-        "name": "grok.loadrooms",
-        "kind": "native",
-        "description": "(state, project?) -> rooms. Fetch the signed-in user's chatrooms from appkit's DB (the list_conversations RPC via supabase.data, user JWT -> RLS applies) into grok.rooms, refresh grok.peers, repaint. The roomspane ↻ Refresh button dispatches it; grok.signin auto-runs it when a rooms view is open. Errors land on grok.status.",
-        "example": "on('click', 'grok.loadrooms', 'default')"
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.loadmsgs",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.loadmsgs",
-        "segment": "grok",
-        "name": "grok.loadmsgs",
-        "kind": "native",
-        "description": "(state, project?) -> log. Load the selected room's messages (member-gated select on appkit's chat table, oldest-first, cap 200) into grok.roomlog, mapped to chatpane dicts (mine -> role:'user'; others -> role:'assistant' + human:true + their profile name; task/report bodies show as a tagged snippet). Poll-on-send/switch — live arrival via supabase.realtime's rev bump is future wiring.",
-        "example": "grok.loadmsgs(state, 'default')"
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.pickroom",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.pickroom",
-        "segment": "grok",
-        "name": "grok.pickroom",
-        "kind": "native",
-        "description": "(state, roomId) -> void. 'Select one and go into chat': grok.room := id, grok.roomtitle := its title, load the room's messages, then FOCUS the roomchat view tab (window.viewTab on the workbook hosting roomchat.view, then window.raise) and repaint. Dispatched by a roomspane row click.",
-        "example": "on('click', 'grok.pickroom', '00000000-0000-0000-0000-000000000001')"
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.roomsend",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.roomsend",
-        "segment": "grok",
-        "name": "grok.roomsend",
-        "kind": "native",
-        "description": "(state, project?) -> string. Send grok.roomq into the selected appkit room: an RLS-gated INSERT into the chat table AS YOURSELF (author_id = your auth uid), '@*handle' summons appkit's bot-responder with the new chat_id (fire-and-forget — appkit's own mention contract), reload the log, repaint. Sibling of grok.send (the standalone grok chat), never an overload.",
-        "example": "on('click', 'grok.roomsend', 'default')"
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.roomkey",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.roomkey",
-        "segment": "grok",
-        "name": "grok.roomkey",
-        "kind": "native",
-        "description": "(state, project, event) -> void. The room composer's keydown: Enter sends (grok.roomsend), Shift+Enter newlines. Pass as chatpane's opts.key in the room-chat formula.",
-        "example": "on('keydown', 'grok.roomkey', 'default')"
-      },
-      "locked": true
-    },
-    {
-      "key": "grok.ui",
-      "celType": "LockedLambdaCel",
-      "metadata": {
-        "key": "grok.ui",
-        "segment": "grok",
-        "name": "grok.ui",
-        "kind": "native",
-        "description": "(project, email, password, status, question, thread, authed?, bots?, bot?) -> vnode. Positional compat wrapper over chatpane — the =chatcard cardBook formula's entry. `thread` is the grok.transcript list (grok.reply mirrors it; a plain string renders as one bot bubble); `authed` is signedIn(sb.<p>.auth), defaulting to the '✓' status prefix. New docs should author chatpane from a grid cell instead.",
-        "example": "=grok.ui('default', grok.email, grok.password, grok.status, grok.question, grok.transcript, signedIn(sb.default.auth), grok.bots, grok.bot)"
-      },
-      "locked": true
+    "analyst": {
+     "name": "The Analyst",
+     "persona": "You prefer aggregates (SUM/AVERAGE/COUNTIF) and reason about the data in the sheet.",
+     "model": ""
     }
-  ]
+   }
+  },
+  {
+   "key": "grok.bot",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.bot",
+    "segment": "grok",
+    "name": "bot",
+    "description": "The currently-selected bot handle (a key of the bestiary — grok.bots or a grok.roster.* mint). Default 'smith'. The formula-bar 🔮 trigger and the chat card ask this bot unless overridden (chat: '@handle …' routes one message)."
+   },
+   "v": "smith"
+  },
+  {
+   "key": "grok.project",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.project",
+    "segment": "grok",
+    "name": "project",
+    "description": "Which Supabase project (sb.<project>.url / .anonkey) hosts the grok edge function. Default 'default'."
+   },
+   "v": "default"
+  },
+  {
+   "key": "grok.transcript",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.transcript",
+    "segment": "grok",
+    "name": "transcript",
+    "description": "The chat thread: a LIST OF MESSAGE DICTS [{role:'user'|'assistant'|'receipt', bot?, text, ts?, tool?}] (the collections hub form). grok.send appends turns; grok.applytools appends receipts ('wrote sheet9.B2 := =SUM(…)'); the chat card renders it reactively. Being a cel, it archives with the document and is formula-inspectable.",
+    "example": "=grok.transcript[-1].text"
+   },
+   "v": []
+  },
+  {
+   "key": "grok.scratch",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.scratch",
+    "segment": "grok",
+    "name": "scratch",
+    "description": "The evaluate_formula tool's dry-run cel: the tool commits the candidate formula here (through the same sniff a keyboard commit gets) and returns the computed value — no sheet is touched."
+   },
+   "v": ""
+  },
+  {
+   "key": "grok.snap",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.snap",
+    "segment": "grok",
+    "name": "snap",
+    "description": "'Snapshot before applying' toggle (write-back doctrine, default ON): when truthy and the checkpoint segment is loaded, grok.applytools takes a checkpoint ('grok-pre-apply') before a batch containing write_cell — checkpoint.restore is the undo story. Set false to skip."
+   },
+   "v": true
+  },
+  {
+   "key": "grok.context",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.context",
+    "segment": "grok",
+    "name": "grok.context",
+    "kind": "native",
+    "description": "(state, seg) -> string. ONE segment's SOURCE cells as plain lines (formula TEXT or value JSON), excluding sync control cels. Capped. The 🔮 formula-bar ask sends this; the chat card sends the whole workbook (grok.workbook-context)."
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.workbook-context",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.workbook-context",
+    "segment": "grok",
+    "name": "grok.workbook-context",
+    "kind": "native",
+    "description": "(state, wbRef?) -> string. The ACTIVE workbook (win.active, else the first win.*.state with a sheets tab list) as capped plain text: every sheet's dims + source cells (formula TEXT, value JSON) and every dom-view's formula — read from the wbframe state shape {sheets:[{ref,title}], views:[…]}. This is what chat bots see.",
+    "example": "=grok.workbook-context()  →  'workbook win.wb1.state …\\n## sheet doc (segment doc, 12×7)\\ndoc.A1 = 5 …'"
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.ask",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.ask",
+    "segment": "grok",
+    "name": "grok.ask",
+    "kind": "native",
+    "description": "(state, seg, question, botHandle?) -> {ok, reply, bot} | {ok:false, error}. Assemble [system(primer+persona), context+question], invoke the server-side grok proxy (supabase.invoke) WITH the tool surface (read_cells / write_cell / evaluate_formula / vocabulary); tool calls in the reply are applied through the user's commit path (receipted in grok.transcript, loop capped at 4 rounds) and the final reply — a plastron FORMULA for the bar — returns. xAI key stays server-side."
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.applytools",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.applytools",
+    "segment": "grok",
+    "name": "grok.applytools",
+    "kind": "native",
+    "description": "(state, toolCalls) -> [{role:'tool', tool_call_id, content}]. Apply a model reply's tool_calls THROUGH THE USER'S COMMIT PATH (typed-entry sniff -> setCel; read_cells/vocabulary read-only; evaluate_formula dry-runs in grok.scratch) and return the follow-up tool messages for the next round. Every application appends a receipt dict to grok.transcript; a write batch checkpoints first when grok.snap is on. No privileged mutation surface.",
+    "example": "grok.applytools(state, [{id:'1', function:{name:'write_cell', arguments:'{\"key\":\"sheet1.B2\",\"content\":\"=SUM(sheet1.A1:sheet1.A9)\"}'}}])"
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.url",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.url",
+    "segment": "grok",
+    "name": "url",
+    "description": "The FULL chat-completion endpoint URL the chat tool loop POSTs to (chatLoop auto path) (e.g. a Supabase edge function /functions/v1/grok). Seed it from a gitignored .env — never commit a real project URL. Empty = the card falls back to supabase.invoke."
+   },
+   "v": ""
+  },
+  {
+   "key": "grok.email",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.email",
+    "segment": "grok",
+    "name": "email",
+    "description": "Login form buffer: the email typed into the login card (grok.field writes it). Seed from .env for tests."
+   },
+   "v": ""
+  },
+  {
+   "key": "grok.password",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.password",
+    "segment": "grok",
+    "name": "password",
+    "description": "Login form buffer: the password typed into the login card. Never persisted to a segment archive; .env-seeded for tests."
+   },
+   "v": ""
+  },
+  {
+   "key": "grok.question",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.question",
+    "segment": "grok",
+    "name": "question",
+    "description": "Chat composer buffer: the message typed into the card's textarea (grok.field writes it). grok.send consumes and clears it."
+   },
+   "v": ""
+  },
+  {
+   "key": "grok.status",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.status",
+    "segment": "grok",
+    "name": "status",
+    "description": "Login status line ('✓ signed in as …' / '✗ error' / 'signed-out', written by grok.signin / grok.signout). The card view formula references it; without an explicit authed arg, the '✓' prefix is what flips the card from login to chat."
+   },
+   "v": "signed-out"
+  },
+  {
+   "key": "grok.field",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.field",
+    "segment": "grok",
+    "name": "grok.field",
+    "kind": "native",
+    "description": "(state, cellKey, event) -> void. An input's keystroke -> a cel (login/chat card buffers grok.email/password/question). Dispatch target for on('input', 'grok.field', '<cel>')."
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.signin",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.signin",
+    "segment": "grok",
+    "name": "grok.signin",
+    "kind": "native",
+    "description": "(state, project?) -> string. The login card's Sign-in button: supabase.auth signin with grok.email/grok.password, write grok.status, repaint. State-aware (the state-arg wall) — dispatched, never called from a formula."
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.signout",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.signout",
+    "segment": "grok",
+    "name": "grok.signout",
+    "kind": "native",
+    "description": "(state, project?) -> string. The chat header's Sign-out: supabase.auth signout (revoke + forget the session), grok.status := 'signed-out' (the card flips back to login), repaint. Dispatched, never called from a formula.",
+    "example": "on('click', 'grok.signout', 'default')"
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.send",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.send",
+    "segment": "grok",
+    "name": "grok.send",
+    "kind": "native",
+    "description": "(state, project?) -> string. The composer's Send: append the user turn to grok.transcript, send [chat primer + persona + grok.workbook-context, history] with the tool surface, run the tool loop (writes receipted), append the assistant turn. '@handle …' routes one message to that bot. Dispatched from the card, never from a formula.",
+    "example": "on('click', 'grok.send', 'default')"
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.key",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.key",
+    "segment": "grok",
+    "name": "grok.key",
+    "kind": "native",
+    "description": "(state, project, event) -> void. The composer textarea's keydown: Enter sends (grok.send), Shift+Enter newlines. Dispatch target for on('keydown', 'grok.key', '<project>').",
+    "example": "on('keydown', 'grok.key', 'default')"
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.pickbot",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.pickbot",
+    "segment": "grok",
+    "name": "grok.pickbot",
+    "kind": "native",
+    "description": "(state, handle) -> void. The chat header's bot chips: select the active bot (grok.bot := handle, if it exists in the bestiary) and repaint. Dispatched, never called from a formula.",
+    "example": "on('click', 'grok.pickbot', 'muse')"
+   },
+   "locked": true
+  },
+  {
+   "key": "addbot",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "addbot",
+    "segment": "grok",
+    "name": "addbot",
+    "kind": "native",
+    "genesis": true,
+    "description": "(name, persona?, model?) GENESIS: mint a chat bot as a grok.roster.<handle> cel — a {name, persona, model} dict merged into the bestiary (grok.bots + roster). Formula-owned document recipe: it dehydrates with the sheet that authored it, and deleting the formula sweeps the bot away. '@handle …' in the chat routes a message to it.",
+    "example": "=addbot(\"advisor\", \"terse formula expert\", \"grok-4\")"
+   },
+   "locked": true
+  },
+  {
+   "key": "chatpane",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "chatpane",
+    "segment": "grok",
+    "name": "chatpane",
+    "kind": "native",
+    "description": "(transcript, draft, opts?) -> vnode. THE pure chat renderer (sheetbar pattern: instance cels as args) — author the whole chat from a GRID CELL by wrapping it in =view; referencing the cels IS the reactivity. Appkit-styled: opts.authed=false (pass signedIn(sb.<p>.auth)) gates to the login card (near-black header band, Email/Password, Sign in); signed in renders the thread — bot chips, slate-50 stream, Telegram bubbles (user solid #334155, bot/peer white-bordered — human:true dicts show 👤 name — receipts amber chips), rounded-full composer, Enter sends. opts: {project, authed, bots, bot, status, email, password} + instance wiring {title, draftCel, send, key, placeholder, chips:false} so a sibling surface (the room chat) reuses the renderer with its own verbs/cels. Inputs dispatch grok.field; buttons grok.signin/<send>/grok.pickbot/grok.signout.",
+    "example": "=view(\"chat\", chatpane(grok.transcript, grok.question, {project:\"default\", authed:signedIn(sb.default.auth), bots:grok.bots, bot:grok.bot, email:grok.email, password:grok.password, status:grok.status}))"
+   },
+   "locked": true
+  },
+  {
+   "key": "loginpane",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "loginpane",
+    "segment": "grok",
+    "name": "loginpane",
+    "kind": "native",
+    "description": "(opts) -> vnode. The login card as ITS OWN =view surface: signed out, the appkit login card (near-black band, Email/Password, Sign in -> grok.signin); signed in, the SESSION card — avatar initial, 'Signed in as <email>' (opts.session = sb.<p>.auth), Sign out. opts: {project, authed:signedIn(sb.<p>.auth), email, password, status, session}.",
+    "example": "=view(\"login\", loginpane({project:\"default\", authed:signedIn(sb.default.auth), email:grok.email, password:grok.password, status:grok.status, session:sb.default.auth}))"
+   },
+   "locked": true
+  },
+  {
+   "key": "roomspane",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "roomspane",
+    "segment": "grok",
+    "name": "roomspane",
+    "kind": "native",
+    "description": "(rooms, opts) -> vnode. The CHATROOMS view over appkit's conversations: one clickable row per room (🏛 lounge / 👥 group / 👤 dm, title, last-message snippet, unread badge) dispatching grok.pickroom; a ↻ Refresh button dispatching grok.loadrooms; the selected row (opts.room) highlighted; signed out -> the sign-in hint. opts: {project, authed, room, status}.",
+    "example": "=view(\"rooms\", roomspane(grok.rooms, {project:\"default\", authed:signedIn(sb.default.auth), room:grok.room}))"
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.rooms",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.rooms",
+    "segment": "grok",
+    "name": "rooms",
+    "description": "The appkit chatrooms visible to the signed-in user: [{id, kind:'lounge'|'group'|'dm', title, last_body, last_at, unread}] — written by grok.loadrooms (the list_conversations RPC, RLS-scoped). roomspane renders it; referencing it in the pane formula IS the reactivity.",
+    "example": "=grok.rooms[0].title"
+   },
+   "v": []
+  },
+  {
+   "key": "grok.room",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.room",
+    "segment": "grok",
+    "name": "room",
+    "description": "The SELECTED conversation id (a grok.rooms[].id uuid) — grok.pickroom writes it and loads that room's messages; grok.roomsend posts into it. Empty = no room selected."
+   },
+   "v": ""
+  },
+  {
+   "key": "grok.roomtitle",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.roomtitle",
+    "segment": "grok",
+    "name": "roomtitle",
+    "description": "The selected room's display title (grok.pickroom writes it) — pass as chatpane's opts.title so the room-chat header names the room reactively."
+   },
+   "v": "Room chat"
+  },
+  {
+   "key": "grok.roomlog",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.roomlog",
+    "segment": "grok",
+    "name": "roomlog",
+    "description": "The selected room's messages mapped into chatpane's dict shape: my rows {role:'user', text, ts}, everyone else {role:'assistant', human:true, bot:<profile name>, text, ts}. Written by grok.loadmsgs (RLS member-gated select on appkit's chat table); poll-on-send/switch. Distinct from grok.transcript (the standalone grok chat).",
+    "example": "=grok.roomlog[-1].text"
+   },
+   "v": []
+  },
+  {
+   "key": "grok.roomq",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.roomq",
+    "segment": "grok",
+    "name": "roomq",
+    "description": "Room-chat composer buffer (grok.field writes it via chatpane's opts.draftCel). grok.roomsend consumes and clears it."
+   },
+   "v": ""
+  },
+  {
+   "key": "grok.peers",
+   "celType": "ValueCel",
+   "metadata": {
+    "key": "grok.peers",
+    "segment": "grok",
+    "name": "peers",
+    "description": "profile id -> display name map (appkit's profile table), loaded with the rooms — labels other people's bubbles (👤 name) and derives DM titles."
+   },
+   "v": {}
+  },
+  {
+   "key": "grok.loadrooms",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.loadrooms",
+    "segment": "grok",
+    "name": "grok.loadrooms",
+    "kind": "native",
+    "description": "(state, project?) -> rooms. Fetch the signed-in user's chatrooms from appkit's DB (the list_conversations RPC via supabase.data, user JWT -> RLS applies) into grok.rooms, refresh grok.peers, repaint. The roomspane ↻ Refresh button dispatches it; grok.signin auto-runs it when a rooms view is open. Errors land on grok.status.",
+    "example": "on('click', 'grok.loadrooms', 'default')"
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.loadmsgs",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.loadmsgs",
+    "segment": "grok",
+    "name": "grok.loadmsgs",
+    "kind": "native",
+    "description": "(state, project?) -> log. Load the selected room's messages (member-gated select on appkit's chat table, oldest-first, cap 200) into grok.roomlog, mapped to chatpane dicts (mine -> role:'user'; others -> role:'assistant' + human:true + their profile name; task/report bodies show as a tagged snippet). Poll-on-send/switch — live arrival via supabase.realtime's rev bump is future wiring.",
+    "example": "grok.loadmsgs(state, 'default')"
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.pickroom",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.pickroom",
+    "segment": "grok",
+    "name": "grok.pickroom",
+    "kind": "native",
+    "description": "(state, roomId) -> void. 'Select one and go into chat': grok.room := id, grok.roomtitle := its title, load the room's messages, then FOCUS the roomchat view tab (window.viewTab on the workbook hosting roomchat.view, then window.raise) and repaint. Dispatched by a roomspane row click.",
+    "example": "on('click', 'grok.pickroom', '00000000-0000-0000-0000-000000000001')"
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.roomsend",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.roomsend",
+    "segment": "grok",
+    "name": "grok.roomsend",
+    "kind": "native",
+    "description": "(state, project?) -> string. Send grok.roomq into the selected appkit room: an RLS-gated INSERT into the chat table AS YOURSELF (author_id = your auth uid), '@*handle' summons appkit's bot-responder with the new chat_id (fire-and-forget — appkit's own mention contract), reload the log, repaint. Sibling of grok.send (the standalone grok chat), never an overload.",
+    "example": "on('click', 'grok.roomsend', 'default')"
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.roomkey",
+   "celType": "LockedLambdaCel",
+   "metadata": {
+    "key": "grok.roomkey",
+    "segment": "grok",
+    "name": "grok.roomkey",
+    "kind": "native",
+    "description": "(state, project, event) -> void. The room composer's keydown: Enter sends (grok.roomsend), Shift+Enter newlines. Pass as chatpane's opts.key in the room-chat formula.",
+    "example": "on('keydown', 'grok.roomkey', 'default')"
+   },
+   "locked": true
+  },
+  {
+   "key": "grok.primer",
+   "celType": "ValueCel",
+   "v": "",
+   "metadata": {
+    "key": "grok.primer",
+    "segment": "grok",
+    "name": "primer",
+    "description": "System prompt for grok.ask (the formula-bar 🔮 assistant). EMPTY = the built-in default; set this cell to OVERRIDE it. The token {seg} is replaced with the active sheet's segment name. The bot's persona (grok.bots[handle].persona) is appended after.",
+    "example": "grok.primer := \"You are a terse formula generator for {seg}. Output one = formula.\""
+   }
+  },
+  {
+   "key": "grok.chatprimer",
+   "celType": "ValueCel",
+   "v": "",
+   "metadata": {
+    "key": "grok.chatprimer",
+    "segment": "grok",
+    "name": "chatprimer",
+    "description": "System prompt for grok.send (the chat pane, tool-aware). EMPTY = the built-in default (documents read_cells/write_cell/evaluate_formula/vocabulary); set this cell to OVERRIDE it. The bot persona is appended after.",
+    "example": "grok.chatprimer := \"You are a spreadsheet copilot. Prefer write_cell over prose.\""
+   }
+  }
+ ]
 }

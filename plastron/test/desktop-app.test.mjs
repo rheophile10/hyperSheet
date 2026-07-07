@@ -55,6 +55,49 @@ test("taskbarBar: a chip per open window; active bordered, min dimmed, closed/do
   assert.ok(cls.some((c) => c.includes("min")), "the minimized window's chip is .min");
 });
 
+test("taskbarBar: every chip + the bar are OPAQUE — no element opacity, no alpha-hex backgrounds; minimized dims text only", async () => {
+  const s = await boot();
+  // active="win.am.state" AND min:1 → the worst case (minimize the focused window,
+  // which keeps focus): the chip is BOTH active-styled and minimized.
+  const bar = resolveFn(s, "taskbarBar")(
+    "win.am.state",
+    { ref: "win.idle.state", title: "Idle" },
+    { ref: "win.min.state", title: "Mini", min: 1 },
+    { ref: "win.am.state", title: "ActiveMin", min: 1 },
+  );
+  const chips = bar.children;
+  assert.equal(chips.length, 3, "idle + minimized + active-minimized all render");
+  const styleOf = (title) => String(chips.find((c) => c.children?.[0]?.text?.includes(title)).attrs.style);
+  const ALPHA_BG = /background:#[0-9a-f]{4}(?:[0-9a-f]{4})?\b/i;   // 4- or 8-digit hex background = translucent
+
+  for (const c of chips) {
+    const style = String(c.attrs.style);
+    // element opacity applies to the whole button incl. its background → banned outright.
+    assert.doesNotMatch(style, /opacity\s*:/, "no element opacity on any chip");
+    assert.doesNotMatch(style, ALPHA_BG, "no translucent alpha-hex chip background");
+    assert.match(style, /background:Canvas/, "every chip has an opaque Canvas background");
+  }
+
+  // minimized (incl. the active+min worst case) is dimmed by FOREGROUND only.
+  const min = styleOf("Mini"), am = styleOf("ActiveMin");
+  assert.match(min, /color:GrayText/, "minimized chip dims via GrayText, not opacity");
+  assert.match(min, /font-style:italic/, "minimized chip stays italic");
+  assert.match(am, /color:GrayText/, "active+min worst case still dims via GrayText");
+  assert.match(am, /font-style:italic/, "active+min worst case stays italic");
+  assert.doesNotMatch(am, /opacity\s*:/, "active+min worst case has no element opacity");
+
+  // idle (non-min) chip keeps normal foreground; active tint is opaque (Canvas base).
+  assert.match(styleOf("Idle"), /color:CanvasText/, "non-minimized chip uses CanvasText");
+  assert.match(am, /background:Canvas/, "the active tint sits on an opaque Canvas base");
+
+  // the bar surface itself: opaque + above the window band.
+  const barStyle = String(bar.attrs.style);
+  assert.doesNotMatch(barStyle, ALPHA_BG, "the bar background is opaque (no alpha-hex #8881)");
+  assert.match(barStyle, /background:Canvas/, "the bar has an opaque Canvas background");
+  const z = Number((barStyle.match(/z-index:(\d+)/) ?? [])[1]);
+  assert.ok(z >= 100000, `bar z-index (${z}) sits far above the window band (win.topz seed 100 + raises)`);
+});
+
 test("buildStateGraphSpec: one node per segment, sized by memory, origin-applications tinted distinctly", async () => {
   const s = await boot();
   const spec = origin.buildStateGraphSpec(s);
@@ -135,6 +178,31 @@ test("desktop.icons: desktop renders draggable positioned tiles; mobile falls ba
   assert.equal(mob.tag, "details", "mobile returns the collapsible nav, not desktop tiles");
 });
 
+test("desktop.icons: unpositioned tiles fill vertically then wrap into new left-to-right columns (availH budget)", async () => {
+  const s = await boot();
+  const item = resolveFn(s, "item");
+  const items = ["A", "B", "C", "D", "E"].map((l, i) => item(`x${i} ${l}`, `=a${i}()`));
+  const leftOf = (c) => Number(String(c.attrs.style).match(/left:(-?\d+)px/)[1]);
+  const topOf = (c) => Number(String(c.attrs.style).match(/top:(-?\d+)px/)[1]);
+
+  // availH 200 → perCol = floor((200-12)/90) = 2: two tiles per column, columns
+  // grow rightward from the left edge (COL_W 96: 16 → 112 → 208).
+  const desk = resolveFn(s, "desktop.icons")({}, false, 200, ...items);
+  assert.deepEqual(desk.children.map(leftOf), [16, 16, 112, 112, 208], "fill-then-wrap: 2 per column, new columns grow rightward from the left edge");
+  assert.deepEqual(desk.children.map(topOf), [12, 102, 12, 102, 12], "each column fills top→bottom (TOP 12, ICON_H 90)");
+  for (const t of desk.children.map(topOf)) assert.ok(t <= 200 - 90, `tile top ${t} clears the availH budget (never spills past the bottom)`);
+
+  // persisted position still wins, regardless of availH.
+  const pinned = resolveFn(s, "desktop.icons")({ "x2 C": [500, 400] }, false, 200, ...items);
+  assert.match(String(pinned.children[2].attrs.style), /left:500px;top:400px/, "an iconpos entry overrides its computed wrap slot");
+
+  // back-compat: omit availH (old (iconpos, mobile, …items) order) → Infinity →
+  // today's single column down the left edge.
+  const legacy = resolveFn(s, "desktop.icons")({}, false, ...items);
+  assert.deepEqual(legacy.children.map(leftOf), [16, 16, 16, 16, 16], "no availH → a single column at the left edge (x=16)");
+  assert.deepEqual(legacy.children.map(topOf), [12, 102, 192, 282, 372], "single column stacks straight down by ICON_H");
+});
+
 test("desktop icon drag updates desktop.iconpos; a drag past threshold suppresses the click-launch", async () => {
   const s = await boot();
   await resolveFn(s, "desktop.iconGrab")(s, "🐢 DOOM", { clientX: 100, clientY: 100 });
@@ -158,4 +226,26 @@ test("desktop.stategraph opens a real window-segment window (drag/resize/min/clo
   assert.equal(s.cels.has("win.stategraph.state"), true, "window state cel created");
   assert.equal(s.cels.has("win.stategraph.frame"), true, "self-mounting frame cel created");
   assert.equal(s.cels.has("fg.stategraph.spec"), true, "forcegraph spec laid out");
+});
+
+test("state-graph ⟳: the window carries the refresh tool; desktop.graphRefresh rebuilds the spec from CURRENT state", async () => {
+  const s = await boot();
+  await resolveFn(s, "ensureSegments")(s, ["window", "forcegraph"]);
+  await resolveFn(s, "desktop.stategraph")(s);
+  // the refresh tool rides the window state; wframe renders it in the titlebar
+  const tools = s.cels.get("win.stategraph.state").v.tools;
+  assert.equal(tools?.[0]?.dispatch, "desktop.graphRefresh", "⟳ tool dispatches desktop.graphRefresh");
+  const frame = resolveFn(s, "wframe")(s.cels.get("win.stategraph.state").v, "", null);
+  const bar = frame.children.find((c) => c.attrs?.class === "pl-titlebar");
+  const toolbox = bar.children.find((c) => c.attrs?.class === "pl-win-tools");
+  assert.equal(toolbox.children.length, 1, "titlebar renders the tool button");
+  assert.equal(toolbox.children[0].events.click.dispatch, "desktop.graphRefresh");
+
+  // a segment born AFTER open is invisible until ⟳ rebuilds the spec
+  const before = s.cels.get("fg.stategraph.spec").v.nodes.map((n) => n.key);
+  assert.equal(before.includes("late-seg"), false);
+  await resolveFn(s, "setCel")(s, "late.probe", { celType: "ValueCel", v: 1, metadata: { key: "late.probe", segment: "late-seg" } });
+  await resolveFn(s, "desktop.graphRefresh")(s);
+  const after = s.cels.get("fg.stategraph.spec").v.nodes.map((n) => n.key);
+  assert.equal(after.includes("late-seg"), true, "refresh picks up the new segment");
 });

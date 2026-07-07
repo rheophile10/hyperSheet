@@ -9,7 +9,7 @@
         "segment": "session",
         "name": "session.put",
         "kind": "native",
-        "description": "(state, name, tokens) - store a service's live session tokens ({ access, refresh?, exp?, meta? }; tokens may be an object or a JSON string) in the module-scope token store, and write a non-secret session.<name>.status cel ({ status: active, exp }) that formulas react to. The tokens NEVER become a cel value and NEVER enter an archive — only the status does. Called by auth providers (e.g. supabase-auth) on sign-in, not by user formulas."
+        "description": "(state, name, tokens) - store a service's live session tokens ({ access, refresh?, exp?, meta? }; tokens may be an object or a JSON string) in the module-scope token store, and write a non-secret session.<name>.status cel ({ status: active, exp }) that formulas react to. The tokens NEVER become a cel value and NEVER enter an archive — only the status does. Called by auth providers (e.g. supabase-auth) on sign-in, not by user formulas. Once the wallet is unlocked, the REFRESH token also persists to an ECDH-wrapped OPFS sidecar (session-token-persistence): unlocking the wallet on the next boot restores it via session.restore."
       },
       "locked": true
     },
@@ -48,6 +48,30 @@
         "description": "(state, name) - drop a service's tokens from the store (sign-out) and set session.<name>.status to { status: none }. After this the handle's resolver returns undefined."
       },
       "locked": true
+    },
+    {
+      "key": "session.restore",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "session.restore",
+        "segment": "session",
+        "name": "session.restore",
+        "kind": "native",
+        "description": "(state) -> restored names[]. After keystore.unlock: unwrap every wallet-wrapped refresh-token sidecar (/plastron/session/<name>.tok) back into the module-scope Map (refresh only - no access claim, no status write) and return the names; the caller fans out to each provider's refresh op (e.g. supabase.auth refresh) to mint fresh access tokens. Names already live in the Map are skipped; a sidecar the current wallet can't unwrap is left in place."
+      }
+    },
+    {
+      "key": "session.persist",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "session.persist",
+        "segment": "session",
+        "name": "session.persist",
+        "kind": "native",
+        "description": "(state) -> persisted names[]. Re-wrap every LIVE session's refresh token under the (now-unlocked) wallet into its OPFS sidecar - covers sign-ins that happened while the wallet was locked or absent. session.put persists automatically once the wallet is unlocked; session.forget deletes the sidecar."
+      }
     }
   ]
 }

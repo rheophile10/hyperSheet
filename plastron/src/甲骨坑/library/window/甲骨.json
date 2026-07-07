@@ -10,7 +10,7 @@
         "segment": "window",
         "name": "wframe",
         "kind": "native",
-        "description": "(state, active, ...contents) - render ONE window's chrome around the ACTIVE tab's content (contents[active]): titlebar (icon + name + minimize/fullscreen/close), a tab strip when the window has >=2 tabs, the body, and 8 resize handles (n/s/e/w + nw/ne/sw/se) so the window resizes from every edge and corner. `state` is the window state object { x,y,w,h,z,min,max,closed,title,icon,tabs:[{ref,title,icon}],active,dockedIn }; `active` is win.active; `contents` is one value per tab (the frame formula passes each tab's content cel). A window whose state has dockedIn set self-hides (its host renders it). Content-AGNOSTIC: a tab's content may be a sheet grid, a wasmcanvas, or any winapp body, so heterogeneous windows tab together."
+        "description": "(state, active, ...contents) - render ONE window's chrome around the ACTIVE tab's content (contents[active]): titlebar (icon + name + optional app-supplied tools + minimize/fullscreen/close; state.tools = [{icon,title,dispatch}], each tool dispatches its verb with the window ref as payload), a tab strip when the window has >=2 tabs, the body, and 8 resize handles (n/s/e/w + nw/ne/sw/se) so the window resizes from every edge and corner. `state` is the window state object { x,y,w,h,z,min,max,closed,title,icon,tabs:[{ref,title,icon}],active,dockedIn }; `active` is win.active; `contents` is one value per tab (the frame formula passes each tab's content cel). A window whose state has dockedIn set self-hides (its host renders it). Content-AGNOSTIC: a tab's content may be a sheet grid, a wasmcanvas, or any winapp body, so heterogeneous windows tab together."
       }
     },
     {

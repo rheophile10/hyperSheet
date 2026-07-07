@@ -13,7 +13,11 @@
          can't fetch arbitrary hosts); script-src omits 'unsafe-eval' so formula
          codegen can't run new Function — the engine's AST-walk fallback (gated
          on csp.eval-available) takes over. 'wasm-unsafe-eval' keeps the wasm
-         compilers (js/quickjs/py) working; CDNs pinned for Pyodide/confetti. -->
+         compilers (js/quickjs/py) working; CDNs pinned for Pyodide/confetti.
+         Pyodide package WHEELS (numpy, opencv-python, pillow, mpmath — loaded
+         on demand by py cells that import them, e.g. the ChaosEdgeSteg doc)
+         fetch from the same cdn.jsdelivr.net origin already in connect-src, so
+         no widening is needed. -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' blob: data: https://api.anthropic.com https://api.x.ai https://api.open-meteo.com https://geocoding-api.open-meteo.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com ws://localhost:* wss://localhost:* http://localhost:* http://127.0.0.1:* ws://127.0.0.1:* https://*.supabase.co wss://*.supabase.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; worker-src 'self' blob:;" />
     <title>🐢 plastron — cels interlinked</title>
     <!-- Open Graph / Twitter card (static; crawlers don't run JS or see the #f= hash,

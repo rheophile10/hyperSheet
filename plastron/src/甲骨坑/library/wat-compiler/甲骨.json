@@ -6,7 +6,7 @@
       "celType": "CompilerCel",
       "metadata": {
         "key": "wat", "segment": "wat-compiler", "name": "wat", "kind": "native",
-        "description": "WAT compiler. Compiles WebAssembly text-format source to a runtime Fn via wabt.js + WebAssembly.instantiate. Wraps the module's main export (or its single function export) as a callable Fn. Gated on csp.wasm-available."
+        "description": "WAT compiler. Compiles WebAssembly text-format source to a runtime Fn via wabt.js + WebAssembly.instantiate, exposing the chosen export (metadata.wasmExport, else prefer 'main', else the single export) and handing a metadata.imports provider its live instance (memory + all exports) through an onInstantiate hook — parity with wasm-bytes, so a shared-memory WAT module authored as legible WAT text on the sheet can own a memory and drive multiple exports. Gated on csp.wasm-available."
       },
       "locked": true
     },

@@ -5,8 +5,8 @@ import { moduleNames, moduleGenesis } from "../dist/甲骨坑/library/lang-modul
 
 // lang-module — Model B: a source file → one function-cel per public def.
 // (polyglot-language-segments.md). Parsing is language-aware; the emitted JS cels
-// are verified to actually compile + run through quickjs (offline; py/php same
-// convention but their runtimes aren't bundled here).
+// are verified to actually compile + run through quickjs (offline; py same
+// convention but its runtime isn't bundled here).
 
 test("moduleNames parses public top-level defs per language, skipping _private", () => {
   const js = "function _hav(t){return t}\nfunction haversine(a,b){return a+b}\nconst bearing = (a,b) => a-b\n";
@@ -14,9 +14,6 @@ test("moduleNames parses public top-level defs per language, skipping _private",
 
   const py = "def _mean(xs): pass\ndef summary(xs):\n    return _mean(xs)\ndef variance(xs): pass\n";
   assert.deepEqual(moduleNames(py, "py"), ["summary", "variance"], "py: top-level defs, no _mean/nested");
-
-  const php = "function _util($x){}\nfunction area($r){ return 3.14*$r*$r; }\n";
-  assert.deepEqual(moduleNames(php, "php"), ["area"], "php: user fns, no _util");
 });
 
 test("moduleGenesis emits one owned cel per public def (f = source + name)", () => {

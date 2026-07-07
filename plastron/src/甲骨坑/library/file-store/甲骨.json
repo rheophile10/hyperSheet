@@ -14,6 +14,18 @@
       "locked": true
     },
     {
+      "key": "fs.pickToCel",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "fs.pickToCel",
+        "segment": "file-store",
+        "name": "fs.pickToCel",
+        "kind": "native",
+        "description": "(state, celKey, changeEvent) - on('change') handler for an <input type=file>: base64-encodes the selected file's bytes and writes the string to the cel named by celKey via setValue. Mechanism for handing picked image/binary bytes onto the grid (e.g. into a py cell). No-op if no file was chosen."
+      },
+      "locked": true
+    },
+    {
       "key": "file-store.opfs-available",
       "celType": "ValueCel",
       "metadata": {

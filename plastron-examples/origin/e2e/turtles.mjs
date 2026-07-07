@@ -23,7 +23,7 @@ const browser = await chromium.launch({
   executablePath: "/usr/bin/google-chrome", headless: true,
   args: ["--no-sandbox", "--disable-dev-shm-usage", "--enable-unsafe-swiftshader"],
 });
-const page = await browser.newPage();
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const errs = []; page.on("pageerror", (e) => errs.push(String(e)));
 page.on("console", (m) => { if (m.type() === "error" && !/favicon|Failed to load resource/.test(m.text())) errs.push(m.text()); });
 
@@ -137,6 +137,51 @@ ok(last.b2 === 500 || last.b2 === "500", `the formula-bar commit landed (turtle_
 ok(last.hub === 500 || last.hub === "500", `the edit flowed into the hub-form dataset (B1[0].lifespan = ${JSON.stringify(last.hub)})`);
 const opsAfter = await page.evaluate(() => document.querySelector(".pl-wb-right #dashboard canvas")?.getAttribute("data-ops") ?? "");
 ok(opsBefore && opsAfter && opsBefore !== opsAfter, "the barchart re-rendered in the dashboard pane from the sheet edit");
+
+// 6) WHOLE-GRAPH VISIBILITY (the point of this card) at 1280×720, no manual resize
+// the workbook window fits inside the viewport (above the 46px taskbar band)
+last = await page.evaluate(() => {
+  const w = document.querySelector('.pl-window[data-win="win.turtle_charts.state"]');
+  if (!w) return null;
+  const r = w.getBoundingClientRect();
+  return { left: Math.round(r.left), top: Math.round(r.top), right: Math.round(r.right), bottom: Math.round(r.bottom) };
+});
+ok(!!last && last.left >= 0 && last.top >= 0 && last.right <= 1280 && last.bottom <= 720,
+  `the workbook window fits inside 1280×720 (${JSON.stringify(last)})`);
+
+// each canvas paints at its 480px attribute size — no CSS downscale (offsetWidth == width attr)
+last = await page.evaluate(() => [...document.querySelectorAll(".pl-wb-right #dashboard canvas")].map((c) => ({ attr: Number(c.getAttribute("width")), off: c.offsetWidth })));
+ok(last.length === 3 && last.every((c) => c.attr === 480 && c.off === c.attr),
+  `each canvas paints at its 480px attribute width, no CSS shrink (${JSON.stringify(last)})`);
+
+// the view pane needs NO horizontal scrolling
+last = await page.evaluate(() => {
+  const vb = document.querySelector(".pl-wb-right .pl-wb-vbody");
+  return vb ? { scrollW: vb.scrollWidth, clientW: vb.clientWidth } : null;
+});
+ok(!!last && last.scrollW <= last.clientW + 1, `no horizontal overflow in the view pane (scrollWidth ${last?.scrollW} ≤ clientWidth ${last?.clientW})`);
+
+// on open (no scrolling): the species select AND the entire FIRST chart are inside the pane's visible box
+last = await page.evaluate(() => {
+  const vb = document.querySelector(".pl-wb-right .pl-wb-vbody");
+  const sel = document.querySelector(".pl-wb-right #dashboard select");
+  const c0 = document.querySelector(".pl-wb-right #dashboard canvas");
+  if (!vb || !sel || !c0) return null;
+  const vr = vb.getBoundingClientRect(), sr = sel.getBoundingClientRect(), cr = c0.getBoundingClientRect();
+  const inside = (r) => r.left >= vr.left - 1 && r.right <= vr.right + 1 && r.top >= vr.top - 1 && r.bottom <= vr.bottom + 1;
+  return { selVisible: inside(sr), firstChartVisible: inside(cr) };
+});
+ok(!!last && last.selVisible, "the species <select> is fully visible on open");
+ok(!!last && last.firstChartVisible, "the ENTIRE first chart is fully visible on open (vertical scroll reaches the others)");
+
+// no chart label is ellipsized to '…' in any of the three canvases
+last = await page.evaluate(() => {
+  const ell = [];
+  for (const c of document.querySelectorAll(".pl-wb-right #dashboard canvas"))
+    for (const o of JSON.parse(c.getAttribute("data-ops") ?? "[]")) if (o.op === "text" && /…/.test(o.text)) ell.push(o.text);
+  return ell;
+});
+ok(Array.isArray(last) && last.length === 0, `no chart label is ellipsized to '…' (${JSON.stringify(last)})`);
 
 ok(errs.length === 0, `no page errors (${errs.length ? errs[0]?.slice(0, 200) : "clean"})`);
 

@@ -1,5 +1,5 @@
-import type { 甲骨, Cel, Fn } from "../../../types/index.js";
-import { bindNativeFns } from "../../../kernel/index.js";
+import type { 甲骨, Cel, Fn, State } from "../../../types/index.js";
+import { bindNativeFns, resolveFn } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
 
 // ============================================================================
@@ -442,8 +442,59 @@ const fsCommand: Fn = (async (op: unknown, path: unknown, to?: unknown, text?: u
   return `(unknown fs op: ${o})`;
 }) as Fn;
 
+// fs.pickToCel — the missing "picked-file bytes → base64 into a named cel"
+// bridge. An on('change') handler for an <input type=file>: it reads the
+// event's selected file, base64-encodes its raw bytes, and writes that
+// string to the cel named by the payload (via setValue, so the graph
+// advances). Mechanism, zero policy — the destination cel is an argument,
+// and no path/name is authored here (file-explorer's upload writes OPFS by
+// the file's own name; this writes the CALLER'S cel instead, the shape a
+// sheetapp needs to hand image bytes to a py cell). No-op if no file.
+interface PickFile { arrayBuffer: () => Promise<ArrayBuffer>; }
+interface PickEvent { target?: { files?: ArrayLike<PickFile> | null } }
+
+const bytesToBase64 = (bytes: Uint8Array): string => {
+  const g = globalThis as { btoa?: (s: string) => string };
+  let bin = "";
+  const CHUNK = 0x8000;                              // avoid arg-count limits
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  if (typeof g.btoa === "function") return g.btoa(bin);
+  // Non-DOM runtime without btoa: manual RFC-4648 encode (mechanism only).
+  const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 3) {
+    const b0 = bytes[i]!, b1 = bytes[i + 1], b2 = bytes[i + 2];
+    const n = (b0 << 16) | ((b1 ?? 0) << 8) | (b2 ?? 0);
+    out += A[(n >> 18) & 63]! + A[(n >> 12) & 63]!;
+    out += b1 === undefined ? "=" : A[(n >> 6) & 63]!;
+    out += b2 === undefined ? "=" : A[n & 63]!;
+  }
+  return out;
+};
+
+const pickToCel: Fn = (async (state: unknown, celKey: unknown, event: unknown): Promise<unknown> => {
+  const st = state as State;
+  const file = (event as PickEvent | undefined)?.target?.files?.[0];
+  if (!file) return st;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  // setValue runs the cascade (which fires dependents, including =view panes
+  // that read this cel) before it resolves.
+  await (resolveFn(st, "setValue") as Fn)(st, String(celKey ?? ""), bytesToBase64(bytes));
+  // A dispatch handler that writes a cel a =view reads must repaint — the dom
+  // event dispatcher is fire-and-forget. Same recipe as the generic input
+  // handler param.set (ecs): land the re-fired =view requests (origin.effects),
+  // then paint the DOM (dom.paint). Both guarded — no-op off-DOM.
+  const dr = resolveFn(st, "drain") as Fn | undefined;
+  if (dr && st.cels.get("origin.effects")) await dr(st, "origin.effects");
+  if (dr && st.cels.get("dom.paint")) await dr(st, "dom.paint");
+  return st;
+}) as Fn;
+
 const _cels = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["fs.command",            fsCommand],
+  ["fs.pickToCel",          pickToCel],
   ["fs.exists",             exists],
   ["fs.read",               read],
   ["fs.readText",           readText],

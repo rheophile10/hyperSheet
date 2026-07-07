@@ -22,7 +22,7 @@
             "key": "desktop.iconpos",
             "segment": "desktop",
             "name": "iconpos",
-            "description": "per-label icon positions { label: [x,y] }. Seeded {} so desktop.iconbar.frame's dep edge is LIVE from hydrate — else a drag (setValue iconpos) wouldn't re-render the icon (it'd teleport on drop)."
+            "description": "per-label icon positions { label: [x,y] }. Seeded empty so desktop.iconbar.frame's dep edge is LIVE from hydrate — else a drag (setValue iconpos) wouldn't re-render the icon (it'd teleport on drop). Unpositioned icons now fill top-to-bottom and wrap into new columns automatically (desktop.icons availH), so no manual second-column seed is needed; a dragged icon adds its own [x,y] entry here."
           },
           "v": {}
         },
@@ -59,7 +59,7 @@
             "parser": "infix",
             "description": "self-mounting app launcher: draggable desktop icons (non-mobile) or the collapsible nav (mobile). Sheet creates a new worksheet doc (do:origin.newsheet); Files/DOOM are origin-applications (app:); readme/keyboard/turtles are sheetapp origin-USER documents opened via doc: → origin.opendoc."
           },
-          "f": "=mount('.origin', desktop.icons(desktop.iconpos, viewport.mobile, item('▣ Origin', '元'), item('田 Sheet', 'do:origin.newsheet'), item('📁 Files', 'app:filesapp'), item('📖 Readme', 'doc:readme'), item('🎹 Keyboard', 'doc:keyboard'), item('💬 Chatrooms', 'doc:chatrooms'), item('📊 Turtles', 'doc:turtle_charts'), item('📋 Kanban', 'app:kanbanapp'), item('🐟 10k Boids', 'doc:boids10k'), item('🦠 Life', 'doc:life'), item('🐠 Boids', 'doc:boids'), item('🐢 DOOM', 'app:doomapp'), item('👤 Profile', 'app:profileapp')))"
+          "f": "=mount('.origin', desktop.icons(desktop.iconpos, viewport.mobile, viewport.h - 44, item('▣ Origin', '元'), item('田 Sheet', 'do:origin.newsheet'), item('📁 Files', 'app:filesapp'), item('📖 Readme', 'doc:readme'), item('🎹 Keyboard', 'doc:keyboard'), item('💬 Chatrooms', 'doc:chatrooms'), item('📊 Turtles', 'doc:turtle_charts'), item('📋 Kanban', 'doc:kanban'), item('🐟 10k Boids', 'doc:boids10k'), item('🦠 Life', 'doc:life'), item('🐠 Boids', 'doc:boids'), item('🕵️ ChaosEdgeSteg', 'doc:chaosedgesteg'), item('🕵️ NanoSteg', 'doc:nanostegapp'), item('🐢 DOOM', 'app:doomapp'), item('👤 Profile', 'doc:identity')))"
         },
         {
           "key": "desktop.graph.frame",
@@ -103,7 +103,7 @@
   "manifests": [
     {
       "name": "desktop",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "description": "the origin desktop shell (wallpaper, icons, taskbar, state graph)",
       "role": "user",
       "kind": "origin-application",

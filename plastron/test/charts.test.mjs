@@ -41,6 +41,46 @@ test("linechart: one polyline through all points + dots + gridlines", () => {
   assert.ok(lines.length >= 4, "three gridlines + the series");
 });
 
+test("linechart: the terminal x-label is clamped inside the box (interior labels unchanged)", () => {
+  const s = createInitialState();
+  // the shipped seven species, longest-labelled last ("Loggerhead") — the story's
+  // opening 'all' view; the terminal point sits at w−padR so its centered label
+  // overflowed the right edge on the pre-clamp verb.
+  const SPECIES = ["Galápagos", "Leatherback", "Green sea", "Box", "Snapping", "Painted", "Loggerhead"];
+  const SPEED = [0.3, 35, 32, 0.5, 2, 1.5, 24];
+  const w = 480, h = 300, PX = 9, EM = 0.52;           // EM = the verb's own em-width estimate (centered()/the clamp)
+  const widthOf = (t) => t.length * PX * EM;
+  const ops = resolveFn(s, "linechart")(SPECIES, SPEED, 0, 0, w, h);
+
+  // the x-axis labels sit on the bottom row (y = h − 5), one per point, in order
+  const xlabels = ops.filter((o) => o.op === "text" && o.y === h - 5);
+  assert.equal(xlabels.length, 7, "one x-axis label per point");
+  const poly = ops.find((o) => o.op === "line" && o.points.length === 7);
+  const cx = poly.points.map((p) => p[0]);              // px(i) — the point x's the labels center under
+
+  // (1) EVERY x-axis label lies fully within [0, w] — the §4 no-clip promise
+  for (const o of xlabels) {
+    assert.ok(o.x >= 0, `label '${o.text}' left edge in box (x=${o.x})`);
+    assert.ok(o.x + widthOf(o.text) <= w + 1e-9, `label '${o.text}' right edge in box (right=${o.x + widthOf(o.text)})`);
+  }
+
+  // (2) the LAST label WOULD overflow if left center-anchored (this is what the
+  //     pre-clamp verb did) and is now right-anchored to the box edge instead
+  const last = xlabels[6];
+  const centeredLast = cx[6] - widthOf(last.text) / 2;
+  assert.ok(centeredLast + widthOf(last.text) > w, "the terminal label would overflow under bare centering");
+  assert.ok(Math.abs(last.x - (w - widthOf(last.text))) < 1e-9, "the terminal label is right-anchored to the box edge");
+
+  // (3) INTERIOR labels are untouched — still exactly center-anchored (clamp no-op)
+  for (let i = 1; i <= 5; i++) {
+    const expected = cx[i] - widthOf(xlabels[i].text) / 2;
+    assert.ok(Math.abs(xlabels[i].x - expected) < 1e-9, `interior label ${i} ('${xlabels[i].text}') stays center-anchored`);
+  }
+
+  // (4) the FIRST label keeps its left edge in the box (left-clamp guard)
+  assert.ok(xlabels[0].x >= 0, "first label left edge stays in box");
+});
+
 test("piechart: wedges close the circle, shares match, legend rows", () => {
   const s = createInitialState();
   const ops = resolveFn(s, "piechart")(LABELS, VALUES, 0, 0, 420, 260);

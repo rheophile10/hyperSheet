@@ -1,0 +1,32 @@
+{
+  "name": "nanosteg",
+  "cels": [
+    {
+      "key": "nanosteg.host",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "nanosteg.host", "segment": "nanosteg", "name": "nanosteg.host", "kind": "native",
+        "description": "Imports provider for the NanoSteg WAT module: returns { imports:{}, onInstantiate } and captures the module's live instance (memory + exports) into a per-State registry when it instantiates. Named on the WAT cel's metadata.imports so the wat compiler's host-instance hook hands it the instance."
+      },
+      "locked": true
+    },
+    {
+      "key": "nanosteg.embed",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "nanosteg.embed", "segment": "nanosteg", "name": "nanosteg.embed", "kind": "native",
+        "description": "(rgba, w, h, payload, password, core) → RGBA8 buffer with payload hidden in the R/G/B LSBs. Writes the pixel/password/payload bytes into the captured WAT instance's memory at fixed protocol offsets, calls hash_password then embed, and reads the modified RGBA back. Pure byte-plumbing — the steg algorithm is the WAT source on the sheet. Returns a capacity CelError when the payload does not fit."
+      },
+      "locked": true
+    },
+    {
+      "key": "nanosteg.decode",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "nanosteg.decode", "segment": "nanosteg", "name": "nanosteg.decode", "kind": "native",
+        "description": "(rgba, w, h, password, core) → recovered UTF-8 text from the image alone (blind — no cover). Writes the pixels + password into the captured WAT instance's memory, calls hash_password then decode, and reads the payload back; a magic miss (wrong password) returns a readable warning string instead of throwing."
+      },
+      "locked": true
+    }
+  ]
+}

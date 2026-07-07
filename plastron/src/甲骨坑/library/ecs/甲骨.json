@@ -94,7 +94,7 @@
         "segment": "ecs",
         "name": "param.set",
         "kind": "native",
-        "description": "(state, celKey, event) - generic input->cel binding for on(): writes the event target's value to the cel named by the payload. Ranges/numbers write valueAsNumber, checkboxes write checked, everything else the string value. =dom('input', attr('type','range',...), on('input', 'param.set', 'ecs.cohesion'))."
+        "description": "(state, celKey, event) - generic input->cel binding for on(): writes the event target's value to the cel named by the payload. Ranges/numbers write valueAsNumber, checkboxes write checked, everything else the string value. A missing GRID-ADDRESS cel is born on first write (the sparse-commit contract - a shared recipe doesn't carry empty draft cells); missing NAMED cels still throw. =dom('input', attr('type','range',...), on('input', 'param.set', 'ecs.cohesion'))."
       }
     },
     {

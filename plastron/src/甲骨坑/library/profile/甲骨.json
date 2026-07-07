@@ -1,26 +1,227 @@
 {
   "name": "profile",
   "cels": [
-    { "key": "profile.p1",     "celType": "ValueCel", "metadata": { "key": "profile.p1",     "segment": "profile", "name": "p1",     "description": "draft passcode field (current/first). Non-secret draft; cleared after each action." }, "v": "" },
-    { "key": "profile.p2",     "celType": "ValueCel", "metadata": { "key": "profile.p2",     "segment": "profile", "name": "p2",     "description": "draft passcode field (confirm/new)." }, "v": "" },
-    { "key": "profile.p1b",    "celType": "ValueCel", "metadata": { "key": "profile.p1b",    "segment": "profile", "name": "p1b",    "description": "draft passcode field for the import-file flow." }, "v": "" },
-    { "key": "profile.nm",     "celType": "ValueCel", "metadata": { "key": "profile.nm",     "segment": "profile", "name": "nm",     "description": "draft display-name field." }, "v": "" },
-    { "key": "profile.imp",    "celType": "ValueCel", "metadata": { "key": "profile.imp",    "segment": "profile", "name": "imp",    "description": "draft import-blob field (pasted/loaded keystore file contents)." }, "v": "" },
-    { "key": "profile.msg",    "celType": "ValueCel", "metadata": { "key": "profile.msg",    "segment": "profile", "name": "msg",    "description": "the last action's result/status message shown under the form." }, "v": "" },
-    { "key": "profile.phrase", "celType": "ValueCel", "metadata": { "key": "profile.phrase", "segment": "profile", "name": "phrase", "description": "the revealed recovery phrase (only after Create / Show recovery phrase)." }, "v": "" },
-
-    { "key": "profileui",  "celType": "LockedLambdaCel", "metadata": { "key": "profileui",  "segment": "profile", "name": "profileui",  "kind": "native", "description": "(status, name, identity, p1, p2, nm, imp, msg, phrase) -> a PURE profile-window vnode. Renders create / unlock+import / unlocked (name, reshuffle, export, recovery-phrase, change-passcode, lock) by keystore.status." }, "locked": true },
-    { "key": "profilewin", "celType": "LockedLambdaCel", "metadata": { "key": "profilewin", "segment": "profile", "name": "profilewin", "kind": "native", "genesis": true, "description": "() GENESIS: the gen-2 profile WINDOW (self-mounting wframe over (profileui …)). The app:profileapp launcher calls it." }, "locked": true },
-
-    { "key": "profile.create",     "celType": "LockedLambdaCel", "metadata": { "key": "profile.create",     "segment": "profile", "name": "profile.create",     "kind": "native", "description": "read p1/p2/nm drafts -> keystore.create (passcodes must match) -> show the recovery phrase." }, "locked": true },
-    { "key": "profile.unlock",     "celType": "LockedLambdaCel", "metadata": { "key": "profile.unlock",     "segment": "profile", "name": "profile.unlock",     "kind": "native", "description": "read p1 -> keystore.unlock." }, "locked": true },
-    { "key": "profile.lock",       "celType": "LockedLambdaCel", "metadata": { "key": "profile.lock",       "segment": "profile", "name": "profile.lock",       "kind": "native", "description": "keystore.lock (sign-out)." }, "locked": true },
-    { "key": "profile.reshuffle",  "celType": "LockedLambdaCel", "metadata": { "key": "profile.reshuffle",  "segment": "profile", "name": "profile.reshuffle",  "kind": "native", "description": "keystore.reshuffle (new keypair; old kept in history)." }, "locked": true },
-    { "key": "profile.changepass", "celType": "LockedLambdaCel", "metadata": { "key": "profile.changepass", "segment": "profile", "name": "profile.changepass", "kind": "native", "description": "read p1(old)/p2(new) -> keystore.changePasscode." }, "locked": true },
-    { "key": "profile.setname",    "celType": "LockedLambdaCel", "metadata": { "key": "profile.setname",    "segment": "profile", "name": "profile.setname",    "kind": "native", "description": "read nm -> keystore.setName." }, "locked": true },
-    { "key": "profile.seed",       "celType": "LockedLambdaCel", "metadata": { "key": "profile.seed",       "segment": "profile", "name": "profile.seed",       "kind": "native", "description": "keystore.seedPhrase -> reveal the 12-word recovery phrase." }, "locked": true },
-    { "key": "profile.import",     "celType": "LockedLambdaCel", "metadata": { "key": "profile.import",     "segment": "profile", "name": "profile.import",     "kind": "native", "description": "read imp + p1b/p1 -> keystore.import (load a keystore file, the file:// path)." }, "locked": true },
-    { "key": "profile.importfile", "celType": "LockedLambdaCel", "metadata": { "key": "profile.importfile", "segment": "profile", "name": "profile.importfile", "kind": "native", "description": "(<input type=file> change) read the chosen file's text into the import draft." }, "locked": true },
-    { "key": "profile.export",     "celType": "LockedLambdaCel", "metadata": { "key": "profile.export",     "segment": "profile", "name": "profile.export",     "kind": "native", "description": "keystore.export -> trigger a browser download of plastron-identity.kc (sealed under the passcode)." }, "locked": true }
+    {
+      "key": "profile.p1",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "profile.p1",
+        "segment": "profile",
+        "name": "p1",
+        "description": "draft passcode field (current/first). Non-secret draft; cleared after each action."
+      },
+      "v": ""
+    },
+    {
+      "key": "profile.p2",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "profile.p2",
+        "segment": "profile",
+        "name": "p2",
+        "description": "draft passcode field (confirm/new)."
+      },
+      "v": ""
+    },
+    {
+      "key": "profile.p1b",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "profile.p1b",
+        "segment": "profile",
+        "name": "p1b",
+        "description": "draft passcode field for the import-file flow."
+      },
+      "v": ""
+    },
+    {
+      "key": "profile.nm",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "profile.nm",
+        "segment": "profile",
+        "name": "nm",
+        "description": "draft display-name field."
+      },
+      "v": ""
+    },
+    {
+      "key": "profile.imp",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "profile.imp",
+        "segment": "profile",
+        "name": "imp",
+        "description": "draft import-blob field (pasted/loaded keystore file contents)."
+      },
+      "v": ""
+    },
+    {
+      "key": "profile.msg",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "profile.msg",
+        "segment": "profile",
+        "name": "msg",
+        "description": "the last action's result/status message shown under the form."
+      },
+      "v": ""
+    },
+    {
+      "key": "profile.phrase",
+      "celType": "ValueCel",
+      "metadata": {
+        "key": "profile.phrase",
+        "segment": "profile",
+        "name": "phrase",
+        "description": "the revealed recovery phrase (only after Create / Show recovery phrase)."
+      },
+      "v": ""
+    },
+    {
+      "key": "profileui",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "profileui",
+        "segment": "profile",
+        "name": "profileui",
+        "kind": "native",
+        "description": "(status, name, identity, p1, p2, nm, imp, msg, phrase) -> a PURE profile-window vnode. Renders create / unlock+import / unlocked (name, reshuffle, export, recovery-phrase, change-passcode, lock) by keystore.status."
+      },
+      "locked": true
+    },
+    {
+      "key": "profilewin",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "profilewin",
+        "segment": "profile",
+        "name": "profilewin",
+        "kind": "native",
+        "genesis": true,
+        "description": "() GENESIS: the gen-2 profile WINDOW (self-mounting wframe over (profileui …)). Legacy standalone window — the 👤 Profile icon now opens the identity sheetapp doc (doc:identity) whose wallet =view renders profileui."
+      },
+      "locked": true
+    },
+    {
+      "key": "profile.create",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "profile.create",
+        "segment": "profile",
+        "name": "profile.create",
+        "kind": "native",
+        "description": "read p1/p2/nm drafts -> keystore.create (passcodes must match) -> show the recovery phrase."
+      },
+      "locked": true
+    },
+    {
+      "key": "profile.unlock",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "profile.unlock",
+        "segment": "profile",
+        "name": "profile.unlock",
+        "kind": "native",
+        "description": "read p1 -> keystore.unlock."
+      },
+      "locked": true
+    },
+    {
+      "key": "profile.lock",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "profile.lock",
+        "segment": "profile",
+        "name": "profile.lock",
+        "kind": "native",
+        "description": "keystore.lock (sign-out)."
+      },
+      "locked": true
+    },
+    {
+      "key": "profile.reshuffle",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "profile.reshuffle",
+        "segment": "profile",
+        "name": "profile.reshuffle",
+        "kind": "native",
+        "description": "keystore.reshuffle (new keypair; old kept in history)."
+      },
+      "locked": true
+    },
+    {
+      "key": "profile.changepass",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "profile.changepass",
+        "segment": "profile",
+        "name": "profile.changepass",
+        "kind": "native",
+        "description": "read p1(old)/p2(new) -> keystore.changePasscode."
+      },
+      "locked": true
+    },
+    {
+      "key": "profile.setname",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "profile.setname",
+        "segment": "profile",
+        "name": "profile.setname",
+        "kind": "native",
+        "description": "read nm -> keystore.setName."
+      },
+      "locked": true
+    },
+    {
+      "key": "profile.seed",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "profile.seed",
+        "segment": "profile",
+        "name": "profile.seed",
+        "kind": "native",
+        "description": "keystore.seedPhrase -> reveal the 12-word recovery phrase."
+      },
+      "locked": true
+    },
+    {
+      "key": "profile.import",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "profile.import",
+        "segment": "profile",
+        "name": "profile.import",
+        "kind": "native",
+        "description": "read imp + p1b/p1 -> keystore.import (load a keystore file, the file:// path)."
+      },
+      "locked": true
+    },
+    {
+      "key": "profile.importfile",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "profile.importfile",
+        "segment": "profile",
+        "name": "profile.importfile",
+        "kind": "native",
+        "description": "(<input type=file> change) read the chosen file's text into the import draft."
+      },
+      "locked": true
+    },
+    {
+      "key": "profile.export",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "profile.export",
+        "segment": "profile",
+        "name": "profile.export",
+        "kind": "native",
+        "description": "keystore.export -> trigger a browser download of plastron-identity.kc (sealed under the passcode)."
+      },
+      "locked": true
+    }
   ]
 }

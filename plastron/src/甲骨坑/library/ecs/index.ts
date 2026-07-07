@@ -314,7 +314,19 @@ const paramSet: Fn = async (state, celKey, event) => {
     : (t?.value ?? "");
   const set = resolveFn(state as State, "setValue") as Fn | undefined;
   if (!set) return null;
-  await set(state, String(celKey), v);                 // the cascade fires dependents (incl. =view re-contributions)
+  const key = String(celKey);
+  // sparse-grid commit: writing an EMPTY grid ADDRESS births the cel (the
+  // origin.key contract — a shared recipe doesn't carry empty draft cells, so
+  // a form's first write must mint them). Named cels must exist — typos throw.
+  const dot = key.lastIndexOf(".");
+  const addr = dot > 0 ? key.slice(dot + 1) : "";
+  if (!(state as State).cels.get(key) && /^[A-Z]+\d+$/.test(addr)) {
+    await (resolveFn(state as State, "setCel") as Fn)(state, key, {
+      celType: "ValueCel", v, metadata: { key, segment: key.slice(0, dot), name: addr },
+    });
+  } else {
+    await set(state, key, v);                          // the cascade fires dependents (incl. =view re-contributions)
+  }
   const dr = resolveFn(state as State, "drain") as Fn | undefined;
   // land the re-fired =view requests (request → ⧉ token + fresh pane slot),
   // then paint. The landing cascade itself recomposes the mount-composing

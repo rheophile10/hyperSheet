@@ -116,6 +116,66 @@ test("turtles: the dashboard doc — =rows pivot, =FILTER derivation, ONE =view 
   assert.ok(poly, "linechart: a 7-point polyline");
 });
 
+// every drawn op's extent, inside the canvas's own width/height attrs. Rects/
+// lines/circles/wedges are exact; text width is estimated at the verb's own
+// 0.52 em-factor (the same estimate centered()/the linechart clamp use — within
+// the design's ≤0.6px/char envelope). Returns the worst offender, or null.
+const EM = 0.52;
+const worstOverflow = (canvas) => {
+  const W = Number(canvas.attrs.width), H = Number(canvas.attrs.height);
+  let worst = null;
+  const bump = (x, y, o) => { const over = Math.max(x - W, -x, y - H, -y); if (over > 1e-9 && (!worst || over > worst.over)) worst = { op: o.op, text: o.text, x, y, over }; };
+  for (const o of opsOf(canvas)) {
+    if (o.op === "rect") { bump(o.x, o.y, o); bump(o.x + o.w, o.y + o.h, o); }
+    else if (o.op === "line") for (const [px, py] of o.points) bump(px, py, o);
+    else if (o.op === "circle") { bump(o.x - o.r, o.y - o.r, o); bump(o.x + o.r, o.y + o.r, o); }
+    else if (o.op === "wedge") { bump(o.cx - o.r, o.cy - o.r, o); bump(o.cx + o.r, o.cy + o.r, o); }
+    else if (o.op === "text") { const fpx = parseInt(o.font) || 10; bump(o.x, o.y - fpx, o); bump(o.x + o.text.length * fpx * EM, o.y, o); }
+  }
+  return worst;
+};
+
+test("turtles: every chart op is inside its canvas — nothing clips (root-cause pin)", async () => {
+  const s = await boot();
+  await openDoc(s, turtlesDoc, "turtle_charts");
+  const { canvases } = dashParts(s);
+  assert.equal(canvases.length, 3, "three canvases");
+  for (const c of canvases) {
+    assert.equal([Number(c.attrs.width), Number(c.attrs.height)].join("x"), "480x300", "each canvas is the enlarged 480×300 surface");
+    const worst = worstOverflow(c);
+    assert.equal(worst, null, `no op clips the canvas — worst: ${JSON.stringify(worst)}`);
+  }
+});
+
+test("turtles: no chart label is ellipsized and the pie legend shows all seven rows", async () => {
+  const s = await boot();
+  await openDoc(s, turtlesDoc, "turtle_charts");
+  const { canvases } = dashParts(s);
+  for (const c of canvases) {
+    const ell = opsOf(c).filter((o) => o.op === "text" && /…/.test(o.text)).map((o) => o.text);
+    assert.deepEqual(ell, [], "no '…'-clipped label in the chart");
+  }
+  const legend = opsOf(canvases[2]).filter((o) => o.op === "text" && /\(\d+%\)/.test(o.text));
+  assert.equal(legend.length, 7, "the pie legend lists all seven species (value + %)");
+  assert.ok(!opsOf(canvases[2]).some((o) => /\+\d+ more/.test(o.text ?? "")), "no '+N more' overflow row");
+});
+
+test("turtles: the manifest window block sizes the workbook; a doc without one keeps the default", async () => {
+  const s = await boot();
+  await openDoc(s, turtlesDoc, "turtle_charts");
+  const wb = s.cels.get("win.turtle_charts.state")?.v;
+  assert.deepEqual(
+    { x: wb.x, y: wb.y, w: wb.w, h: wb.h, split: wb.split },
+    { x: 48, y: 20, w: 1120, h: 640, split: 0.42 },
+    "renderWorkbook honored turtle_charts' manifest window geometry + split",
+  );
+  // a doc that declares NO window block still opens at the 820×540 / 0.58 default
+  const s2 = await boot();
+  await openDoc(s2, keyboardDoc, "keyboard");
+  const kb = s2.cels.get("win.keyboard.state")?.v;
+  assert.deepEqual({ w: kb.w, h: kb.h, split: kb.split }, { w: 820, h: 540, split: 0.58 }, "keyboard.json (no window block) keeps the default geometry");
+});
+
 test("turtles: the species filter (param.set → B2) re-derives B3 and re-renders EVERY chart", async () => {
   const s = await boot();
   await openDoc(s, turtlesDoc, "turtle_charts");

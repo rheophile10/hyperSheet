@@ -55,6 +55,17 @@ const box = (x: unknown, y: unknown, w: unknown, h: unknown): { x: number; y: nu
 const centered = (cx: number, y: number, s: string, fill: string, px = 10): Op =>
   ({ op: "text", x: cx - (s.length * px * 0.52) / 2, y, text: s, fill, font: `${px}px system-ui` });
 
+// like centered(), but keep the whole label inside [lo, hi] on x — computes the
+// same centered left-x, then clamps it into [lo, hi − estWidth] using the same
+// 0.52 em-width estimate centered() uses. A label that already fits is unmoved
+// (the clamp is a no-op); a label whose centered box would breach an edge is
+// nudged in — right-anchored at hi (last point) or left-anchored at lo (first).
+const centeredIn = (cx: number, y: number, s: string, fill: string, lo: number, hi: number, px = 10): Op => {
+  const w = s.length * px * 0.52;
+  const x = Math.max(lo, Math.min(cx - w / 2, hi - w));
+  return { op: "text", x, y, text: s, fill, font: `${px}px system-ui` };
+};
+
 const clip = (s: string, n: number): string => (s.length > n ? s.slice(0, Math.max(1, n - 1)) + "…" : s);
 const fmt = (v: number): string => String(Math.round(v * 10) / 10);
 const bgOp = (b: { x: number; y: number; w: number; h: number }): Op => ({ op: "rect", x: b.x, y: b.y, w: b.w, h: b.h, fill: BG });
@@ -86,7 +97,8 @@ const barchart: Fn = ((labels: unknown, values?: unknown, x?: unknown, y?: unkno
 }) as Fn;
 
 /** linechart(labels, values [, x y w h]) — one series as a polyline with
- *  point dots, three gridlines with value ticks, labels along the x axis. */
+ *  point dots, three gridlines with value ticks, and x-axis labels kept
+ *  within the chart box. */
 const linechart: Fn = ((labels: unknown, values?: unknown, x?: unknown, y?: unknown, w?: unknown, h?: unknown): Op[] => {
   const { labels: ls, values: vs } = series(labels, values);
   const b = box(x, y, w, h);
@@ -107,7 +119,10 @@ const linechart: Fn = ((labels: unknown, values?: unknown, x?: unknown, y?: unkn
   ops.push({ op: "line", points: vs.map((v, i) => [px(i), ny(v)]), stroke: color(0), lineWidth: 2 });
   vs.forEach((v, i) => {
     ops.push({ op: "circle", x: px(i), y: ny(v), r: 3, fill: color(0) });
-    ops.push(centered(px(i), b.y + b.h - 5, clip(ls[i]!, Math.max(3, Math.floor(plotW / Math.max(1, vs.length) / 5.5))), MUT, 9));
+    // x-axis label — bounds-clamped into the box so the terminal point's name
+    // (pinned at b.x + b.w − padR) can't spill past the right edge, nor a long
+    // first label past the left. Interior labels stay exactly center-anchored.
+    ops.push(centeredIn(px(i), b.y + b.h - 5, clip(ls[i]!, Math.max(3, Math.floor(plotW / Math.max(1, vs.length) / 5.5))), MUT, b.x, b.x + b.w, 9));
   });
   return ops;
 }) as Fn;

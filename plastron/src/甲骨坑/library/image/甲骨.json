@@ -1,0 +1,32 @@
+{
+  "name": "image",
+  "cels": [
+    {
+      "key": "image.decode",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "image.decode", "segment": "image", "name": "image.decode", "kind": "native",
+        "description": "(png) → { w, h, rgba }. Decode PNG bytes (Uint8Array, base64 string, or data: URL) to an RGBA8 pixel buffer and its dimensions — via the browser canvas (createImageBitmap + OffscreenCanvas) when present, else a dependency-free pure-JS PNG codec (8-bit RGB/RGBA). Returns a CelError on undecodable input."
+      },
+      "locked": true
+    },
+    {
+      "key": "image.encode",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "image.encode", "segment": "image", "name": "image.encode", "kind": "native",
+        "description": "(rgba, w, h) → base64 PNG. Encode an RGBA8 byte buffer of size 4·w·h to lossless 8-bit PNG bytes (base64), so LSBs survive the round trip. Returns a CelError if the buffer is too small."
+      },
+      "locked": true
+    },
+    {
+      "key": "image.fit",
+      "celType": "LockedLambdaCel",
+      "metadata": {
+        "key": "image.fit", "segment": "image", "name": "image.fit", "kind": "native",
+        "description": "(png, maxDim) → base64 PNG downscaled so max(w,h) ≤ maxDim (decode → resample → encode); a byte-preserving no-op when the image is already within bounds. maxDim is an argument — no policy here."
+      },
+      "locked": true
+    }
+  ]
+}

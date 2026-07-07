@@ -6,13 +6,13 @@
 // Each emitted cel is Model A with a different trailing callable: f = the whole
 // source + "\n" + the function name. The runtime evaluates the source (defining
 // every helper) and the last expression IS that function — verified for kind "js"
-// (js), and the same convention for "py" / "php".
+// (js), and the same convention for "py".
 //
 // Pure (source in, genesis-batch out): the names are PARSED, not executed, so the
 // generator needs no runtime. A `module(src, kind)` verb wraps this once a host
 // loads the segment; until then it's consumed by direct import (like segment-io).
 
-export type Lang = "js" | "py" | "php";
+export type Lang = "js" | "py";
 
 const RE: Record<Lang, RegExp[]> = {
   // top-level function declarations + assigned consts/lets (arrow or fn exprs)
@@ -22,8 +22,6 @@ const RE: Record<Lang, RegExp[]> = {
   ],
   // top-level `def name(` (column 0 — indented defs are nested/private)
   py: [/(?:^|\n)def[ \t]+([A-Za-z_]\w*)[ \t]*\(/g],
-  // `function name(` anywhere (php has no significant indentation)
-  php: [/function[ \t]+([A-Za-z_]\w*)[ \t]*\(/g],
 };
 
 /** Public definition names in `source` for `kind`. `_`-prefixed names are PRIVATE

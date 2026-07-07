@@ -157,6 +157,30 @@
       }
     },
     {
+      "key": "sheet.addrow",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "sheet.addrow",
+        "segment": "sheets",
+        "name": "sheet.addrow",
+        "kind": "native",
+        "description": "(state, {seg, from, clear?}) - a form's add button: append a RECORD row to a worksheet. Copies the CURRENT values of the `from` cels into columns A.. of the first free row (1 + the max populated row across those target columns), grows <seg>.dims to cover it, then resets each `clear` cel to ''. Pure mechanism - the dispatching formula authors ALL policy: which draft cels feed which columns (`from` order), the id rule (a visible next-id formula cell fed as a `from` entry), and which drafts reset. Drafts are read at CLICK time (the kv.mint pattern)."
+      }
+    },
+    {
+      "key": "kv.seed",
+      "celType": "LockedLambdaCel",
+      "locked": true,
+      "metadata": {
+        "key": "kv.seed",
+        "segment": "sheets",
+        "name": "kv.seed",
+        "kind": "native",
+        "description": "(state, {into, from}) - merge SHIPPED DEFAULTS into a user-owned kv segment: for each name in <from>.keys missing from <into>, copy the default cel's value (+description) and append the roster. NEVER overwrites an existing row - the user's value wins; re-seeding after a defaults refresh adds only NEW keys. Rewrites the kvsheet view formulas and settles. Deleting a user row = reset-to-default (the next seed re-adds it). Dispatched by the =kvseed generative formula."
+      }
+    },
+    {
       "key": "kvsheet",
       "celType": "LockedLambdaCel",
       "locked": true,

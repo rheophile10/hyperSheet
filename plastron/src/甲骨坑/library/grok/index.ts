@@ -28,18 +28,19 @@ const R = (state: State, k: string, ...a: unknown[]): unknown => (resolveFn(stat
 
 const CONTROL = (seg: string) => new Set([`${seg}.crdt`, `${seg}.writers`, `${seg}.hash`, `${seg}.datakey`]);
 
-// the shared formula primer (the bot's persona is appended). {seg} is the sheet.
-const primer = (seg: string): string =>
+// System prompts are TUNABLE cells, not baked TS (R2): primer() / chatPrimer()
+// read grok.primer / grok.chatprimer and substitute {seg}/{persona}. The
+// constants below are the DEFAULTS — used verbatim when the cell is absent or
+// blank, and are the seed cels' values. Edit the cell to retune the assistant.
+const PRIMER_DEFAULT =
   `You are a plastron spreadsheet assistant. Reply with EXACTLY ONE plastron formula and NOTHING else — no prose, no backticks, no code fences.\n` +
   `A formula starts with "=". Syntax is Excel-like infix:\n` +
-  `  arithmetic:  =${seg}.A1*2 + ${seg}.B1\n` +
-  `  functions:   =SUM(${seg}!A1:A10)   =IF(${seg}.A1>0,"yes","no")   =CONCATENATE(${seg}.A1," ",${seg}.B1)\n` +
-  `  cell refs use the sheet's segment prefix — cells in THIS sheet are named ${seg}.A1, ${seg}.B2, …; a RANGE uses the bang form ${seg}!A1:A10 (never dotted ends).\n` +
+  `  arithmetic:  ={seg}.A1*2 + {seg}.B1\n` +
+  `  functions:   =SUM({seg}!A1:A10)   =IF({seg}.A1>0,"yes","no")   =CONCATENATE({seg}.A1," ",{seg}.B1)\n` +
+  `  cell refs use the sheet's segment prefix — cells in THIS sheet are named {seg}.A1, {seg}.B2, …; a RANGE uses the bang form {seg}!A1:A10 (never dotted ends).\n` +
   `  string literals use double quotes: ="hello".\n` +
   `If the request is a question rather than a calculation, answer it as a formula whose value is the answer (e.g. ="…" for text). Return only the formula.`;
-
-// the CHAT primer — conversational, tool-aware (grok.send / the chat pane).
-const chatPrimer = (persona?: string): string =>
+const CHAT_PRIMER_DEFAULT =
   `You are a plastron spreadsheet assistant chatting inside a live workbook. Be concise and concrete.\n` +
   `You can ACT on the workbook with the provided tools:\n` +
   `  read_cells(range) — read a rectangle of values, e.g. "sheet1.A1:C9" (or one key, "sheet1.B2").\n` +
@@ -47,8 +48,15 @@ const chatPrimer = (persona?: string): string =>
   `  evaluate_formula(source) — dry-run a formula in a scratch cel and see its value without touching any sheet.\n` +
   `  vocabulary(segment?) — discover the callable formula verbs (with descriptions + examples).\n` +
   `Formulas are Excel-like infix. Inside a cell, same-sheet refs are plain (A1, B2) and a same-sheet range is A1:C4; a cell in ANOTHER sheet is sheet2.A1 and a range there is sheet2!A1:C4 (the bang form — range ends are never dotted). String literals use double quotes.\n` +
-  `When the user asks for a change, apply it with write_cell, then confirm in one short sentence.` +
-  (persona ? `\n\nPersona: ${persona}` : "");
+  `When the user asks for a change, apply it with write_cell, then confirm in one short sentence.`;
+const cellText = (state: State, key: string, fallback: string): string => {
+  const v = state.cels.get(key)?.v;
+  return typeof v === "string" && v.trim() !== "" ? v : fallback;
+};
+const primer = (state: State, seg: string): string =>
+  cellText(state, "grok.primer", PRIMER_DEFAULT).replaceAll("{seg}", seg);
+const chatPrimer = (state: State, persona?: string): string =>
+  cellText(state, "grok.chatprimer", CHAT_PRIMER_DEFAULT) + (persona ? `\n\nPersona: ${persona}` : "");
 
 // grok.context(state, seg) — the segment's SOURCE cells as plain lines (a formula
 // shows its TEXT, a value shows its JSON). Excludes the sync control cels. Capped.
@@ -135,33 +143,16 @@ const addbotFn: Fn = ((name?: unknown, persona?: unknown, model?: unknown): unkn
   } } };
 }) as Fn;
 
-// grok.addbot(state, name, persona?, model?) — the DISPATCHED twin (card UI /
-// headless): MERGE the bot into the grok.bots dict (the cel chat formulas
-// already reference, so the new chip appears reactively) rather than minting a
-// roster cel — the roster is the formula-owned (=addbot) form. Returns the handle.
-const addbotHandlerFn: Fn = (async (state: State, name?: unknown, persona?: unknown, model?: unknown): Promise<string> => {
-  const handle = slug(name);
-  if (!handle) return "";
-  const cur = state.cels.get("grok.bots")?.v;
-  const bots = (cur && typeof cur === "object" && !Array.isArray(cur)) ? { ...(cur as Record<string, Bot>) } : {};
-  bots[handle] = { name: String(name), persona: String(persona ?? ""), model: String(model ?? "") };
-  await (resolveFn(state, "setValue") as Fn)(state, "grok.bots", bots);
-  await repaint(state);
-  return handle;
-}) as Fn;
-
 // ── the transcript cel — a LIST OF DICTS [{role, bot?, text, ts?}] ───────────
 interface Msg { role: string; bot?: string; text?: string; ts?: number; tool?: string; error?: boolean; human?: boolean; id?: unknown }
 const transcriptOf = (state: State): Msg[] => {
   const v = state.cels.get("grok.transcript")?.v;
   return Array.isArray(v) ? v as Msg[] : [];
 };
-// append message dicts. grok.reply MIRRORS the same list so the already-shipped
-// card formula (=grok.ui(…, grok.reply)) re-renders the thread reactively without
-// an origin edit; once the card formula passes grok.transcript the mirror can go.
+// append message dicts to the transcript cel (the chat pane renders it directly).
 const pushTranscript = async (state: State, msgs: Msg[]): Promise<Msg[]> => {
   const next = [...transcriptOf(state), ...msgs];
-  await (resolveFn(state, "setValueBatch") as Fn)(state, [["grok.transcript", next], ["grok.reply", next]]);
+  await (resolveFn(state, "setValue") as Fn)(state, "grok.transcript", next);
   return next;
 };
 
@@ -408,7 +399,7 @@ const askFn: Fn = (async (state: State, segArg?: unknown, questionArg?: unknown,
   const bot = bots[handle] ?? bots.smith ?? {};
   const project = String(state.cels.get("grok.project")?.v ?? "default");
 
-  const sys = primer(seg) + (bot.persona ? `\n\nPersona: ${bot.persona}` : "");
+  const sys = primer(state, seg) + (bot.persona ? `\n\nPersona: ${bot.persona}` : "");
   const context = contextFn(state, seg) as string;
   const messages = [
     { role: "system", content: sys },
@@ -422,28 +413,7 @@ const askFn: Fn = (async (state: State, segArg?: unknown, questionArg?: unknown,
   return { ok: false, error: r.error ?? "grok: no reply", ...(r.detail !== undefined ? { detail: r.detail } : {}) };
 }) as Fn;
 
-// ── direct-URL chat completion (the .env-driven fetch lambda) ────────────────
-// grok.ask goes through supabase.invoke (URL built from sb.<project>.url + the
-// function name). grok.fetch instead POSTs to a FULL URL held in the grok.url cel
-// — seeded from a gitignored .env — so the endpoint is pure config, not code. It
-// still authorises with the signed-in user's Supabase JWT (resolved at the effect
-// site, never a cel), so the endpoint (an edge function) keeps the provider key
-// server-side. Accepts our { reply } shape OR a raw xAI { choices:[{message}] }.
-interface ChatResult { ok: boolean; reply?: string; bot?: string; error?: string; detail?: unknown }
-const fetchFn: Fn = (async (state: State, questionArg?: unknown, botArg?: unknown): Promise<ChatResult> => {
-  const question = String(questionArg ?? "").trim();
-  if (!question) return { ok: false, error: "grok.fetch: ask a question" };
-  const project = String(state.cels.get("grok.project")?.v ?? "default");
-  const bots = botsOf(state);
-  const handle = String(botArg ?? state.cels.get("grok.bot")?.v ?? "smith");
-  const bot = bots[handle] ?? bots.smith ?? {};
-  const sys = (bot.persona ? `${bot.persona}\n\n` : "") + "You are a helpful assistant. Answer concisely.";
-  const body: Record<string, unknown> = { messages: [{ role: "system", content: sys }, { role: "user", content: question }] };
-  if (bot.model) body.model = bot.model;
-  const r = await postDirect(state, project, body);
-  if (r.ok && typeof r.reply === "string") return { ok: true, reply: r.reply, bot: handle };
-  return { ok: false, error: (r.error ?? "grok.fetch: no reply in response").replace(/^grok:/, "grok.fetch:"), ...(r.detail !== undefined ? { detail: r.detail } : {}) };
-}) as Fn;
+// (grok.fetch removed — chatLoop's 'auto' path already inlines postDirect.)
 
 // ── login + chat card handlers (drive a dom-formula card) ────────────────────
 // The card is one grok.ui formula (authored as the card's view cel); its inputs
@@ -524,7 +494,7 @@ const sendFn: Fn = (async (state: State, projectArg?: unknown): Promise<string> 
 
   // system = chat primer + persona + the WHOLE workbook (sheets + views).
   const ctx = String(workbookContextFn(state));
-  const sys = chatPrimer(bot.persona) + (ctx ? `\n\nCurrent workbook:\n${ctx}` : "");
+  const sys = chatPrimer(state, bot.persona) + (ctx ? `\n\nCurrent workbook:\n${ctx}` : "");
   // history: the transcript's user/assistant turns (receipts are chat chrome).
   const history = transcriptOf(state)
     .filter((m) => m.role === "user" || m.role === "assistant")
@@ -604,6 +574,33 @@ const loadroomsFn: Fn = (async (state: State, projectArg?: unknown): Promise<unk
 // mapped into chatpane's dict shape: MY rows render as `user`, everyone else as
 // their profile name (human:true → 👤 meta line). Structured formats (task/
 // report) show as a tagged snippet. Poll-on-send/switch (realtime note below).
+// grok.mapmsgs(rows, auth, peers) — PURE: appkit chat rows → chatpane Msg dicts.
+// Mine (author_id === auth.userId) → user bubbles; others → assistant+human with
+// the peer's display name; task/report bodies get a [tag] snippet. No IO, no cel
+// writes. Shared by loadmsgs (below); also the map half of a future REACTIVE
+// roomlog formula (=grok.mapmsgs(supabase.data("select",…), sb.<p>.auth,
+// grok.peers, sb.<p>.chat.rev) re-fires on realtime rev bumps — R7, pending
+// async-formula test-harness support; today loadmsgs is the imperative loader).
+const mapmsgsFn: Fn = ((rowsArg?: unknown, authArg?: unknown, peersArg?: unknown): unknown => {
+  const rows = Array.isArray(rowsArg) ? rowsArg as Array<Record<string, unknown>> : [];
+  const me = String((authArg as { userId?: unknown } | undefined)?.userId ?? "");
+  const peers = (peersArg && typeof peersArg === "object" && !Array.isArray(peersArg)) ? peersArg as Record<string, string> : {};
+  return rows.map((row) => {
+    const fmt = String(row.format ?? "plain");
+    const text = (fmt === "task" || fmt === "report" ? `[${fmt}] ` : "") + String(row.body ?? "").slice(0, 2000);
+    const ts = Date.parse(String(row.created_at ?? "")) || undefined;
+    const mine = String(row.author_id ?? "") === me && me !== "";
+    return mine
+      ? { role: "user", text, ...(ts ? { ts } : {}), id: row.id }
+      : { role: "assistant", human: true, bot: peers[String(row.author_id ?? "")] ?? "peer", text, ...(ts ? { ts } : {}), id: row.id };
+  }) as unknown;
+}) as Fn;
+
+// grok.loadmsgs(state, project?) — the selected room's messages → grok.roomlog.
+// Subscribes the chat table to realtime (a peer INSERT bumps sb.<p>.chat.rev)
+// AND reloads on send/switch. (R7 note: the fully-reactive form makes roomlog a
+// FormulaCel over supabase.data + the rev; deferred until async formula cels are
+// exercised by the test harness — see grok.mapmsgs.)
 const loadmsgsFn: Fn = (async (state: State, projectArg?: unknown): Promise<unknown> => {
   const p = String(projectArg ?? state.cels.get("grok.project")?.v ?? "default");
   const room = String(state.cels.get("grok.room")?.v ?? "");
@@ -615,17 +612,8 @@ const loadmsgsFn: Fn = (async (state: State, projectArg?: unknown): Promise<unkn
     await repaint(state);
     return [];
   }
-  const me = String(authOf(state, p).userId ?? "");
   const peers = (state.cels.get("grok.peers")?.v ?? {}) as Record<string, string>;
-  const log: Msg[] = (r as Array<Record<string, unknown>>).map((row) => {
-    const fmt = String(row.format ?? "plain");
-    const text = (fmt === "task" || fmt === "report" ? `[${fmt}] ` : "") + String(row.body ?? "").slice(0, 2000);
-    const ts = Date.parse(String(row.created_at ?? "")) || undefined;
-    const mine = String(row.author_id ?? "") === me && me !== "";
-    return mine
-      ? { role: "user", text, ...(ts ? { ts } : {}), id: row.id }
-      : { role: "assistant", human: true, bot: peers[String(row.author_id ?? "")] ?? "peer", text, ...(ts ? { ts } : {}), id: row.id };
-  });
+  const log = mapmsgsFn(r, authOf(state, p), peers);
   await (resolveFn(state, "setValue") as Fn)(state, "grok.roomlog", log);
   return log;
 }) as Fn;
@@ -915,18 +903,11 @@ const roomspaneFn: Fn = ((roomsArg?: unknown, optsArg?: unknown): unknown => {
       : dom("div", attr("style", "font-size:.875rem;color:#94a3b8;text-align:center;margin-top:2rem"), "No rooms yet — ↻ Refresh after signing in.")));
 }) as Fn;
 
-// grok.ui — the =chatcard card formula's entry (positional compat wrapper over
-// chatpane; the shipped cardBook formula passes grok.reply — the transcript
-// mirror — as `thread`).
-const uiFn: Fn = ((project?: unknown, email?: unknown, password?: unknown, status?: unknown, question?: unknown, thread?: unknown, authedArg?: unknown, botsArg?: unknown, botArg?: unknown): unknown =>
-  chatpaneFn(thread, question, { project, email, password, status: status ?? "", authed: authedArg, bots: botsArg, bot: botArg })) as Fn;
-
 export const name = "grok" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["grok.context", contextFn],
   ["grok.workbook-context", workbookContextFn],
   ["grok.ask", askFn],
-  ["grok.fetch", fetchFn],
   ["grok.applytools", applyToolCallsFn],
   ["grok.field", fieldFn],
   ["grok.signin", signinFn],
@@ -934,15 +915,14 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["grok.send", sendFn],
   ["grok.key", keyFn],
   ["grok.pickbot", pickbotFn],
-  ["grok.addbot", addbotHandlerFn],
   ["addbot", addbotFn],
   ["chatpane", chatpaneFn],
   ["loginpane", loginpaneFn],
   ["roomspane", roomspaneFn],
   ["grok.loadrooms", loadroomsFn],
   ["grok.loadmsgs", loadmsgsFn],
+  ["grok.mapmsgs", mapmsgsFn],
   ["grok.pickroom", pickroomFn],
   ["grok.roomsend", roomsendFn],
   ["grok.roomkey", roomkeyFn],
-  ["grok.ui", uiFn],
 ]));

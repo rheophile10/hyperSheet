@@ -1,10 +1,11 @@
 // e2e: 💬 Chatrooms — the appkit-rooms document (apps/docs/chatrooms.json).
-// One workbook: LEFT the chatrooms recipe sheet (B1 the public-config dict →
-// derived sb.default, B2/B3/B4 the three =view formulas); RIGHT three view
-// tabs — "login" (loginpane: sign in to get the token / session card),
-// "rooms" (roomspane: the appkit conversations, click to go into chat) and
-// "roomchat" (chatpane wired to the room cels). Signed out, every surface is
-// gated (login card / sign-in hint) — that's what this drives headlessly.
+// One workbook: LEFT the chatrooms recipe sheet (B1 the non-secret auth-status
+// probe, B2/B3 the two =view formulas); RIGHT two view tabs — "rooms"
+// (roomspane: the appkit conversations, click to go into chat) and "roomchat"
+// (chatpane wired to the room cels). LOGIN + the supabase config live in the
+// 👤 Profile doc (doc:identity — it defines sb.default; chatrooms depends on
+// it). Signed out, every surface is gated (sign-in hint / login card) — that's
+// what this drives headlessly.
 // LIVE extras (appkit's local Supabase stack + CHATROOMS_EMAIL/PASSWORD in the
 // env) sign in for real and expect actual room rows; absent, they WARN only.
 //
@@ -22,8 +23,8 @@ for (let i = 0; i < 60; i++) {
 
 // the live extras' gate: appkit's local stack + credentials from the env
 const E = (typeof Bun !== "undefined" ? Bun.env : process.env);
-const APPKIT_URL = "http://127.0.0.1:54341";
-const stackUp = await fetch(`${APPKIT_URL}/auth/v1/health`, { signal: AbortSignal.timeout(1500) }).then((r) => r.ok).catch(() => false);
+const SB_URL = "https://sdggffldxjmwlhlznvli.supabase.co";   // the usercfg default (identity doc)
+const stackUp = await fetch(`${SB_URL}/auth/v1/health`, { signal: AbortSignal.timeout(1500) }).then((r) => r.ok).catch(() => false);
 const CREDS = E.CHATROOMS_EMAIL ? { email: E.CHATROOMS_EMAIL, password: E.CHATROOMS_PASSWORD ?? "" } : null;
 
 let pass = 0, fail = 0, last;
@@ -68,33 +69,52 @@ try {
   ok(!!last && last.closed !== 1, "the chatrooms workbook opened (win.chatrooms.state live)");
   ok((last?.sheets ?? []).some((t) => /chatrooms/.test(String(t.ref))), "the recipe sheet is a worksheet tab on the left");
   const viewTitles = (last?.views ?? []).map((t) => t.title);
-  ok(viewTitles.length === 3 && ["login", "rooms", "roomchat"].every((n) => viewTitles.includes(n)),
-    `THREE view tabs — login / rooms / roomchat (${JSON.stringify(viewTitles)})`);
+  ok(viewTitles.length === 2 && ["rooms", "roomchat"].every((n) => viewTitles.includes(n)),
+    `TWO view tabs — rooms / roomchat; login lives in doc:identity (${JSON.stringify(viewTitles)})`);
 
-  // 3) the derived config: sb.default ← =chatrooms.B1 (the ONE dict cell)
+  // 3) OWNERSHIP: sb.default belongs to the 👤 Profile doc — chatrooms neither
+  //    defines it nor depends on it, so before Profile opens it is simply absent
   last = await page.evaluate(() => globalThis.plastron.state.cels.get("sb.default")?.v ?? null);
-  ok(!!last && last.url === "http://127.0.0.1:54341" && /^sb_publishable_/.test(String(last.anonkey)),
-    "sb.default derives the appkit config from the visible B1 dict");
+  ok(last === null, "sb.default is NOT defined by chatrooms (it lives in doc:identity)");
+  // opening the Profile doc births it — and chatrooms' probe follows reactively
+  await page.evaluate(async () => {
+    const s = globalThis.plastron.state, F = (k) => globalThis.plastron.resolveFn(s, k);
+    await F("origin.opendoc")(s, "identity");
+    for (let i = 0; i < 6; i++) { await F("runCycle")(s); if (s.cels.get("genesis.commit")) await F("drain")(s, "genesis.commit"); if (s.cels.get("origin.effects")) await F("drain")(s, "origin.effects"); }
+    await F("drain")(s, "dom.paint");
+  });
+  await page.waitForTimeout(600);
+  last = await page.evaluate(() => ({ sb: globalThis.plastron.state.cels.get("sb.default")?.v ?? null, url: globalThis.plastron.state.cels.get("usercfg.supabase_url")?.v ?? null }));
+  ok(!!last.sb && /^https:/.test(String(last.sb.url)) && /^sb_publishable_/.test(String(last.sb.anonkey)),
+    "opening 👤 Profile defined sb.default (the hosted supabase config)");
+  ok(last.sb.url === last.url, "…derived from the usercfg kv sheet rows");
+  // back to the chatrooms workbook for the gated-view checks
+  await page.evaluate(async () => { const s = globalThis.plastron.state, F = (k) => globalThis.plastron.resolveFn(s, k); await F("window.raise")(s, "win.chatrooms.state"); await F("drain")(s, "dom.paint"); });
+  await page.waitForTimeout(300);
 
   // 4) signed out, each view is gated — click through the REAL tabs
   const tab = (name) => page.click(`.pl-wb-right .pl-wb-tab[data-tab="win.chatrooms.view.${name}"]`);
-  await tab("login"); await page.waitForTimeout(400);
-  ok(await page.locator(".pl-wb-vbody .gk-login").count() === 1, "login view: the appkit login card (email/password/Sign in)");
   await tab("rooms"); await page.waitForTimeout(400);
   last = await page.locator(".pl-wb-vbody .gk-rooms").innerText().catch(() => "");
   ok(/Sign in \(login view\)/.test(last), "rooms view: gated with the sign-in hint while signed out");
   await tab("roomchat"); await page.waitForTimeout(400);
-  ok(await page.locator(".pl-wb-vbody .gk-login").count() === 1, "roomchat view: login-gated too (same signedIn cel gates all three)");
+  ok(await page.locator(".pl-wb-vbody .gk-login").count() === 1, "roomchat view: login-gated (the same signedIn cel gates both)");
 
-  // 5) the recipe stays visible: B4 keeps its =view(chatpane(…)) formula
-  last = await page.evaluate(() => globalThis.plastron.state.cels.get("chatrooms.B4")?.f ?? "");
-  ok(/^=view\("roomchat", chatpane\(grok\.roomlog/.test(String(last)), "B4's chatpane formula IS the cell content (visible in the bar)");
+  // 5) the recipe stays visible: B3 keeps its =view(chatpane(…)) formula, and
+  //    B1 is the auth-status probe referencing the identity doc's sb.default
+  last = await page.evaluate(() => globalThis.plastron.state.cels.get("chatrooms.B3")?.f ?? "");
+  ok(/^=view\("roomchat", chatpane\(grok\.roomlog/.test(String(last)), "B3's chatpane formula IS the cell content (visible in the bar)");
+  last = await page.evaluate(() => globalThis.plastron.state.cels.get("chatrooms.B1")?.f ?? "");
+  ok(String(last) === "=sb.default.auth", "B1 probes the non-secret auth-status cel");
 
   // 6) LIVE extras — real sign-in + real rooms (warn-gated, never fail CI)
   if (!stackUp) warn("appkit local stack not running — live sign-in/rooms not exercised (supabase start in ~/projects/appkit)");
   else if (!CREDS) warn("no CHATROOMS_EMAIL/CHATROOMS_PASSWORD in env — live sign-in not exercised (gated assertions above still ran)");
   else {
-    await tab("login"); await page.waitForTimeout(300);
+    // sign in where login now lives: the 👤 Profile doc's 🔐 login view (opened above)
+    await page.evaluate(async () => { const s = globalThis.plastron.state, F = (k) => globalThis.plastron.resolveFn(s, k); await F("window.raise")(s, "win.identity.state"); await F("drain")(s, "dom.paint"); });
+    await page.waitForTimeout(300);
+    await page.click(`.pl-wb-right .pl-wb-tab[data-tab="win.identity.view.login"]`); await page.waitForTimeout(300);
     await page.fill(".pl-wb-vbody .gk-login input[type=email]", CREDS.email);
     await page.fill(".pl-wb-vbody .gk-login input[type=password]", CREDS.password);
     await page.click(".pl-wb-vbody .gk-login button:has-text('Sign in')");
@@ -102,6 +122,9 @@ try {
     last = await page.evaluate(() => globalThis.plastron.state.cels.get("sb.default.auth")?.v ?? null);
     ok(last?.status === "signed-in", `LIVE: signed in as ${last?.email}`);
     ok(await page.locator(".pl-wb-vbody .gk-session").count() === 1, "LIVE: the login view flipped to the session card");
+    // back to the chatrooms workbook — its gated views unlocked reactively
+    await page.evaluate(async () => { const s = globalThis.plastron.state, F = (k) => globalThis.plastron.resolveFn(s, k); await F("window.raise")(s, "win.chatrooms.state"); await F("drain")(s, "dom.paint"); });
+    await page.waitForTimeout(300);
     await tab("rooms"); await page.waitForTimeout(600);
     const rows = await page.locator(".pl-wb-vbody .gk-room-row").count();
     ok(rows >= 1, `LIVE: ${rows} room row(s) listed (lounge at least)`);

@@ -91,9 +91,9 @@
             "segment": "turtle_charts",
             "name": "B4",
             "parser": "infix",
-            "description": "the GENERATIVE dashboard formula: a species <select> (param.set → the filter cell) + bar/line/pie canvases, all derived from the dataset cell B1 through the filter B3, contributed to ONE '🐢 dashboard' VIEW pane — the cell keeps the visible source (value: the ⧉ token); edit data or change the filter and every chart re-renders"
+            "description": "the GENERATIVE dashboard formula: a species <select> (param.set → the filter cell) + bar/line/pie canvases, all derived from the dataset cell B1 through the filter B3, contributed to ONE '🐢 dashboard' VIEW pane — the cell keeps the visible source (value: the ⧉ token); edit data or change the filter and every chart re-renders. Each canvas is 480×300 and passes that SAME box down to its chart verb (…, 0, 0, 480, 300) so the op list is computed for the exact surface it paints on — nothing clips: every species label (incl. 'Leatherback'/'Loggerhead') and the full pie legend fit inside the box"
           },
-          "f": "=view(\"🐢 dashboard\", dom(\"div\",\n\tdom(\"div\", style(\"display\", \"flex\", \"gap\", \".5rem\", \"align-items\", \"center\", \"padding\", \".3rem\"),\n\t\t\"species:\",\n\t\tdom(\"select\", on(\"change\", \"param.set\", \"turtle_charts.B2\"),\n\t\t\tdom(\"option\", IF(B2 = \"all\", attr(\"selected\", \"selected\"), \"\"), \"all\"),\n\t\t\tMAP(B1.species, LAMBDA(s, dom(\"option\", IF(s = B2, attr(\"selected\", \"selected\"), \"\"), s))))),\n\tdom(\"div\", style(\"display\", \"flex\", \"flex-wrap\", \"wrap\", \"gap\", \".5rem\"),\n\t\tcanvas(300, 200, barchart(B3.species, B3.lifespan)),\n\t\tcanvas(300, 200, linechart(B3.species, B3.speed)),\n\t\tcanvas(300, 200, piechart(B3.species, B3.eggs)))))"
+          "f": "=view(\"🐢 dashboard\", dom(\"div\",\n\tdom(\"div\", style(\"display\", \"flex\", \"gap\", \".5rem\", \"align-items\", \"center\", \"padding\", \".3rem\"),\n\t\t\"species:\",\n\t\tdom(\"select\", on(\"change\", \"param.set\", \"turtle_charts.B2\"),\n\t\t\tdom(\"option\", IF(B2 = \"all\", attr(\"selected\", \"selected\"), \"\"), \"all\"),\n\t\t\tMAP(B1.species, LAMBDA(s, dom(\"option\", IF(s = B2, attr(\"selected\", \"selected\"), \"\"), s))))),\n\tdom(\"div\", style(\"display\", \"flex\", \"flex-wrap\", \"wrap\", \"gap\", \".5rem\"),\n\t\tcanvas(480, 300, barchart(B3.species, B3.lifespan, 0, 0, 480, 300)),\n\t\tcanvas(480, 300, linechart(B3.species, B3.speed, 0, 0, 480, 300)),\n\t\tcanvas(480, 300, piechart(B3.species, B3.eggs, 0, 0, 480, 300)))))"
         },
         {
           "key": "turtle_charts.dims",
@@ -486,10 +486,11 @@
   "manifests": [
     {
       "name": "turtle_charts",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "turtles (a sheetapp document) — the DASHBOARD sheet: =rows() pivots the data grid into the hub form (list of dicts), =FILTER derives the filtered dataset from the species filter cell, and ONE =view formula grows a dashboard pane (species select + bar/line/pie) — the collections doctrine end to end, every step a visible cell",
       "role": "user-space",
       "kind": "origin-user",
+      "window": { "x": 48, "y": 20, "w": 1120, "h": 640, "split": 0.42 },
       "applications": [
         "sheetapp"
       ],

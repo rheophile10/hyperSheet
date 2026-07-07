@@ -35,9 +35,13 @@ const isVnode = (v: unknown): v is V => !!v && typeof v === "object" && ((v as {
 // + `win`: the source window it was docked FROM (so tear-off restores that exact
 // window). `flush` overrides the derived <seg>.flush.
 interface Tab { ref: string; title?: string; icon?: string; flush?: string; win?: string }
+// app-supplied titlebar tool (e.g. the state graph's ⟳ refresh, sheetapp's 💾 Save)
+// — generic: each tool dispatches its own verb with the window ref as payload,
+// so `window` stays decoupled from what the tool does.
+interface WinTool { icon?: string; title?: string; dispatch?: string }
 // `dockedIn` set ⇒ this window is a TAB inside another window (it self-hides; its host
 // renders it). Otherwise it is a top-level window that SELF-MOUNTS into .origin.
-interface WinState { ref?: string; x?: number; y?: number; w?: number; h?: number; minW?: number; minH?: number; z?: number; min?: number; max?: number; closed?: number; title?: string; icon?: string; tabs?: Tab[]; active?: number; dockedIn?: string; geomDeclared?: boolean }
+interface WinState { ref?: string; x?: number; y?: number; w?: number; h?: number; minW?: number; minH?: number; z?: number; min?: number; max?: number; closed?: number; title?: string; icon?: string; tabs?: Tab[]; active?: number; dockedIn?: string; geomDeclared?: boolean; tools?: WinTool[] }
 interface DomEvt { clientX?: number; clientY?: number; pointerId?: number; currentTarget?: { setPointerCapture?: (id: number) => void }; target?: { setPointerCapture?: (id: number) => void } }
 
 // ── shared state plumbing (painting is an explicit effect; drain after a write) ──
@@ -83,7 +87,7 @@ interface DragState { ref: string; ox?: number; oy?: number; resize?: boolean; d
 const dragOf = (s: State): DragState | null | undefined => s.cels.get("window.drag")?.v as DragState | null | undefined;
 
 // ── the frame renderer ───────────────────────────────────────────────────────
-const BTN = "border:0;background:transparent;cursor:pointer;font:600 .9rem ui-monospace,monospace;padding:0 .3rem;line-height:1";
+const BTN = "border:0;background:transparent;cursor:pointer;font:600 1rem ui-monospace,monospace;padding:0;line-height:1;min-width:28px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:4px";
 
 // 8 resize handles — [direction, position css]. 4 edges (6px) + 4 corners (14px);
 // corners come last so they paint over the edges and win the cursor. Ported from
@@ -131,8 +135,11 @@ const wframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V 
 
   const ctrlBtn = (cls: string, glyph: string, ttl: string, dispatch: string, color?: string): V =>
     el("button", { class: cls, title: ttl, style: BTN + (color ? `;color:${color}` : "") }, [T(glyph)], { pointerdown: { dispatch: "window.stop" }, click: { dispatch, payload: ref } });
+  const tools = Array.isArray(s.tools) ? s.tools : [];
+  const toolBtn = (tl: WinTool): V => el("button", { class: "pl-win-tool", title: tl.title ?? "", style: BTN }, [T(tl.icon ?? "•")], { pointerdown: { dispatch: "window.stop" }, click: { dispatch: String(tl.dispatch ?? ""), payload: ref } });
   const titlebar = el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
     el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto" }, [T((icon ? icon + " " : "") + title)]),
+    el("div", { class: "pl-win-tools", style: "display:flex;flex:0 0 auto;gap:.1rem" }, tools.map(toolBtn)),
     el("div", { style: "display:flex;flex:0 0 auto;gap:.05rem" }, [
       ctrlBtn("pl-min-btn", "–", "minimize", "window.min"),
       s.max ? ctrlBtn("pl-win-btn", "◱", "mid size", "window.max") : ctrlBtn("pl-win-btn", "⛶", "fullscreen", "window.max"),
@@ -320,8 +327,7 @@ const wopen: Fn = ((id: unknown, title: unknown, body: unknown, where?: unknown)
 // view content cel; wbframe slices `contents` by sheets.length (lead = sheets, rest
 // = views). Realizes the sheetapp workbook DoD (cross-sheet refs + dom views +
 // fullscreen toggle).
-interface WbTool { icon?: string; title?: string; dispatch?: string }
-interface WbState extends WinState { sheets?: Tab[]; asheet?: number; views?: Tab[]; aview?: number; split?: number; full?: string; tools?: WbTool[] }
+interface WbState extends WinState { sheets?: Tab[]; asheet?: number; views?: Tab[]; aview?: number; split?: number; full?: string }
 const wbStateOf = (s: State, ref: string): WbState => stateOf(s, ref) as WbState;
 const wbFrameFormula = (ref: string, sheets: Tab[], views: Tab[]): string =>
   `(mount ".origin" (wbframe ${ref} win.active ${[...sheets, ...views].map((t) => t.ref).join(" ")}))`;
@@ -390,7 +396,7 @@ const wbframeFn: Fn = ((st: unknown, active: unknown, ...contents: unknown[]): V
   // app-supplied toolbar (e.g. sheetapp's 💾 Save) — generic: each tool dispatches
   // its own verb with the window ref as payload, so `window` stays decoupled.
   const tools = Array.isArray(s.tools) ? s.tools : [];
-  const toolBtn = (tl: WbTool): V => el("button", { class: "pl-wb-tool", title: tl.title ?? "", style: BTN }, [T(tl.icon ?? "•")], { pointerdown: { dispatch: "window.stop" }, click: { dispatch: String(tl.dispatch ?? ""), payload: ref } });
+  const toolBtn = (tl: WinTool): V => el("button", { class: "pl-wb-tool", title: tl.title ?? "", style: BTN }, [T(tl.icon ?? "•")], { pointerdown: { dispatch: "window.stop" }, click: { dispatch: String(tl.dispatch ?? ""), payload: ref } });
   const titlebar = el("div", { class: "pl-titlebar", style: "flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.25rem .55rem;background:#8881;cursor:move;user-select:none;touch-action:none;font:600 .8rem ui-monospace,monospace" }, [
     el("span", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto" }, [T((s.icon ? s.icon + " " : "📚 ") + (s.title ?? ref))]),
     el("div", { class: "pl-wb-tools", style: "display:flex;flex:0 0 auto;gap:.1rem" }, tools.map(toolBtn)),

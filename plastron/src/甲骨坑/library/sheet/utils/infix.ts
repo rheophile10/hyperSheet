@@ -1235,12 +1235,12 @@ const qualifyRefs = (node: Node, seg: string): Node => {
 // A cell whose content is `<key> := <rhs>` is a binder: firing it emits a
 // defn.commit request that mints a cel keyed <key> (no leading `=` needed,
 // DAX-style). The RHS picks the tier:
-//   js|py|php[.fn]{ … }     → EditableLambdaCel  (compiled, structure tier)
+//   js|py[.fn]{ … }         → EditableLambdaCel  (compiled, structure tier)
 //   bare literal 1/"x"/TRUE → ValueCel
 //   anything else           → FormulaCel parser "infix"  (value tier — the
 //                             value may itself be a LAMBDA, i.e. a verb)
 const DEFN_RE      = /^\s*=?\s*([A-Za-z_][\w]*(?:\.[A-Za-z_][\w]*)*)\s*:=\s*([\s\S]+?)\s*$/;
-const DEFN_LANG_RE = /^(js|py|php)(?:\.([A-Za-z_]\w*))?\s*\{([\s\S]*)\}\s*$/;
+const DEFN_LANG_RE = /^(js|py)(?:\.([A-Za-z_]\w*))?\s*\{([\s\S]*)\}\s*$/;
 const DEFN_NUM_RE  = /^-?(?:\d+\.?\d*|\.\d+)$/;
 const DEFN_STR_RE  = /^(['"])([\s\S]*)\1$/;
 

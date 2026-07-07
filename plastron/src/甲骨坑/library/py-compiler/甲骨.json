@@ -6,7 +6,7 @@
       "celType": "CompilerCel",
       "metadata": {
         "key": "py", "segment": "py-compiler", "name": "py", "kind": "native",
-        "description": "Python compiler. Compiles Python source — typically a `def` followed by the function name — into a runtime Fn via Pyodide. Pyodide is dynamic-imported on first compile and the runtime instance is shared across all py-kind cels. v1 runs main-thread; worker isolation is v2."
+        "description": "Compile Python source — typically a `def` followed by the function name — into a runtime Fn via Pyodide, first loading any Pyodide packages the source imports. Pyodide is dynamic-imported on first compile, the runtime instance is shared across all py-kind cels, and the imported-package set is derived from the source's own `import` lines (so a cell that `import numpy`/`import cv2` works). v1 runs main-thread; worker isolation is v2."
       },
       "locked": true
     },

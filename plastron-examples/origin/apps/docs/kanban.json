@@ -1,0 +1,489 @@
+{
+  "formatVersion": 1,
+  "segments": [
+    {
+      "name": "kanban",
+      "cels": [
+        {
+          "key": "kanban.dims",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.dims",
+            "segment": "kanban",
+            "name": "dims",
+            "description": "rendered extent; sheet.addrow grows rows to cover each appended task (the board/next-id ranges reach to row 40)"
+          },
+          "v": {
+            "rows": 12,
+            "cols": 8
+          }
+        },
+        {
+          "key": "kanban.A1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.A1",
+            "segment": "kanban",
+            "name": "A1"
+          },
+          "v": "id"
+        },
+        {
+          "key": "kanban.B1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.B1",
+            "segment": "kanban",
+            "name": "B1"
+          },
+          "v": "task"
+        },
+        {
+          "key": "kanban.C1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.C1",
+            "segment": "kanban",
+            "name": "C1"
+          },
+          "v": "status"
+        },
+        {
+          "key": "kanban.D1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.D1",
+            "segment": "kanban",
+            "name": "D1"
+          },
+          "v": "assignee"
+        },
+        {
+          "key": "kanban.E1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.E1",
+            "segment": "kanban",
+            "name": "E1"
+          },
+          "v": "notes"
+        },
+        {
+          "key": "kanban.A2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.A2",
+            "segment": "kanban",
+            "name": "A2"
+          },
+          "v": 1
+        },
+        {
+          "key": "kanban.B2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.B2",
+            "segment": "kanban",
+            "name": "B2"
+          },
+          "v": "Rebuild kanban as a sheets-app document — the board is a =view over this sheet"
+        },
+        {
+          "key": "kanban.C2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.C2",
+            "segment": "kanban",
+            "name": "C2"
+          },
+          "v": "Review"
+        },
+        {
+          "key": "kanban.D2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.D2",
+            "segment": "kanban",
+            "name": "D2"
+          },
+          "v": "claude"
+        },
+        {
+          "key": "kanban.E2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.E2",
+            "segment": "kanban",
+            "name": "E2"
+          },
+          "v": "replaced the kanbanapp origin-application; drag a card to move it between columns"
+        },
+        {
+          "key": "kanban.A3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.A3",
+            "segment": "kanban",
+            "name": "A3"
+          },
+          "v": 2
+        },
+        {
+          "key": "kanban.B3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.B3",
+            "segment": "kanban",
+            "name": "B3"
+          },
+          "v": "Task form view — add new tasks from a form into this sheet"
+        },
+        {
+          "key": "kanban.C3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.C3",
+            "segment": "kanban",
+            "name": "C3"
+          },
+          "v": "Review"
+        },
+        {
+          "key": "kanban.D3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.D3",
+            "segment": "kanban",
+            "name": "D3"
+          },
+          "v": "claude"
+        },
+        {
+          "key": "kanban.E3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.E3",
+            "segment": "kanban",
+            "name": "E3"
+          },
+          "v": "sheet.addrow is the mechanism; the columns, next-id rule and cleared drafts are authored in H4:H8"
+        },
+        {
+          "key": "kanban.A4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.A4",
+            "segment": "kanban",
+            "name": "A4"
+          },
+          "v": 3
+        },
+        {
+          "key": "kanban.B4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.B4",
+            "segment": "kanban",
+            "name": "B4"
+          },
+          "v": "Profile → sheets app: 🔐 supabase login view + 👤 wallet view (doc:identity)"
+        },
+        {
+          "key": "kanban.C4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.C4",
+            "segment": "kanban",
+            "name": "C4"
+          },
+          "v": "Review"
+        },
+        {
+          "key": "kanban.D4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.D4",
+            "segment": "kanban",
+            "name": "D4"
+          },
+          "v": "claude"
+        },
+        {
+          "key": "kanban.E4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.E4",
+            "segment": "kanban",
+            "name": "E4"
+          },
+          "v": "login + sb.default config moved OUT of chatrooms into the identity doc; tokens stay in the session store behind a SecretHandle, never a cel"
+        },
+        {
+          "key": "kanban.A5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.A5",
+            "segment": "kanban",
+            "name": "A5"
+          },
+          "v": 4
+        },
+        {
+          "key": "kanban.B5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.B5",
+            "segment": "kanban",
+            "name": "B5"
+          },
+          "v": "Persist sessions across reloads: wallet-sealed refresh-token sidecar + usercfg kvsheet"
+        },
+        {
+          "key": "kanban.C5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.C5",
+            "segment": "kanban",
+            "name": "C5"
+          },
+          "v": "Review"
+        },
+        {
+          "key": "kanban.D5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.D5",
+            "segment": "kanban",
+            "name": "D5"
+          },
+          "v": "claude"
+        },
+        {
+          "key": "kanban.E5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.E5",
+            "segment": "kanban",
+            "name": "E5"
+          },
+          "v": "SHIPPED: session.restore/persist + wallet-wrapped refresh sidecars (unlock wallet = log in); usercfg kvsheet in the identity doc (composer adds keys), sb.default derives from its rows; hosted supabase project seeded as default"
+        },
+        {
+          "key": "kanban.A6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.A6",
+            "segment": "kanban",
+            "name": "A6"
+          },
+          "v": 5
+        },
+        {
+          "key": "kanban.B6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.B6",
+            "segment": "kanban",
+            "name": "B6"
+          },
+          "v": "usercfg survives refreshApps: install-once manifests + =kvseed defaults merge"
+        },
+        {
+          "key": "kanban.C6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.C6",
+            "segment": "kanban",
+            "name": "C6"
+          },
+          "v": "Review"
+        },
+        {
+          "key": "kanban.D6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.D6",
+            "segment": "kanban",
+            "name": "D6"
+          },
+          "v": "claude"
+        },
+        {
+          "key": "kanban.E6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.E6",
+            "segment": "kanban",
+            "name": "E6"
+          },
+          "v": "usercfg ships EMPTY + install:'once' (never re-put); usercfg_defaults is the stompable layer; =kvseed('usercfg','usercfg_defaults') on the identity sheet merges missing keys every open — user values always win, deletion = reset-to-default"
+        },
+        {
+          "key": "kanban.G1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.G1",
+            "segment": "kanban",
+            "name": "G1"
+          },
+          "v": "board ⇒"
+        },
+        {
+          "key": "kanban.H1",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "kanban.H1",
+            "segment": "kanban",
+            "name": "H1",
+            "parser": "infix",
+            "description": "the KANBAN BOARD view: four status columns FILTER the task rows (id = row - 1 indexes the B/C/D ranges); a card drags via drag.grab naming its OWN status cel and a column drop assigns its name — movement is a setValue, the board re-renders through the graph"
+          },
+          "f": "=view('📋 board', LET(\n\tids, FILTER(A2:A40, LAMBDA(id, id > 0)),\n\tcardOf, LAMBDA(id, dom('div.kcard',\n\t\tattr('draggable', 'true'),\n\t\ton('dragstart', 'drag.grab', CONCAT('kanban.C', id + 1)),\n\t\tdom('div.ktitle', INDEX(B2:B40, id)),\n\t\tdom('div.kwho', INDEX(D2:D40, id)))),\n\tcolOf, LAMBDA(name, dom('div.kcol',\n\t\tattr('data-col', name),\n\t\ton('dragover', 'drag.over'),\n\t\ton('drop', 'drag.drop', name),\n\t\tdom('h3', name),\n\t\tMAP(FILTER(ids, LAMBDA(id, INDEX(C2:C40, id) = name)), cardOf))),\n\tdom('div.kboard',\n\t\tdom('style', '.kboard{display:flex;gap:.6rem;padding:.5rem;align-items:flex-start;height:100%;box-sizing:border-box}.kcol{flex:1;min-width:0;background:#8881;border:1px solid #8883;border-radius:.5rem;padding:.4rem;min-height:180px}.kcol h3{margin:.1rem 0 .5rem;font:700 .78rem ui-monospace,monospace;color:#888;text-align:center}.kcard{background:Canvas;border:1px solid #8884;border-radius:.4rem;padding:.4rem .55rem;margin:.35rem 0;cursor:grab;box-shadow:0 1px 3px #0003;user-select:none}.kcard:active{cursor:grabbing}.ktitle{font:600 .76rem ui-monospace,monospace}.kwho{margin-top:.2rem;font:.68rem ui-monospace,monospace;color:#888}'),\n\t\tcolOf('To Do'), colOf('Doing'), colOf('Review'), colOf('Done'))))"
+        },
+        {
+          "key": "kanban.G2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.G2",
+            "segment": "kanban",
+            "name": "G2"
+          },
+          "v": "form ⇒"
+        },
+        {
+          "key": "kanban.H2",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "kanban.H2",
+            "segment": "kanban",
+            "name": "H2",
+            "parser": "infix",
+            "description": "the NEW-TASK FORM view: inputs param.set the H4:H7 draft cells, the button dispatches sheet.addrow with the policy payload (H8 next-id + drafts → columns A..E, then clear title/notes) — every rule a visible cell"
+          },
+          "f": "=view('➕ new task', dom('div.kform',\n\tdom('style', '.kform{display:flex;flex-direction:column;gap:.45rem;max-width:24rem;padding:.6rem;font:.85rem ui-monospace,monospace}.kform label{color:#888;font-weight:600;font-size:.72rem}.kform input,.kform select{font:.85rem ui-monospace,monospace;padding:.3rem .45rem;border:1px solid #8884;border-radius:.3rem;background:Canvas;color:CanvasText}.kform button{margin-top:.4rem;padding:.4rem;border:1px solid #8884;border-radius:.3rem;background:#8881;cursor:pointer;font:700 .8rem ui-monospace,monospace}'),\n\tdom('label', 'task'),\n\tdom('input', attr('value', H4), attr('placeholder', 'what needs doing'), on('change', 'param.set', 'kanban.H4')),\n\tdom('label', 'status'),\n\tdom('select', on('change', 'param.set', 'kanban.H5'),\n\t\tdom('option', IF(H5 = 'To Do', attr('selected', 'selected'), ''), 'To Do'),\n\t\tdom('option', IF(H5 = 'Doing', attr('selected', 'selected'), ''), 'Doing'),\n\t\tdom('option', IF(H5 = 'Review', attr('selected', 'selected'), ''), 'Review'),\n\t\tdom('option', IF(H5 = 'Done', attr('selected', 'selected'), ''), 'Done')),\n\tdom('label', 'assignee'),\n\tdom('input', attr('value', H6), attr('placeholder', 'who — you, or an agent'), on('change', 'param.set', 'kanban.H6')),\n\tdom('label', 'notes'),\n\tdom('input', attr('value', H7), on('change', 'param.set', 'kanban.H7')),\n\tdom('button', on('click', 'sheet.addrow', {seg: 'kanban', from: ['kanban.H8', 'kanban.H4', 'kanban.H5', 'kanban.H6', 'kanban.H7'], clear: ['kanban.H4', 'kanban.H7']}), CONCAT('➕ add task #', H8))))"
+        },
+        {
+          "key": "kanban.G4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.G4",
+            "segment": "kanban",
+            "name": "G4"
+          },
+          "v": "title"
+        },
+        {
+          "key": "kanban.H4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.H4",
+            "segment": "kanban",
+            "name": "H4"
+          },
+          "v": ""
+        },
+        {
+          "key": "kanban.G5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.G5",
+            "segment": "kanban",
+            "name": "G5"
+          },
+          "v": "status"
+        },
+        {
+          "key": "kanban.H5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.H5",
+            "segment": "kanban",
+            "name": "H5"
+          },
+          "v": "To Do"
+        },
+        {
+          "key": "kanban.G6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.G6",
+            "segment": "kanban",
+            "name": "G6"
+          },
+          "v": "assignee"
+        },
+        {
+          "key": "kanban.H6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.H6",
+            "segment": "kanban",
+            "name": "H6"
+          },
+          "v": ""
+        },
+        {
+          "key": "kanban.G7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.G7",
+            "segment": "kanban",
+            "name": "G7"
+          },
+          "v": "notes"
+        },
+        {
+          "key": "kanban.H7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.H7",
+            "segment": "kanban",
+            "name": "H7"
+          },
+          "v": ""
+        },
+        {
+          "key": "kanban.G8",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "kanban.G8",
+            "segment": "kanban",
+            "name": "G8"
+          },
+          "v": "next id"
+        },
+        {
+          "key": "kanban.H8",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "kanban.H8",
+            "segment": "kanban",
+            "name": "H8",
+            "parser": "infix",
+            "description": "the id RULE, as a visible formula: ids are 1..n in row order (id = row - 1), so the next task's id is the count of existing ids + 1 — sheet.addrow copies this cell's value into the new row's A column"
+          },
+          "f": "=COUNTA(A2:A40) + 1"
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    {
+      "name": "kanban",
+      "version": "0.1.0",
+      "description": "kanban (a sheetapp document) — the TASKS worksheet is the program: a board =view (drag a card = setValue its status cel) and a new-task form =view (sheet.addrow appends a row) both derive from the same grid; agents and people share it by editing cells",
+      "role": "user-space",
+      "kind": "origin-user",
+      "applications": [
+        "sheetapp"
+      ],
+      "dependencies": [
+        "sheetapp",
+        "sheets",
+        "dom",
+        "ecs",
+        "origin"
+      ]
+    }
+  ]
+}

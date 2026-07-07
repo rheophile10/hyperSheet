@@ -193,3 +193,38 @@ test("registry dispatch + retained handle + gen-bump drain + dirty-diff exactnes
   assert.equal(log.renders, rBeforeRebuiltWheel + 1, "one render per wheel after rebuild (no duplicate listener)");
   assert.ok(Math.abs(distOf(cam2) - d0b * Math.exp(-0.1)) < 1e-6, "a single dolly step applied (not double)");
 });
+
+// ── REVIEWER-ADDED (card 74f52852) ───────────────────────────────────────────
+// Fills two gaps the delivered suite proves only at the pure (Tier A) / visual
+// (e2e) tiers: (a) the MIN clamp on the RETAINED camera (the committed drain
+// test saturates only MAX), and (b) that a dolly PERSISTS through a live
+// scene.paint drain — the design's "zoom works while the pump runs", numerically
+// (the drain renders the already-moved retained camera and never resets it).
+test("REVIEW: min clamp on the retained camera + zoom persists through a live drain", async () => {
+  const { state, r, root } = await boot();
+  const findScene = (el) => {
+    if (el?.attrs && el.attrs["data-scene"] !== undefined) return el;
+    for (const c of el?.childNodes ?? []) { const f = findScene(c); if (f) return f; }
+    return null;
+  };
+  const canvas = findScene(root);
+  const cam = log.cameras[log.cameras.length - 1];
+  const distOf = (c) => Math.hypot(c.position.x, c.position.y, c.position.z);
+  const d0 = Math.hypot(0, 4, 8);
+  const minD = 0.25 * d0;
+
+  // (a) sustained wheel-IN saturates exactly at minDistance — never punches through
+  for (let i = 0; i < 200; i++) canvas.dispatchEvent({ type: "wheel", deltaY: -100, preventDefault() {} });
+  assert.ok(distOf(cam) >= minD - 1e-6, "camera never dollies inside minDistance");
+  assert.ok(Math.abs(distOf(cam) - minD) < 1e-6, "sustained wheel-in saturates exactly at minDistance");
+
+  // (b) a live scene.paint drain (gen bump) renders WITHOUT disturbing the dolly:
+  //     the drained frame uses the moved retained camera → zoom + pump coexist.
+  // (render count is >= 1, not ==1: `handles` is a module-global Set that
+  // accrues this file's earlier test's handles too — cross-test artifact, not a
+  // product fact; the camera-distance invariant below is the load-bearing check.)
+  const rBeforeDrain = log.renders, distBeforeDrain = distOf(cam);
+  await r("setValueBatch")(state, [["t.gen", 1]], { flush: "scene.paint" });
+  assert.ok(log.renders >= rBeforeDrain + 1, "the drain fired a render for the bumped generation");
+  assert.ok(Math.abs(distOf(cam) - distBeforeDrain) < 1e-12, "the live drain left the dollied camera untouched — zoom persists while the pump runs");
+});

@@ -77,7 +77,7 @@ const type = (s, text) => F(s, "grok.field")(s, "grok.question", { target: { val
 
 // ── transcript-as-cel ────────────────────────────────────────────────────────
 
-test("grok.send appends user + assistant dicts to grok.transcript (and mirrors grok.reply)", async () => {
+test("grok.send appends user + assistant dicts to grok.transcript", async () => {
   const s = await boot();
   queue.push({ reply: "hello from the bestiary" });
   await type(s, "hi there");
@@ -91,7 +91,6 @@ test("grok.send appends user + assistant dicts to grok.transcript (and mirrors g
   assert.equal(t[1].bot, "smith", "default bot answered");
   assert.equal(t[1].text, "hello from the bestiary");
   assert.equal(v(s, "grok.question"), "", "the composer buffer was consumed");
-  assert.deepEqual(v(s, "grok.reply"), t, "grok.reply mirrors the transcript (legacy card formula)");
   // the request carried the chat primer + the tool surface
   const body = bodies.at(-1);
   assert.equal(body.messages[0].role, "system");
@@ -99,6 +98,21 @@ test("grok.send appends user + assistant dicts to grok.transcript (and mirrors g
   assert.equal(body.tools.length, 4, "the 4 meta-tools rode along");
   assert.deepEqual(body.tools.map((t2) => t2.function.name).sort(),
     ["evaluate_formula", "read_cells", "vocabulary", "write_cell"]);
+});
+
+test("R2: grok.chatprimer overrides the built-in chat system prompt", async () => {
+  const s = await boot();
+  // default: the built-in prompt (empty cell → fallback)
+  queue.push({ reply: "ok" });
+  await type(s, "one");
+  await F(s, "grok.send")(s, "default");
+  assert.match(bodies.at(-1).messages[0].content, /spreadsheet assistant/i, "default primer used when the cell is blank");
+  // set the tuning cell → it drives the system prompt
+  await F(s, "setValue")(s, "grok.chatprimer", "PRIMER-XYZZY: obey the cell.");
+  queue.push({ reply: "ok" });
+  await type(s, "two");
+  await F(s, "grok.send")(s, "default");
+  assert.match(bodies.at(-1).messages[0].content, /PRIMER-XYZZY/, "the grok.chatprimer cell overrides the default");
 });
 
 test("chatpane renders the transcript as bubbles (user right/brand, bot bordered, receipt chip)", async () => {
@@ -143,8 +157,12 @@ test("=addbot GENESIS mints a grok.roster.* bot owned by its formula", async () 
 
 test("@handle routes one message to that bot (persona reaches the system prompt)", async () => {
   const s = await boot();
-  await F(s, "grok.addbot")(s, "Pirate", "You answer as a pirate.", "");
-  assert.ok(v(s, "grok.bots").pirate, "the dispatched addbot merged into grok.bots (chips render from it)");
+  // =addbot is the product path (a genesis minting grok.roster.<handle>);
+  // botsOf() merges grok.bots + grok.roster.* — seed the roster cel directly.
+  const gen = F(s, "addbot")("Pirate", "You answer as a pirate.", "grok-4");
+  assert.equal(gen.genesis, true, "=addbot returns a genesis request");
+  await F(s, "setCel")(s, "grok.roster.pirate", { celType: "ValueCel", v: gen.cels["grok.roster.pirate"].v, metadata: { key: "grok.roster.pirate", segment: "grok" } });
+  assert.ok(F(s, "getCel")(s, "grok.roster.pirate"), "the roster cel exists → botsOf sees the bot");
   queue.push({ reply: "arr" });
   await type(s, "@pirate what be in A1?");
   await F(s, "grok.send")(s, "default");

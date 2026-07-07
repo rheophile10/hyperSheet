@@ -1,4 +1,4 @@
-import type { 甲骨, Cel, CompiledEnvelope, Compiler, Fn, State } from "../../../types/index.js";
+import type { 甲骨, Cel, CompileContext, CompiledEnvelope, Compiler, Fn, State } from "../../../types/index.js";
 import { resolveFn, bindNativeFns } from "../../../kernel/index.js";
 import { CSP_WASM_AVAILABLE_KEY } from "../../../kernel/index.js";
 import seed from "./甲骨.json" with { type: "json" };
@@ -21,10 +21,24 @@ const readHostImports = (st: State): Record<string, Fn> =>
 // numbers/typed-arrays and returns whatever the wasm export returns
 // (i32/f64 unwrap to JS number, i64 to BigInt). No memory marshalling
 // for strings/objects — authors using strings hand-roll their own
-// ptr+length convention. The host imports object is empty.
+// ptr+length convention.
 //
-// Convention for which export to call: prefer `main`; if absent, use
-// the single function export; multiple unnamed exports throw.
+// Which export to call: an explicit `metadata.wasmExport` wins; else
+// prefer `main`; else the single function export; multiple unnamed
+// exports throw.
+//
+// Host access to the live instance (parity with `wasm-bytes`, proven in
+// wasm-host-instance.test.mjs): imports default to `{ host }`; a
+// `metadata.imports` provider cel returns either a bare imports object
+// (namespaces → fns) OR an envelope `{ imports, onInstantiate?, dispose? }`.
+// After `WebAssembly.instantiate`, `onInstantiate(instance, state)` fires
+// once — handing the provider the live instance (every export + linear
+// memory). This is what lets a shared-memory WAT module authored as
+// LEGIBLE WAT TEXT on the sheet (kind:"wat", imports:"<provider>") expose
+// its `memory` and drive multiple exports over its lifetime, closing the
+// gap the wat compiler previously had (it wrapped one export and discarded
+// the instance). `dispose` rides to `cel._dispose`. Backward compatible:
+// a module naming no imports/wasmExport behaves exactly as before.
 //
 // CSP gate: when invoked with state, checks `csp.wasm-available`. The
 // install itself never fails — the throw fires only when a WAT lambda
@@ -67,13 +81,66 @@ const getWabt = (): Promise<WabtModule> => {
 // WebAssembly isn't in tsconfig "lib": ["ES2023"]. Reach through
 // globalThis with a structural type so this works in both Node and
 // browsers without pulling DOM types in. csp.ts does the same.
-type WasmInstantiateResult = { instance: { exports: Record<string, unknown> } };
+type WasmInstance = { exports: Record<string, unknown> };
+type WasmInstantiateResult = { instance: WasmInstance };
 type WasmGlobal = {
   instantiate?: (bytes: Uint8Array, imports: Record<string, unknown>) => Promise<WasmInstantiateResult>;
 };
 const _wasm = (globalThis as { WebAssembly?: WasmGlobal }).WebAssembly;
 
-const watCompiler: Compiler = (async (source: string, state?: State): Promise<CompiledEnvelope> => {
+// A provider may return a bare imports object (namespaces → fns) OR an
+// envelope that also carries host-instance hooks. Mirror of wasm-bytes.
+interface ImportsEnvelope {
+  imports: Record<string, unknown>;
+  onInstantiate?: (instance: WasmInstance, state: State) => void;
+  dispose?: () => void;
+}
+type ProviderResult = Record<string, unknown> | ImportsEnvelope;
+
+// Envelope iff it has an own `imports` object property (the one ambiguous
+// case — a module importing from a namespace literally named "imports" —
+// is a documented reserved namespace, same as wasm-bytes).
+const isImportsEnvelope = (r: ProviderResult): r is ImportsEnvelope => {
+  const o = r as { imports?: unknown };
+  return o !== null && typeof o === "object" &&
+    typeof o.imports === "object" && o.imports !== null;
+};
+
+interface ResolvedImports {
+  imports: Record<string, unknown>;
+  onInstantiate?: (instance: WasmInstance, state: State) => void;
+  dispose?: () => void;
+}
+
+// Imports: default { host } (modules that import nothing ignore it;
+// WebAssembly only rejects *missing* declared imports, not extra ones). A
+// metadata.imports provider cel returns either a bare imports object whose
+// namespaces merge over the default, or an envelope whose .imports merge
+// and whose hooks the compiler honors.
+const resolveImports = (state: State | undefined, context?: CompileContext): ResolvedImports => {
+  const base: Record<string, unknown> = { host: state ? readHostImports(state) : {} };
+  if (!state || !context?.imports) return { imports: base };
+  const providerCel = state.cels.get(context.imports) as { _fn?: Fn } | undefined;
+  const provider = providerCel?._fn;
+  if (!provider) {
+    throw new Error(
+      `wat-compiler: imports provider cel "${context.imports}" is not registered or has no fn.`,
+    );
+  }
+  const result = provider(state) as ProviderResult;
+  if (isImportsEnvelope(result)) {
+    return {
+      imports: { ...base, ...result.imports },
+      onInstantiate: result.onInstantiate,
+      dispose: result.dispose,
+    };
+  }
+  return { imports: { ...base, ...result } };
+};
+
+const watCompiler: Compiler = (async (
+  source: string, state?: State, context?: CompileContext,
+): Promise<CompiledEnvelope> => {
   if (state) {
     const wasmAvailable =
       state.cels.get(CSP_WASM_AVAILABLE_KEY)?.v as boolean | undefined;
@@ -103,36 +170,52 @@ const watCompiler: Compiler = (async (source: string, state?: State): Promise<Co
     mod.destroy();
   }
 
-  // 2. Bytes → instance. Pass the host segment's capabilities as the
-  //    "host" import namespace — wat modules opting in declare
-  //    (import "host" "log" ...) etc. Without state, fall back to a
-  //    minimal default (testing seam; production callers always pass
-  //    state so the host overrides win).
-  const hostImports = state ? readHostImports(state) : {};
-  const { instance } = await _wasm.instantiate(bytes, { host: hostImports });
+  // 2. Bytes → instance, against the resolved imports (default { host },
+  //    plus any metadata.imports provider's namespaces). Then hand the
+  //    live instance to the provider's onInstantiate hook (if any), so a
+  //    host segment can drive a multi-export / shared-memory module. The
+  //    "host" namespace serves modules that (import "host" "log" ...) etc.
+  const { imports, onInstantiate, dispose } = resolveImports(state, context);
+  const { instance } = await _wasm.instantiate(bytes, imports);
+  if (onInstantiate && state) onInstantiate(instance, state);
 
-  // 3. Pick the function to expose. Prefer `main`; otherwise, if there's
-  //    exactly one function export, use it; otherwise throw — ambiguous.
+  // 3. Pick the export. Explicit wasmExport wins; else prefer `main`;
+  //    else the single function export; else throw — ambiguous.
   const fnExports = Object.entries(instance.exports)
     .filter(([, v]) => typeof v === "function") as [string, Fn][];
   if (fnExports.length === 0) {
     throw new Error(`wat-compiler: module has no function exports.`);
   }
-  const main = fnExports.find(([k]) => k === "main");
-  const fn = main ? main[1]
-    : fnExports.length === 1 ? fnExports[0]![1]
-    : null;
-  if (!fn) {
-    const names = fnExports.map(([k]) => k).join(", ");
-    throw new Error(
-      `wat-compiler: module exports multiple functions (${names}); ` +
-      `name one of them "main" or restrict the module to a single export.`,
-    );
+  const want = context?.wasmExport;
+  let fn: Fn | null;
+  if (want) {
+    const hit = fnExports.find(([k]) => k === want);
+    if (!hit) {
+      const names = fnExports.map(([k]) => k).join(", ");
+      throw new Error(
+        `wat-compiler: module has no function export named "${want}" (exports: ${names}).`,
+      );
+    }
+    fn = hit[1];
+  } else {
+    const main = fnExports.find(([k]) => k === "main");
+    fn = main ? main[1] : fnExports.length === 1 ? fnExports[0]![1] : null;
+    if (!fn) {
+      const names = fnExports.map(([k]) => k).join(", ");
+      throw new Error(
+        `wat-compiler: module exports multiple functions (${names}); ` +
+        `set metadata.wasmExport to choose one, name one "main", or restrict ` +
+        `the module to a single export.`,
+      );
+    }
   }
   // Return a CompiledEnvelope so hydrate stashes the wasm bytes on
-  // cel._wasm. Read by wasm-to-wat for the "Show WAT" diagnostic and
-  // by future worker dispatch.
-  return { fn, wasm: bytes };
+  // cel._wasm (read by wasm-to-wat for the "Show WAT" diagnostic and by
+  // future worker dispatch). A provider-supplied dispose rides to
+  // cel._dispose for teardown.
+  const envelope: CompiledEnvelope = { fn, wasm: bytes };
+  if (dispose) envelope.dispose = dispose;
+  return envelope;
 }) as Compiler;
 
 // wasm-to-wat — render any wasm module's bytes as its WAT text form.

@@ -233,6 +233,66 @@ test("grabResize tolerates a bare string ref (backward compat: treated as 'se')"
   assert.equal(st(state).x, 100, "bare-ref resize anchors x (se)");
 });
 
+// ── titlebar close (✕) hit target: WCAG 2.2 SC 2.5.8 ≥ 24×24 CSS px ──────────
+// The whole titlebar control cluster shares the BTN style constant, so a value
+// change there sizes minimize / fullscreen / close (and app tool buttons)
+// uniformly. These pin the ≥24px hit box on pl-close-btn in BOTH frame kinds.
+const styleOf = (n) => String(n?.attrs?.style ?? "");
+
+test("close (✕) button has a comfortable ≥24px hit target in the tabbed (wframe) titlebar", async () => {
+  const state = await boot();
+  await seedWindow(state);
+  const root = wframe(state, REF, resolveFn(state, "dom")("div", "x"));
+  const btn = byClass(root, "pl-close-btn")[0];
+  assert.ok(btn, "wframe titlebar has a close control");
+  const s = styleOf(btn);
+  assert.match(s, /min-width:28px/, "close button min-width pins ≥24 (28px)");
+  assert.match(s, /min-height:24px/, "close button min-height pins the WCAG 24px floor");
+  assert.match(s, /display:inline-flex/, "flex box (not padding) gives a uniform glyph-centered target");
+  assert.match(s, /color:#d4453e/, "close keeps its distinguishing red");
+  // the cluster is uniform: minimize and fullscreen match the close target.
+  for (const c of ["pl-min-btn", "pl-win-btn"]) {
+    const cs = styleOf(byClass(root, c)[0]);
+    assert.match(cs, /min-width:28px/, `${c} shares the ≥24px hit-target width`);
+    assert.match(cs, /min-height:24px/, `${c} shares the ≥24px hit-target height`);
+  }
+  // the fix does not disturb the close control's behavior (still dispatches).
+  assert.equal(btn.events?.click?.dispatch, "window.close", "close still dispatches window.close");
+  assert.equal(btn.events?.click?.payload, REF, "close still carries the window ref");
+});
+
+const WBREF = "win.wb.state";
+const seedWorkbook = async (state, patch = {}) => {
+  await resolveFn(state, "setCel")(state, WBREF, {
+    celType: "ValueCel",
+    v: { ref: WBREF, x: 100, y: 80, w: 640, h: 440, z: 5, min: 0, max: 0, closed: 0, title: "Book",
+         sheets: [{ ref: "book.s1.view", title: "Sheet1" }], asheet: 0,
+         views: [{ ref: "book.v1.view", title: "View1" }], aview: 0, split: 0.6, full: "", ...patch },
+    metadata: { key: WBREF, segment: "wb" },
+  });
+};
+
+test("close (✕) button has the same ≥24px hit target in the workbook (wbframe) titlebar", async () => {
+  const state = await boot();
+  await seedWorkbook(state);
+  const wbst = state.cels.get(WBREF)?.v;
+  const root = resolveFn(state, "wbframe")(wbst, WBREF, resolveFn(state, "dom")("div.s", "S"), resolveFn(state, "dom")("div.v", "V"));
+  const btn = byClass(root, "pl-close-btn")[0];
+  assert.ok(btn, "workbook titlebar has a close control");
+  const s = styleOf(btn);
+  assert.match(s, /min-width:28px/, "workbook close button min-width pins ≥24 (28px)");
+  assert.match(s, /min-height:24px/, "workbook close button min-height pins the WCAG 24px floor");
+  assert.match(s, /color:#d4453e/, "workbook close keeps its distinguishing red");
+  assert.equal(btn.events?.click?.dispatch, "window.close", "workbook close still dispatches window.close");
+  assert.equal(btn.events?.click?.payload, WBREF, "workbook close still carries the window ref");
+  // uniform cluster in the workbook frame too.
+  for (const c of ["pl-min-btn", "pl-win-btn"]) {
+    const cs = styleOf(byClass(root, c)[0]);
+    assert.match(cs, /min-width:28px/, `${c} shares the ≥24px hit-target width in the workbook`);
+    assert.match(cs, /min-height:24px/, `${c} shares the ≥24px hit-target height in the workbook`);
+  }
+});
+
 test("drag writes the window's geometry cel; raise focuses + bumps z", async () => {
   const state = await boot();
   await seedWindow(state);

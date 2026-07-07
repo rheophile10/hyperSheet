@@ -163,8 +163,17 @@ const renderWorkbook = async (state: State, primary: string, title: string): Pro
     };
     const sheetTabs = await mkTabs(segs.filter((s) => paneOf(state, s) === "sheet"));
     const vizTabs = await mkTabs(segs.filter((s) => paneOf(state, s) === "viz"));
-    const g = (resolveFn(state, "wbopen") as Fn)(primary, title, sheetTabs, vizTabs, { __geom: { x: 120, y: 64, w: 820, h: 540 } }) as { cels: Record<string, { v?: Record<string, unknown> }> };
+    // A document may declare its opening window in its manifest (parallel to the
+    // pane:"viz" knob) — merge that preference over the default geometry. wbopen
+    // reads only x/y/w/h from __geom; split is injected onto the state cel below
+    // (the same channel that lands sv.tools). Docs that declare nothing behave
+    // exactly as before (default 820×540, split 0.58).
+    const wpref = (getSegmentManifest(state, primary) as
+      { window?: { x?: number; y?: number; w?: number; h?: number; split?: number } } | undefined)?.window ?? {};
+    const g = (resolveFn(state, "wbopen") as Fn)(primary, title, sheetTabs, vizTabs, { __geom: { x: 120, y: 64, w: 820, h: 540, ...wpref } }) as { cels: Record<string, { v?: Record<string, unknown> }> };
     const sv = g.cels[`win.${primary}.state`]?.v;       // inject the workbook toolbar (💾 Save)
+    if (sv && typeof wpref.split === "number")           // honor the doc's split (same clamp as window.splitMove)
+      sv.split = Math.max(0.15, Math.min(0.85, wpref.split));
     if (sv) sv.tools = [
       { icon: "📂", title: "Open a stored document", dispatch: "sheetapp.open" },
       { icon: "💾", title: "Save this workbook", dispatch: "sheetapp.save" },
@@ -253,7 +262,7 @@ const savewbFn: Fn = (async (state: State, refArg?: unknown): Promise<State> => 
 
 // sheetapp.seal(state, ref) — the 🔒 button: envelope-encrypt this workbook's
 // document to your identity (sheetkeys.sealsheet) and DOWNLOAD it as <doc>.sealed.
-// Unlock your identity (👤 Profile) first; if locked, this opens the profile window.
+// Unlock your identity (👤 Profile) first; if locked, this opens the 👤 Profile doc (doc:identity).
 interface DLHost { document?: { createElement(t: string): { href: string; download: string; type?: string; accept?: string; click(): void; onchange?: ((e: unknown) => void) | null; files?: ArrayLike<{ text(): Promise<string> }> } }; URL?: { createObjectURL(b: unknown): string; revokeObjectURL(u: string): void }; Blob?: new (parts: unknown[], o: unknown) => unknown }
 const sealwbFn: Fn = (async (state: State, refArg?: unknown): Promise<State> => {
   const doc = String(refArg ?? "").replace(/^win\./, "").replace(/\.state$/, "");
@@ -261,7 +270,7 @@ const sealwbFn: Fn = (async (state: State, refArg?: unknown): Promise<State> => 
   await ensureSegments(state, ["sheetkeys", "keystore", "crypto"]);
   if (state.cels.get("keystore.status")?.v !== "unlocked") {
     const pw = resolveFn(state, "profilewin") as Fn | undefined;
-    if (pw) await (resolveFn(state, "origin.navOpen") as Fn)(state, "app:profileapp");
+    if (pw) await (resolveFn(state, "origin.navOpen") as Fn)(state, "doc:identity");
     return state;   // unlock, then press 🔒 again
   }
   const r = await (resolveFn(state, "sheetkeys.sealsheet") as Fn)(state, doc) as { ok: boolean; blob?: string };
@@ -277,7 +286,7 @@ const sealwbFn: Fn = (async (state: State, refArg?: unknown): Promise<State> => 
 // your identity (sheetkeys.opensheet), and open it as a workbook.
 const openSealedFn: Fn = (async (state: State): Promise<State> => {
   await ensureSegments(state, ["sheetkeys", "keystore", "crypto"]);
-  if (state.cels.get("keystore.status")?.v !== "unlocked") { await (resolveFn(state, "origin.navOpen") as Fn)(state, "app:profileapp"); return state; }
+  if (state.cels.get("keystore.status")?.v !== "unlocked") { await (resolveFn(state, "origin.navOpen") as Fn)(state, "doc:identity"); return state; }
   const g = globalThis as DLHost;
   if (!g.document) return state;
   const inp = g.document.createElement("input") as unknown as { type: string; accept: string; click(): void; onchange: ((e: unknown) => void) | null; files?: ArrayLike<{ text(): Promise<string> }> };
@@ -292,7 +301,7 @@ const openSealedFn: Fn = (async (state: State): Promise<State> => {
 const docOf = (ref: unknown): string => String(ref ?? "").replace(/^win\./, "").replace(/\.state$/, "");
 const needsUnlock = async (state: State): Promise<boolean> => {
   if (state.cels.get("keystore.status")?.v === "unlocked") return false;
-  await (resolveFn(state, "origin.navOpen") as Fn)(state, "app:profileapp");
+  await (resolveFn(state, "origin.navOpen") as Fn)(state, "doc:identity");
   return true;
 };
 const setTitle = async (state: State, doc: string, title: string): Promise<void> => {

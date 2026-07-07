@@ -116,6 +116,24 @@ test("origin.editapp edits another segment's cels — the source commits back to
   assert.equal(s.cels.get("myapp.greet").v, 50, "and recomputed");
 });
 
+test("closing the editapp window flushes it — editapp.* and win.editapp_* leave state", async () => {
+  const s = await boot();
+  await resolveFn(s, "setCel")(s, "myapp.greet", { celType: "FormulaCel", metadata: { key: "myapp.greet", segment: "myapp", parser: "infix" }, f: "=1+1" });
+  await resolveFn(s, "runCycle")(s);
+
+  await resolveFn(s, "origin.editapp")(s, "myapp");
+  assert.equal(s.cels.has("win.editapp_myapp.flush"), true, "the editor window has a flush lambda");
+
+  await resolveFn(s, "window.close")(s, "win.editapp_myapp.state");
+  const leftovers = [...s.cels.keys()].filter((k) => k.startsWith("editapp.myapp.") || k.startsWith("win.editapp_myapp."));
+  assert.deepEqual(leftovers, [], "the editor's cels were swept on close");
+  assert.equal(s.cels.get("myapp.greet").v, 2, "the edited app itself survives");
+
+  // reopen after the sweep — the create path runs again from a clean slate
+  await resolveFn(s, "origin.editapp")(s, "myapp");
+  assert.equal(s.cels.has("win.editapp_myapp.state"), true, "editor reopens after a close");
+});
+
 test("closing a doc window flushes it — saves the edits then evicts the doc", async () => {
   const s = await boot();
   await resolveFn(s, "origin.install")(s, sheetappArchive);

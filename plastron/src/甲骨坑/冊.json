@@ -93,12 +93,6 @@
     ]
   },
   {
-    "name": "php-compiler",
-    "version": "1.0.0",
-    "description": "The 'php' compiler cel — PHP source (named functions; pick one via the := php.<fn>{…} selector) → callable Fn via php-wasm. Each compile defines its source in a fresh PHP namespace (recompile-safe); the runtime call is async (returns a Promise — fireCel awaits it). Dynamic-imported on first compile.",
-    "dependencies": []
-  },
-  {
     "name": "formula-compiler",
     "version": "1.0.0",
     "description": "kind \"formula\": defn bodies that are parameterized plastron formulas (not JS). (params) => body, compiled via compileFormula, called positionally. Lets layout/note/glue verbs be defined from the formula surface, editable + wiki-visible.",
@@ -293,6 +287,22 @@
     "role": "library"
   },
   {
+    "name": "image",
+    "version": "0.0.1",
+    "description": "PNG ⇆ RGBA image codec + downscale (a browser-API effect segment, idiom-mate of sound). image.decode(png)→{w,h,rgba}, image.encode(rgba,w,h)→base64 PNG (lossless — LSBs survive), image.fit(png,maxDim)→base64 PNG downscaled so max(w,h)≤maxDim. Uses the browser canvas (createImageBitmap/OffscreenCanvas) when present, else a dependency-free pure-JS PNG codec (zlib via Compression/DecompressionStream). No steg policy — the no-Python replacement for the Pyodide sibling's PIL I/O.",
+    "dependencies": [],
+    "role": "library"
+  },
+  {
+    "name": "nanosteg",
+    "version": "0.0.1",
+    "description": "Marshalling glue for the NanoSteg WAT module: nanosteg.host captures the module's live instance (memory+exports) per State via the wat compiler's host-instance hook; nanosteg.embed / nanosteg.decode copy the RGBA/password/payload bytes in and out of linear memory at fixed protocol offsets and call the exports. Mechanism only — the whole blind LSB steg algorithm (FNV-1a seed, splitmix64, carrier probe, NS header) is the WAT source ON THE SHEET (R10). Blind decode: recover a hidden link from one image + password, no cover.",
+    "dependencies": [
+      "wat-compiler"
+    ],
+    "role": "library"
+  },
+  {
     "name": "origin",
     "version": "1.0.0",
     "description": "The starting point: the origin cel (readme as value), the freespace view + entry gesture, load/cels effects. Boot contract: createInitialState + hydrate paints one visible cel.",
@@ -393,7 +403,7 @@
   {
     "name": "profile",
     "version": "0.0.1",
-    "description": "the identity-wallet UI (encrypted-collaborative-sheetapp Phase 1): a gen-2 profile WINDOW over the keystore library. profileui render verb + profile.* handlers (create/unlock/lock/reshuffle/changepass/setname/seed/import/importfile/export) bridge draft cels -> keystore.* -> a status message. profilewin() genesis opens it (app:profileapp launcher).",
+    "description": "the identity-wallet UI (encrypted-collaborative-sheetapp Phase 1): a gen-2 profile WINDOW over the keystore library. profileui render verb + profile.* handlers (create/unlock/lock/reshuffle/changepass/setname/seed/import/importfile/export) bridge draft cels -> keystore.* -> a status message. profilewin() genesis opens the legacy standalone window; the 👤 Profile desktop icon now opens the identity sheetapp doc (doc:identity), whose wallet =view renders profileui directly.",
     "dependencies": [
       "dom",
       "keystore",

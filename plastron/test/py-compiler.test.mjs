@@ -74,6 +74,49 @@ test("Python source without a trailing callable expression throws a clear error"
   );
 });
 
+// ── package auto-load (loadPackagesFromImports) ────────────────────────────
+
+// The native change under test: before runPython, the compiler calls
+// pyodide.loadPackagesFromImports(source), so a py cell that imports a
+// third-party Pyodide package (numpy here) compiles AND runs instead of
+// failing at import with ModuleNotFoundError. Without the change this
+// test's compile rejects; with it, the numpy op returns the right value.
+test("a py cell that imports numpy auto-loads the package and runs", { timeout: 120000 }, async () => {
+  console.log("loading Pyodide + numpy wheel; first run downloads ~5MB");
+
+  const state = createInitialState();
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
+  await register(state, {
+    key: "np-sum",
+    kind: "py",
+    source: [
+      "import numpy as np",
+      "def np_sum(n):",
+      "    return int(np.arange(n + 1).sum())",
+      "np_sum",
+    ].join("\n"),
+  });
+
+  const fn = resolveFn(state, "np-sum");
+  assert.equal(typeof fn, "function");
+  assert.equal(await fn(10), 55);   // 0+1+…+10
+  assert.equal(await fn(100), 5050);
+});
+
+// Regression guard: the auto-load step must be a no-op for source with no
+// third-party imports — the existing double() lambda still compiles/runs.
+test("a py cell with no third-party imports is unaffected by package auto-load", { timeout: 60000 }, async () => {
+  const state = createInitialState();
+  const register = ((st, a) => resolveFn(st, "setCel")(st, a.key, { celType: a.locked ? "LockedLambdaCel" : "EditableLambdaCel", locked: a.locked, fn: a.fn, f: a.source, dispose: a.dispose, metadata: { segment: a.segment, kind: a.kind, inputSchema: a.inputSchema, outputSchema: a.outputSchema } }));
+  await register(state, {
+    key: "plain-double",
+    kind: "py",
+    source: ["def double(x):", "    return x * 2", "double"].join("\n"),
+  });
+  const fn = resolveFn(state, "plain-double");
+  assert.equal(await fn(21), 42);
+});
+
 // ── declarative py lambda via hydrate (trap-as-value path) ─────────────────
 
 test("a declarative py cel with bad Python source becomes a CelError; hydrate completes", { timeout: 60000 }, async () => {

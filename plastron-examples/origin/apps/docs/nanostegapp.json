@@ -1,0 +1,449 @@
+{
+  "formatVersion": 1,
+  "segments": [
+    {
+      "name": "nanostegapp",
+      "cels": [
+        {
+          "key": "nanostegapp.A1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A1",
+            "segment": "nanostegapp",
+            "name": "A1",
+            "description": "doc title / one-line intro"
+          },
+          "v": "🕵️ NanoSteg — hide a plastron.ca #f= link in a Twitter-safe PNG and pull it back out of that ONE picture alone. No Python: a sub-kilobyte hand-written WebAssembly module does the whole blind LSB steganography."
+        },
+        {
+          "key": "nanostegapp.A3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A3",
+            "segment": "nanostegapp",
+            "name": "A3",
+            "description": "section label"
+          },
+          "v": "── DECODE (recover from ONE image + password) ──"
+        },
+        {
+          "key": "nanostegapp.A4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A4",
+            "segment": "nanostegapp",
+            "name": "A4",
+            "description": "label"
+          },
+          "v": "① image from X (base64 PNG)"
+        },
+        {
+          "key": "nanostegapp.B2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.B2",
+            "segment": "nanostegapp",
+            "name": "B2",
+            "description": "the uploaded steg image's bytes as base64 — filled by the Decode pane's file input (fs.pickToCel)"
+          },
+          "v": ""
+        },
+        {
+          "key": "nanostegapp.A5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A5",
+            "segment": "nanostegapp",
+            "name": "A5",
+            "description": "label"
+          },
+          "v": "② password"
+        },
+        {
+          "key": "nanostegapp.B3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.B3",
+            "segment": "nanostegapp",
+            "name": "B3",
+            "description": "EDIT ME — the password. The Decode pane's password field writes here."
+          },
+          "v": "SECRET_PASSWORD"
+        },
+        {
+          "key": "nanostegapp.A6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A6",
+            "segment": "nanostegapp",
+            "name": "A6",
+            "description": "label"
+          },
+          "v": "recovered"
+        },
+        {
+          "key": "nanostegapp.B4",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "nanostegapp.B4",
+            "segment": "nanostegapp",
+            "name": "B4",
+            "description": "THE BLIND DECODE: re-derives the carrier pixels from the password alone and reads the hidden bits from the ONE uploaded image (D2) — no original cover. Returns the recovered text, or a readable 'wrong password' message on a magic miss.",
+            "parser": "infix"
+          },
+          "f": "=IF(B2 = '', '', nanosteg.decode(D2.rgba, D2.w, D2.h, B3, A21))"
+        },
+        {
+          "key": "nanostegapp.A7",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A7",
+            "segment": "nanostegapp",
+            "name": "A7",
+            "description": "label"
+          },
+          "v": "decoded dims"
+        },
+        {
+          "key": "nanostegapp.D2",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "nanostegapp.D2",
+            "segment": "nanostegapp",
+            "name": "D2",
+            "description": "the uploaded image decoded to { w, h, rgba }; feeds the decode formula B4.",
+            "parser": "infix"
+          },
+          "f": "=IF(B2 = '', 0, image.decode(B2))"
+        },
+        {
+          "key": "nanostegapp.A9",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A9",
+            "segment": "nanostegapp",
+            "name": "A9",
+            "description": "section label"
+          },
+          "v": "── EMBED (hide a link in a picture) ──"
+        },
+        {
+          "key": "nanostegapp.A10",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A10",
+            "segment": "nanostegapp",
+            "name": "A10",
+            "description": "label"
+          },
+          "v": "max px (X-safe)"
+        },
+        {
+          "key": "nanostegapp.B1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.B1",
+            "segment": "nanostegapp",
+            "name": "B1",
+            "description": "THE ≤680 GUARD (EDIT ME): X re-compresses images whose max dimension exceeds ~900px to JPEG and destroys the hidden bits; 680 stays well under. Covers larger than this are auto-downscaled before embedding."
+          },
+          "v": 680
+        },
+        {
+          "key": "nanostegapp.A11",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A11",
+            "segment": "nanostegapp",
+            "name": "A11",
+            "description": "label"
+          },
+          "v": "link or text to hide"
+        },
+        {
+          "key": "nanostegapp.F1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.F1",
+            "segment": "nanostegapp",
+            "name": "F1",
+            "description": "EDIT ME — the plastron.ca #f= share link (or any text) to hide. The Embed pane's text field writes here."
+          },
+          "v": "https://plastron.ca/#f=eNqrVkrKT8pJTS7JzM9TslJQSszLzMtMzs8rVtJRSkksSVWyUkrOSCzKTC1WsjKvBQBc_g8b"
+        },
+        {
+          "key": "nanostegapp.A12",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A12",
+            "segment": "nanostegapp",
+            "name": "A12",
+            "description": "label"
+          },
+          "v": "cover PNG (base64)"
+        },
+        {
+          "key": "nanostegapp.F2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.F2",
+            "segment": "nanostegapp",
+            "name": "F2",
+            "description": "cover image bytes as base64 — filled by the Embed pane's file input (fs.pickToCel)"
+          },
+          "v": ""
+        },
+        {
+          "key": "nanostegapp.A13",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A13",
+            "segment": "nanostegapp",
+            "name": "A13",
+            "description": "label"
+          },
+          "v": "cover dims"
+        },
+        {
+          "key": "nanostegapp.F3",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "nanostegapp.F3",
+            "segment": "nanostegapp",
+            "name": "F3",
+            "description": "the picked cover decoded to { w, h, rgba } — surfaces its size for the guard.",
+            "parser": "infix"
+          },
+          "f": "=IF(F2 = '', 0, image.decode(F2))"
+        },
+        {
+          "key": "nanostegapp.A14",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A14",
+            "segment": "nanostegapp",
+            "name": "A14",
+            "description": "label"
+          },
+          "v": "size"
+        },
+        {
+          "key": "nanostegapp.F4",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "nanostegapp.F4",
+            "segment": "nanostegapp",
+            "name": "F4",
+            "description": "the visible size guard: warns (and auto-downscales) when the cover exceeds B1 px on its longest edge.",
+            "parser": "infix"
+          },
+          "f": "=IF(F2 = '', '', IF(MAX(F3.w, F3.h) > B1, 'too big — downscaling to ' & B1 & 'px', 'size OK — ' & F3.w & '×' & F3.h))"
+        },
+        {
+          "key": "nanostegapp.A15",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A15",
+            "segment": "nanostegapp",
+            "name": "A15",
+            "description": "label"
+          },
+          "v": "≤max cover used"
+        },
+        {
+          "key": "nanostegapp.F5",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "nanostegapp.F5",
+            "segment": "nanostegapp",
+            "name": "F5",
+            "description": "THE ≤680 COVER ACTUALLY EMBEDDED INTO: F2 fit to B1 px (a no-op when already within bounds). Embedding always uses THIS, so an oversized cover can never make an X-fragile steg.",
+            "parser": "infix"
+          },
+          "f": "=IF(F2 = '', '', IF(MAX(F3.w, F3.h) > B1, image.fit(F2, B1), F2))"
+        },
+        {
+          "key": "nanostegapp.A16",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A16",
+            "segment": "nanostegapp",
+            "name": "A16",
+            "description": "label"
+          },
+          "v": "used dims"
+        },
+        {
+          "key": "nanostegapp.F7",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "nanostegapp.F7",
+            "segment": "nanostegapp",
+            "name": "F7",
+            "description": "the ≤680 cover (F5) decoded to { w, h, rgba } — the exact buffer + dims embed writes into.",
+            "parser": "infix"
+          },
+          "f": "=IF(F2 = '', 0, image.decode(F5))"
+        },
+        {
+          "key": "nanostegapp.A17",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A17",
+            "segment": "nanostegapp",
+            "name": "A17",
+            "description": "label"
+          },
+          "v": "password"
+        },
+        {
+          "key": "nanostegapp.F6",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.F6",
+            "segment": "nanostegapp",
+            "name": "F6",
+            "description": "EDIT ME — the password. The Embed pane's password field writes here."
+          },
+          "v": "SECRET_PASSWORD"
+        },
+        {
+          "key": "nanostegapp.A18",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A18",
+            "segment": "nanostegapp",
+            "name": "A18",
+            "description": "label"
+          },
+          "v": "capacity"
+        },
+        {
+          "key": "nanostegapp.F8",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "nanostegapp.F8",
+            "segment": "nanostegapp",
+            "name": "F8",
+            "description": "the visible capacity guard: 56 header bits + 8·(byte length) must fit in 3·W·H carriers (the R/G/B LSBs). For an ASCII link LEN = byte length.",
+            "parser": "infix"
+          },
+          "f": "=IF(F2 = '', '', IF(56 + 8 * LEN(F1) > 3 * F7.w * F7.h, '⚠ payload too big for this cover — use a larger image or shorter text', 'capacity OK — ' & (56 + 8 * LEN(F1)) & ' of ' & (3 * F7.w * F7.h) & ' carrier bits'))"
+        },
+        {
+          "key": "nanostegapp.A19",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A19",
+            "segment": "nanostegapp",
+            "name": "A19",
+            "description": "label"
+          },
+          "v": "steg PNG (base64)"
+        },
+        {
+          "key": "nanostegapp.F9",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "nanostegapp.F9",
+            "segment": "nanostegapp",
+            "name": "F9",
+            "description": "THE EMBED: hides F1 in the ≤680 cover (F7) with password F6 via the WAT core (A21), then encodes the result to a lossless PNG (base64). Empty until a cover + link are present and the payload fits.",
+            "parser": "infix"
+          },
+          "f": "=IF(OR(F2 = '', F1 = '', 56 + 8 * LEN(F1) > 3 * F7.w * F7.h), '', image.encode(nanosteg.embed(F7.rgba, F7.w, F7.h, F1, F6, A21), F7.w, F7.h))"
+        },
+        {
+          "key": "nanostegapp.A20",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.A20",
+            "segment": "nanostegapp",
+            "name": "A20",
+            "description": "label for the algorithm cell"
+          },
+          "v": "▼ NanoSteg algorithm — the ENTIRE blind LSB steganography as hand-written WebAssembly text (FNV-1a64 seed, splitmix64 PRNG, collision-avoided carrier probe over R/G/B LSBs, the 'NS' header). This cell IS the program; edit it and the embed/decode formulas re-fire. Its live instance is captured by nanosteg.host so the marshalling verbs can read/write its memory."
+        },
+        {
+          "key": "nanostegapp.A21",
+          "celType": "EditableLambdaCel",
+          "metadata": {
+            "key": "nanostegapp.A21",
+            "segment": "nanostegapp",
+            "name": "A21",
+            "kind": "wat",
+            "imports": "nanosteg.host",
+            "wasmExport": "embed",
+            "description": "THE ALGORITHM, on the surface (R10): the complete NanoSteg WAT module — hash_password (FNV-1a64), splitmix64, the collision-avoided carrier probe, LSB read/write, the NS header, exporting mem/embed/decode. Compiled by the wat compiler; nanosteg.host captures its live instance. Edit it and the embed/decode formulas recompile live."
+          },
+          "f": "(module\n  ;; NanoSteg v1 — password-seeded pseudo-random LSB steganography, blind.\n  ;; Pure integer math. The host copies the RGBA buffer + password + payload\n  ;; into this memory at fixed offsets, then calls hash_password + embed/decode.\n  ;;\n  ;; Memory map (protocol constants, shared with the nanosteg glue):\n  ;;   0x000000  RGBA8 pixel buffer      4*W*H bytes  (alpha never touched)\n  ;;   0x800000  used-carrier bitset     ceil(3*W*H/8) bytes\n  ;;   0xA00000  password bytes          (host writes, len passed to hash_password)\n  ;;   0xA10000  payload bytes           (in on embed, out on decode)\n  ;;   0xB00000  header scratch          7 bytes: 'N' 'S' 0x01 + u32-LE length\n  (memory (export \"mem\") 1)\n\n  (global $seed  (mut i64) (i64.const 0))\n  (global $state (mut i64) (i64.const 0))\n\n  ;; --- FNV-1a 64 over password bytes [ptr, ptr+len) -> $seed ---------------\n  (func (export \"hash_password\") (param $ptr i32) (param $len i32)\n    (local $h i64) (local $i i32)\n    (local.set $h (i64.const 0xCBF29CE484222325))          ;; FNV offset basis\n    (local.set $i (i32.const 0))\n    (block $done (loop $lp\n      (br_if $done (i32.ge_u (local.get $i) (local.get $len)))\n      (local.set $h (i64.xor (local.get $h)\n        (i64.extend_i32_u (i32.load8_u (i32.add (local.get $ptr) (local.get $i))))))\n      (local.set $h (i64.mul (local.get $h) (i64.const 0x100000001B3)))   ;; FNV prime\n      (local.set $i (i32.add (local.get $i) (i32.const 1)))\n      (br $lp)))\n    (global.set $seed (local.get $h)))\n\n  ;; --- splitmix64 next -> i64 ---------------------------------------------\n  (func $next (result i64)\n    (local $z i64)\n    (global.set $state (i64.add (global.get $state) (i64.const 0x9E3779B97F4A7C15)))\n    (local.set $z (global.get $state))\n    (local.set $z (i64.mul (i64.xor (local.get $z) (i64.shr_u (local.get $z) (i64.const 30))) (i64.const 0xBF58476D1CE4E5B9)))\n    (local.set $z (i64.mul (i64.xor (local.get $z) (i64.shr_u (local.get $z) (i64.const 27))) (i64.const 0x94D049BB133111EB)))\n    (i64.xor (local.get $z) (i64.shr_u (local.get $z) (i64.const 31))))\n\n  ;; --- used-carrier bitset at 0x800000 ------------------------------------\n  (func $is_used (param $idx i32) (result i32)\n    (i32.and\n      (i32.shr_u\n        (i32.load8_u (i32.add (i32.const 0x800000) (i32.shr_u (local.get $idx) (i32.const 3))))\n        (i32.and (local.get $idx) (i32.const 7)))\n      (i32.const 1)))\n  (func $mark (param $idx i32)\n    (local $addr i32)\n    (local.set $addr (i32.add (i32.const 0x800000) (i32.shr_u (local.get $idx) (i32.const 3))))\n    (i32.store8 (local.get $addr)\n      (i32.or (i32.load8_u (local.get $addr))\n        (i32.shl (i32.const 1) (i32.and (local.get $idx) (i32.const 7))))))\n  (func $clear_bitset (param $C i32)\n    (memory.fill (i32.const 0x800000) (i32.const 0)\n      (i32.div_u (i32.add (local.get $C) (i32.const 7)) (i32.const 8))))\n\n  ;; --- collision-avoided random probe: draw + linear-probe + mark -> idx --\n  (func $claim (param $C i32) (result i32)\n    (local $idx i32)\n    (local.set $idx (i32.wrap_i64 (i64.rem_u (call $next) (i64.extend_i32_u (local.get $C)))))\n    (block $found (loop $lp\n      (br_if $found (i32.eqz (call $is_used (local.get $idx))))\n      (local.set $idx (i32.rem_u (i32.add (local.get $idx) (i32.const 1)) (local.get $C)))\n      (br $lp)))\n    (call $mark (local.get $idx))\n    (local.get $idx))\n\n  ;; carrier k -> rgba byte offset 4*(k/3)+(k%3): R/G/B of each pixel, skip A\n  (func $carrier_off (param $idx i32) (result i32)\n    (i32.add\n      (i32.mul (i32.div_u (local.get $idx) (i32.const 3)) (i32.const 4))\n      (i32.rem_u (local.get $idx) (i32.const 3))))\n  (func $put_bit (param $idx i32) (param $b i32)\n    (local $off i32)\n    (local.set $off (call $carrier_off (local.get $idx)))\n    (i32.store8 (local.get $off)\n      (i32.or (i32.and (i32.load8_u (local.get $off)) (i32.const 0xFE))\n              (i32.and (local.get $b) (i32.const 1)))))\n  (func $get_bit (param $idx i32) (result i32)\n    (i32.and (i32.load8_u (call $carrier_off (local.get $idx))) (i32.const 1)))\n\n  ;; --- embed(w,h,len) -> 0 ok | -1 capacity -------------------------------\n  (func (export \"embed\") (param $w i32) (param $h i32) (param $len i32) (result i32)\n    (local $C i32) (local $K i32) (local $i i32) (local $byte i32) (local $bit i32) (local $bi i32)\n    (local.set $C (i32.mul (i32.const 3) (i32.mul (local.get $w) (local.get $h))))\n    (local.set $K (i32.add (i32.const 56) (i32.mul (i32.const 8) (local.get $len))))\n    (if (i32.gt_u (local.get $K) (local.get $C)) (then (return (i32.const -1))))\n    ;; header at 0xB00000: 'N' 'S' 0x01 + u32-LE len\n    (i32.store8 (i32.const 0xB00000) (i32.const 0x4E))\n    (i32.store8 (i32.const 0xB00001) (i32.const 0x53))\n    (i32.store8 (i32.const 0xB00002) (i32.const 0x01))\n    (i32.store  offset=0xB00003 align=1 (i32.const 0) (local.get $len))\n    (global.set $state (global.get $seed))\n    (call $clear_bitset (local.get $C))\n    (local.set $i (i32.const 0))\n    (block $done (loop $lp\n      (br_if $done (i32.ge_u (local.get $i) (local.get $K)))\n      (local.set $bi (i32.shr_u (local.get $i) (i32.const 3)))\n      (local.set $byte (if (result i32) (i32.lt_u (local.get $bi) (i32.const 7))\n        (then (i32.load8_u (i32.add (i32.const 0xB00000) (local.get $bi))))\n        (else (i32.load8_u (i32.add (i32.const 0xA10000) (i32.sub (local.get $bi) (i32.const 7)))))))\n      (local.set $bit (i32.and (i32.shr_u (local.get $byte) (i32.and (local.get $i) (i32.const 7))) (i32.const 1)))\n      (call $put_bit (call $claim (local.get $C)) (local.get $bit))\n      (local.set $i (i32.add (local.get $i) (i32.const 1)))\n      (br $lp)))\n    (i32.const 0))\n\n  ;; --- decode(w,h) -> len>=0 ok | -1 magic miss | -2 length insane --------\n  (func (export \"decode\") (param $w i32) (param $h i32) (result i32)\n    (local $C i32) (local $i i32) (local $bit i32) (local $len i32) (local $total i32) (local $bi i32)\n    (local.set $C (i32.mul (i32.const 3) (i32.mul (local.get $w) (local.get $h))))\n    (global.set $state (global.get $seed))\n    (call $clear_bitset (local.get $C))\n    (i64.store (i32.const 0xB00000) (i64.const 0))            ;; clear 8 header bytes\n    ;; read 56 header bits\n    (local.set $i (i32.const 0))\n    (block $hd (loop $hl\n      (br_if $hd (i32.ge_u (local.get $i) (i32.const 56)))\n      (local.set $bit (call $get_bit (call $claim (local.get $C))))\n      (if (local.get $bit) (then\n        (local.set $bi (i32.add (i32.const 0xB00000) (i32.shr_u (local.get $i) (i32.const 3))))\n        (i32.store8 (local.get $bi) (i32.or (i32.load8_u (local.get $bi))\n          (i32.shl (i32.const 1) (i32.and (local.get $i) (i32.const 7)))))))\n      (local.set $i (i32.add (local.get $i) (i32.const 1)))\n      (br $hl)))\n    ;; magic + version check\n    (if (i32.ne (i32.load8_u (i32.const 0xB00000)) (i32.const 0x4E)) (then (return (i32.const -1))))\n    (if (i32.ne (i32.load8_u (i32.const 0xB00001)) (i32.const 0x53)) (then (return (i32.const -1))))\n    (if (i32.ne (i32.load8_u (i32.const 0xB00002)) (i32.const 0x01)) (then (return (i32.const -1))))\n    (local.set $len (i32.load offset=0xB00003 align=1 (i32.const 0)))\n    (local.set $total (i32.add (i32.const 56) (i32.mul (i32.const 8) (local.get $len))))\n    (if (i32.gt_u (local.get $total) (local.get $C)) (then (return (i32.const -2))))\n    (memory.fill (i32.const 0xA10000) (i32.const 0) (local.get $len))\n    ;; read payload bits, continuing the same draw sequence\n    (local.set $i (i32.const 0))\n    (block $pd (loop $pl\n      (br_if $pd (i32.ge_u (local.get $i) (i32.mul (i32.const 8) (local.get $len))))\n      (local.set $bit (call $get_bit (call $claim (local.get $C))))\n      (if (local.get $bit) (then\n        (local.set $bi (i32.add (i32.const 0xA10000) (i32.shr_u (local.get $i) (i32.const 3))))\n        (i32.store8 (local.get $bi) (i32.or (i32.load8_u (local.get $bi))\n          (i32.shl (i32.const 1) (i32.and (local.get $i) (i32.const 7)))))))\n      (local.set $i (i32.add (local.get $i) (i32.const 1)))\n      (br $pl)))\n    (local.get $len))\n)"
+        },
+        {
+          "key": "nanostegapp.V1",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "nanostegapp.V1",
+            "segment": "nanostegapp",
+            "name": "V1",
+            "description": "the 🔓 Decode view pane: ONE file upload → B2, password → B3, and B4 rendered as a clickable link when it is a URL. The contrast with the sibling: a single upload, no cover.",
+            "parser": "infix"
+          },
+          "f": "=view('🔓 Decode',\n\tdom('div', style('padding', '.75rem', 'display', 'flex', 'flex-direction', 'column', 'gap', '.55rem', 'max-width', '620px', 'font-family', 'system-ui, sans-serif'),\n\t\tdom('h2', style('margin', '0'), '🔓 Decode'),\n\t\tdom('div', style('color', '#666', 'font-size', '.9rem'),\n\t\t\t'Upload the ONE image you saved from X and type the password. No original cover needed — NanoSteg re-derives the hidden pixels from the password alone.'),\n\t\tdom('div', style('display', 'flex', 'flex-direction', 'column', 'gap', '.15rem'),\n\t\t\tdom('label', style('font-weight', '600'), 'image from X (PNG)'),\n\t\t\tdom('input', attr('type', 'file'), attr('accept', 'image/png'), on('change', 'fs.pickToCel', 'nanostegapp.B2')),\n\t\t\tdom('div', style('font-size', '.8rem', 'color', '#2a8f56'), IF(B2 = '', '', '✓ image loaded'))),\n\t\tdom('div', style('display', 'flex', 'flex-direction', 'column', 'gap', '.15rem'),\n\t\t\tdom('label', style('font-weight', '600'), 'password'),\n\t\t\tdom('input', attr('value', B3), style('padding', '.3rem'), on('input', 'param.set', 'nanostegapp.B3'))),\n\t\tdom('div', style('margin-top', '.5rem', 'padding', '.6rem', 'background', '#f4f4f7', 'border-radius', '.45rem'),\n\t\t\tIF(B2 = '',\n\t\t\t\tdom('span', style('color', '#999'), 'waiting for an image…'),\n\t\t\t\tIF(LEFT(B4, 4) = 'http',\n\t\t\t\t\tdom('div',\n\t\t\t\t\t\tdom('div', style('font-size', '.8rem', 'color', '#666', 'margin-bottom', '.2rem'), 'recovered link:'),\n\t\t\t\t\t\tdom('a', attr('href', B4), attr('target', '_blank'), style('word-break', 'break-all', 'color', '#2563eb'), B4)),\n\t\t\t\t\tdom('div', style('word-break', 'break-all'), B4))))))"
+        },
+        {
+          "key": "nanostegapp.V2",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "nanostegapp.V2",
+            "segment": "nanostegapp",
+            "name": "V2",
+            "description": "the 🖼 Embed view pane: link → F1, cover upload → F2, the ≤680 size guard (F4) and capacity guard (F8), password → F6, and the steg PNG (F9) as a downloadable data-URL anchor.",
+            "parser": "infix"
+          },
+          "f": "=view('🖼 Embed',\n\tdom('div', style('padding', '.75rem', 'display', 'flex', 'flex-direction', 'column', 'gap', '.55rem', 'max-width', '620px', 'font-family', 'system-ui, sans-serif'),\n\t\tdom('h2', style('margin', '0'), '🖼 Embed'),\n\t\tdom('div', style('color', '#666', 'font-size', '.9rem'),\n\t\t\t'Paste a link, pick a small cover PNG, set a password. Post the downloaded steg PNG to X as-is (no crop or filter). Covers over ' & B1 & 'px are auto-downscaled — X re-compresses larger images and would destroy the hidden bits.'),\n\t\tdom('div', style('display', 'flex', 'flex-direction', 'column', 'gap', '.15rem'),\n\t\t\tdom('label', style('font-weight', '600'), 'link or text to hide'),\n\t\t\tdom('input', attr('value', F1), style('padding', '.3rem', 'width', '100%'), on('input', 'param.set', 'nanostegapp.F1'))),\n\t\tdom('div', style('display', 'flex', 'flex-direction', 'column', 'gap', '.15rem'),\n\t\t\tdom('label', style('font-weight', '600'), 'cover PNG'),\n\t\t\tdom('input', attr('type', 'file'), attr('accept', 'image/png'), on('change', 'fs.pickToCel', 'nanostegapp.F2')),\n\t\t\tdom('div', style('font-size', '.8rem', 'color', '#a66'), IF(F2 = '', '', F4))),\n\t\tdom('div', style('display', 'flex', 'flex-direction', 'column', 'gap', '.15rem'),\n\t\t\tdom('label', style('font-weight', '600'), 'password'),\n\t\t\tdom('input', attr('value', F6), style('padding', '.3rem'), on('input', 'param.set', 'nanostegapp.F6'))),\n\t\tdom('div', style('font-size', '.8rem', 'color', '#888'), IF(F2 = '', '', F8)),\n\t\tdom('div', style('margin-top', '.5rem'),\n\t\t\tIF(F2 = '',\n\t\t\t\tdom('span', style('color', '#999'), 'pick a cover PNG to embed…'),\n\t\t\t\tIF(F1 = '',\n\t\t\t\t\tdom('span', style('color', '#999'), 'type a link or text to hide…'),\n\t\t\t\t\tIF(F9 = '',\n\t\t\t\t\t\tdom('span', style('color', '#999'), 'embedding… (or the payload is too big — see capacity above)'),\n\t\t\t\t\t\tdom('a', attr('href', CONCAT('data:image/png;base64,', F9)), attr('download', 'plastron-nanosteg.png'),\n\t\t\t\t\t\t\tstyle('display', 'inline-block', 'padding', '.45rem .8rem', 'background', '#2a8f56', 'color', '#fff', 'border-radius', '.4rem', 'text-decoration', 'none', 'width', 'fit-content', 'font-weight', '600'),\n\t\t\t\t\t\t\t'⬇ Download steg PNG')))))))"
+        },
+        {
+          "key": "nanostegapp.dims",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "nanostegapp.dims",
+            "segment": "nanostegapp",
+            "name": "dims",
+            "description": "the sheet's rendered range { rows, cols }."
+          },
+          "v": {
+            "rows": 30,
+            "cols": 8
+          }
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    {
+      "name": "nanostegapp",
+      "version": "0.1.0",
+      "description": "NanoSteg — a WAT-native, dependency-free sheetapp document that hides a plastron.ca #f= link inside a small PNG and recovers it BLINDLY from that one image plus a password (no original cover). The whole steg algorithm is hand-written WebAssembly text ON THE SHEET (a positioned kind:\"wat\" cell whose live instance is captured for pixel-buffer I/O); every decision — the password, the ≤680px guard, the capacity guard, the embed/decode compositions, the clickable-link result — is a positioned cell. The lightweight, no-Python contrast to the ChaosEdgeSteg sibling.",
+      "role": "user-space",
+      "kind": "origin-user",
+      "applications": [
+        "sheetapp"
+      ],
+      "dependencies": [
+        "sheetapp",
+        "sheet",
+        "sheets",
+        "window",
+        "dom",
+        "genesis",
+        "origin",
+        "wat-compiler",
+        "image",
+        "nanosteg",
+        "file-store",
+        "ecs",
+        "defn"
+      ]
+    }
+  ]
+}

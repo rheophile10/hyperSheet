@@ -240,3 +240,24 @@ test("fs.* fns are callable from S-expression formulas", async () => {
   await new Promise((r) => setTimeout(r, 50));
   assert.equal(await call("fs.readText", targetPath), "Formula said hi");
 });
+
+// ── fs.pickToCel — picked-file bytes → base64 into a named cel ──────────────
+// The on('change') bridge a sheetapp uses to hand image bytes to a py cell.
+// A fake change event (target.files[0].arrayBuffer) must land the file's
+// bytes, base64-encoded, on the named cel via setValue.
+test("fs.pickToCel base64-encodes the picked file into the named cel", async () => {
+  // a named target cel to receive the base64
+  const setCel = resolveFn(state, "setCel");
+  await setCel(state, "pick.target", { celType: "ValueCel", v: "", metadata: { key: "pick.target", segment: "pick" } });
+
+  const bytes = new Uint8Array([0, 1, 2, 253, 254, 255, 65, 66]);
+  const expected = Buffer.from(bytes).toString("base64");   // AAEC/f7/QUI=
+  const fakeEvent = { target: { files: [{ arrayBuffer: async () => bytes.buffer.slice(0) }] } };
+
+  await resolveFn(state, "fs.pickToCel")(state, "pick.target", fakeEvent);
+  assert.equal(state.cels.get("pick.target").v, expected);
+
+  // no file selected → no-op (cel keeps its prior value)
+  await resolveFn(state, "fs.pickToCel")(state, "pick.target", { target: { files: [] } });
+  assert.equal(state.cels.get("pick.target").v, expected);
+});

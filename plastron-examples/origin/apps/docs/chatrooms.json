@@ -23,36 +23,21 @@
           "metadata": {
             "key": "chatrooms.A1",
             "segment": "chatrooms",
-            "name": "A1",
-            "description": "label: B1 is the PUBLIC supabase config as ONE dict — sb.default derives from it by formula, so editing B1 repoints the whole doc"
+            "name": "A1"
           },
-          "v": "supabase config →"
+          "v": "auth status (sign in via 👤 Profile) →"
         },
         {
           "key": "chatrooms.B1",
-          "celType": "ValueCel",
+          "celType": "FormulaCel",
           "metadata": {
             "key": "chatrooms.B1",
             "segment": "chatrooms",
             "name": "B1",
-            "description": "the appkit project's PUBLIC config {url, anonkey} — the local Supabase CLI stack + its shared publishable key (browser-safe by design; provider keys stay server-side). JSON data entry: the cell's VALUE is the dict."
-          },
-          "v": {
-            "url": "http://127.0.0.1:54341",
-            "anonkey": "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH"
-          }
-        },
-        {
-          "key": "sb.default",
-          "celType": "FormulaCel",
-          "metadata": {
-            "key": "sb.default",
-            "segment": "chatrooms",
-            "name": "sb.default",
             "parser": "infix",
-            "description": "the config cel sbConfig resolves FIRST — derived from the visible B1 dict (reference IS the dependency: edit B1 and every supabase call follows)"
+            "description": "the NON-SECRET auth-status probe ({status, email, userId}) — login and the supabase config live in the 👤 Profile doc (doc:identity), which defines sb.default. NOT a dependency (opening chatrooms must not pull the profile panes into this workbook): blank until you sign in over there, then every gated view here unlocks reactively when sb.default.auth is born."
           },
-          "f": "=chatrooms.B1"
+          "f": "=sb.default.auth"
         },
         {
           "key": "chatrooms.A2",
@@ -60,10 +45,9 @@
           "metadata": {
             "key": "chatrooms.A2",
             "segment": "chatrooms",
-            "name": "A2",
-            "description": "label: B2 is the LOGIN view — sign in to get the token (held in the session store, never a cel); signed in it becomes the session card"
+            "name": "A2"
           },
-          "v": "login view →"
+          "v": "rooms view →"
         },
         {
           "key": "chatrooms.B2",
@@ -73,9 +57,9 @@
             "segment": "chatrooms",
             "name": "B2",
             "parser": "infix",
-            "description": "=view('login', loginpane(…)): the appkit login card until signedIn(sb.default.auth); then 'Signed in as …' + Sign out. Signing in auto-loads the rooms."
+            "description": "=view('rooms', roomspane(…)): the room list from appkit's list_conversations RPC (grok.loadrooms fills grok.rooms); a row click dispatches grok.pickroom — select + load messages + focus the room chat"
           },
-          "f": "=view(\"login\", loginpane({project:\"default\", authed:signedIn(sb.default.auth), email:grok.email, password:grok.password, status:grok.status, session:sb.default.auth}))"
+          "f": "=view(\"rooms\", roomspane(grok.rooms, {project:\"default\", authed:signedIn(sb.default.auth), room:grok.room}))"
         },
         {
           "key": "chatrooms.A3",
@@ -83,10 +67,9 @@
           "metadata": {
             "key": "chatrooms.A3",
             "segment": "chatrooms",
-            "name": "A3",
-            "description": "label: B3 is the ROOMS view — your appkit conversations (lounge / groups / DMs, RLS-scoped); click a row to go into its chat"
+            "name": "A3"
           },
-          "v": "rooms view →"
+          "v": "room chat →"
         },
         {
           "key": "chatrooms.B3",
@@ -95,29 +78,6 @@
             "key": "chatrooms.B3",
             "segment": "chatrooms",
             "name": "B3",
-            "parser": "infix",
-            "description": "=view('rooms', roomspane(…)): the room list from appkit's list_conversations RPC (grok.loadrooms fills grok.rooms); a row click dispatches grok.pickroom — select + load messages + focus the room chat"
-          },
-          "f": "=view(\"rooms\", roomspane(grok.rooms, {project:\"default\", authed:signedIn(sb.default.auth), room:grok.room}))"
-        },
-        {
-          "key": "chatrooms.A4",
-          "celType": "ValueCel",
-          "metadata": {
-            "key": "chatrooms.A4",
-            "segment": "chatrooms",
-            "name": "A4",
-            "description": "label: B4 is the ROOM CHAT view — the selected room's real appkit messages; sending INSERTs as you (RLS), and '@*handle' summons appkit's bot-responder"
-          },
-          "v": "room chat →"
-        },
-        {
-          "key": "chatrooms.B4",
-          "celType": "FormulaCel",
-          "metadata": {
-            "key": "chatrooms.B4",
-            "segment": "chatrooms",
-            "name": "B4",
             "parser": "infix",
             "description": "=view('roomchat', chatpane(…)) wired to the ROOM cels: transcript = grok.roomlog (my rows as user bubbles, others as 👤 name), composer = grok.roomq → grok.roomsend / grok.roomkey; title tracks grok.roomtitle. Pane named 'roomchat' so it never collides with chatdoc's 'chat' (=view pane names are globally idempotent)."
           },
@@ -129,25 +89,25 @@
   "manifests": [
     {
       "name": "chatrooms",
-      "version": "0.0.1",
-      "description": "appkit chatrooms (a sheetapp document) — log in to Supabase to get a token, browse YOUR chatrooms, pick one, and chat in it for real. The recipe is four visible cells: B1 the public config dict (sb.default derives from it), B2 =view login (loginpane), B3 =view rooms (roomspane over the list_conversations RPC), B4 =view roomchat (chatpane wired to the room cels — sends INSERT into appkit's chat table as you; '@*handle' summons appkit's bot-responder).",
+      "version": "0.0.2",
+      "description": "appkit chatrooms (a sheetapp document) — browse YOUR chatrooms, pick one, chat in it for real. Sign-in + the supabase config live in the 👤 Profile doc (doc:identity — it defines sb.default; this doc references it). Three visible cells: B1 the non-secret auth-status probe, B2 =view rooms (roomspane over the list_conversations RPC), B3 =view roomchat (chatpane wired to the room cels — sends INSERT into appkit's chat table as you; '@handle' summons appkit's bot-responder).",
       "role": "user-space",
       "kind": "origin-user",
       "applications": [
         "sheetapp"
       ],
       "dependencies": [
-        "sheetapp",
-        "grok",
-        "supabase",
-        "supabase-auth",
-        "session",
-        "sheet",
-        "sheets",
-        "window",
         "dom",
         "genesis",
-        "origin"
+        "grok",
+        "origin",
+        "session",
+        "sheet",
+        "sheetapp",
+        "sheets",
+        "supabase",
+        "supabase-auth",
+        "window"
       ]
     }
   ],

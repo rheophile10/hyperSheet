@@ -72,6 +72,11 @@ const displayCell = (v: unknown): V => {
     if (typeof t.sheet === "string" && Object.keys(t).length === 1) {
       return T(`▦ ${t.sheet}`);
     }
+    // an =kvseed cell's token — defaults merged into a user kv segment.
+    const kvs = v as { kvseed?: unknown; added?: unknown };
+    if (typeof kvs.kvseed === "string" && Object.keys(kvs).every((k) => k === "kvseed" || k === "added")) {
+      return T(`⚙ ${kvs.kvseed} defaults${kvs.added ? ` +${kvs.added}` : ""}`);
+    }
     // an un-landed REQUEST (the drain hasn't run yet) — show a quiet pending
     // mark instead of flashing raw JSON for a frame.
     const ks = Object.keys(v);
@@ -630,6 +635,90 @@ const kvRetire: Fn = (async (s: State, payload: unknown): Promise<void> => {
   await kvSettle(s, true);                                              // refires survivors (stale consumers trap)
 }) as Fn;
 
+// ── kv.seed — merge SHIPPED DEFAULTS into a user-owned kv segment ────────────
+// kv.seed(state, {into, from}) — for each name in `<from>.keys` MISSING from
+// `<into>`: copy the default cel's value (+ description) as `<into>.<name>`
+// and append the roster. NEVER overwrites an existing row — the user's value
+// wins; re-seeding after a defaults refresh adds only NEW keys (the
+// install-once/usercfg pattern: refreshApps stomps the defaults segment
+// freely, skips the install:"once" user segment, and =kvseed re-merges on
+// open). Always rewrites the kvsheet view formulas (a refreshed doc reverts
+// them to the bootstrap form). NB: deleting a user row means the next seed
+// re-adds it at the default — reset-to-default by deletion; the 🗑 stays
+// unguarded (deletion doctrine).
+//
+// NO settle here: kv.seed is invoked FROM INSIDE the origin.effects drain (the
+// =kvseed landing arm) — draining origin.effects reentrantly would land the
+// =kvseed request again and recurse forever. The caller's settle loop (opendoc
+// / origin.run run several cycle+drain rounds) converges the cascades: the
+// rewritten view formula re-fires, its request lands next round, and a
+// no-change rewrite is skipped so the loop terminates.
+const kvSeed: Fn = (async (s: State, payload: unknown): Promise<unknown> => {
+  const p = (payload ?? {}) as { into?: unknown; from?: unknown };
+  const into = String(p.into ?? "").trim(), from = String(p.from ?? "").trim();
+  if (!into || !from) return { added: [] };
+  const setCel = resolveFn(s, "setCel") as Fn, setValue = resolveFn(s, "setValue") as Fn;
+  const added: string[] = [];
+  for (const name of rosterOf(s, from)) {
+    const ik = `${into}.${name}`;
+    if (s.cels.has(ik)) continue;
+    const src = s.cels.get(`${from}.${name}`);
+    if (!src) continue;
+    const desc = (src.metadata as { description?: string }).description;
+    await setCel(s, ik, { celType: "ValueCel", v: src.v, metadata: { key: ik, segment: into, name, ...(desc ? { description: desc } : {}) } });
+    added.push(name);
+  }
+  const rk = `${into}.keys`;
+  if (!s.cels.has(rk)) {
+    await setCel(s, rk, { celType: "ValueCel", v: [], metadata: { key: rk, segment: into, name: "keys", description: "the kv sheet ROSTER — the ordered short names of this segment's kvsheet rows (kv-sheet.md). kv.mint appends, kv.retire removes, kv.seed merges missing defaults in; the kvsheet view formula references it (dims' sibling)." } });
+  }
+  const roster = rosterOf(s, into);
+  const fresh = added.filter((n) => !roster.includes(n));
+  if (fresh.length) await setValue(s, rk, [...roster, ...fresh]);
+  await rekvViews(s, into);
+  return { kvseed: into, added };
+}) as Fn;
+
+// ── sheet.addrow — a form's ➕: append a RECORD row to a worksheet ────────────
+// sheet.addrow(state, {seg, from, clear?}) — pure mechanism (grid-program
+// contract): copy the CURRENT values of the `from` cels into columns A.. of the
+// first free row (1 + the max populated row across those target columns — a
+// form's own draft cells live in other columns and never push the append down),
+// grow <seg>.dims to cover the new row, then reset each `clear` cel to "".
+// ALL policy is authored in the dispatching formula: which draft cels feed
+// which columns (`from` order), what an id is (a visible next-id formula cell
+// fed as a `from` entry), and which drafts reset. Reading the drafts at CLICK
+// time (the kv.mint pattern) keeps the payload static-authorable — no repaint
+// race between typing and the button's payload.
+const addRow: Fn = (async (s: State, payload: unknown): Promise<void> => {
+  const p = (payload ?? {}) as { seg?: unknown; from?: unknown; clear?: unknown };
+  const seg = String(p.seg ?? "").trim();
+  const from = Array.isArray(p.from) ? p.from.map(String) : [];
+  if (!seg || from.length === 0) return;
+  const clear = Array.isArray(p.clear) ? p.clear.map(String) : [];
+  const targets = Array.from({ length: from.length }, (_, i) => colLetter(i));
+  const targetSet = new Set(targets);
+  let maxRow = 0;
+  for (const key of s.cels.keys()) {
+    if (!key.startsWith(`${seg}.`)) continue;
+    const m = /^([A-Z]+)(\d+)$/.exec(key.slice(seg.length + 1));
+    if (m && targetSet.has(m[1]!)) maxRow = Math.max(maxRow, Number(m[2]));
+  }
+  const row = maxRow + 1;
+  const setCel = resolveFn(s, "setCel") as Fn, setValue = resolveFn(s, "setValue") as Fn;
+  for (let i = 0; i < from.length; i++) {
+    const key = `${seg}.${targets[i]}${row}`;
+    const v = s.cels.get(from[i]!)?.v ?? "";
+    if (s.cels.get(key)?.celType === "ValueCel") await setValue(s, key, v);
+    else await setCel(s, key, { celType: "ValueCel", v, metadata: { key, segment: seg, name: `${targets[i]}${row}` } });
+  }
+  const dk = `${seg}.dims`;
+  const dv = s.cels.get(dk)?.v as { rows?: unknown; cols?: unknown } | undefined;
+  if (dv && typeof dv === "object" && num(dv.rows) < row) await setValue(s, dk, { ...dv, rows: row });
+  for (const k of clear) if (s.cels.get(k)?.celType === "ValueCel") await setValue(s, k, "");
+  await kvSettle(s, true);                                              // fire dependents (next-id, board views) + land panes
+}) as Fn;
+
 export const name = "sheets" as const;
 export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<string, Fn>([
   ["sheetcell", sheetcell],
@@ -644,6 +733,8 @@ export const cels: Cel[] = bindNativeFns(seed as unknown as 甲骨, new Map<stri
   ["sheet.resizeMove", resizeMove],
   ["sheet.resizeDrop", resizeDrop],
   ["sheet.resizeReset", resizeReset],
+  ["sheet.addrow", addRow],
+  ["kv.seed", kvSeed],
   ["kvsheet", kvsheet],
   ["kv.mint", kvMint],
   ["kv.set", kvSet],

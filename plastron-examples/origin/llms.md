@@ -169,6 +169,38 @@ DRAG & DROP — "a drop writes a cel" (reusable: boards, buckets, file moves, as
   view FILTERs/reads that cel, the item RE-RENDERS in its new place automatically — you never
   move it by hand. drag.active remembers the grabbed cel between grab and drop.
 
+PYTHON CELLS (=def a py fn — Pyodide; auto-loads the packages the source imports)
+  =def("stats", "py", A1)   compile the Python SOURCE in cell A1 into a callable =stats(x)
+  A py cell that `import numpy` / `import cv2` / `import mpmath` / `from PIL import …`
+  auto-loads that Pyodide package before running (heavy: the first use pulls the wheels
+  from the CDN, then caches). The 🕵️ ChaosEdgeSteg doc is a worked example — upstream
+  OpenCV steganography running in a py cell, the algorithm visible on the sheet and
+  bound with =def (edit the source and it recompiles live).
+
+WAT CELLS (hand-written WebAssembly text — tiny, no runtime download)
+  =WAT(src, "name", TRUE)    compile the WAT SOURCE in a cell into a callable =name(...)
+  A WAT cell can now OWN SHARED MEMORY: author it as a kind:"wat" cell with
+  imports:"<provider>" and the wat compiler hands the provider the live instance
+  (its exported memory + every export) via an onInstantiate hook — parity with the
+  `wasm` bytes loader. That lets a host segment copy big buffers in/out of the module's
+  linear memory instead of squeezing everything through one scalar export.
+
+IMAGES (a browser canvas / pure-JS PNG codec — the no-Python image tier)
+  =image.decode(png)        PNG bytes/base64 → { w, h, rgba } (an RGBA8 pixel buffer)
+  =image.encode(rgba, w, h) an RGBA8 buffer → base64 PNG (lossless — LSBs survive)
+  =image.fit(png, maxDim)   a PNG downscaled so max(w,h) ≤ maxDim (no-op under the bound)
+
+NANOSTEG (=WAT-native BLIND steganography — the no-Python 🕵️ NanoSteg doc)
+  The whole blind LSB steg algorithm is hand-written WAT ON THE SHEET (FNV-1a seed,
+  splitmix64, a collision-avoided carrier probe over the R/G/B LSBs, an "NS" header);
+  nanosteg.host captures its live instance and nanosteg.embed / nanosteg.decode marshal
+  the pixel buffer to/from its memory:
+  =nanosteg.embed(rgba, w, h, text, password, core)   → RGBA8 with the text hidden
+  =nanosteg.decode(rgba, w, h, password, core)        → recovered text from ONE image
+  BLIND: decode needs only the tweeted image + the password — NO original cover (the
+  password re-derives every carrier pixel). The lightweight, no-Python contrast to the
+  🕵️ ChaosEdgeSteg (Pyodide/OpenCV, non-blind) sibling.
+
 DATABASE (browser SQLite — persistent, runs in a Worker; the db NAME is the handle)
   =sql("mydb", "create table t(a,b)")     run SQL on a db; writes persist. The first arg is the db name
   =sql("mydb", "select * from t")         …or a handle from =db(); SELECT returns rows

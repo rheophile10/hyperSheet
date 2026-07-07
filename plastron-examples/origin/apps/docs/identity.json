@@ -1,0 +1,246 @@
+{
+  "formatVersion": 1,
+  "segments": [
+    {
+      "name": "usercfg_defaults",
+      "cels": [
+        {
+          "key": "usercfg_defaults.keys",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "usercfg_defaults.keys",
+            "segment": "usercfg_defaults",
+            "name": "keys",
+            "description": "the SHIPPED defaults roster — =kvseed copies any name missing from usercfg (never overwriting a user row). refreshApps stomps this segment freely; that is the point: new shipped keys flow in, user values stand."
+          },
+          "v": [
+            "supabase_url",
+            "supabase_anonkey"
+          ]
+        },
+        {
+          "key": "usercfg_defaults.supabase_url",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "usercfg_defaults.supabase_url",
+            "segment": "usercfg_defaults",
+            "name": "supabase_url",
+            "description": "the default Supabase project URL (public). sb.default derives from the usercfg row this seeds — edit the row in the ⚙ config view."
+          },
+          "v": "https://sdggffldxjmwlhlznvli.supabase.co"
+        },
+        {
+          "key": "usercfg_defaults.supabase_anonkey",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "usercfg_defaults.supabase_anonkey",
+            "segment": "usercfg_defaults",
+            "name": "supabase_anonkey",
+            "description": "the default Supabase publishable anon key (public — browser-safe by design; the only secret is the per-user JWT, which lives in the session store behind a SecretHandle)."
+          },
+          "v": "sb_publishable_RwIwR5wdprQ99FLXFUdbUQ_4SRMoMpy"
+        }
+      ]
+    },
+    {
+      "name": "usercfg",
+      "cels": []
+    },
+    {
+      "name": "identity",
+      "cels": [
+        {
+          "key": "identity.dims",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "identity.dims",
+            "segment": "identity",
+            "name": "dims"
+          },
+          "v": {
+            "rows": 12,
+            "cols": 8
+          }
+        },
+        {
+          "key": "identity.A1",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "identity.A1",
+            "segment": "identity",
+            "name": "A1"
+          },
+          "v": "user config →"
+        },
+        {
+          "key": "identity.B1",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "identity.B1",
+            "segment": "identity",
+            "name": "B1",
+            "parser": "infix",
+            "description": "the ⚙ CONFIG view: the usercfg kv sheet — the persistent user-specific key-value surface (public config ONLY, never tokens). Rows are real usercfg.* cels; the composer row (name + value + ➕) mints new keys via kv.mint. Ships in the BOOTSTRAP form — B5's =kvseed splices the live row references on every open (and re-splices after a refreshApps reverts this formula)."
+          },
+          "f": "=view('⚙ config', kvsheet('usercfg', 0, 0))"
+        },
+        {
+          "key": "sb.default",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "sb.default",
+            "segment": "identity",
+            "name": "sb.default",
+            "parser": "infix",
+            "description": "THE default Supabase project config, DERIVED from the usercfg kv sheet rows (edit them in the ⚙ config view) — owned by the 👤 Profile doc; chat/data docs reference it, they never define it."
+          },
+          "f": "={url: usercfg.supabase_url, anonkey: usercfg.supabase_anonkey}"
+        },
+        {
+          "key": "identity.A2",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "identity.A2",
+            "segment": "identity",
+            "name": "A2"
+          },
+          "v": "login view →"
+        },
+        {
+          "key": "identity.B2",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "identity.B2",
+            "segment": "identity",
+            "name": "B2",
+            "parser": "infix",
+            "description": "the LOGIN view: signed out it renders the email/password card (grok.signin → supabase-auth → tokens into the session store); signed in it becomes the session card (who you are + Sign out). Every chat/data doc gates on signedIn(sb.default.auth) — sign in HERE once."
+          },
+          "f": "=view('🔐 login', loginpane({project: 'default', authed: signedIn(sb.default.auth), email: grok.email, password: grok.password, status: grok.status, session: sb.default.auth}))"
+        },
+        {
+          "key": "identity.A3",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "identity.A3",
+            "segment": "identity",
+            "name": "A3"
+          },
+          "v": "wallet view →"
+        },
+        {
+          "key": "identity.B3",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "identity.B3",
+            "segment": "identity",
+            "name": "B3",
+            "parser": "infix",
+            "description": "the IDENTITY WALLET view (keystore): create/unlock the sealed keypair, reshuffle, change passcode, export/import the keystore file, recovery phrase. Private keys live module-scope inside keystore — no key material ever reaches a cel; formulas may reference only keystore.status/name/identity."
+          },
+          "f": "=view('👤 wallet', profileui(keystore.status, keystore.name, keystore.identity, profile.p1, profile.p2, profile.nm, profile.imp, profile.msg, profile.phrase))"
+        },
+        {
+          "key": "identity.A4",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "identity.A4",
+            "segment": "identity",
+            "name": "A4"
+          },
+          "v": "auth status →"
+        },
+        {
+          "key": "identity.B4",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "identity.B4",
+            "segment": "identity",
+            "name": "B4",
+            "parser": "infix",
+            "description": "a visible probe of the NON-SECRET auth status cel ({status, email, userId}) — what other sheets are allowed to see of your session. The JWT itself is not here and cannot be referenced from any formula."
+          },
+          "f": "=sb.default.auth"
+        },
+        {
+          "key": "identity.A5",
+          "celType": "ValueCel",
+          "metadata": {
+            "key": "identity.A5",
+            "segment": "identity",
+            "name": "A5"
+          },
+          "v": "defaults →"
+        },
+        {
+          "key": "identity.B5",
+          "celType": "FormulaCel",
+          "metadata": {
+            "key": "identity.B5",
+            "segment": "identity",
+            "name": "B5",
+            "parser": "infix",
+            "description": "the DEFAULTS-MERGE rule, as a visible cell: copy any usercfg_defaults row missing from usercfg (a user's edited value is NEVER overwritten; deleting a row = reset-to-default on the next open). usercfg is install:'once' — refreshApps stomps only the defaults segment and this doc, so user config survives a factory refresh while NEW shipped keys still flow in."
+          },
+          "f": "=kvseed('usercfg', 'usercfg_defaults')"
+        }
+      ]
+    }
+  ],
+  "manifests": [
+    {
+      "name": "usercfg_defaults",
+      "version": "0.2.0",
+      "description": "the SHIPPED usercfg defaults (supabase url/anonkey rows + roster). Stomped freely by refreshApps — =kvseed merges missing names into the user-owned usercfg on every open, never overwriting a user row.",
+      "role": "user-space",
+      "kind": "origin-user",
+      "applications": [
+        "sheetapp"
+      ],
+      "dependencies": [
+        "sheetapp"
+      ]
+    },
+    {
+      "name": "usercfg",
+      "version": "0.2.0",
+      "description": "the persistent user-specific key-value sheet (kvsheet rows = real cels; PUBLIC config only — tokens live in the session store, never cels). Ships EMPTY with install:'once': the first open seeds it from usercfg_defaults via =kvseed, and refreshApps NEVER re-puts it — user rows survive a factory refresh; new shipped keys merge in (missing names only).",
+      "role": "user-space",
+      "kind": "origin-user",
+      "applications": [
+        "sheetapp"
+      ],
+      "dependencies": [
+        "sheetapp"
+      ],
+      "install": "once"
+    },
+    {
+      "name": "identity",
+      "version": "0.3.0",
+      "description": "👤 Profile (a sheetapp document) — identity + sign-in as visible cells: the usercfg segment is the persistent user key-value sheet (public config only; supabase url/anonkey rows seed it), B1 =view ⚙ config (kvsheet over usercfg — the composer row adds new keys), sb.default ={url:…, anonkey:…} derives from those rows, B2 =view login (loginpane → tokens into the session store behind a SecretHandle; once the wallet is unlocked the refresh token persists as a wallet-wrapped OPFS sidecar, so unlocking the wallet restores your sessions), B3 =view wallet (keystore), B4 the non-secret auth-status probe.",
+      "role": "user-space",
+      "kind": "origin-user",
+      "applications": [
+        "sheetapp"
+      ],
+      "dependencies": [
+        "dom",
+        "genesis",
+        "grok",
+        "keystore",
+        "origin",
+        "profile",
+        "session",
+        "sheet",
+        "sheetapp",
+        "sheets",
+        "supabase",
+        "supabase-auth",
+        "usercfg",
+        "usercfg_defaults",
+        "window"
+      ]
+    }
+  ]
+}

@@ -72,7 +72,12 @@ const clearDrafts = async (s: State, keys: string[]): Promise<void> => {
 };
 const repaint = async (s: State): Promise<void> => {
   await (resolveFn(s, "runCycle") as Fn)(s);
-  await (resolveFn(s, "drain") as Fn)(s, "dom.paint");
+  // land re-fired =view requests (the wallet renders in a view pane now) —
+  // the cycle re-derives the =view formula to a request; the effects drain
+  // lands it back into the pane slot, THEN paint (the kvSettle order).
+  const dr = resolveFn(s, "drain") as Fn;
+  if (s.cels.get("origin.effects")) await dr(s, "origin.effects");
+  await dr(s, "dom.paint");
 };
 const KS = (s: State, verb: string, ...a: unknown[]): Promise<unknown> => (resolveFn(s, verb) as Fn)(s, ...a) as Promise<unknown>;
 const isErr = (r: unknown): r is { error: string } => !!r && typeof r === "object" && (r as { ok?: boolean }).ok === false;
@@ -85,10 +90,32 @@ const createFn: Fn = (async (s: State): Promise<State> => {
   if (isErr(r)) await setMsg(s, r.error); else await setMsg(s, "Identity created. SAVE this recovery phrase:", r.phrase ?? "");
   await repaint(s); return s;
 }) as Fn;
+// after a successful unlock, unlocking the wallet IS logging in to plastron:
+// restore the wallet-wrapped session sidecars, fan each restored name out to
+// its provider's refresh op (supabase.<project> → supabase.auth refresh), and
+// re-persist any session that was signed in while the wallet was locked.
+const restoreSessions = async (s: State): Promise<string> => {
+  const restore = resolveFn(s, "session.restore") as Fn | undefined;
+  if (!restore) return "";
+  const names = await (restore(s) as Promise<string[]>).catch(() => [] as string[]);
+  let ok = 0;
+  for (const n of names) {
+    const m = /^supabase\.(.+)$/.exec(n);
+    const auth = m ? resolveFn(s, "supabase.auth") as Fn | undefined : undefined;
+    if (!m || !auth) continue;
+    try { const msg = String(await auth(s, "refresh", m[1])); if (/refreshed/.test(msg)) ok++; } catch { /* revoked/offline — stays signed out */ }
+  }
+  const persist = resolveFn(s, "session.persist") as Fn | undefined;
+  if (persist) await (persist(s) as Promise<unknown>).catch(() => { /* best-effort */ });
+  return ok ? ` ${ok} session${ok > 1 ? "s" : ""} restored.` : "";
+};
+
 const unlockFn: Fn = (async (s: State): Promise<State> => {
   const r = await KS(s, "keystore.unlock", get(s, "profile.p1")) as { ok: boolean; error?: string };
   await clearDrafts(s, ["profile.p1"]);
-  await setMsg(s, isErr(r) ? r.error : "Unlocked."); await repaint(s); return s;
+  if (isErr(r)) { await setMsg(s, r.error); await repaint(s); return s; }
+  const sessions = await restoreSessions(s);
+  await setMsg(s, `Unlocked.${sessions}`); await repaint(s); return s;
 }) as Fn;
 const lockFn: Fn = (async (s: State): Promise<State> => { await KS(s, "keystore.lock"); await setMsg(s, "Locked."); await repaint(s); return s; }) as Fn;
 const reshuffleFn: Fn = (async (s: State): Promise<State> => {
@@ -113,7 +140,9 @@ const importFn: Fn = (async (s: State): Promise<State> => {
   const pass = get(s, "profile.p1b") || get(s, "profile.p1");
   const r = await KS(s, "keystore.import", get(s, "profile.imp"), pass) as { ok: boolean; name?: string; error?: string };
   await clearDrafts(s, ["profile.p1", "profile.p1b", "profile.imp"]);
-  await setMsg(s, isErr(r) ? r.error : `Imported "${r.name ?? ""}". Unlocked.`); await repaint(s); return s;
+  if (isErr(r)) { await setMsg(s, r.error); await repaint(s); return s; }
+  const sessions = await restoreSessions(s);   // an imported wallet can unwrap its own sidecars
+  await setMsg(s, `Imported "${r.name ?? ""}". Unlocked.${sessions}`); await repaint(s); return s;
 }) as Fn;
 
 // profile.export — keystore.export → trigger a browser download of identity.kc.
@@ -139,8 +168,9 @@ const importfileFn: Fn = (async (s: State, _p: unknown, event?: unknown): Promis
   await repaint(s); return s;
 }) as Fn;
 
-// profilewin() — GENESIS: the gen-2 profile WINDOW (self-mounting wframe). The
-// 👤 Profile launcher (app:profileapp) calls it.
+// profilewin() — GENESIS: the gen-2 profile WINDOW (self-mounting wframe).
+// Legacy standalone window; the 👤 Profile desktop icon now opens the identity
+// sheetapp doc (doc:identity), whose wallet =view renders profileui directly.
 const profilewinFn: Fn = ((): unknown => {
   const lay = "win.profile", sref = `${lay}.state`, cref = `${lay}.content`;
   return { genesis: true, kind: "window", layer: lay, cels: {

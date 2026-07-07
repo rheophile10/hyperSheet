@@ -24,7 +24,6 @@ import * as guide           from "./甲骨坑/library/guide/index.js";
 import * as watCompiler     from "./甲骨坑/library/wat-compiler/index.js";
 import * as wasmBytes       from "./甲骨坑/library/wasm-bytes/index.js";
 import * as pyCompiler      from "./甲骨坑/library/py-compiler/index.js";
-import * as phpCompiler     from "./甲骨坑/library/php-compiler/index.js";
 import * as formulaCompiler from "./甲骨坑/library/formula-compiler/index.js";
 import * as fileStore       from "./甲骨坑/library/file-store/index.js";
 import * as htmlTemplate    from "./甲骨坑/library/html-template-parser/index.js";
@@ -75,6 +74,8 @@ import * as ecs             from "./甲骨坑/library/ecs/index.js";
 import * as plastronGpu     from "./甲骨坑/library/plastron-gpu/index.js";
 import * as bufferSchema    from "./甲骨坑/library/buffer-schema/index.js";
 import * as assetLoader     from "./甲骨坑/library/asset-loader/index.js";
+import * as image           from "./甲骨坑/library/image/index.js";
+import * as nanosteg        from "./甲骨坑/library/nanosteg/index.js";
 import * as origin          from "./甲骨坑/application/origin/index.js";
 import * as sheetapp        from "./甲骨坑/application/sheetapp/index.js";
 import * as sound           from "./甲骨坑/library/sound/index.js";
@@ -116,7 +117,6 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "wat-compiler":     () => [...watCompiler.cels],
   "wasm-bytes":       () => [...wasmBytes.cels],
   "py-compiler":      () => [...pyCompiler.cels],
-  "php-compiler":     () => [...phpCompiler.cels],
   "formula-compiler": () => [...formulaCompiler.cels],
   "file-store":       () => [...fileStore.cels],
   "html-template-parser": () => [...htmlTemplate.cels],
@@ -169,6 +169,8 @@ const libraryLoaders: Record<Key, () => Cel[]> = {
   "plastron-gpu":     () => [...plastronGpu.cels],
   "buffer-schema":    () => [...bufferSchema.cels],
   "asset-loader":     () => [...assetLoader.cels],
+  "image":            () => [...image.cels],
+  "nanosteg":         () => [...nanosteg.cels],
 };
 
 // application/ segments. origin is the freespace host application,

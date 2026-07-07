@@ -39,6 +39,10 @@ interface PyodideAPI {
   runPython: (code: string) => unknown;
   toPy: (v: unknown) => unknown;
   globals: { set: (name: string, value: unknown) => void };
+  // Scans `code` for `import`s and loads any Pyodide-distributed package
+  // they name (numpy, opencv-python→cv2, pillow→PIL, mpmath, …). No-op for
+  // source that imports nothing third-party.
+  loadPackagesFromImports: (code: string) => Promise<unknown>;
 }
 const isPyProxyLike = (v: unknown): v is PyProxyLike =>
   v !== null && typeof v === "object" &&
@@ -98,19 +102,33 @@ const main = async (): Promise<void> => {
     try {
       switch (msg.kind) {
         case "compile": {
-          const pyFn = pyodide.runPython(msg.source!);
-          if (typeof pyFn !== "function") {
-            throw new Error(
-              `py-worker: source's last expression evaluated to ` +
-              `${typeof pyFn}, not a callable.`,
-            );
-          }
-          const ref = nextFnRef++;
-          fns.set(ref, {
-            fn: pyFn as (...a: unknown[]) => unknown,
-            composite: msg.composite === true,
-          });
-          port.postMessage({ kind: "ok", id: msg.id, fnRef: ref });
+          // Load the packages the source imports before compiling it
+          // (mechanism: the set comes from the source's own `import`
+          // lines, nothing hardcoded). loadPackagesFromImports is async,
+          // so the compile reply is chained after it resolves; failures
+          // route to the same error envelope as the outer catch.
+          Promise.resolve(pyodide.loadPackagesFromImports(msg.source!))
+            .then(() => {
+              const pyFn = pyodide.runPython(msg.source!);
+              if (typeof pyFn !== "function") {
+                throw new Error(
+                  `py-worker: source's last expression evaluated to ` +
+                  `${typeof pyFn}, not a callable.`,
+                );
+              }
+              const ref = nextFnRef++;
+              fns.set(ref, {
+                fn: pyFn as (...a: unknown[]) => unknown,
+                composite: msg.composite === true,
+              });
+              port.postMessage({ kind: "ok", id: msg.id, fnRef: ref });
+            })
+            .catch((e: unknown) => {
+              const err = e instanceof Error
+                ? { message: e.message, stack: e.stack }
+                : { message: String(e) };
+              port.postMessage({ kind: "error", id: msg.id, ...err });
+            });
           return;
         }
         case "call": {

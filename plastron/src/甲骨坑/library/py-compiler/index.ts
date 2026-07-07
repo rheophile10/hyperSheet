@@ -62,6 +62,10 @@ interface PyodideAPI {
   runPython: (code: string) => unknown;
   toPy: (v: unknown) => unknown;
   globals: { set: (name: string, value: unknown) => void };
+  // Scans `code` for `import`s and loads any Pyodide-distributed package
+  // they name (numpy, opencv-python→cv2, pillow→PIL, mpmath, …). No-op for
+  // source that imports nothing third-party. Present in Pyodide ≥0.18.
+  loadPackagesFromImports: (code: string) => Promise<unknown>;
 }
 const isPyProxyLike = (v: unknown): v is PyProxyLike =>
   v !== null && typeof v === "object" &&
@@ -123,6 +127,12 @@ const dereferenceHandles = (args: unknown[]): unknown[] =>
 const compileMainThread = async (source: string, state?: State, context?: CompileContext): Promise<Fn> => {
   const py = await getPyodide();
   if (state) py.globals.set("host", readHostImports(state));
+  // Load whatever the source imports before running it. Mechanism, zero
+  // policy: the package set is derived from the source's own `import`
+  // lines (on the sheet), never hardcoded here — so a py cell that
+  // `import cv2` / `import numpy` works instead of failing on a missing
+  // module. No-op when nothing third-party is imported. Idempotent.
+  await py.loadPackagesFromImports(source);
   const pyFn = py.runPython(source);
   if (pyFn === null || pyFn === undefined) {
     throw new Error(
