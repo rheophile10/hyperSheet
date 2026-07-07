@@ -36,7 +36,20 @@ const material: Fn = (color) => ({ spec: "material", color: str(color, "#4a90d9"
 const meshSpec: Fn = (geometry, mat) => ({ spec: "mesh", geometry, material: mat });
 const light: Fn = (x, y, z, color, intensity) =>
   ({ spec: "light", x: num(x), y: num(y, 10), z: num(z), color: str(color, "#ffffff"), intensity: num(intensity, 1) });
-const cameraSpec: Fn = (x, y, z) => ({ spec: "camera", x: num(x), y: num(y, 5), z: num(z, 10) });
+const cameraSpec: Fn = (x, y, z, minDistance, maxDistance, zoomSpeed) => {
+  // Optional trailing args are AUTHORED, overridable wheel-dolly policy on the
+  // surface (R2/R10). Omitted → the key is absent (undefined optionals dropped,
+  // like light()/material() defaults); the renderer fills ratio defaults from
+  // the authored distance d0 = |(x,y,z)|.
+  const opt = (v: unknown): number | undefined => (v === undefined || v === null ? undefined : num(v));
+  const minD = opt(minDistance), maxD = opt(maxDistance), spd = opt(zoomSpeed);
+  return {
+    spec: "camera", x: num(x), y: num(y, 5), z: num(z, 10),
+    ...(minD !== undefined ? { minDistance: minD } : {}),
+    ...(maxD !== undefined ? { maxDistance: maxD } : {}),
+    ...(spd !== undefined ? { zoomSpeed: spd } : {}),
+  };
+};
 const instances: Fn = (geometry, mat, count, bufferKey) =>
   ({ spec: "instances", geometry, material: mat, count: Math.max(1, Math.trunc(num(count, 1))), key: str(bufferKey) });
 
@@ -79,6 +92,15 @@ export const dirtyIndices = (
   return out;
 };
 
+/** dollyDistance(distance, deltaY, minD, maxD, speed) — clamp
+ *  `distance · exp(deltaY·speed)` into `[minD, maxD]`. Convention: wheel-forward
+ *  / scroll-up (deltaY < 0) → smaller distance → zoom IN; scroll-down
+ *  (deltaY > 0) → zoom OUT. Zero policy — every bound is an argument.
+ *  Pure — Tier-A testable. */
+export const dollyDistance = (
+  distance: number, deltaY: number, minD: number, maxD: number, speed: number,
+): number => Math.min(maxD, Math.max(minD, distance * Math.exp(deltaY * speed)));
+
 // ── lazy Three (Decision 0: same-origin vendor import, CSP-clean) ───────────
 
 type ThreeMod = Record<string, any>;
@@ -106,6 +128,13 @@ interface Handle {
   three: ThreeMod;
   m4: any;                                        // scratch Matrix4
   building?: boolean;
+  // ephemeral view-local wheel-dolly state (never a cel — losing it resets to
+  // the authored framing; see design §Zoom state). Fixed look-at target + the
+  // view ray + the clamp policy, plus the attached listener for cleanup.
+  onWheel?: (e: any) => void;
+  target?: { x: number; y: number; z: number };
+  dir?: { x: number; y: number; z: number };
+  minD?: number; maxD?: number; zoomSpeed?: number;
 }
 const handleByEl = new WeakMap<object, Handle>();
 const handles = new Set<Handle>();                // drain lookup (pruned on disconnect)
@@ -113,6 +142,7 @@ const handles = new Set<Handle>();                // drain lookup (pruned on dis
 const prune = (): void => {
   for (const h of handles) {
     if (h.el.isConnected === false) {
+      if (h.onWheel) { try { (h.el as any).removeEventListener?.("wheel", h.onWheel); } catch { /* guarded */ } }
       try { h.renderer?.dispose?.(); } catch { /* guarded */ }
       handles.delete(h);
     }
@@ -169,7 +199,13 @@ const buildHandle = async (el: any, state: State, specAttr: string): Promise<voi
   if (!Array.isArray(nodes)) return;
 
   const old = handleByEl.get(el as object);
-  if (old) { try { old.renderer?.dispose?.(); } catch { /* guarded */ } handles.delete(old); }
+  if (old) {
+    // remove the prior wheel listener so a spec-change rebuild on the SAME
+    // reused canvas doesn't stack listeners (→ double-speed zoom).
+    if (old.onWheel) { try { el.removeEventListener?.("wheel", old.onWheel); } catch { /* guarded */ } }
+    try { old.renderer?.dispose?.(); } catch { /* guarded */ }
+    handles.delete(old);
+  }
 
   const w = num(el.width, 300), hgt = num(el.height, 150);
   const renderer = new THREE.WebGLRenderer({ canvas: el, antialias: true });
@@ -181,8 +217,9 @@ const buildHandle = async (el: any, state: State, specAttr: string): Promise<voi
 
   const h: Handle = { el, spec: specAttr, renderer, scene: scn, camera, meshes: new Map(), last: new Map(), three: THREE, m4: new THREE.Matrix4() };
 
+  let cameraNode: any = null;
   for (const nd of nodes) {
-    if (nd?.spec === "camera") { camera.position.set(num(nd.x), num(nd.y, 5), num(nd.z, 10)); camera.lookAt(0, 0, 0); }
+    if (nd?.spec === "camera") { cameraNode = nd; camera.position.set(num(nd.x), num(nd.y, 5), num(nd.z, 10)); camera.lookAt(0, 0, 0); }
     else if (nd?.spec === "light") {
       const dl = new THREE.DirectionalLight(str(nd.color, "#ffffff"), num(nd.intensity, 1));
       dl.position.set(num(nd.x), num(nd.y, 10), num(nd.z));
@@ -202,9 +239,37 @@ const buildHandle = async (el: any, state: State, specAttr: string): Promise<voi
     }
   }
 
+  // ── wheel-dolly effect on the retained handle ──────────────────────────────
+  // Derive the fixed look-at target (origin), the view ray, and the clamp
+  // policy from the (possibly defaulted) authored camera. Defaults are ratios
+  // of the authored distance d0 — omitted-arg defaults, the R2 pattern already
+  // used by light()/material(); any scene overrides them on its camera() call.
+  const cpx = num(camera.position?.x), cpy = num(camera.position?.y), cpz = num(camera.position?.z);
+  const d0 = Math.hypot(cpx, cpy, cpz) || 1;
+  h.target = { x: 0, y: 0, z: 0 };
+  h.dir = { x: cpx / d0, y: cpy / d0, z: cpz / d0 };
+  h.minD = cameraNode?.minDistance !== undefined ? num(cameraNode.minDistance) : 0.25 * d0;
+  h.maxD = cameraNode?.maxDistance !== undefined ? num(cameraNode.maxDistance) : 4 * d0;
+  h.zoomSpeed = cameraNode?.zoomSpeed !== undefined ? num(cameraNode.zoomSpeed) : 0.001;
+  const onWheel = (event: any): void => {
+    event?.preventDefault?.();                     // synchronous — the page never scrolls
+    const t = h.target!, dir = h.dir!;
+    const dx = num(camera.position?.x) - t.x, dy = num(camera.position?.y) - t.y, dz = num(camera.position?.z) - t.z;
+    const dist = Math.hypot(dx, dy, dz);
+    const next = dollyDistance(dist, num(event?.deltaY), h.minD!, h.maxD!, h.zoomSpeed!);
+    camera.position.set(t.x + dir.x * next, t.y + dir.y * next, t.z + dir.z * next);
+    camera.lookAt(t.x, t.y, t.z);
+    try { h.renderer.render(h.scene, h.camera); } catch { /* guarded */ }  // shows the new framing even while the pump is idle
+  };
+  h.onWheel = onWheel;
+
   handleByEl.set(el as object, h);
   handles.add(h);
-  el.addEventListener?.("webglcontextlost", () => { handles.delete(h); handleByEl.delete(el as object); });
+  el.addEventListener?.("wheel", onWheel, { passive: false });
+  el.addEventListener?.("webglcontextlost", () => {
+    try { el.removeEventListener?.("wheel", onWheel); } catch { /* guarded */ }
+    handles.delete(h); handleByEl.delete(el as object);
+  });
   try { renderer.render(scn, camera); } catch { /* guarded */ }
 };
 

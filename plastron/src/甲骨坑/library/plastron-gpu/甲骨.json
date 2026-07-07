@@ -70,7 +70,7 @@
         "segment": "plastron-gpu",
         "name": "camera",
         "kind": "native",
-        "description": "(x, y, z) - a perspective camera SPEC node, looking at the origin."
+        "description": "(x, y, z [, minDistance] [, maxDistance] [, zoomSpeed]) - a perspective camera SPEC node, looking at the origin, with optional mouse-wheel dolly clamp bounds and wheel speed. Omitted optionals get ratio defaults of the authored distance d0=|(x,y,z)| (minDistance 0.25*d0, maxDistance 4*d0, zoomSpeed 0.001); the retained scene handle attaches a wheel listener that dollies the camera along its view ray, clamped to [minDistance, maxDistance] (zoom state is ephemeral view-local, not a cel)."
       }
     },
     {

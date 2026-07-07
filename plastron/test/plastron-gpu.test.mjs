@@ -1,7 +1,7 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { createInitialState, resolveFn } from "../dist/index.js";
-import { dirtyIndices } from "../dist/甲骨坑/library/plastron-gpu/index.js";
+import { dirtyIndices, dollyDistance } from "../dist/甲骨坑/library/plastron-gpu/index.js";
 
 // Tier A — plastron-gpu's vocabulary is PURE (01-rendering.md): every
 // constructor returns a plain spec object (JSON before a pixel exists),
@@ -23,6 +23,27 @@ test("geometry/material/light/camera constructors return pure spec nodes", () =>
   const l = f("light")(5, 8, 3);
   assert.equal(l.spec, "light"); assert.equal(l.x, 5); assert.equal(l.intensity, 1);
   assert.deepEqual(f("camera")(0, 4, 8), { spec: "camera", x: 0, y: 4, z: 8 });
+  // optional trailing args carry the AUTHORED wheel-dolly policy on the surface
+  assert.deepEqual(f("camera")(0, 4, 8, 2, 40, 0.002),
+    { spec: "camera", x: 0, y: 4, z: 8, minDistance: 2, maxDistance: 40, zoomSpeed: 0.002 });
+  // partial: only some optionals supplied → only those keys appear
+  assert.deepEqual(f("camera")(0, 4, 8, 2),
+    { spec: "camera", x: 0, y: 4, z: 8, minDistance: 2 });
+});
+
+test("dollyDistance directs (up=in, down=out) and clamps to [minD, maxD]", () => {
+  // no scroll → distance unchanged
+  assert.equal(dollyDistance(10, 0, 1, 100, 0.001), 10);
+  // scroll-up (deltaY < 0) → smaller distance → zoom IN
+  assert.ok(dollyDistance(10, -100, 1, 100, 0.001) < 10);
+  // scroll-down (deltaY > 0) → larger distance → zoom OUT
+  assert.ok(dollyDistance(10, 100, 1, 100, 0.001) > 10);
+  // a mid-range notch lands exactly at distance·exp(deltaY·speed)
+  assert.equal(dollyDistance(10, 200, 1, 100, 0.001), 10 * Math.exp(0.2));
+  // a large scroll-in saturates at minDistance (never punches through the scene)
+  assert.equal(dollyDistance(10, -100000, 2, 100, 0.001), 2);
+  // a large scroll-out saturates at maxDistance (never recedes to infinity)
+  assert.equal(dollyDistance(10, 100000, 2, 40, 0.001), 40);
 });
 
 test("mesh() nests geometry + material specs; instances() carries the buffer cel KEY", () => {
